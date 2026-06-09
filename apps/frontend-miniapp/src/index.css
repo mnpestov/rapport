@@ -1,0 +1,42 @@
+/* Глобальное обнуление стандартных стилей браузера */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {
+  margin: 0;
+  padding: 0;
+}
+
+/* Global Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: opacity 0.2s ease;
+}
+
+.btn:active {
+  opacity: 0.8;
+}
+
+.btn--primary {
+  border-radius: 2px;
+  background: var(--green, #83942C);
+  color: var(--white, #FFF);
+  text-align: center;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%; /* 16.5px */
+}

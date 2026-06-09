@@ -1,0 +1,160 @@
+/* === PatternCard.css — значения из Figma === */
+
+/* Item: VERTICAL, gap:4, w:175, h:258, fill:none, radius:0 */
+.pattern-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* в сетке — 1fr */
+  height: 258px;
+  background: transparent;
+  border-radius: 0;
+  /* overflow:hidden убран — он обрезал блок тегов */
+  transition: transform 0.2s ease;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.pattern-card:active {
+  transform: scale(0.98);
+}
+
+/* 🖼️ Image: RECTANGLE, w:175, h:216, cornerRadius:2 */
+.pattern-card-image-container {
+  position: relative;
+  width: 100%;
+  height: 216px;
+  flex-shrink: 0;
+  background-color: #f0f0f0;
+  /* заглушка */
+  border-radius: 2px;
+  overflow: hidden;
+  /* overflow только на изображении */
+}
+
+.pattern-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Label (badge): INSTANCE, w:78, h:21, pt:4 pr:8 pb:4 pl:8,
+   fill:#F3F3F3, stroke:#F3F3F3, cornerRadius:2,
+   position: top:191px = bottom:4px от нижнего края image */
+.badge-free {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: #F3F3F3;
+  color: #1D1C1C;
+  padding: 4px 8px;
+  border: 1px solid #F3F3F3;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 13.2px;
+  font-family: Mulish, sans-serif;
+  white-space: nowrap;
+}
+
+.badge-free--details {
+  bottom: 10px;
+  left: 10px;
+}
+
+/* lucide/heart: INSTANCE, w:32, h:32, fill:none
+   Vector inside: stroke:#FFFFFF, w:21, h:18
+   position: top:0, left:138 (right:5 при ширине 175) */
+.favorite-button {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #FFFFFF;
+  /* stroke иконки */
+}
+
+/* Body: VERTICAL, w:175, h:20 */
+/* pattern-card-content — аналог Body + Frame 317 вместе */
+.pattern-card-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Title: TEXT, Mulish 700 15px, color:#1D1C1C, lineHeight:16.5px, h:20 */
+.pattern-title {
+  margin: 0;
+  height: 20px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: Mulish, sans-serif;
+  color: #1D1C1C;
+  line-height: 16.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-top: 3px;
+}
+
+/* Frame 317: HORIZONTAL, gap:4, pl:4 pr:4, h:14, SPACE_BETWEEN */
+.pattern-tags-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 4px;
+  height: 14px;
+  overflow: hidden;
+}
+
+/* tag: INSTANCE, HORIZONTAL, gap:4, alignCounter:CENTER, h:14 */
+.pattern-tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* lucide/astroid vector: 13.5x13.5 — size={14} подходит */
+.tag-icon {
+  flex-shrink: 0;
+  color: #1D1C1C;
+}
+
+/* tag Title: Mulish 400 12px, color:#1D1C1C */
+.product-type {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: Mulish, sans-serif;
+  color: #1D1C1C;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* tag Title (instrument): Mulish 400 12px, color:#1D1C1C */
+.pattern-instrument {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: Mulish, sans-serif;
+  color: #1D1C1C;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

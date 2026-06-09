@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Pattern {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  url         String
+  imageUrl    String
+  isFree      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  authorId    String
+  author      Author   @relation(fields: [authorId], references: [id])
+
+  instruments Instrument[]
+  categories  ProductType[]
+  tags        Tag[]
+}
+
+model Author {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  patterns Pattern[]
+}
+
+model ProductType {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  patterns Pattern[]
+}
+
+model Instrument {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  patterns Pattern[]
+}
+
+model Tag {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  patterns Pattern[]
+}
