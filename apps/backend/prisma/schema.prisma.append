@@ -1,0 +1,12 @@
+
+model User {
+  id           String   @id @default(uuid())
+  telegramId   BigInt   @unique
+  firstName    String
+  lastName     String?
+  username     String?
+  languageCode String?
+  isPremium    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

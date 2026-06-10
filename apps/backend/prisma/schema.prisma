@@ -7,17 +7,17 @@ datasource db {
 }
 
 model Pattern {
-  id          String   @id @default(uuid())
-  slug        String   @unique
-  title       String
-  url         String
-  imageUrl    String
-  isFree      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  url       String
+  imageUrl  String
+  isFree    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  authorId    String
-  author      Author   @relation(fields: [authorId], references: [id])
+  authorId String
+  author   Author @relation(fields: [authorId], references: [id])
 
   instruments Instrument[]
   categories  ProductType[]
@@ -46,4 +46,16 @@ model Tag {
   id       String    @id @default(uuid())
   name     String    @unique
   patterns Pattern[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  telegramId   BigInt   @unique
+  firstName    String
+  lastName     String?
+  username     String?
+  languageCode String?
+  isPremium    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

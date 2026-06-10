@@ -37,7 +37,14 @@ function App() {
 
     const checkAccess = async () => {
       try {
-        const response = await authenticate();
+        const tg = (window as any).Telegram?.WebApp;
+        let initData = tg?.initData || "";
+        
+        if (!initData && import.meta.env.DEV) {
+          initData = "mock_dev";
+        }
+
+        const response = await authenticate(initData);
         if (isMounted) {
           setAppState(response.isSubscriber ? "authorized" : "unauthorized");
         }
