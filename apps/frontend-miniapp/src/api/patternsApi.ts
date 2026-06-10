@@ -42,6 +42,11 @@ export interface FetchPatternsResponse {
   total: number;
 }
 
+const capitalize = (str: string) => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
 export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise<FetchPatternsResponse> => {
   const params = new URLSearchParams();
   
@@ -74,6 +79,8 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
     ...result,
     data: result.data.map(p => ({
       ...p,
+      primaryProductType: capitalize(p.primaryProductType),
+      productTypes: p.productTypes?.map(capitalize) || [],
       imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl
     }))
   };
@@ -87,6 +94,8 @@ export const fetchPatternById = async (id: string): Promise<Pattern> => {
   const pattern: Pattern = await response.json();
   return {
     ...pattern,
+    primaryProductType: capitalize(pattern.primaryProductType),
+    productTypes: pattern.productTypes?.map(capitalize) || [],
     imageUrl: pattern.imageUrl.startsWith('/') ? `${API_URL}${pattern.imageUrl}` : pattern.imageUrl
   };
 };
@@ -96,6 +105,10 @@ export const fetchFilters = async (): Promise<FiltersResponse> => {
   if (!response.ok) {
     throw new Error(`Failed to fetch filters: ${response.status}`);
   }
-  return response.json();
+  const data: FiltersResponse = await response.json();
+  return {
+    ...data,
+    categories: data.categories.map(c => ({ ...c, name: capitalize(c.name) }))
+  };
 };
 

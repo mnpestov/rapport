@@ -16,17 +16,24 @@ export const Catalog: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [searchInput, setSearchInput] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [isFreeFilterActive, setIsFreeFilterActive] = useState(false);
+  const [searchInput, setSearchInput] = useState(() => sessionStorage.getItem('catalog_search') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => sessionStorage.getItem('catalog_free_filter') === 'true');
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>({
-    categories: [],
-    tags: [],
-    instruments: [],
-    authors: []
+  
+  const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>(() => {
+    const saved = sessionStorage.getItem('catalog_advanced_filters');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      categories: [],
+      tags: [],
+      instruments: [],
+      authors: []
+    };
   });
 
   const [offset, setOffset] = useState(0);
@@ -40,6 +47,13 @@ export const Catalog: React.FC = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  // Save to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('catalog_search', searchInput);
+    sessionStorage.setItem('catalog_free_filter', String(isFreeFilterActive));
+    sessionStorage.setItem('catalog_advanced_filters', JSON.stringify(advancedFilters));
+  }, [searchInput, isFreeFilterActive, advancedFilters]);
 
   useEffect(() => {
     fetchFilters().then(setFiltersData).catch(console.error);

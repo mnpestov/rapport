@@ -92,25 +92,27 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
         </button>
         {isExpanded && (
           <div className="filter-section-body">
-            <div className="filter-search-input-wrapper filter-search-inline">
-              <Search size={20} className="filter-search-icon" />
-              <input
-                type="text"
-                placeholder="Поиск..."
-                className="filter-search-input"
-                value={filterSearches[sectionKey]}
-                onChange={(e) => setFilterSearches(prev => ({ ...prev, [sectionKey]: e.target.value }))}
-                onClick={(e) => e.stopPropagation()}
-              />
-              {filterSearches[sectionKey] && (
-                <button 
-                  className="filter-search-clear" 
-                  onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
-                >
-                  <X size={20} />
-                </button>
-              )}
-            </div>
+            {sectionKey !== 'instruments' && (
+              <div className="filter-search-input-wrapper filter-search-inline">
+                <Search size={20} className="filter-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Поиск..."
+                  className="filter-search-input"
+                  value={filterSearches[sectionKey]}
+                  onChange={(e) => setFilterSearches(prev => ({ ...prev, [sectionKey]: e.target.value }))}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                {filterSearches[sectionKey] && (
+                  <button 
+                    className="filter-search-clear" 
+                    onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+            )}
             {loading && <p className="filter-loading">Загрузка...</p>}
             {!loading && options.length === 0 && <p className="filter-empty">Ничего не найдено</p>}
             {!loading && options.map((opt: FilterOption) => {
