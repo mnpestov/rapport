@@ -7,9 +7,11 @@ export interface AuthResponse {
   };
 }
 
+import { API_URL } from "./config";
+
 export const authenticate = async (): Promise<AuthResponse> => {
   try {
-    const response = await fetch("http://localhost:3000/auth/telegram", {
+    const response = await fetch(`${API_URL}/auth/telegram`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
