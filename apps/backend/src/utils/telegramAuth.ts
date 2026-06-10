@@ -27,9 +27,8 @@ export function validateTelegramWebAppData(initData: string, botToken: string): 
       return { isValid: false };
     }
 
-    // Explicitly delete hash AND signature from params before sorting
+    // Explicitly delete ONLY hash from params before sorting
     urlParams.delete('hash');
-    urlParams.delete('signature');
 
     const params = Array.from(urlParams.entries());
     params.sort((a, b) => a[0].localeCompare(b[0]));
