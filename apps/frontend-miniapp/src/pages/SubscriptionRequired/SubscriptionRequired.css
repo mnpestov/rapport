@@ -35,7 +35,7 @@
 
 .subscribe-btn {
   width: 100%;
-  background: #8A9A5B; /* Olive Green */
+  background: #A9AE36; /* Olive Green */
   color: white;
   border: none;
   padding: 14px;
@@ -49,8 +49,8 @@
 .check-btn {
   width: 100%;
   background: white;
-  color: #8A9A5B;
-  border: 1px solid #8A9A5B;
+  color: #A9AE36;
+  border: 1px solid #A9AE36;
   padding: 14px;
   border-radius: 12px;
   font-size: 16px;

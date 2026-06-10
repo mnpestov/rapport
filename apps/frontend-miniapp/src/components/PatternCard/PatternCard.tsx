@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
+import { useFavorites } from '../../context/FavoritesContext';
 import './PatternCard.css';
 
 interface PatternCardProps {
@@ -14,6 +15,9 @@ interface PatternCardProps {
 
 export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, imageUrl, isFree }) => {
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useFavorites();
+
+  const favorite = isFavorite(id);
 
   const handleCardClick = () => {
     navigate(`/pattern/${id}`);
@@ -21,7 +25,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // чтобы не сработал переход при клике на лайк
-    console.log('Toggle favorite');
+    toggleFavorite(id);
   };
 
   return (
@@ -29,8 +33,8 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
       <div className="pattern-card-image-container">
         <img src={imageUrl} alt={title} className="pattern-card-image" />
         {isFree && <span className="badge-free">Бесплатно</span>}
-        <button className="favorite-button" onClick={handleFavoriteClick} aria-label="Add to favorites">
-          <Heart size={32} strokeWidth={1} />
+        <button className="favorite-button" onClick={handleFavoriteClick} aria-label={favorite ? "Remove from favorites" : "Add to favorites"}>
+          <Heart size={32} strokeWidth={1} fill={favorite ? "white" : "none"} color={favorite ? "white" : "currentColor"} />
         </button>
       </div>
       <div className="pattern-card-content">

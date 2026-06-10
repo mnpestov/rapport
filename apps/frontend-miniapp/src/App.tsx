@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Catalog } from './pages/Catalog/Catalog';
 import { PatternDetails } from './pages/PatternDetails/PatternDetails';
+import { Favorites } from './pages/Favorites/Favorites';
 import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { authenticate } from './api/authApi';
@@ -64,6 +65,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Catalog />} />
       <Route path="/pattern/:id" element={<PatternDetails />} />
+      <Route path="/favorites" element={<Favorites />} />
     </Routes>
   );
 }

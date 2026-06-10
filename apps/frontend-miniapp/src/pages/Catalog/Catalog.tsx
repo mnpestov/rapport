@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, X, Heart, SlidersHorizontal } from 'lucide-react';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { fetchPatterns, Pattern, FetchPatternsOptions } from '../../api/patternsApi';
@@ -7,6 +8,7 @@ import './Catalog.css';
 type FilterType = 'all' | 'free' | 'new' | 'popular';
 
 export const Catalog: React.FC = () => {
+  const navigate = useNavigate();
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +16,7 @@ export const Catalog: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  
+
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 10;
@@ -78,17 +80,12 @@ export const Catalog: React.FC = () => {
 
   return (
     <div className="catalog-container">
-      <div className="catalog-header">
-        <span className="title">раппорт</span>
-        <span className="subtitle">bot</span>
-      </div>
-      
       <div className="search-row">
         <div className="search-input-wrapper">
           <Search size={20} className="search-icon" />
-          <input 
-            type="text" 
-            placeholder="Найти описание" 
+          <input
+            type="text"
+            placeholder="Найти описание"
             className="search-input"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -99,8 +96,8 @@ export const Catalog: React.FC = () => {
             </button>
           )}
         </div>
-        <button className="search-favorite-btn" aria-label="Favorites">
-          <Heart size={24} color="#8A9A5B" fill="#8A9A5B" />
+        <button className="search-favorite-btn" onClick={() => navigate('/favorites')} aria-label="Favorites">
+          <Heart size={24} color="#D8540F" fill="#D8540F" />
         </button>
       </div>
 
@@ -110,19 +107,19 @@ export const Catalog: React.FC = () => {
         </button>
         <div className="filter-separator" />
         <div className="catalog-filters">
-          <button 
+          <button
             className={`filter-btn ${activeFilter === 'free' ? 'active' : ''}`}
             onClick={() => setActiveFilter(activeFilter === 'free' ? 'all' : 'free')}
           >
             Бесплатные
           </button>
-          <button 
+          <button
             className={`filter-btn ${activeFilter === 'new' ? 'active' : ''}`}
             onClick={() => setActiveFilter(activeFilter === 'new' ? 'all' : 'new')}
           >
             Новинки
           </button>
-          <button 
+          <button
             className={`filter-btn ${activeFilter === 'popular' ? 'active' : ''}`}
             onClick={() => setActiveFilter(activeFilter === 'popular' ? 'all' : 'popular')}
           >
@@ -133,7 +130,7 @@ export const Catalog: React.FC = () => {
 
       {loading && <p>Загрузка каталога...</p>}
       {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
-      
+
       {!loading && !error && patterns.length === 0 && (
         <p style={{ marginTop: '24px', textAlign: 'center', color: '#6b7280' }}>
           Ничего не найдено
@@ -144,7 +141,7 @@ export const Catalog: React.FC = () => {
         <>
           <div className="catalog-grid">
             {patterns.map(pattern => (
-              <PatternCard 
+              <PatternCard
                 key={pattern.id}
                 {...pattern}
               />
@@ -152,8 +149,8 @@ export const Catalog: React.FC = () => {
           </div>
           {hasMore && (
             <div className="load-more-container">
-              <button 
-                className="load-more-link" 
+              <button
+                className="load-more-link"
                 onClick={() => setOffset(prev => prev + LIMIT)}
               >
                 Загрузить еще

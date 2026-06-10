@@ -169,9 +169,9 @@
 }
 
 .filter-btn.active {
-  background: var(--purple, #BEC1F4);
-  color: #1D1C1C;
-  border-color: var(--purple, #BEC1F4);
+  background: var(--purple, #ABC6BA);
+  color: white;
+  border-color: var(--purple, #ABC6BA);
 }
 
 /* === CATALOG GRID === */
@@ -191,7 +191,7 @@
 
 .load-more-link {
   width: 290px;
-  color: var(--purple, #BEC1F4);
+  color: var(--purple, #ABC6BA);
   text-align: center;
   font-family: Mulish, sans-serif;
   font-size: 12px;
