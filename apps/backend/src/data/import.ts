@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../prismaClient';
+import { generateSlug } from '../utils/slug';
 
 const csvPath = path.join(__dirname, '../../../../ExportBlock-f73bf787-66ed-458a-951f-2ff3cd019a16-Part-1/Бот Агрегатор описаний/Бот Список описаний 36ff2e68acf080449c65f01a3f8dedae_all.csv');
 
@@ -32,27 +33,7 @@ const extractList = (str: string) => {
   return str.split(',').map(s => s.trim().replace(/\s+/g, ' ')).filter(s => s);
 };
 
-// Transliteration map for slugs
-const cyrillicToLatinMap: Record<string, string> = {
-  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
-  'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
-  'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
-  'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
-  'я': 'ya'
-};
-
-const transliterate = (text: string) => {
-  return text.toLowerCase().split('').map(char => cyrillicToLatinMap[char] || char).join('');
-};
-
-const generateSlug = (title: string) => {
-  let slug = transliterate(title);
-  slug = slug.replace(/#/g, '').replace(/[\s_]+/g, '-').replace(/[^a-z0-9\-]/g, '');
-  slug = slug.replace(/-+/g, '-').replace(/^-|-$/g, '');
-  
-  if (!slug) slug = crypto.randomBytes(4).toString('hex');
-  return slug;
-};
+// Transliteration logic moved to src/utils/slug.ts
 
 async function run() {
   console.log("Clearing existing data...");

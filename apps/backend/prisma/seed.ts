@@ -1,12 +1,12 @@
 import { prisma } from '../src/prismaClient';
+import { generateSlug } from '../src/utils/slug';
 
 async function main() {
   console.log('Starting seeding...');
   
   await prisma.pattern.deleteMany();
 
-  await prisma.pattern.createMany({
-    data: [
+  const patterns = [
       {
         title: "#ruffle_collar",
         author: "bot",
@@ -127,8 +127,40 @@ async function main() {
         primaryProductType: "Головной убор",
         instruments: ["Спицы"],
       }
-    ]
-  });
+  ];
+
+  for (const p of patterns) {
+    const slug = generateSlug(p.title);
+    
+    const author = await prisma.author.upsert({
+      where: { name: p.author },
+      update: {},
+      create: { name: p.author }
+    });
+
+    await prisma.pattern.create({
+      data: {
+        title: p.title,
+        slug: slug,
+        url: `https://rapport.su/patterns/${slug}`,
+        imageUrl: p.imageUrl,
+        isFree: p.isFree,
+        authorId: author.id,
+        categories: {
+          connectOrCreate: {
+            where: { name: p.primaryProductType },
+            create: { name: p.primaryProductType }
+          }
+        },
+        instruments: {
+          connectOrCreate: p.instruments.map(inst => ({
+            where: { name: inst },
+            create: { name: inst }
+          }))
+        }
+      }
+    });
+  }
   
   console.log('Seeding finished.');
 }
