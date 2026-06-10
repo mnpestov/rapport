@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { validateTelegramWebAppData } from "../utils/telegramAuth";
 import { generateToken } from "../utils/jwt";
 import { prisma } from "../prismaClient";
+import { checkTelegramSubscription } from "../utils/checkSubscription";
 
 export const telegramAuth = async (req: Request, res: Response) => {
   const { initData } = req.body;
@@ -18,6 +19,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
   let lastName: string | undefined;
   let username: string | undefined;
   let languageCode: string | undefined;
+  let isSubscriber: boolean = false;
 
   // DEV Mock path
   if (initData === "mock_dev" && isDev && allowDevAuth) {
@@ -26,6 +28,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     lastName = "User";
     username = "devuser";
     languageCode = "ru";
+    isSubscriber = true;
   } else {
     // Production HMAC validation
     const botToken = process.env.BOT_TOKEN;
@@ -46,6 +49,9 @@ export const telegramAuth = async (req: Request, res: Response) => {
     lastName = user.last_name;
     username = user.username;
     languageCode = user.language_code;
+    
+    // Check real channel subscription
+    isSubscriber = await checkTelegramSubscription(telegramId);
   }
 
   try {
@@ -73,7 +79,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     });
 
     res.json({
-      isSubscriber: userRecord.isPremium || true, // TODO: proper logic if needed
+      isSubscriber,
       token,
       user: {
         id: userRecord.id,
