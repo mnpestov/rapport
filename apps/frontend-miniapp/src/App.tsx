@@ -14,6 +14,21 @@ function App() {
   useEffect(() => {
     let isMounted = true;
 
+    // Инициализация Telegram Web App (Этап 1)
+    try {
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        if (import.meta.env.DEV) {
+          // TODO: удалить логирование персональных данных после финального тестирования Этапа 1
+          console.log("[Telegram WebApp] initDataUnsafe:", tg.initDataUnsafe);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to initialize Telegram WebApp", e);
+    }
+
     const checkAccess = async () => {
       try {
         const response = await authenticate();
