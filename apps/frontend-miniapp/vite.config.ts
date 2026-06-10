@@ -9,6 +9,7 @@ export default defineConfig({
       '/auth': 'http://localhost:3000',
       '/patterns': 'http://localhost:3000',
       '/images': 'http://localhost:3000',
+      '/filters': 'http://localhost:3000',
     }
   }
 })

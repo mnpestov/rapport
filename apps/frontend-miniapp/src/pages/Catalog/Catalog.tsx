@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, Heart, SlidersHorizontal } from 'lucide-react';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
-import { fetchPatterns, Pattern, FetchPatternsOptions } from '../../api/patternsApi';
+import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResponse } from '../../api/patternsApi';
+import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
+import { CustomX } from '../../components/Icons/Icons';
 import './Catalog.css';
 
 type FilterType = 'all' | 'free' | 'new' | 'popular';
@@ -10,12 +12,22 @@ type FilterType = 'all' | 'free' | 'new' | 'popular';
 export const Catalog: React.FC = () => {
   const navigate = useNavigate();
   const [patterns, setPatterns] = useState<Pattern[]>([]);
+  const [totalPatterns, setTotalPatterns] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [isFreeFilterActive, setIsFreeFilterActive] = useState(false);
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
+  const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>({
+    categories: [],
+    tags: [],
+    instruments: [],
+    authors: []
+  });
 
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -29,12 +41,16 @@ export const Catalog: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  useEffect(() => {
+    fetchFilters().then(setFiltersData).catch(console.error);
+  }, []);
+
   // Reset pagination when filters or search change
   useEffect(() => {
     setOffset(0);
     setHasMore(true);
     setPatterns([]);
-  }, [debouncedSearch, activeFilter]);
+  }, [debouncedSearch, isFreeFilterActive, advancedFilters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,14 +61,18 @@ export const Catalog: React.FC = () => {
       try {
         const options: FetchPatternsOptions = {
           search: debouncedSearch || undefined,
-          isFree: activeFilter === 'free' ? true : undefined,
-          isNew: activeFilter === 'new' ? true : undefined,
+          isFree: isFreeFilterActive ? true : undefined,
           limit: LIMIT,
           offset: offset,
+          categories: advancedFilters.categories.length > 0 ? advancedFilters.categories : undefined,
+          tags: advancedFilters.tags.length > 0 ? advancedFilters.tags : undefined,
+          instruments: advancedFilters.instruments.length > 0 ? advancedFilters.instruments : undefined,
+          authors: advancedFilters.authors.length > 0 ? advancedFilters.authors : undefined,
         };
 
-        const data = await fetchPatterns(options);
+        const { data, total } = await fetchPatterns(options);
         if (isMounted) {
+          setTotalPatterns(total);
           if (offset === 0) {
             setPatterns(data);
           } else {
@@ -76,7 +96,17 @@ export const Catalog: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [debouncedSearch, activeFilter, offset]);
+  }, [debouncedSearch, isFreeFilterActive, offset, advancedFilters]);
+
+  const totalFiltersCount = advancedFilters.categories.length +
+    advancedFilters.tags.length +
+    advancedFilters.instruments.length +
+    advancedFilters.authors.length;
+
+  const clearFilters = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [] });
+  };
 
   return (
     <div className="catalog-container">
@@ -102,31 +132,37 @@ export const Catalog: React.FC = () => {
       </div>
 
       <div className="filters-row">
-        <button className="filter-settings-btn" aria-label="Настройки фильтров">
+        <button
+          className={`filter-settings-btn ${totalFiltersCount > 0 ? 'has-filters' : ''}`}
+          aria-label="Настройки фильтров"
+          onClick={() => setIsFilterModalOpen(true)}
+        >
           <SlidersHorizontal size={24} />
+          {totalFiltersCount > 0 && (
+            <>
+              <span className="filter-count">({totalFiltersCount})</span>
+              <div className="filter-clear-icon" onClick={clearFilters}>
+                <CustomX size={24} />
+              </div>
+            </>
+          )}
         </button>
         <div className="filter-separator" />
         <div className="catalog-filters">
           <button
-            className={`filter-btn ${activeFilter === 'free' ? 'active' : ''}`}
-            onClick={() => setActiveFilter(activeFilter === 'free' ? 'all' : 'free')}
+            className={`filter-btn ${isFreeFilterActive ? 'active' : ''}`}
+            onClick={() => setIsFreeFilterActive(!isFreeFilterActive)}
           >
             Бесплатные
           </button>
-          <button
-            className={`filter-btn ${activeFilter === 'new' ? 'active' : ''}`}
-            onClick={() => setActiveFilter(activeFilter === 'new' ? 'all' : 'new')}
-          >
-            Новинки
-          </button>
-          <button
-            className={`filter-btn ${activeFilter === 'popular' ? 'active' : ''}`}
-            onClick={() => setActiveFilter(activeFilter === 'popular' ? 'all' : 'popular')}
-          >
-            Популярное
-          </button>
         </div>
       </div>
+
+      {(isFreeFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '') && (
+        <div className="catalog-found-count">
+          найдено описаний: {totalPatterns}
+        </div>
+      )}
 
       {loading && <p>Загрузка каталога...</p>}
       {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
@@ -159,6 +195,15 @@ export const Catalog: React.FC = () => {
           )}
         </>
       )}
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        initialFilters={advancedFilters}
+        filtersData={filtersData}
+        loading={!filtersData}
+        onApply={(selected) => setAdvancedFilters(selected)}
+      />
     </div>
   );
 };

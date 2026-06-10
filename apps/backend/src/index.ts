@@ -3,6 +3,7 @@ import cors from "cors";
 import healthRouter from "./routes/health";
 import authRouter from "./routes/auth";
 import patternsRouter from "./routes/patterns";
+import filtersRouter from "./routes/filters";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 app.use("/", healthRouter);
 app.use("/auth", authRouter);
 app.use("/patterns", patternsRouter);
+app.use("/filters", filtersRouter);
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

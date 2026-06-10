@@ -1,0 +1,37 @@
+/* Append to Catalog.css */
+
+.filter-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-settings-btn.has-filters {
+  background-color: rgba(169, 174, 54, 0.1);
+  padding: 0 8px;
+  border-radius: 4px;
+  height: 36px;
+  color: #A9AE36;
+}
+
+.filter-count {
+  font-family: 'Mulish', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #A9AE36;
+}
+
+.filter-clear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.catalog-found-count {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #8e8e93;
+  margin-bottom: 12px;
+}

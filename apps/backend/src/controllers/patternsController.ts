@@ -27,24 +27,55 @@ export const getPatterns = async (req: Request, res: Response) => {
       };
     }
 
+    const parseArrayParam = (param: any): string[] => {
+      if (!param) return [];
+      if (Array.isArray(param)) return param as string[];
+      if (typeof param === 'string') return param.split(',');
+      return [];
+    };
+
+    const categoriesParam = parseArrayParam(req.query.categories);
+    const tagsParam = parseArrayParam(req.query.tags);
+    const instrumentsParam = parseArrayParam(req.query.instruments);
+    const authorsParam = parseArrayParam(req.query.authors);
+
+    if (categoriesParam.length > 0) {
+      where.categories = { some: { id: { in: categoriesParam } } };
+    }
+    
+    if (tagsParam.length > 0) {
+      where.tags = { some: { id: { in: tagsParam } } };
+    }
+
+    if (instrumentsParam.length > 0) {
+      where.instruments = { some: { id: { in: instrumentsParam } } };
+    }
+
+    if (authorsParam.length > 0) {
+      where.authorId = { in: authorsParam };
+    }
+
     const take = limit ? parseInt(limit as string, 10) : 10;
     const skip = offset ? parseInt(offset as string, 10) : 0;
 
-    const patterns = await prisma.pattern.findMany({
-      where,
-      take,
-      skip,
-      orderBy: [
-        { createdAt: 'desc' },
-        { id: 'asc' }
-      ],
-      include: {
-        author: true,
-        instruments: true,
-        categories: true,
-        tags: true,
-      }
-    });
+    const [patterns, total] = await Promise.all([
+      prisma.pattern.findMany({
+        where,
+        take,
+        skip,
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'asc' }
+        ],
+        include: {
+          author: true,
+          instruments: true,
+          categories: true,
+          tags: true,
+        }
+      }),
+      prisma.pattern.count({ where })
+    ]);
 
     const mappedPatterns = patterns.map(p => ({
       ...p,
@@ -56,7 +87,7 @@ export const getPatterns = async (req: Request, res: Response) => {
       externalLink: p.url || ''
     }));
 
-    res.json(mappedPatterns);
+    res.json({ data: mappedPatterns, total });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to fetch patterns" });

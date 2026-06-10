@@ -204,3 +204,63 @@
   padding: 8px 0;
 }
 
+/* Append to Catalog.css */
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 8px 12px;
+  border-radius: 2px;
+  border: 1px solid #A9AE36;
+  background: rgba(169, 174, 54, 0.1);
+  color: #1D1C1C;
+  font-size: 15px;
+  font-weight: 400;
+  font-family: Mulish, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.filter-chip:hover {
+  background: rgba(169, 174, 54, 0.2);
+}
+
+/* Append to Catalog.css */
+
+.filter-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-settings-btn.has-filters {
+  width: auto;
+}
+
+.filter-count {
+  color: var(--black, #1D1C1C);
+  text-align: center;
+  font-family: Mulish;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%; /* 13.2px */
+}
+
+.filter-clear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.catalog-found-count {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #8e8e93;
+  margin-bottom: 12px;
+}

@@ -1,0 +1,23 @@
+/* Append to Catalog.css */
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 8px 12px;
+  border-radius: 2px;
+  border: 1px solid #A9AE36;
+  background: rgba(169, 174, 54, 0.1);
+  color: #1D1C1C;
+  font-size: 15px;
+  font-weight: 400;
+  font-family: Mulish, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.filter-chip:hover {
+  background: rgba(169, 174, 54, 0.2);
+}

@@ -1,0 +1,53 @@
+/* Append to FilterModal.css */
+
+.filter-search-container {
+  padding: 0 16px;
+  margin-bottom: 16px;
+}
+
+.filter-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: #F3F3F3;
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 40px;
+}
+
+.filter-search-icon {
+  color: #8e8e93;
+  margin-right: 8px;
+}
+
+.filter-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: 'Mulish', sans-serif;
+  font-size: 15px;
+  color: #1D1C1C;
+}
+
+.filter-search-clear {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #8e8e93;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.filter-apply-btn:disabled {
+  background-color: #E0E0E0;
+  cursor: not-allowed;
+  color: #A0A0A0;
+}
+
+.filter-checkbox-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
