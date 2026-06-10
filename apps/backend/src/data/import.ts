@@ -4,7 +4,14 @@ import crypto from 'crypto';
 import { prisma } from '../prismaClient';
 import { generateSlug } from '../utils/slug';
 
-const csvPath = path.join(__dirname, '../../../../ExportBlock-f73bf787-66ed-458a-951f-2ff3cd019a16-Part-1/Бот Агрегатор описаний/Бот Список описаний 36ff2e68acf080449c65f01a3f8dedae_all.csv');
+const exportDir = process.env.IMPORT_DIR;
+
+if (!exportDir) {
+  console.error('IMPORT_DIR is not set. Please specify path to Notion export directory.');
+  process.exit(1);
+}
+
+const csvPath = path.join(exportDir, 'Бот Список описаний 36ff2e68acf080449c65f01a3f8dedae_all.csv');
 
 // Simple csv parser
 const parseCSVLine = (text: string) => {
