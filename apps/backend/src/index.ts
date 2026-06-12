@@ -5,6 +5,7 @@ import healthRouter from "./routes/health";
 import authRouter from "./routes/auth";
 import patternsRouter from "./routes/patterns";
 import filtersRouter from "./routes/filters";
+import favoritesRouter from "./routes/favorites";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use("/", healthRouter);
 app.use("/auth", authRouter);
 app.use("/patterns", patternsRouter);
 app.use("/filters", filtersRouter);
+app.use("/favorites", favoritesRouter);
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

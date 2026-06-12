@@ -29,6 +29,8 @@ export const authenticate = async (initData: string): Promise<AuthResponse> => {
     // Save token and user details for future requests
     if (data.token) {
       localStorage.setItem("jwt_token", data.token);
+      // Notify FavoritesContext (and any other listeners) that JWT is now available
+      window.dispatchEvent(new CustomEvent("auth:ready"));
     }
     if (data.user) {
       localStorage.setItem("user_data", JSON.stringify(data.user));

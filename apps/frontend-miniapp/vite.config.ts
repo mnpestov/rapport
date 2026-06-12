@@ -10,6 +10,7 @@ export default defineConfig({
       '/patterns': 'http://localhost:3000',
       '/images': 'http://localhost:3000',
       '/filters': 'http://localhost:3000',
+      '/favorites': 'http://localhost:3000',
     }
   }
 })
