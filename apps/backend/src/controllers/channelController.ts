@@ -10,7 +10,7 @@ const FALLBACK_CHANNEL_INFO: ChannelInfo = {
   username: "fashionhurma",
   photoUrl: null,
   subscriberCount: 0,
-  description: "Подпишитесь на наш закрытый канал"
+  description: "Авторский блог о рукоделии: вязании и шитье."
 };
 
 export const getChannelInfo = async (req: Request, res: Response) => {

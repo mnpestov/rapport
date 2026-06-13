@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { fetchChannelInfo, ChannelInfo } from '../../api/channelApi';
+import avatarPlaceholder from '../../assets/avatar.png';
 import './SubscriptionRequired.css';
 
 export const SubscriptionRequired: React.FC = () => {
   const [channel, setChannel] = useState<ChannelInfo | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     fetchChannelInfo().then(info => {
@@ -22,6 +24,10 @@ export const SubscriptionRequired: React.FC = () => {
 
   const handleCheck = () => {
     window.dispatchEvent(new CustomEvent("auth:recheck"));
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
   };
 
   return (
@@ -33,11 +39,11 @@ export const SubscriptionRequired: React.FC = () => {
       {channel ? (
         <div className="subscription-channel-info">
           <div className="subscription-avatar-wrapper">
-            {channel.photoUrl ? (
-              <img src={channel.photoUrl} alt="Аватар канала" className="subscription-avatar" />
-            ) : (
-              <div className="subscription-avatar-placeholder"></div>
-            )}
+            <img 
+              src={channel.photoUrl || avatarPlaceholder} 
+              alt="Аватар канала" 
+              className="subscription-avatar" 
+            />
           </div>
           <div className="subscription-channel-title">
             {channel.title || "Фешн хурма"}
@@ -63,6 +69,12 @@ export const SubscriptionRequired: React.FC = () => {
           Проверить подписку
         </button>
       </div>
+
+      {showToast && (
+        <div className="subscription-toast">
+          Проверка подписки...
+        </div>
+      )}
     </div>
   );
 };

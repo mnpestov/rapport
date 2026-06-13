@@ -121,3 +121,25 @@
   cursor: pointer;
   text-align: center;
 }
+
+.subscription-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #FFF;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  z-index: 1000;
+  animation: fadeInOut 3s forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; bottom: 10px; }
+  10% { opacity: 1; bottom: 24px; }
+  90% { opacity: 1; bottom: 24px; }
+  100% { opacity: 0; bottom: 10px; }
+}
