@@ -23,6 +23,7 @@ export const getChannelInfo = async (req: Request, res: Response) => {
   const channelInfo = await fetchChannelInfoFromGateway();
 
   if (channelInfo) {
+    channelInfo.description = "Авторский блог о рукоделии: вязании и шитье.";
     lastCache = channelInfo;
     lastCacheTime = now;
     return res.json(channelInfo);
