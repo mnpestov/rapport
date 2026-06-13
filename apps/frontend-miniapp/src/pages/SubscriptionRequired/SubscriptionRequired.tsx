@@ -3,15 +3,12 @@ import { fetchChannelInfo, ChannelInfo } from '../../api/channelApi';
 import avatarPlaceholder from '../../assets/avatar.png';
 import './SubscriptionRequired.css';
 
-export const SubscriptionRequired: React.FC = () => {
-  const [channel, setChannel] = useState<ChannelInfo | null>(null);
-  const [showToast, setShowToast] = useState(false);
+interface Props {
+  channelInfo: ChannelInfo | null;
+}
 
-  useEffect(() => {
-    fetchChannelInfo().then(info => {
-      if (info) setChannel(info);
-    });
-  }, []);
+export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) => {
+  const [showToast, setShowToast] = useState(false);
 
   const handleSubscribe = () => {
     const tg = (window as any).Telegram?.WebApp;

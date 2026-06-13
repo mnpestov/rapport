@@ -7,10 +7,13 @@ import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { authenticate } from './api/authApi';
 
-type AppState = "loading" | "unauthorized" | "authorized";
+import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
+
+type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized";
 
 function App() {
   const [appState, setAppState] = useState<AppState>("loading");
+  const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -27,7 +30,6 @@ function App() {
         tg.ready();
         tg.expand();
         if (import.meta.env.DEV) {
-          // TODO: удалить логирование персональных данных после финального тестирования Этапа 1
           console.log("[Telegram WebApp] initDataUnsafe:", tg.initDataUnsafe);
         }
       }
@@ -36,6 +38,7 @@ function App() {
     }
 
     const checkAccess = async () => {
+      if (isMounted) setAppState("loading");
       try {
         const tg = (window as any).Telegram?.WebApp;
         let initData = tg?.initData || "";
@@ -46,11 +49,25 @@ function App() {
 
         const response = await authenticate(initData);
         if (isMounted) {
-          setAppState(response.isSubscriber ? "authorized" : "unauthorized");
+          if (response.isSubscriber) {
+            setAppState("authorized");
+          } else {
+            setAppState("fetching_channel");
+            const info = await fetchChannelInfo();
+            if (isMounted) {
+              setChannelInfo(info);
+              setAppState("unauthorized");
+            }
+          }
         }
       } catch (error) {
         if (isMounted) {
-          setAppState("unauthorized"); // При ошибке сети блокируем доступ
+          setAppState("fetching_channel");
+          const info = await fetchChannelInfo();
+          if (isMounted) {
+            setChannelInfo(info);
+            setAppState("unauthorized");
+          }
         }
       }
     };
@@ -69,12 +86,12 @@ function App() {
     };
   }, []);
 
-  if (appState === "loading") {
+  if (appState === "loading" || appState === "fetching_channel") {
     return <LoadingScreen />;
   }
 
   if (appState === "unauthorized") {
-    return <SubscriptionRequired />;
+    return <SubscriptionRequired channelInfo={channelInfo} />;
   }
 
   return (
