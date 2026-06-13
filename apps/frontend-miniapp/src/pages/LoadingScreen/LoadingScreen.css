@@ -1,44 +1,99 @@
 .loading-container {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
   height: 100vh;
-  background-color: #A9AE36; /* Olive Green */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  height: 100dvh;
+  background-color: #A9AE36;
+  font-family: 'Mulish', sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+  z-index: 1;
 }
 
 .loading-logo-wrapper {
-  text-align: center;
-  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
 }
 
 .loading-logo {
-  color: white;
-  font-size: 42px;
-  font-weight: 300;
-  margin: 0;
-  letter-spacing: 2px;
+  margin-bottom: 20px;
 }
 
 .loading-subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  margin-top: 4px;
-  letter-spacing: 1px;
+  color: var(--grey, #F3F3F3);
+  text-align: center;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%; /* 16.5px */
+  margin: 0;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.loading-progress-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 120px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.loading-progress-bar {
+  width: 160px;
+  height: 6px;
+  background-color: #FFFFFF;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
 }
+
+.loading-progress-fill {
+  width: 100%;
+  height: 100%;
+  background-color: #ABC6BA;
+  border-radius: 3px;
+  transform-origin: left;
+  animation: progress 2s infinite ease-in-out;
+}
+
+.loading-progress-text {
+  color: var(--grey, #F3F3F3);
+  text-align: center;
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%; /* 13.2px */
+  margin: 0;
+}
+
+.loading-footer-logos {
+  position: absolute;
+  bottom: 40px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  z-index: 0;
+}
+
+@keyframes progress {
+  0% { transform: scaleX(0); }
+  50% { transform: scaleX(0.7); }
+  100% { transform: scaleX(1); }
+}
+
