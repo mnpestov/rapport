@@ -60,8 +60,12 @@ function App() {
       checkAccess();
     }, 500);
 
+    // Listen for custom recheck events
+    window.addEventListener("auth:recheck", checkAccess);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("auth:recheck", checkAccess);
     };
   }, []);
 

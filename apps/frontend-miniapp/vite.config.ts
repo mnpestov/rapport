@@ -11,6 +11,7 @@ export default defineConfig({
       '/images': 'http://localhost:3000',
       '/filters': 'http://localhost:3000',
       '/favorites': 'http://localhost:3000',
+      '/channel': 'http://localhost:3000',
     }
   }
 })
