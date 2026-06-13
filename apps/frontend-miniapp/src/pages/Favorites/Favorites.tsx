@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFavorites } from '../../context/FavoritesContext';
 import { fetchPatternById, Pattern } from '../../api/patternsApi';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
+import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './Favorites.css';
 
 export const Favorites: React.FC = () => {
@@ -50,7 +51,10 @@ export const Favorites: React.FC = () => {
   return (
     <div className="favorites-container">
       <div className="favorites-header">
-        <button className="back-button" onClick={() => navigate(-1)}>← Назад</button>
+        <button className="back-button" onClick={() => navigate(-1)}>
+          <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
+          Назад
+        </button>
       </div>
 
       <div className="favorites-title-container">
@@ -62,13 +66,13 @@ export const Favorites: React.FC = () => {
         )}
       </div>
 
-      {loading && <p className="favorites-message">Загрузка...</p>}
+      {loading && <p className="loading-message">Загрузка...</p>}
 
       {!loading && favorites.length === 0 && (
         <div className="favorites-empty">
           <h2>У вас пока нет избранных описаний</h2>
           <p>Нажимайте на сердечко у понравившихся описаний в каталоге, чтобы сохранить их здесь.</p>
-          <button className="btn btn--primary" onClick={() => navigate('/')} style={{ marginTop: '24px' }}>
+          <button className="favorites-empty-btn" onClick={() => navigate('/')}>
             В каталог
           </button>
         </div>

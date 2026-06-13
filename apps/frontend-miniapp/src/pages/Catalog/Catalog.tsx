@@ -178,13 +178,14 @@ export const Catalog: React.FC = () => {
         </div>
       )}
 
-      {loading && <p>Загрузка каталога...</p>}
+      {loading && <p className="loading-message">Загрузка каталога...</p>}
       {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
 
       {!loading && !error && patterns.length === 0 && (
-        <p style={{ marginTop: '24px', textAlign: 'center', color: '#6b7280' }}>
-          Ничего не найдено
-        </p>
+        <div className="catalog-empty-state">
+          По вашему запросу ничего не найдено. <br />
+          Попробуйте изменить запрос или воспользоваться фильтрами.
+        </div>
       )}
 
       {!loading && !error && patterns.length > 0 && (

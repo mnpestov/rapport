@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { fetchPatternById, Pattern } from '../../api/patternsApi';
 import { useFavorites } from '../../context/FavoritesContext';
+import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
 
 export const PatternDetails: React.FC = () => {
@@ -64,7 +65,10 @@ export const PatternDetails: React.FC = () => {
     return (
       <div className="details-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <h2>Описание не найдено</h2>
-        <button className="back-button" onClick={handleBack} style={{ marginTop: '16px' }}>← Вернуться в каталог</button>
+        <button className="back-button" onClick={handleBack} style={{ marginTop: '16px' }}>
+          <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
+          Вернуться в каталог
+        </button>
       </div>
     );
   }
@@ -72,7 +76,10 @@ export const PatternDetails: React.FC = () => {
   return (
     <div className="details-container">
       <div className="details-header">
-        <button className="back-button" onClick={handleBack}>← Назад</button>
+        <button className="back-button" onClick={handleBack}>
+          <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
+          Назад
+        </button>
       </div>
 
       <div className="details-image-wrapper">

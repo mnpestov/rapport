@@ -17,16 +17,7 @@
   z-index: 10;
 }
 
-.back-button {
-  background: none;
-  border: none;
-  font-size: 16px;
-  color: #A9AE36;
-  /* Olive green */
-  cursor: pointer;
-  padding: 0;
-  font-weight: 500;
-}
+
 
 .details-image-wrapper {
   padding: 0 16px;
