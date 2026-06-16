@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, Heart, SlidersHorizontal } from 'lucide-react';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
@@ -14,6 +14,7 @@ export const Catalog: React.FC = () => {
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [totalPatterns, setTotalPatterns] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState(() => sessionStorage.getItem('catalog_search') || '');
@@ -69,8 +70,9 @@ export const Catalog: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const loadPatterns = async () => {
-      // Only set main loading true if it's initial load
       if (offset === 0) setLoading(true);
+      else setIsFetchingMore(true);
+      
       setError(null);
       try {
         const options: FetchPatternsOptions = {
@@ -101,7 +103,10 @@ export const Catalog: React.FC = () => {
         console.error(err);
         if (isMounted) setError("Не удалось загрузить каталог");
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setIsFetchingMore(false);
+        }
       }
     };
 
@@ -111,6 +116,20 @@ export const Catalog: React.FC = () => {
       isMounted = false;
     };
   }, [debouncedSearch, isFreeFilterActive, offset, advancedFilters]);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading || isFetchingMore) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setOffset(prev => prev + LIMIT);
+      }
+    });
+    
+    if (node) observerRef.current.observe(node);
+  }, [loading, isFetchingMore, hasMore]);
 
   const totalFiltersCount = advancedFilters.categories.length +
     advancedFilters.tags.length +
@@ -199,13 +218,8 @@ export const Catalog: React.FC = () => {
             ))}
           </div>
           {hasMore && (
-            <div className="load-more-container">
-              <button
-                className="load-more-link"
-                onClick={() => setOffset(prev => prev + LIMIT)}
-              >
-                Загрузить еще
-              </button>
+            <div ref={lastElementRef} className="load-more-container" style={{ height: '20px' }}>
+              {isFetchingMore && <p className="loading-message" style={{ marginTop: 0 }}>Загрузка...</p>}
             </div>
           )}
         </>
