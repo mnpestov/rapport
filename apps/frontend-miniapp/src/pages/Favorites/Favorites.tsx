@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFavorites } from '../../context/FavoritesContext';
-import { fetchPatternById, Pattern } from '../../api/patternsApi';
+import { fetchPatternsByIds, Pattern } from '../../api/patternsApi';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './Favorites.css';
@@ -26,14 +26,8 @@ export const Favorites: React.FC = () => {
       
       setLoading(true);
       try {
-        const results = await Promise.all(
-          favorites.map(id => fetchPatternById(id).catch(e => {
-            console.error(`Failed to fetch pattern ${id}`, e);
-            return null;
-          }))
-        );
-        const validPatterns = results.filter((p): p is Pattern => p !== null);
-        if (isMounted) setPatterns(validPatterns);
+        const results = await fetchPatternsByIds(favorites);
+        if (isMounted) setPatterns(results);
       } catch (err) {
         console.error("Failed to load favorites", err);
       } finally {

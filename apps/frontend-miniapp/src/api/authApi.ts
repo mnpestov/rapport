@@ -9,16 +9,17 @@ export interface AuthResponse {
 }
 
 import { API_URL } from "./config";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 export const authenticate = async (initData: string): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_URL}/auth/telegram`, {
+    const response = await fetchWithTimeout(`${API_URL}/auth/telegram`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ initData }),
-    });
+    }, 8000);
 
     if (!response.ok) {
       throw new Error(`Server error: ${response.status}`);

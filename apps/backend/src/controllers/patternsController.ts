@@ -127,3 +127,44 @@ export const getPatternById = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch pattern" });
   }
 };
+
+export const getPatternsByIds = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.json({ data: [] });
+    }
+
+    // Cap at 50 to prevent abuse
+    const validIds = ids.filter((id): id is string => typeof id === "string").slice(0, 50);
+
+    const patterns = await prisma.pattern.findMany({
+      where: { id: { in: validIds } },
+      include: {
+        author: true,
+        instruments: true,
+        categories: true,
+        tags: true,
+      }
+    });
+
+    const patternsMap = new Map(patterns.map(p => [p.id, p]));
+    const orderedPatterns = validIds.map(id => patternsMap.get(id)).filter(p => p !== undefined) as typeof patterns;
+
+    const mappedPatterns = orderedPatterns.map(p => ({
+      ...p,
+      author: p.author?.name || 'Неизвестно',
+      instruments: p.instruments.map(i => i.name),
+      productTypes: p.categories.map(pt => pt.name),
+      tags: p.tags.map(t => t.name),
+      primaryProductType: p.categories[0]?.name || '',
+      externalLink: p.url || ''
+    }));
+
+    res.json({ data: mappedPatterns });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch patterns by ids" });
+  }
+};

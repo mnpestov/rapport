@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 export interface ChannelInfo {
   title: string | null;
@@ -10,12 +11,12 @@ export interface ChannelInfo {
 
 export const fetchChannelInfo = async (): Promise<ChannelInfo | null> => {
   try {
-    const response = await fetch(`${API_URL}/channel`, {
+    const response = await fetchWithTimeout(`${API_URL}/channel`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-    });
+    }, 8000);
 
     if (!response.ok) {
       throw new Error(`Server error: ${response.status}`);

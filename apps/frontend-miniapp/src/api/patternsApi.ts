@@ -36,6 +36,7 @@ export interface FiltersResponse {
 }
 
 import { API_URL } from "./config";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 export interface FetchPatternsResponse {
   data: Pattern[];
@@ -70,7 +71,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetch(`${API_URL}/patterns${queryString}`);
+  const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch patterns: ${response.status}`);
   }
@@ -87,7 +88,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
 };
 
 export const fetchPatternById = async (id: string): Promise<Pattern> => {
-  const response = await fetch(`${API_URL}/patterns/${id}`);
+  const response = await fetchWithTimeout(`${API_URL}/patterns/${id}`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch pattern ${id}: ${response.status}`);
   }
@@ -101,7 +102,7 @@ export const fetchPatternById = async (id: string): Promise<Pattern> => {
 };
 
 export const fetchFilters = async (): Promise<FiltersResponse> => {
-  const response = await fetch(`${API_URL}/filters`);
+  const response = await fetchWithTimeout(`${API_URL}/filters`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch filters: ${response.status}`);
   }
@@ -112,3 +113,24 @@ export const fetchFilters = async (): Promise<FiltersResponse> => {
   };
 };
 
+export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
+  if (ids.length === 0) return [];
+
+  const response = await fetchWithTimeout(`${API_URL}/patterns/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  }, 10000);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch patterns batch: ${response.status}`);
+  }
+
+  const { data }: { data: Pattern[] } = await response.json();
+  return data.map(p => ({
+    ...p,
+    primaryProductType: capitalize(p.primaryProductType),
+    productTypes: p.productTypes?.map(capitalize) || [],
+    imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl
+  }));
+};

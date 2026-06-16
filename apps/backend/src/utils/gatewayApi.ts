@@ -16,13 +16,21 @@ export async function fetchChannelInfoFromGateway(): Promise<ChannelInfo | null>
   }
 
   try {
-    const response = await fetch(`${gatewayBaseUrl}/channel-info`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gateway-Key": gatewayKey,
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    let response;
+    try {
+      response = await fetch(`${gatewayBaseUrl}/channel-info`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gateway-Key": gatewayKey,
+        },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       console.error(`[GatewayApi] Gateway error: HTTP ${response.status} ${response.statusText}`);
