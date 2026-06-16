@@ -31,7 +31,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
   return (
     <div className="pattern-card" onClick={handleCardClick}>
       <div className="pattern-card-image-container">
-        <img src={imageUrl} alt={title} className="pattern-card-image" loading="lazy" />
+        <img src={imageUrl} alt={title} className="pattern-card-image" />
         {isFree && <span className="badge-free">Бесплатно</span>}
         <button className="favorite-button" onClick={handleFavoriteClick} aria-label={favorite ? "Remove from favorites" : "Add to favorites"}>
           <Heart size={32} strokeWidth={1} fill={favorite ? "white" : "none"} color={favorite ? "white" : "currentColor"} />
