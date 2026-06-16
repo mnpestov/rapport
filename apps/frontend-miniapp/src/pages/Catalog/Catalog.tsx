@@ -39,7 +39,7 @@ export const Catalog: React.FC = () => {
 
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const LIMIT = 10;
+  const LIMIT = 4;
 
   // Debounce search input (300ms)
   useEffect(() => {
