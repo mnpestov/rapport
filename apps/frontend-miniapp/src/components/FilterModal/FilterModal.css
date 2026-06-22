@@ -187,7 +187,8 @@
   background: transparent;
   outline: none;
   font-family: 'Mulish', sans-serif;
-  font-size: 15px;
+  /* 16px min prevents iOS WebView auto-zoom on focus. */
+  font-size: 16px;
   color: #1D1C1C;
 }
 

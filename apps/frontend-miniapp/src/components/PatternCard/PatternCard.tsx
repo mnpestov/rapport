@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { useFavorites } from '../../context/FavoritesContext';
 import './PatternCard.css';
-// DIAG: remove after investigation
-import { diagLog } from '../../lib/diagnosticLogger';
 
 interface PatternCardProps {
   id: string;
@@ -37,14 +35,6 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
           src={imageUrl}
           alt={title}
           className="pattern-card-image"
-          onLoad={() =>
-            // DIAG
-            diagLog('IMAGE_LOAD_SUCCESS', 'Card image loaded', { imageUrl, patternId: id })
-          }
-          onError={() =>
-            // DIAG
-            diagLog('IMAGE_LOAD_ERROR', 'Card image failed to load', { imageUrl, patternId: id })
-          }
         />
         {isFree && <span className="badge-free">Бесплатно</span>}
         <button className="favorite-button" onClick={handleFavoriteClick} aria-label={favorite ? "Remove from favorites" : "Add to favorites"}>

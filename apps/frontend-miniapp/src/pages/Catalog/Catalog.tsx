@@ -6,8 +6,6 @@ import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResp
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
 import { CustomX } from '../../components/Icons/Icons';
 import './Catalog.css';
-// DIAG: remove after investigation
-import { diagLog } from '../../lib/diagnosticLogger';
 
 type FilterType = 'all' | 'free' | 'new' | 'popular';
 
@@ -100,19 +98,8 @@ export const Catalog: React.FC = () => {
             });
           }
           setHasMore(data.length === LIMIT);
-          // DIAG
-          diagLog('CATALOG_LOADED', 'Catalog page loaded', {
-            count: data.length,
-            total,
-            offset,
-            hasMore: data.length === LIMIT,
-          });
         }
       } catch (err) {
-        // DIAG: guard against stale requests (user navigated away before fetch completed)
-        if (isMounted) {
-          diagLog('CATALOG_LOAD_ERROR', err instanceof Error ? err.message : String(err));
-        }
         console.error(err);
         if (isMounted) setError("Не удалось загрузить каталог");
       } finally {

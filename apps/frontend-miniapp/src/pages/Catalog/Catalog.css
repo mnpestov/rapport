@@ -57,7 +57,9 @@
   padding: 0;
   border: none;
   background: transparent;
-  font-size: 15px;
+  /* 16px min prevents iOS WebView auto-zoom on focus (which caused
+     the viewport to enlarge and a horizontal scrollbar to appear). */
+  font-size: 16px;
   font-family: Mulish, sans-serif;
   font-weight: 400;
   color: #1D1C1C;

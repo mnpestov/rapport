@@ -6,8 +6,6 @@ import { Favorites } from './pages/Favorites/Favorites';
 import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { authenticate } from './api/authApi';
-// DIAG: remove after investigation
-import { diagLog, setDiagUserId } from './lib/diagnosticLogger';
 
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 
@@ -41,8 +39,6 @@ function App() {
 
     const checkAccess = async () => {
       if (isMounted) setAppState("loading");
-      // DIAG
-      diagLog('AUTH_START', 'Starting authentication');
       try {
         const tg = (window as any).Telegram?.WebApp;
         let initData = tg?.initData || "";
@@ -54,11 +50,6 @@ function App() {
         const response = await authenticate(initData);
         if (isMounted) {
           if (response.isSubscriber) {
-            // DIAG
-            setDiagUserId(response.user?.telegramId);
-            diagLog('AUTH_SUCCESS', 'User authenticated as subscriber', {
-              userId: response.user?.telegramId,
-            });
             setAppState("authorized");
           } else {
             setAppState("fetching_channel");
@@ -70,8 +61,6 @@ function App() {
           }
         }
       } catch (error) {
-        // DIAG
-        diagLog('AUTH_ERROR', error instanceof Error ? error.message : String(error));
         if (isMounted) {
           setAppState("fetching_channel");
           const info = await fetchChannelInfo();
