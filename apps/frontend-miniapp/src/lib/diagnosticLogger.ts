@@ -144,13 +144,16 @@ function flush(): void {
   const batch = queue.splice(0);
   const payload = JSON.stringify({ events: batch });
 
+  console.log('[DIAG] flush start', batch.length);
+
   try {
     if (typeof navigator.sendBeacon === "function") {
       const blob = new Blob([payload], { type: "application/json" });
+      console.log('[DIAG] sending');
       const sent = navigator.sendBeacon(DIAG_URL, blob);
+      console.log('[DIAG] beacon result', sent);
       if (!sent) {
-        // sendBeacon rejected (e.g. payload too large or WebView limitation)
-        // fallback to fetch — best-effort, may not complete on page unload
+        console.log('[DIAG] fallback fetch');
         fetch(DIAG_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -159,6 +162,7 @@ function flush(): void {
         }).catch(() => {});
       }
     } else {
+      console.log('[DIAG] fallback fetch');
       fetch(DIAG_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
