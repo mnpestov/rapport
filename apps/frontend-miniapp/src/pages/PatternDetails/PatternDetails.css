@@ -4,7 +4,7 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   min-height: 100vh;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
   /* space for fixed footer */
 }
 
@@ -125,7 +125,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16px;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   background: white;
   box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
   max-width: 600px;
@@ -135,4 +135,5 @@
 .details-cta {
   width: 100%;
   height: 50px;
+  background: #A9AE36;
 }
