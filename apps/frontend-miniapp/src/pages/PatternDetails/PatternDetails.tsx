@@ -5,6 +5,8 @@ import { fetchPatternById, Pattern } from '../../api/patternsApi';
 import { useFavorites } from '../../context/FavoritesContext';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
+// DIAG: remove after investigation
+import { diagLog } from '../../lib/diagnosticLogger';
 
 export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,8 +24,14 @@ export const PatternDetails: React.FC = () => {
     const loadPattern = async () => {
       try {
         const data = await fetchPatternById(id);
-        if (isMounted) setPattern(data);
+        if (isMounted) {
+          // DIAG
+          diagLog('CARD_LOADED', 'Pattern card loaded', { patternId: id });
+          setPattern(data);
+        }
       } catch (err) {
+        // DIAG
+        diagLog('CARD_LOAD_ERROR', err instanceof Error ? err.message : String(err), { patternId: id });
         console.error(err);
         if (isMounted) setError("Описание не найдено");
       } finally {
@@ -84,7 +92,25 @@ export const PatternDetails: React.FC = () => {
 
       <div className="details-image-wrapper">
         <div className="details-image-container">
-          <img src={pattern.imageUrl} alt={pattern.title} className="details-image" />
+          <img
+            src={pattern.imageUrl}
+            alt={pattern.title}
+            className="details-image"
+            onLoad={() =>
+              // DIAG
+              diagLog('IMAGE_LOAD_SUCCESS', 'Details image loaded', {
+                imageUrl: pattern.imageUrl,
+                patternId: id,
+              })
+            }
+            onError={() =>
+              // DIAG
+              diagLog('IMAGE_LOAD_ERROR', 'Details image failed to load', {
+                imageUrl: pattern.imageUrl,
+                patternId: id,
+              })
+            }
+          />
           <button
             className="favorite-button"
             onClick={() => id && toggleFavorite(id)}

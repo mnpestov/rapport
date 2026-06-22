@@ -7,6 +7,7 @@ import patternsRouter from "./routes/patterns";
 import filtersRouter from "./routes/filters";
 import favoritesRouter from "./routes/favorites";
 import channelRouter from "./routes/channel";
+import diagRouter from "./routes/diag"; // DIAG: remove after investigation
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use("/patterns", patternsRouter);
 app.use("/filters", filtersRouter);
 app.use("/favorites", favoritesRouter);
 app.use("/channel", channelRouter);
+app.use("/diag", diagRouter); // DIAG: remove after investigation
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);
