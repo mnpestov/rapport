@@ -8,10 +8,13 @@ export const getPatterns = async (req: Request, res: Response) => {
     const where: any = {};
 
     if (search && typeof search === 'string') {
-      where.title = {
-        contains: search,
-        mode: 'insensitive'
-      };
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { author: { name: { contains: search, mode: 'insensitive' } } },
+        { categories: { some: { name: { contains: search, mode: 'insensitive' } } } },
+        { instruments: { some: { name: { contains: search, mode: 'insensitive' } } } },
+        { tags: { some: { name: { contains: search, mode: 'insensitive' } } } }
+      ];
     }
 
     if (isFree === 'true') {
