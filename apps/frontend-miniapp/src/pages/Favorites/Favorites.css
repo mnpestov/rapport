@@ -9,7 +9,7 @@
 .favorites-header {
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .favorites-title-container {
@@ -33,7 +33,7 @@
   color: #9B9A9A;
   line-height: 110%;
   text-align: left;
-  margin-left: 16px;
+  /* margin-left: 16px; */
 }
 
 .favorites-message {
@@ -60,7 +60,8 @@
   font-size: 17px;
   font-style: normal;
   font-weight: 400;
-  line-height: 110%; /* 18.7px */
+  line-height: 110%;
+  /* 18.7px */
   margin: 0 0 10px 0;
 }
 
@@ -71,7 +72,8 @@
   font-size: 12px;
   font-style: normal;
   font-weight: 400;
-  line-height: 110%; /* 13.2px */
+  line-height: 110%;
+  /* 13.2px */
   margin: 0;
 }
 
@@ -93,6 +95,7 @@
   font-size: 15px;
   font-style: normal;
   font-weight: 400;
-  line-height: 110%; /* 16.5px */
+  line-height: 110%;
+  /* 16.5px */
   margin-top: 38px;
 }
