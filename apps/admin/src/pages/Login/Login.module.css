@@ -1,0 +1,123 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #F8F9FA;
+  font-family: 'Mulish', sans-serif;
+  padding: 20px;
+}
+
+.card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 48px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.title {
+  margin: 0 0 12px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.subtitle {
+  margin: 0 0 32px 0;
+  font-size: 15px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1D1C1C;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-family: 'Lato', sans-serif;
+  font-size: 15px;
+  color: #1D1C1C;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #83942C;
+  box-shadow: 0 0 0 3px rgba(131, 148, 44, 0.1);
+}
+
+.input::placeholder {
+  color: #9CA3AF;
+}
+
+.submitBtn {
+  height: 48px;
+  background: #83942C;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #738226;
+  transform: translateY(-1px);
+}
+
+.submitBtn:disabled {
+  background: #A3B061;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #6B7280;
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  margin-top: 24px;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.backBtn:hover {
+  color: #1D1C1C;
+}

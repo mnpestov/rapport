@@ -5,7 +5,9 @@ export const getPatterns = async (req: Request, res: Response) => {
   try {
     const { search, isFree, isNew, limit, offset } = req.query;
 
-    const where: any = {};
+    const where: any = {
+      isVisible: true,
+    };
 
     if (search && typeof search === 'string') {
       where.OR = [
@@ -100,8 +102,8 @@ export const getPatterns = async (req: Request, res: Response) => {
 export const getPatternById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const pattern = await prisma.pattern.findUnique({
-      where: { id },
+    const pattern = await prisma.pattern.findFirst({
+      where: { id, isVisible: true },
       include: {
         author: true,
         instruments: true,
@@ -143,7 +145,10 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
     const validIds = ids.filter((id): id is string => typeof id === "string").slice(0, 50);
 
     const patterns = await prisma.pattern.findMany({
-      where: { id: { in: validIds } },
+      where: { 
+        id: { in: validIds },
+        isVisible: true
+      },
       include: {
         author: true,
         instruments: true,

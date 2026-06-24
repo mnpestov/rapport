@@ -30,7 +30,7 @@ function App() {
         tg.ready();
         tg.expand();
         if (import.meta.env.DEV) {
-          console.log("[Telegram WebApp] initDataUnsafe:", tg.initDataUnsafe);
+          // Development mode initData hook
         }
       }
     } catch (e) {

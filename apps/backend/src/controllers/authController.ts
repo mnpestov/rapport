@@ -11,7 +11,6 @@ export const telegramAuth = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "initData is required" });
   }
 
-  const isDev = process.env.NODE_ENV !== "production";
   const allowDevAuth = process.env.ALLOW_DEV_AUTH === "true";
 
   let telegramId: number;
@@ -22,7 +21,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
   let isSubscriber: boolean = false;
 
   // DEV Mock path
-  if (initData === "mock_dev" && isDev && allowDevAuth) {
+  if (initData === "mock_dev" && allowDevAuth) {
     telegramId = 123456789;
     firstName = "Dev";
     lastName = "User";

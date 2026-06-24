@@ -7,8 +7,7 @@ export async function checkTelegramSubscription(userId: number): Promise<boolean
     return true; // Fail-open
   }
 
-  console.log(`\n--- [CheckSubscription DEBUG] ---`);
-  console.log(`[CheckSubscription DEBUG] Gateway URL: ${gatewayUrl}`);
+
 
   let isSubscriber = true;
   try {
@@ -29,10 +28,7 @@ export async function checkTelegramSubscription(userId: number): Promise<boolean
       clearTimeout(timeoutId);
     }
 
-    console.log(`[CheckSubscription DEBUG] HTTP Status: ${response.status} ${response.statusText}`);
-    
     const data = await response.json().catch(() => null);
-    console.log(`[CheckSubscription DEBUG] Response Body: ${JSON.stringify(data)}`);
 
     if (!response.ok) {
       console.error(`[CheckSubscription] Gateway error: HTTP ${response.status}. Falling back to true (fail-open).`);
@@ -48,7 +44,6 @@ export async function checkTelegramSubscription(userId: number): Promise<boolean
     isSubscriber = true; // Fail-open
   }
 
-  console.log(`[CheckSubscription DEBUG] Calculated isSubscriber: ${isSubscriber}`);
-  console.log(`--- [CheckSubscription DEBUG END] ---\n`);
+
   return isSubscriber;
 }

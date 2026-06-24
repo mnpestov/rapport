@@ -1,0 +1,100 @@
+.container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Upload button (default, without custom props) */
+.uploadBtn {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.uploadBtn:hover {
+  background: #f3f4f6;
+}
+
+/* Overlay: fills the modal exactly (modal must have position:relative + overflow:hidden) */
+.cropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: inherit; /* match modal border-radius */
+}
+
+.cropTitle {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+}
+
+/* This wrapper constrains the image to fit inside the overlay */
+.cropArea {
+  flex: 1;
+  min-height: 0;          /* crucial: allows flex child to shrink below its content size */
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/*
+  The image is constrained in PIXELS.
+  max-height here references the CSS pixel limit for the rendered element.
+  ReactCrop will wrap this element and will correctly compute percentages
+  from the rendered width/height.
+*/
+.cropImg {
+  display: block;
+  /* Fixed pixel cap — works regardless of parent height */
+  max-height: 380px;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+}
+
+.cropActions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+}
+
+.btnPrimary {
+  background: #83942C;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 14px;
+}

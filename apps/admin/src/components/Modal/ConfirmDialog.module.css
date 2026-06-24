@@ -1,0 +1,93 @@
+.dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.2s ease-out;
+}
+
+.title {
+  margin: 0 0 12px 0;
+  font-family: 'Mulish', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.message {
+  margin: 0 0 24px 0;
+  font-family: 'Mulish', sans-serif;
+  font-size: 15px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancelBtn {
+  display: flex;
+  height: 32px;
+  padding: 0 16px;
+  align-items: center;
+  border-radius: 2px;
+  background: #F3F3F3;
+  color: #1D1C1C;
+  font-family: 'Lato', sans-serif;
+  font-size: 12.64px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.cancelBtn:hover {
+  opacity: 0.9;
+}
+
+.confirmBtn {
+  display: flex;
+  height: 32px;
+  padding: 0 16px;
+  align-items: center;
+  border-radius: 2px;
+  background: #A9AE36;
+  color: #1D1C1C;
+  font-family: 'Lato', sans-serif;
+  font-size: 12.64px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.confirmBtn:hover {
+  opacity: 0.9;
+}
+
+.dangerBtn {
+  display: flex;
+  height: 32px;
+  padding: 0 16px;
+  align-items: center;
+  border-radius: 2px;
+  background: #ef4444;
+  color: white;
+  font-family: 'Lato', sans-serif;
+  font-size: 12.64px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.dangerBtn:hover {
+  opacity: 0.9;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

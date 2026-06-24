@@ -13,6 +13,7 @@ model Pattern {
   url       String
   imageUrl  String
   isFree    Boolean  @default(false)
+  isVisible Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -23,6 +24,8 @@ model Pattern {
   categories  ProductType[]
   tags        Tag[]
   favoritedBy UserFavorite[]
+  views       PatternView[]
+  linkClicks  PatternLinkClick[]
 }
 
 model Author {
@@ -49,6 +52,12 @@ model Tag {
   patterns Pattern[]
 }
 
+enum UserRole {
+  USER
+  AUTHOR
+  ADMIN
+}
+
 model User {
   id           String   @id @default(uuid())
   telegramId   BigInt   @unique
@@ -57,10 +66,14 @@ model User {
   username     String?
   languageCode String?
   isPremium    Boolean  @default(false)
+  role         UserRole @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  favorites UserFavorite[]
+  favorites         UserFavorite[]
+  patternViews      PatternView[]
+  patternLinkClicks PatternLinkClick[]
+  subscribeClicks   SubscribeClick[]
 }
 
 model UserFavorite {
@@ -73,4 +86,62 @@ model UserFavorite {
   pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
 
   @@unique([userId, patternId])
+}
+
+// ---------------------------------------------------------------------------
+// Web / admin authentication — one-time login codes delivered via Telegram.
+// Decoupled from the Mini App auth flow (which stays as telegramAuth).
+// ---------------------------------------------------------------------------
+model LoginCode {
+  id         String    @id @default(cuid())
+  telegramId BigInt
+
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([telegramId])
+}
+
+// ---------------------------------------------------------------------------
+// Analytics — append-only telemetry. userId/patternId are stored as plain
+// indexed scalars (no FK) so events survive user/pattern deletion and the
+// existing User/Pattern models stay untouched.
+// ---------------------------------------------------------------------------
+model PatternView {
+  id        String   @id @default(uuid())
+  userId    String
+  patternId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([patternId])
+}
+
+model PatternLinkClick {
+  id        String   @id @default(uuid())
+  userId    String
+  patternId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([patternId])
+}
+
+model SubscribeClick {
+  id        String   @id @default(uuid())
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

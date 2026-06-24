@@ -57,3 +57,6 @@ ExportBlock-f73bf787-66ed-458a-951f-2ff3cd019a16-Part-1/
 *.db
 *.db-journal
 apps/backend/prisma/generated/
+
+# Uploads
+apps/backend/uploads/
