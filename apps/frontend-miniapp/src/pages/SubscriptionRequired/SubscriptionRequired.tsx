@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchChannelInfo, ChannelInfo } from '../../api/channelApi';
+import { trackSubscribeClick } from '../../api/analyticsApi';
 import avatarPlaceholder from '../../assets/avatar.png';
 import './SubscriptionRequired.css';
 
@@ -11,6 +12,7 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
   const [showToast, setShowToast] = useState(false);
 
   const handleSubscribe = () => {
+    trackSubscribeClick();
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openTelegramLink) {
       tg.openTelegramLink("https://t.me/fashionhurma");

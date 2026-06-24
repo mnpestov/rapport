@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { fetchPatternById, Pattern } from '../../api/patternsApi';
+import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
 import { useFavorites } from '../../context/FavoritesContext';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
@@ -24,6 +25,7 @@ export const PatternDetails: React.FC = () => {
         const data = await fetchPatternById(id);
         if (isMounted) {
           setPattern(data);
+          trackPatternView(id);
         }
       } catch (err) {
         console.error(err);
@@ -46,6 +48,10 @@ export const PatternDetails: React.FC = () => {
 
   const handleOpenLink = () => {
     if (!pattern?.externalLink) return;
+
+    if (id) {
+      trackPatternLinkClick(id);
+    }
 
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openLink) {
