@@ -462,7 +462,7 @@ export function Patterns() {
             {/* Left */}
             <div style={{ display: "flex", flexDirection: "column", gap: 30 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Название</label>
+                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Название <span style={{ color: "#ef4444" }}>*</span></label>
                 <input 
                   type="text" 
                   value={formData.title} 
@@ -476,7 +476,7 @@ export function Patterns() {
               <div style={{ height: 45 }}></div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Характеристики</label>
+                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Характеристики <span style={{ color: "#9B9A9A", fontSize: 13 }}>(необязательно)</span></label>
                 <CreatableSelect
                   isMulti
                   styles={{
@@ -493,7 +493,7 @@ export function Patterns() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Ссылка</label>
+                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Ссылка <span style={{ color: "#ef4444" }}>*</span></label>
                 <input 
                   type="url" 
                   value={formData.url} 
@@ -505,10 +505,13 @@ export function Patterns() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C", display: "none" }}>Фото <span style={{ color: "#ef4444" }}>*</span></label>
+                </div>
                 <ImageCropper 
                   onImageUploaded={(url) => setFormData({ ...formData, imageUrl: url })} 
                   currentUrl={formData.imageUrl} 
-                  customButtonText={formData.imageUrl ? (editingId ? "Изменить фото" : "Фото загружено") : "Загрузить фото"}
+                  customButtonText={formData.imageUrl ? (editingId ? "Изменить фото" : "Фото загружено") : "Загрузить фото *"}
                   customButtonProps={{ style: { width: 330, height: 45, padding: "8.5px 15px", background: formData.imageUrl ? "#83942C" : "#9B9A9A", borderRadius: 4, color: "#FFF", fontFamily: "Mulish", fontSize: 15, border: "none", cursor: "pointer", display: "flex", alignItems: "center", boxSizing: "border-box", justifyContent: "flex-start" } }}
                 />
               </div>
@@ -517,7 +520,7 @@ export function Patterns() {
             {/* Right */}
             <div style={{ display: "flex", flexDirection: "column", gap: 30 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Категория</label>
+                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Категория <span style={{ color: "#9B9A9A", fontSize: 13 }}>(необязательно)</span></label>
                 <CreatableSelect
                   isMulti
                   styles={{
@@ -545,7 +548,7 @@ export function Patterns() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Автор</label>
+                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Автор <span style={{ color: "#ef4444" }}>*</span></label>
                 <CreatableSelect
                   isClearable
                   styles={{
@@ -562,7 +565,7 @@ export function Patterns() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Инструмент</label>
+                <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Инструмент <span style={{ color: "#9B9A9A", fontSize: 13 }}>(необязательно)</span></label>
                 <CreatableSelect
                   isMulti
                   styles={{
