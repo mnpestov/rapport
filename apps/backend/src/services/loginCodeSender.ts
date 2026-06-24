@@ -1,50 +1,42 @@
 /**
  * Delivery channel for one-time web/admin login codes.
  *
- * Currently a STUB: it only logs the code. Swap the body of sendLoginCode
- * for a real Telegram Bot API call when the bot is wired up — the call sites
- * (webAuthController) do not need to change.
- *
- * Future real implementation (sketch):
- *
- *   const token = process.env.BOT_TOKEN;
- *   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
- *     method: "POST",
- *     headers: { "Content-Type": "application/json" },
- *     body: JSON.stringify({
- *       chat_id: telegramId.toString(),
- *       text: `Ваш код для входа: ${code}`,
- *     }),
- *   });
+ * Uses the external telegram-gateway instead of direct Telegram API calls
+ * to avoid ETIMEDOUT issues on the production server.
  */
 export async function sendLoginCode(
   telegramId: bigint,
   code: string
 ): Promise<void> {
-  const token = process.env.BOT_TOKEN;
-  if (!token) {
-    console.error("[LoginCode] Failed to send code: BOT_TOKEN is not configured.");
+  const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
+  const apiKey = process.env.TELEGRAM_GATEWAY_API_KEY;
+
+  if (!baseUrl || !apiKey) {
+    console.error("[LoginCode] Failed to send code: TELEGRAM_GATEWAY_BASE_URL or TELEGRAM_GATEWAY_API_KEY is not configured.");
     return;
   }
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const response = await fetch(`${baseUrl}/send-message`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-Gateway-Key": apiKey
+      },
       signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
-        chat_id: telegramId.toString(),
+        chatId: telegramId.toString(),
         text: `Ваш одноразовый код для входа в Rapport Admin:\n\n**${code}**\n\nКод действителен 5 минут. Никому не сообщайте этот код!`,
-        parse_mode: "Markdown"
+        parseMode: "Markdown"
       }),
     });
 
     if (!response.ok) {
-      console.error(`[LoginCode] Telegram API error: ${response.status} ${response.statusText}`);
+      console.error(`[LoginCode] Gateway API error: ${response.status} ${response.statusText}`);
       const data = await response.text();
       console.error("[LoginCode] Details:", data);
     }
   } catch (err) {
-    console.error("[LoginCode] Network error sending code to Telegram:", err);
+    console.error("[LoginCode] Network error sending code to Gateway:", err);
   }
 }
