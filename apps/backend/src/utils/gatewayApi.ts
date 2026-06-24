@@ -6,6 +6,31 @@ export interface ChannelInfo {
   description: string | null;
 }
 
+export async function fetchChannelAvatarFromGateway(): Promise<Response | null> {
+  const gatewayBaseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
+  const gatewayKey = process.env.TELEGRAM_GATEWAY_API_KEY;
+
+  if (!gatewayBaseUrl || !gatewayKey) {
+    console.error("[GatewayApi] TELEGRAM_GATEWAY_BASE_URL or TELEGRAM_GATEWAY_API_KEY is not configured.");
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(`${gatewayBaseUrl}/channel-avatar`, {
+      headers: { "X-Gateway-Key": gatewayKey },
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    console.error("[GatewayApi] Network error fetching channel avatar:", error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function fetchChannelInfoFromGateway(): Promise<ChannelInfo | null> {
   const gatewayBaseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
   const gatewayKey = process.env.TELEGRAM_GATEWAY_API_KEY;
