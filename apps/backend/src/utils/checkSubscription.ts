@@ -10,6 +10,9 @@ export async function checkTelegramSubscription(userId: number): Promise<boolean
 
 
   let isSubscriber = true;
+  let gatewayResponse: unknown = null;
+  let statusCode: number | string | null = null;
+  let errorName: string | null = null;
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -29,6 +32,8 @@ export async function checkTelegramSubscription(userId: number): Promise<boolean
     }
 
     const data = await response.json().catch(() => null);
+    gatewayResponse = data;
+    statusCode = response.status;
 
     if (!response.ok) {
       console.error(`[CheckSubscription] Gateway error: HTTP ${response.status}. Falling back to true (fail-open).`);
@@ -41,9 +46,19 @@ export async function checkTelegramSubscription(userId: number): Promise<boolean
     }
   } catch (error) {
     console.error(`[CheckSubscription] Network error communicating with Gateway for user ${userId}:`, error);
+    errorName = error instanceof Error ? error.name : String(error);
+    statusCode = error instanceof Error && error.name === 'AbortError' ? 'TIMEOUT' : 'ERROR';
     isSubscriber = true; // Fail-open
   }
 
+  const debugParts = [
+    `[SUBSCRIPTION_DEBUG] userId=${userId}`,
+    `status=${statusCode ?? 'NONE'}`,
+    `gatewayResponse=${JSON.stringify(gatewayResponse)}`,
+    `finalResult=${isSubscriber}`,
+  ];
+  if (errorName) debugParts.push(`error=${errorName}`);
+  console.log(debugParts.join(' '));
 
   return isSubscriber;
 }
