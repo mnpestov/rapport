@@ -587,14 +587,14 @@ export function Patterns() {
             <button 
               type="button" 
               onClick={() => setIsModalOpen(false)}
-              style={{ width: 100, height: 32, display: "flex", justifyContent: "center", alignItems: "center", background: "transparent", color: "#83942C", border: "1px solid #BEC1F4", borderRadius: 4, fontFamily: "Lato", fontSize: 12.64, cursor: "pointer" }}
+              style={{ width: 100, height: 32, display: "flex", justifyContent: "center", alignItems: "center", background: "transparent", color: "#83942C", border: "1px solid #BEC1F4", borderRadius: 4, fontFamily: 'Mulish', fontSize: 12.64, cursor: "pointer" }}
             >
               Закрыть
             </button>
             <button 
               type="submit" 
               disabled={isSaving}
-              style={{ width: 100, height: 32, display: "flex", justifyContent: "center", alignItems: "center", background: "#83942C", color: "#FFF", border: "none", borderRadius: 4, fontFamily: "Lato", fontSize: 12.64, cursor: "pointer" }}
+              style={{ width: 100, height: 32, display: "flex", justifyContent: "center", alignItems: "center", background: "#83942C", color: "#FFF", border: "none", borderRadius: 4, fontFamily: 'Mulish', fontSize: 12.64, cursor: "pointer" }}
             >
               {isSaving ? "Сохранение" : "Сохранить"}
             </button>
