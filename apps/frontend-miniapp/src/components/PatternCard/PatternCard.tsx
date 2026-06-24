@@ -20,6 +20,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
   const favorite = isFavorite(id);
 
   const handleCardClick = () => {
+    sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
     navigate(`/pattern/${id}`);
   };
 

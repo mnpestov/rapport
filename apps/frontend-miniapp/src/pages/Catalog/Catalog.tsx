@@ -37,7 +37,15 @@ export const Catalog: React.FC = () => {
     };
   });
 
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(() => {
+    const savedScroll = sessionStorage.getItem('catalog_scroll');
+    if (savedScroll) {
+      const savedOffset = sessionStorage.getItem('catalog_offset');
+      return savedOffset ? parseInt(savedOffset, 10) : 0;
+    }
+    return 0;
+  });
+  const isRestoringRef = useRef(!!sessionStorage.getItem('catalog_scroll'));
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 10;
 
@@ -57,11 +65,20 @@ export const Catalog: React.FC = () => {
   }, [searchInput, isFreeFilterActive, advancedFilters]);
 
   useEffect(() => {
+    sessionStorage.setItem('catalog_offset', offset.toString());
+  }, [offset]);
+
+  useEffect(() => {
     fetchFilters().then(setFiltersData).catch(console.error);
   }, []);
 
+  const isFirstRender = useRef(true);
   // Reset pagination when filters or search change
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setOffset(0);
     setHasMore(true);
     setPatterns([]);
@@ -70,16 +87,21 @@ export const Catalog: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const loadPatterns = async () => {
-      if (offset === 0) setLoading(true);
-      else setIsFetchingMore(true);
+      const isFirstLoadRestoring = isRestoringRef.current;
+
+      if (offset === 0 && !isFirstLoadRestoring) setLoading(true);
+      else if (!isFirstLoadRestoring) setIsFetchingMore(true);
       
       setError(null);
       try {
+        const fetchLimit = isFirstLoadRestoring ? offset + LIMIT : LIMIT;
+        const fetchOffset = isFirstLoadRestoring ? 0 : offset;
+
         const options: FetchPatternsOptions = {
           search: debouncedSearch || undefined,
           isFree: isFreeFilterActive ? true : undefined,
-          limit: LIMIT,
-          offset: offset,
+          limit: fetchLimit,
+          offset: fetchOffset,
           categories: advancedFilters.categories.length > 0 ? advancedFilters.categories : undefined,
           tags: advancedFilters.tags.length > 0 ? advancedFilters.tags : undefined,
           instruments: advancedFilters.instruments.length > 0 ? advancedFilters.instruments : undefined,
@@ -89,7 +111,7 @@ export const Catalog: React.FC = () => {
         const { data, total } = await fetchPatterns(options);
         if (isMounted) {
           setTotalPatterns(total);
-          if (offset === 0) {
+          if (fetchOffset === 0) {
             setPatterns(data);
           } else {
             setPatterns(prev => {
@@ -97,7 +119,18 @@ export const Catalog: React.FC = () => {
               return [...prev, ...newItems];
             });
           }
-          setHasMore(data.length === LIMIT);
+          setHasMore(fetchOffset + data.length < total);
+
+          if (isFirstLoadRestoring) {
+            isRestoringRef.current = false;
+            setTimeout(() => {
+              const savedScroll = sessionStorage.getItem('catalog_scroll');
+              if (savedScroll) {
+                window.scrollTo(0, parseInt(savedScroll, 10));
+                sessionStorage.removeItem('catalog_scroll');
+              }
+            }, 100);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -159,7 +192,10 @@ export const Catalog: React.FC = () => {
             </button>
           )}
         </div>
-        <button className="search-favorite-btn" onClick={() => navigate('/favorites')} aria-label="Favorites">
+        <button className="search-favorite-btn" onClick={() => {
+          sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
+          navigate('/favorites');
+        }} aria-label="Favorites">
           <Heart size={24} color="#D8540F" fill="#D8540F" />
         </button>
       </div>
