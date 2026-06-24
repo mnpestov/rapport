@@ -125,6 +125,91 @@ export const getDashboard = async (_req: Request, res: Response): Promise<void> 
   }
 };
 
+// GET /admin/dashboard/stats — full dashboard data in one request
+export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const [
+      totalUsers,
+      newUsersLast7Days,
+      totalPatternViews,
+      totalPatternLinkClicks,
+      totalSubscribeClicks,
+      totalFavorites,
+      topViewsRaw,
+      topLinkClicksRaw,
+      topFavoritesRaw,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+      prisma.patternView.count(),
+      prisma.patternLinkClick.count(),
+      prisma.subscribeClick.count(),
+      prisma.userFavorite.count(),
+      prisma.patternView.groupBy({
+        by: ["patternId"],
+        _count: { patternId: true },
+        orderBy: { _count: { patternId: "desc" } },
+        take: 10,
+      }),
+      prisma.patternLinkClick.groupBy({
+        by: ["patternId"],
+        _count: { patternId: true },
+        orderBy: { _count: { patternId: "desc" } },
+        take: 10,
+      }),
+      prisma.userFavorite.groupBy({
+        by: ["patternId"],
+        _count: { patternId: true },
+        orderBy: { _count: { patternId: "desc" } },
+        take: 10,
+      }),
+    ]);
+
+    // Collect all unique patternIds we need titles for
+    const allPatternIds = [
+      ...new Set([
+        ...topViewsRaw.map((r) => r.patternId),
+        ...topLinkClicksRaw.map((r) => r.patternId),
+        ...topFavoritesRaw.map((r) => r.patternId),
+      ]),
+    ];
+
+    const patterns = await prisma.pattern.findMany({
+      where: { id: { in: allPatternIds } },
+      select: { id: true, title: true },
+    });
+    const titleMap = new Map(patterns.map((p) => [p.id, p.title]));
+
+    const toTopList = (raw: { patternId: string; _count: { patternId: number } }[]) =>
+      raw.map((r) => ({
+        patternId: r.patternId,
+        title: titleMap.get(r.patternId) ?? "—",
+        count: r._count.patternId,
+      }));
+
+    res.json({
+      stats: {
+        totalUsers,
+        newUsersLast7Days,
+        totalPatternViews,
+        totalPatternLinkClicks,
+        totalSubscribeClicks,
+        totalFavorites,
+      },
+      topByViews: toTopList(topViewsRaw),
+      topByLinkClicks: toTopList(topLinkClicksRaw),
+      topByFavorites: toTopList(topFavoritesRaw),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[Admin] getDashboardStats failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // GET /admin/patterns
 export const getPatternsList = async (req: Request, res: Response): Promise<void> => {
   try {

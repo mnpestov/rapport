@@ -5,6 +5,7 @@ import {
   getUsersStats,
   getPatternsStats,
   getDashboard,
+  getDashboardStats,
   getPatternsList,
   getPatternById,
   updatePattern,
@@ -58,6 +59,7 @@ const upload = multer({
 router.get("/users/stats", getUsersStats);
 router.get("/patterns/stats", getPatternsStats);
 router.get("/dashboard", getDashboard);
+router.get("/dashboard/stats", getDashboardStats);
 
 router.get("/patterns", getPatternsList);
 router.get("/patterns/:id", getPatternById);

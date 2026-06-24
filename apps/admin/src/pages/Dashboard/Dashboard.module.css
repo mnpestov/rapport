@@ -1,0 +1,174 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pageTitle {
+  color: #83942C;
+  font-family: 'Mulish', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 110%;
+  margin: 0;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dateLabel {
+  font-family: 'Mulish', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+/* ── Stat cards ──────────────────────────── */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  background: #fff;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #E5E7EB;
+}
+
+.statCard {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid #E5E7EB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.statCard:nth-child(3n) {
+  border-right: none;
+}
+
+.statCard:nth-child(4),
+.statCard:nth-child(5),
+.statCard:nth-child(6) {
+  border-bottom: none;
+}
+
+.statLabel {
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+}
+
+.statValue {
+  font-family: 'Mulish', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: #83942C;
+  line-height: 1;
+}
+
+.statSub {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #83942C;
+}
+
+/* ── Top tables ──────────────────────────── */
+
+.topGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.topCard {
+  background: #fff;
+  border-radius: 2px;
+  border: 1px solid #E5E7EB;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topCardTitle {
+  font-family: 'Mulish', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.topList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topIndex {
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  color: #9B9A9A;
+  min-width: 20px;
+  flex-shrink: 0;
+}
+
+.topName {
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  color: #1D1C1C;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topCount {
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #83942C;
+  flex-shrink: 0;
+}
+
+.topEmpty {
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  color: #9B9A9A;
+  padding: 8px 0;
+}
+
+/* ── States ──────────────────────────────── */
+
+.centerState {
+  padding: 48px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+  font-family: 'Mulish', sans-serif;
+}

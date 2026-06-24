@@ -20,10 +20,10 @@ export default function App() {
         {/* Protected: auth guard wraps the admin shell */}
         <Route element={<RequireAuth />}>
           <Route element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/patterns" replace />} />
             <Route path="patterns" element={<Patterns />} />
-
             <Route path="authors" element={<Authors />} />
+            <Route path="stats" element={<Dashboard />} />
           </Route>
         </Route>
 

@@ -12,6 +12,7 @@ export default defineConfig({
       '/filters': 'http://localhost:3000',
       '/favorites': 'http://localhost:3000',
       '/channel': 'http://localhost:3000',
+      '/analytics': 'http://localhost:3000',
     }
   }
 })
