@@ -24,6 +24,7 @@ out/
 # ==========================================
 .env
 .env.local
+.env.save
 apps/backend/.env
 
 # ==========================================
@@ -57,6 +58,16 @@ ExportBlock-f73bf787-66ed-458a-951f-2ff3cd019a16-Part-1/
 *.db
 *.db-journal
 apps/backend/prisma/generated/
+*.prisma.append
+
+# ==========================================
+# Temp & Debug Files
+# ==========================================
+*.append
+*.append[0-9]
+*.log
+test-*.js
+test-*.ts
 
 # Uploads
 apps/backend/uploads/
