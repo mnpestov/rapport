@@ -4,6 +4,20 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .favorites-container {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .favorites-container {
+    padding: 32px;
+  }
 }
 
 .favorites-header {

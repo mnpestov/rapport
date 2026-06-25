@@ -3,6 +3,20 @@
   font-family: Mulish, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .catalog-container {
+    padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 1024px) {
+  .catalog-container {
+    padding: 0 32px calc(24px + env(safe-area-inset-bottom));
+  }
 }
 
 /* === HEADER === */
@@ -177,12 +191,30 @@
 }
 
 /* === CATALOG GRID === */
-/* Figma: Container — HORIZONTAL, gap:8, pl:16 pr:16 */
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
+}
+
+@media (min-width: 480px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .catalog-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .catalog-grid {
+    gap: 16px;
+  }
 }
 
 .load-more-container {

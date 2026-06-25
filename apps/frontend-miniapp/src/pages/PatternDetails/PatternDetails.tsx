@@ -90,61 +90,65 @@ export const PatternDetails: React.FC = () => {
         </button>
       </div>
 
-      <div className="details-image-wrapper">
-        <div className="details-image-container">
-          <img
-            src={pattern.imageUrl}
-            alt={pattern.title}
-            className="details-image"
-          />
-          <button
-            className="favorite-button"
-            onClick={() => id && toggleFavorite(id)}
-            aria-label={id && isFavorite(id) ? "Remove from favorites" : "Add to favorites"}
-          >
-            <Heart size={32} strokeWidth={1} fill={id && isFavorite(id) ? "white" : "none"} color={id && isFavorite(id) ? "white" : "currentColor"} />
-          </button>
-          {pattern.isFree && <span className="badge-free badge-free--details">Бесплатно</span>}
-        </div>
-      </div>
-
-      <div className="details-content">
-        <div className="details-row">
-          <span className="details-product-type">{pattern.primaryProductType}</span>
-        </div>
-        <div className="details-row">
-          <h1 className="details-title">{pattern.title}</h1>
-        </div>
-
-        <div className="details-row-spaced">
-          <span className="details-label">Инструмент:</span>
-          <span className="details-value">{pattern.instruments.join(', ')}</span>
-        </div>
-
-        <div className="details-row-spaced">
-          <span className="details-label">Автор:</span>
-          <span className="details-value">{pattern.author}</span>
-        </div>
-
-        {pattern.tags && pattern.tags.length > 0 && (
-          <div className="details-col">
-            <span className="details-label">Характеристики:</span>
-            <ul className="details-value-list">
-              {pattern.tags.map((tag, index) => (
-                <li key={index}>{tag}</li>
-              ))}
-            </ul>
+      <div className="details-body">
+        <div className="details-image-wrapper">
+          <div className="details-image-container">
+            <img
+              src={pattern.imageUrl}
+              alt={pattern.title}
+              className="details-image"
+            />
+            <button
+              className="favorite-button"
+              onClick={() => id && toggleFavorite(id)}
+              aria-label={id && isFavorite(id) ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart size={32} strokeWidth={1} fill={id && isFavorite(id) ? "white" : "none"} color={id && isFavorite(id) ? "white" : "currentColor"} />
+            </button>
+            {pattern.isFree && <span className="badge-free badge-free--details">Бесплатно</span>}
           </div>
-        )}
-      </div>
+        </div>
 
-      <div className="details-footer">
-        <button
-          className="btn btn--primary details-cta"
-          onClick={handleOpenLink}
-        >
-          Перейти к описанию
-        </button>
+        <div className="details-right">
+          <div className="details-content">
+            <div className="details-row">
+              <span className="details-product-type">{pattern.primaryProductType}</span>
+            </div>
+            <div className="details-row">
+              <h1 className="details-title">{pattern.title}</h1>
+            </div>
+
+            <div className="details-row-spaced">
+              <span className="details-label">Инструмент:</span>
+              <span className="details-value">{pattern.instruments.join(', ')}</span>
+            </div>
+
+            <div className="details-row-spaced">
+              <span className="details-label">Автор:</span>
+              <span className="details-value">{pattern.author}</span>
+            </div>
+
+            {pattern.tags && pattern.tags.length > 0 && (
+              <div className="details-col">
+                <span className="details-label">Характеристики:</span>
+                <ul className="details-value-list">
+                  {pattern.tags.map((tag, index) => (
+                    <li key={index}>{tag}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="details-footer">
+            <button
+              className="btn btn--primary details-cta"
+              onClick={handleOpenLink}
+            >
+              Перейти к описанию
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

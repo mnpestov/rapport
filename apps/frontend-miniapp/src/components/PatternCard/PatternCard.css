@@ -5,11 +5,9 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* в сетке — 1fr */
-  height: 258px;
+  height: auto;
   background: transparent;
   border-radius: 0;
-  /* overflow:hidden убран — он обрезал блок тегов */
   transition: transform 0.2s ease;
   cursor: pointer;
   min-width: 0;
@@ -23,13 +21,11 @@
 .pattern-card-image-container {
   position: relative;
   width: 100%;
-  height: 216px;
+  aspect-ratio: 175 / 216;
   flex-shrink: 0;
   background-color: #f0f0f0;
-  /* заглушка */
   border-radius: 2px;
   overflow: hidden;
-  /* overflow только на изображении */
 }
 
 .pattern-card-image {
