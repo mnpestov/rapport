@@ -37,6 +37,20 @@ export function validateTelegramWebAppData(initData: string, botToken: string): 
       return { isValid: false };
     }
 
+    // Reject replayed initData older than 24 hours (Telegram recommendation).
+    // auth_date is a Unix timestamp (seconds) set by Telegram at the moment of
+    // Mini App launch. Without this check, any intercepted initData with a valid
+    // signature would be accepted indefinitely.
+    const authDateRaw = urlParams.get('auth_date');
+    if (!authDateRaw) {
+      return { isValid: false };
+    }
+    const authDate = parseInt(authDateRaw, 10);
+    const MAX_INIT_DATA_AGE_SECONDS = 24 * 60 * 60;
+    if (isNaN(authDate) || Math.floor(Date.now() / 1000) - authDate > MAX_INIT_DATA_AGE_SECONDS) {
+      return { isValid: false };
+    }
+
     const userString = urlParams.get('user');
     let user: TelegramUserData | undefined;
     if (userString) {

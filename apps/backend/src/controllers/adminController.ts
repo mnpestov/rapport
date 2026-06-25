@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
 import fs from "fs";
 import path from "path";
+import { generateSlug } from "../utils/slug";
 
 // Helpers
 function normalizeUrl(urlStr: string): string {
@@ -381,18 +382,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (isVisible !== undefined) data.isVisible = isVisible;
     if (imageUrl !== undefined && imageUrl !== existing.imageUrl) {
       data.imageUrl = imageUrl;
-      
-      if (existing.imageUrl && existing.imageUrl.startsWith("/uploads/")) {
-        try {
-          const filename = path.basename(existing.imageUrl);
-          const fullPath = path.join(__dirname, "../../uploads/patterns", filename);
-          if (fs.existsSync(fullPath)) {
-            fs.unlinkSync(fullPath);
-          }
-        } catch (e) {
-          console.error("[Admin] Failed to delete old image file during update:", e);
-        }
-      }
+      // Old image file is deleted only after the DB update succeeds (see below).
     }
     
     if (url !== undefined) {
@@ -467,8 +457,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
-    if (!slug) slug = `pattern-${Date.now()}`;
+    let slug = generateSlug(title);
     const existingSlug = await prisma.pattern.findUnique({ where: { slug } });
     if (existingSlug) {
       slug = `${slug}-${Date.now()}`;

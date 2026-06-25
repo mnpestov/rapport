@@ -1,6 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import fs from "fs";
+import path from "path";
 import healthRouter from "./routes/health";
 import authRouter from "./routes/auth";
 import patternsRouter from "./routes/patterns";
@@ -10,10 +12,11 @@ import channelRouter from "./routes/channel";
 import analyticsRouter from "./routes/analytics";
 import adminRouter from "./routes/admin";
 
+const uploadsDir = path.join(__dirname, "../uploads/patterns");
+fs.mkdirSync(uploadsDir, { recursive: true });
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-import path from "path";
 
 app.use(cors());
 app.use(express.json());
