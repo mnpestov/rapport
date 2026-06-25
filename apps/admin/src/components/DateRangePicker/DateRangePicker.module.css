@@ -1,0 +1,198 @@
+.picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  user-select: none;
+}
+
+/* ── Navigation row ─────────────────────── */
+
+.nav {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.navBtn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 26px; /* align with month grids */
+  transition: background 0.12s;
+}
+
+.navBtn:hover:not(:disabled) { background: #f3f3f3; }
+.navBtn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── Two months ─────────────────────────── */
+
+.months {
+  display: flex;
+  gap: 24px;
+}
+
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.monthName {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1D1C1C;
+  text-align: center;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Weekday headers ────────────────────── */
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 36px);
+}
+
+.weekday {
+  width: 36px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Mulish', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9B9A9A;
+  text-transform: uppercase;
+}
+
+/* ── Day grid ───────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 36px);
+  row-gap: 2px;
+}
+
+.empty {
+  width: 36px;
+  height: 36px;
+}
+
+.dayCell {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  cursor: pointer;
+}
+
+.disabledCell {
+  cursor: default;
+}
+
+/* Strip: the continuous horizontal range background */
+
+.strip {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  height: 28px;
+  pointer-events: none;
+}
+
+.stripFull  { background: rgba(131, 148, 44, 0.12); }
+.stripStart { background: linear-gradient(to right, transparent 50%, rgba(131, 148, 44, 0.12) 50%); }
+.stripEnd   { background: linear-gradient(to left,  transparent 50%, rgba(131, 148, 44, 0.12) 50%); }
+
+/* Circle: the day number bubble */
+
+.circle {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #1D1C1C;
+  pointer-events: none;
+  transition: background 0.1s;
+}
+
+.dayCell:not(.disabledCell):hover .circle:not(.circleSelected) {
+  background: #f0f2e6;
+}
+
+.circleSelected {
+  background: #83942C;
+  color: #fff;
+  font-weight: 600;
+}
+
+.circleToday {
+  border: 1.5px solid #83942C;
+  color: #83942C;
+  font-weight: 700;
+}
+
+.circleDisabled {
+  color: #D1D5DB;
+}
+
+/* ── Footer ─────────────────────────────── */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.hint {
+  font-family: 'Mulish', sans-serif;
+  font-size: 12.64px;
+  color: #6B7280;
+}
+
+.cancelBtn {
+  height: 28px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid #E5E7EB;
+  border-radius: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12.64px;
+  color: #4b5563;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+
+.cancelBtn:hover { background: #f3f3f3; }

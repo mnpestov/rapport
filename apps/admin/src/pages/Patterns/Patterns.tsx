@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Trash2, SquarePen, Image as ImageIcon, EyeOff } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
-import { API_URL } from "../../api/config";
+import { PatternCard, PatternCardHeader } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import CreatableSelect from "react-select/creatable";
@@ -21,6 +21,7 @@ export function Patterns() {
   // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
   
   // Local UI state
@@ -106,6 +107,7 @@ export function Patterns() {
         setData(prev => [...prev, ...res.items]);
       }
       setTotalPages(res.totalPages);
+      if (currentPage === 1) setTotalCount(res.total);
     } catch (err: any) {
       setError(err.message || "Failed to load patterns");
     } finally {
@@ -273,12 +275,6 @@ export function Patterns() {
     }
   };
 
-  const getImageUrl = (url: string | undefined | null) => {
-    if (!url) return undefined;
-    if (url.startsWith("http")) return url;
-    return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
@@ -293,6 +289,12 @@ export function Patterns() {
           />
           <Search size={18} color="#9ca3af" />
         </div>
+        {totalCount !== null && (
+          <div className={styles.totalCount}>
+            <span className={styles.totalCountLabel}>Всего описаний: </span>
+            <span className={styles.totalCountValue}>{totalCount}</span>
+          </div>
+        )}
       </div>
 
       <div className={styles.controlsPanel}>
@@ -345,109 +347,32 @@ export function Patterns() {
       </div>
 
       <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th style={{ width: 40 }}>
-                <input 
-                  type="checkbox" 
-                  checked={data.length > 0 && selectedIds.size === data.length}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: "#9B9A9A", cursor: "pointer" }}
-                />
-              </th>
-              <th style={{ width: 60 }}></th>
-              <th>Дата</th>
-              <th>Название</th>
-              <th>Категория</th>
-              <th>Хар-ки</th>
-              <th>Ссылка</th>
-              <th>Автор</th>
-              <th>Инструмент</th>
-              <th style={{ width: 64 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={10} className={styles.centerState}>
-                  Загрузка...
-                </td>
-              </tr>
-            )}
+        <PatternCardHeader
+          allSelected={data.length > 0 && selectedIds.size === data.length}
+          onSelectAll={handleSelectAll}
+        />
 
-            {!isLoading && error && (
-              <tr>
-                <td colSpan={10} className={styles.centerState} style={{ color: "#ef4444" }}>
-                  {error}
-                </td>
-              </tr>
-            )}
+        {isLoading && (
+          <div className={styles.centerState}>Загрузка...</div>
+        )}
 
-            {!isLoading && !error && data.length === 0 && (
-              <tr>
-                <td colSpan={10} className={styles.centerState}>
-                  Описаний пока нет
-                </td>
-              </tr>
-            )}
+        {!isLoading && error && (
+          <div className={styles.centerState} style={{ color: "#ef4444" }}>{error}</div>
+        )}
 
-            {!isLoading && !error && data.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <input 
-                    type="checkbox" 
-                    checked={selectedIds.has(item.id)}
-                    onChange={(e) => handleSelectRow(item.id, e.target.checked)}
-                    style={{ width: 18, height: 18, accentColor: "#9B9A9A", cursor: "pointer" }}
-                  />
-                </td>
-                <td>
-                  {item.preview ? (
-                    <img src={getImageUrl(item.preview)} alt={item.title} className={styles.previewImage} />
-                  ) : (
-                    <div className={styles.previewPlaceholder}>
-                      <ImageIcon size={20} />
-                    </div>
-                  )}
-                </td>
-                <td className={styles.tdText}>
-                  {new Date(item.createdAt).toLocaleDateString("ru-RU")}
-                </td>
-                <td className={styles.tdText}>
-                  {item.title}
-                  {!item.isVisible && (
-                    <span style={{ marginLeft: 8, display: "inline-flex", alignItems: "center", gap: 4, color: "#ef4444", fontSize: 12 }}>
-                      <EyeOff size={12} /> Скрыт
-                    </span>
-                  )}
-                </td>
-                <td className={styles.tdText}>{item.category}</td>
-                <td className={styles.tdText}>{item.characteristics}</td>
-                <td className={styles.tdText}>
-                  {item.url ? (
-                    <a href={item.url} target="_blank" rel="noreferrer" className={styles.tdLink}>
-                      Ссылка
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className={styles.tdText}>{item.author}</td>
-                <td className={styles.tdText}>{item.instrument}</td>
-                <td>
-                  <button 
-                    className={styles.iconBtn} 
-                    title="Редактировать"
-                    onClick={() => handleOpenEdit(item.id)}
-                  >
-                    <SquarePen size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {!isLoading && !error && data.length === 0 && (
+          <div className={styles.centerState}>Описаний пока нет</div>
+        )}
+
+        {!isLoading && !error && data.map((item) => (
+          <PatternCard
+            key={item.id}
+            item={item}
+            isSelected={selectedIds.has(item.id)}
+            onSelect={handleSelectRow}
+            onEdit={handleOpenEdit}
+          />
+        ))}
 
         {page < totalPages && (
           <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>

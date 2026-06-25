@@ -1,5 +1,7 @@
 import { API_URL } from "./config";
 
+export type Period = "7d" | "30d" | "90d" | "all" | "custom";
+
 export interface TopPatternItem {
   patternId: string;
   title: string;
@@ -8,7 +10,7 @@ export interface TopPatternItem {
 
 export interface DashboardStats {
   totalUsers: number;
-  newUsersLast7Days: number;
+  newUsersInPeriod: number;
   totalPatternViews: number;
   totalPatternLinkClicks: number;
   totalSubscribeClicks: number;
@@ -23,9 +25,17 @@ export interface DashboardResponse {
   generatedAt: string;
 }
 
-export const getDashboardStats = async (): Promise<DashboardResponse> => {
+type FetchParams =
+  | { period: Exclude<Period, "custom"> }
+  | { from: string; to: string };
+
+export const getDashboardStats = async (params: FetchParams): Promise<DashboardResponse> => {
   const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
+  const query = "from" in params
+    ? `from=${params.from}&to=${params.to}`
+    : `period=${params.period}`;
+
+  const response = await fetch(`${API_URL}/admin/dashboard/stats?${query}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -1,6 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { getDashboardStats, DashboardResponse, TopPatternItem } from "../../api/dashboard";
+import { getDashboardStats, DashboardResponse, TopPatternItem, Period } from "../../api/dashboard";
+import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
 import styles from "./Dashboard.module.css";
+
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+
+function formatRangeLabel(from: string, to: string): string {
+  const fmt = (s: string) => {
+    const [, m, d] = s.split("-");
+    return `${parseInt(d)} ${["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"][parseInt(m) - 1]}`;
+  };
+  return `${fmt(from)} — ${fmt(to)}`;
+}
 
 // ──────────────────────────────────────────────
 // Sub-components
@@ -53,26 +66,72 @@ function TopTable({ title, icon, items }: TopTableProps) {
 }
 
 // ──────────────────────────────────────────────
+// Period config
+// ──────────────────────────────────────────────
+
+const PERIODS: { value: Period; label: string; newUsersLabel: string }[] = [
+  { value: "7d", label: "7 дней", newUsersLabel: "Новых за 7 дней" },
+  { value: "30d", label: "30 дней", newUsersLabel: "Новых за 30 дней" },
+  { value: "90d", label: "90 дней", newUsersLabel: "Новых за 90 дней" },
+  { value: "all", label: "Всё время", newUsersLabel: "Новых за неделю" },
+  { value: "custom", label: "Свой период", newUsersLabel: "Новых за период" },
+];
+
+// ──────────────────────────────────────────────
 // Main Dashboard page
 // ──────────────────────────────────────────────
 
 export function Dashboard() {
+  const today = new Date();
+
+  const [period, setPeriod] = useState<Period>("all");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null);
+
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getDashboardStats()
-      .then(setData)
-      .catch((err) => setError(err.message ?? "Ошибка загрузки"))
-      .finally(() => setLoading(false));
-  }, []);
+    if (period === "custom" && !appliedRange) return;
 
-  const today = new Date().toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+    let isMounted = true;
+    if (data) setIsRefreshing(true);
+    else setLoading(true);
+
+    const params = period === "custom" && appliedRange
+      ? { from: appliedRange.from, to: appliedRange.to }
+      : { period: period as Exclude<Period, "custom"> };
+
+    getDashboardStats(params)
+      .then((res) => { if (isMounted) { setData(res); setError(null); } })
+      .catch((err) => { if (isMounted) setError(err.message ?? "Ошибка загрузки"); })
+      .finally(() => { if (isMounted) { setLoading(false); setIsRefreshing(false); } });
+
+    return () => { isMounted = false; };
+  }, [period, appliedRange]);
+
+  const handleTabClick = (p: Period) => {
+    if (p === "custom") {
+      setPickerOpen((open) => !open);
+    } else {
+      setPickerOpen(false);
+      setPeriod(p);
+    }
+  };
+
+  const handleRangeChange = (range: DateRange) => {
+    setAppliedRange(range);
+    setPeriod("custom");
+    setPickerOpen(false);
+  };
+
+  const todayLabel = today.toLocaleDateString("ru-RU", {
+    day: "numeric", month: "long", year: "numeric",
   });
+
+  const currentPeriod = PERIODS.find((p) => p.value === period)!;
 
   if (loading) {
     return (
@@ -97,42 +156,54 @@ export function Dashboard() {
   const { stats, topByViews, topByLinkClicks, topByFavorites } = data;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ opacity: isRefreshing ? 0.6 : 1, transition: "opacity 0.15s" }}>
       {/* Header */}
       <div className={styles.headerRow}>
         <h1 className={styles.pageTitle}>Статистика</h1>
       </div>
 
-      <div className={styles.dateRow}>
-        <span className={styles.dateLabel}>Сегодня: {today}</span>
+      {/* Controls row */}
+      <div className={styles.controlsRow}>
+        <span className={styles.dateLabel}>Сегодня: {todayLabel}</span>
+
+        <div className={styles.rightControls}>
+          <div className={styles.periodTabs}>
+            {PERIODS.map((p) => {
+              const isActive = period === p.value;
+              const label = (p.value === "custom" && appliedRange)
+                ? formatRangeLabel(appliedRange.from, appliedRange.to)
+                : p.label;
+              return (
+                <button
+                  key={p.value}
+                  className={isActive ? styles.tabActive : styles.tab}
+                  style={p.value === "custom" ? { minWidth: 137 } : undefined}
+                  onClick={() => handleTabClick(p.value)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {pickerOpen && (
+            <DateRangePicker
+              initialRange={appliedRange}
+              onChange={handleRangeChange}
+              onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Stat cards grid */}
       <div className={styles.statsGrid}>
-        <StatCard
-          label="Всего пользователей"
-          value={stats.totalUsers}
-        />
-        <StatCard
-          label="Новых за неделю"
-          value={stats.newUsersLast7Days}
-        />
-        <StatCard
-          label="Переходов по ссылкам"
-          value={stats.totalPatternLinkClicks}
-        />
-        <StatCard
-          label="Просмотров карточек"
-          value={stats.totalPatternViews}
-        />
-        <StatCard
-          label="Переходов на подписку"
-          value={stats.totalSubscribeClicks}
-        />
-        <StatCard
-          label="Добавлений в избранное"
-          value={stats.totalFavorites}
-        />
+        <StatCard label="Всего пользователей" value={stats.totalUsers} />
+        <StatCard label={currentPeriod.newUsersLabel} value={stats.newUsersInPeriod} />
+        <StatCard label="Переходов по ссылкам" value={stats.totalPatternLinkClicks} />
+        <StatCard label="Просмотров карточек" value={stats.totalPatternViews} />
+        <StatCard label="Переходов на подписку" value={stats.totalSubscribeClicks} />
+        <StatCard label="Добавлений в избранное" value={stats.totalFavorites} />
       </div>
 
       {/* Top tables */}

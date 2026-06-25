@@ -126,14 +126,47 @@ export const getDashboard = async (_req: Request, res: Response): Promise<void> 
 };
 
 // GET /admin/dashboard/stats — full dashboard data in one request
-export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
+// Query params: period='7d'|'30d'|'90d'|'all'  OR  from='YYYY-MM-DD'&to='YYYY-MM-DD'
+export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const { period = "all", from: fromParam, to: toParam } =
+      req.query as { period?: string; from?: string; to?: string };
+
+    const now = new Date();
+    let analyticsFrom: Date | undefined;
+    let analyticsTo: Date | undefined;
+
+    if (fromParam && toParam) {
+      analyticsFrom = new Date(fromParam + "T00:00:00.000Z");
+      analyticsTo   = new Date(toParam   + "T23:59:59.999Z");
+    } else if (period === "7d") {
+      analyticsFrom = new Date(now);
+      analyticsFrom.setDate(analyticsFrom.getDate() - 7);
+    } else if (period === "30d") {
+      analyticsFrom = new Date(now);
+      analyticsFrom.setDate(analyticsFrom.getDate() - 30);
+    } else if (period === "90d") {
+      analyticsFrom = new Date(now);
+      analyticsFrom.setDate(analyticsFrom.getDate() - 90);
+    }
+
+    // When period='all' (no date filter), new-users window stays at 7 days (legacy behaviour)
+    const newUsersFrom = analyticsFrom ?? (() => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      return d;
+    })();
+    const createdAtRange = analyticsFrom
+      ? { gte: analyticsFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) }
+      : undefined;
+    const dateFilter = createdAtRange ? { createdAt: createdAtRange } : undefined;
+    const topWhere = createdAtRange
+      ? { createdAt: { ...createdAtRange } }
+      : undefined;
 
     const [
       totalUsers,
-      newUsersLast7Days,
+      newUsersInPeriod,
       totalPatternViews,
       totalPatternLinkClicks,
       totalSubscribeClicks,
@@ -143,25 +176,28 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       topFavoritesRaw,
     ] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-      prisma.patternView.count(),
-      prisma.patternLinkClick.count(),
-      prisma.subscribeClick.count(),
-      prisma.userFavorite.count(),
+      prisma.user.count({ where: { createdAt: { gte: newUsersFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) } } }),
+      prisma.patternView.count({ where: dateFilter }),
+      prisma.patternLinkClick.count({ where: dateFilter }),
+      prisma.subscribeClick.count({ where: dateFilter }),
+      prisma.userFavorite.count({ where: dateFilter }),
       prisma.patternView.groupBy({
         by: ["patternId"],
+        where: topWhere,
         _count: { patternId: true },
         orderBy: { _count: { patternId: "desc" } },
         take: 10,
       }),
       prisma.patternLinkClick.groupBy({
         by: ["patternId"],
+        where: topWhere,
         _count: { patternId: true },
         orderBy: { _count: { patternId: "desc" } },
         take: 10,
       }),
       prisma.userFavorite.groupBy({
         by: ["patternId"],
+        where: topWhere,
         _count: { patternId: true },
         orderBy: { _count: { patternId: "desc" } },
         take: 10,
@@ -193,7 +229,7 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
     res.json({
       stats: {
         totalUsers,
-        newUsersLast7Days,
+        newUsersInPeriod,
         totalPatternViews,
         totalPatternLinkClicks,
         totalSubscribeClicks,

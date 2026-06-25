@@ -19,11 +19,57 @@
   justify-content: space-between;
 }
 
-.dateRow {
+.controlsRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
+
+.rightControls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  position: relative;
+}
+
+.periodTabs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.tab {
+  height: 32px;
+  padding: 0 14px;
+  background: transparent;
+  color: #4b5563;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12.64px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  background: #f3f3f3;
+}
+
+.tabActive {
+  height: 32px;
+  padding: 0 14px;
+  background: #83942C;
+  color: #FFF;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12.64px;
+  cursor: pointer;
+}
+
 
 .dateLabel {
   font-family: 'Mulish', sans-serif;
