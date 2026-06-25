@@ -511,6 +511,20 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+// POST /admin/patterns/reset-new
+export const resetAllIsNew = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const { count } = await prisma.pattern.updateMany({
+      where: { isNew: true },
+      data: { isNew: false },
+    });
+    res.json({ success: true, updated: count });
+  } catch (error) {
+    console.error("[Admin] resetAllIsNew failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // DELETE /admin/patterns/:id (Soft delete - hide pattern)
 export const deletePattern = async (req: Request, res: Response): Promise<void> => {
   try {

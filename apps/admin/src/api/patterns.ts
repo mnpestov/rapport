@@ -167,6 +167,22 @@ export const createPattern = async (data: AdminPatternCreateDTO): Promise<{ succ
   return response.json();
 };
 
+export const resetAllIsNew = async (): Promise<{ success: boolean; updated: number }> => {
+  const token = localStorage.getItem("jwt_token");
+  const response = await fetch(`${API_URL}/admin/patterns/reset-new`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to reset isNew: ${response.statusText}`);
+  }
+  return response.json();
+};
+
 export const deletePattern = async (id: string): Promise<{ success: boolean }> => {
   const token = localStorage.getItem("jwt_token");
 

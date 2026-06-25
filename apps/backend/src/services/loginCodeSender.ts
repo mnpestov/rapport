@@ -12,7 +12,7 @@ export async function sendLoginCode(
   const apiKey = process.env.TELEGRAM_GATEWAY_API_KEY;
 
   if (!baseUrl || !apiKey) {
-    console.error("[LoginCode] Failed to send code: TELEGRAM_GATEWAY_BASE_URL or TELEGRAM_GATEWAY_API_KEY is not configured.");
+    console.log(`[LoginCode] Gateway not configured — code for ${telegramId}: ${code}`);
     return;
   }
 
@@ -38,5 +38,6 @@ export async function sendLoginCode(
     }
   } catch (err) {
     console.error("[LoginCode] Network error sending code to Gateway:", err);
+    console.log(`[LoginCode] Fallback — code for ${telegramId}: ${code}`);
   }
 }

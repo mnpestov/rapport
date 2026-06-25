@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus } from "lucide-react";
-import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById } from "../../api/patterns";
+import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
@@ -40,6 +40,7 @@ export function Patterns() {
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resetNewConfirmOpen, setResetNewConfirmOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     authorName: "",
@@ -258,6 +259,16 @@ export function Patterns() {
     }
   };
 
+  const confirmResetAllIsNew = async () => {
+    setResetNewConfirmOpen(false);
+    try {
+      const { updated } = await resetAllIsNew();
+      toast.success(`Флаг «Новинка» снят у ${updated} описаний`);
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось сбросить флаг «Новинка»");
+    }
+  };
+
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     setConfirmOpen(true);
@@ -329,6 +340,9 @@ export function Patterns() {
           <button className={styles.btnAdd} onClick={handleOpenCreate}>
             <Plus size={16} />
             Добавить описание
+          </button>
+          <button className={styles.btnResetNew} onClick={() => setResetNewConfirmOpen(true)}>
+            Убрать статус «Новинка»
           </button>
           {status === "archive" && (
             <button 
@@ -551,6 +565,17 @@ export function Patterns() {
         variant="danger"
         onConfirm={confirmDeleteSelected}
         onCancel={() => setConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={resetNewConfirmOpen}
+        title="Сбросить все новинки"
+        message="Флаг «Новинка» будет снят у всех описаний. Продолжить?"
+        confirmText="Сбросить"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={confirmResetAllIsNew}
+        onCancel={() => setResetNewConfirmOpen(false)}
       />
     </div>
   );

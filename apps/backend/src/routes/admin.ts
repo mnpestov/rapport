@@ -15,6 +15,7 @@ import {
   createAuthor,
   updateAuthor,
   deleteAuthor,
+  resetAllIsNew,
 } from "../controllers/adminController";
 
 const router = Router();
@@ -63,6 +64,7 @@ router.get("/dashboard/stats", getDashboardStats);
 
 router.get("/patterns", getPatternsList);
 router.get("/patterns/:id", getPatternById);
+router.post("/patterns/reset-new", resetAllIsNew);
 router.post("/patterns", createPattern);
 router.patch("/patterns/:id", updatePattern);
 router.delete("/patterns/:id", deletePattern);
