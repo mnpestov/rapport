@@ -177,7 +177,14 @@ export const Catalog: React.FC = () => {
   };
 
   return (
-    <div className="catalog-container">
+    <div
+      className="catalog-container"
+      onTouchMove={() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }}
+    >
       <div className="search-row">
         <div className="search-input-wrapper">
           <Search size={20} className="search-icon" />
@@ -187,6 +194,11 @@ export const Catalog: React.FC = () => {
             className="search-input"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
           />
           {searchInput && (
             <button className="search-clear-btn" onClick={() => setSearchInput('')} aria-label="Clear search">
