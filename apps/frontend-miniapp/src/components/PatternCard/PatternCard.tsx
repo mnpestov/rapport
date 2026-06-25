@@ -11,9 +11,10 @@ interface PatternCardProps {
   instruments?: string[];
   imageUrl: string;
   isFree: boolean;
+  isNew?: boolean;
 }
 
-export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, imageUrl, isFree }) => {
+export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, imageUrl, isFree, isNew }) => {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
 
@@ -37,7 +38,12 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
           alt={title}
           className="pattern-card-image"
         />
-        {isFree && <span className="badge-free">Бесплатно</span>}
+        {(isNew || isFree) && (
+          <div className="badge-stack">
+            {isNew && <span className="badge-new">Новинка</span>}
+            {isFree && <span className="badge-free">Бесплатно</span>}
+          </div>
+        )}
         <button className="favorite-button" onClick={handleFavoriteClick} aria-label={favorite ? "Remove from favorites" : "Add to favorites"}>
           <Heart size={32} strokeWidth={1} fill={favorite ? "white" : "none"} color={favorite ? "white" : "currentColor"} />
         </button>

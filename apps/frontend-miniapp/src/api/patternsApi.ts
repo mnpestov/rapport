@@ -5,6 +5,7 @@ export interface Pattern {
   primaryProductType: string;
   imageUrl: string;
   isFree: boolean;
+  isNew: boolean;
   productTypes: string[];
   instruments: string[];
   tags: string[];

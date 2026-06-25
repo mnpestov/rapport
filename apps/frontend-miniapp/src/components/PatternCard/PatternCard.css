@@ -34,23 +34,45 @@
   object-fit: cover;
 }
 
-/* Label (badge): INSTANCE, w:78, h:21, pt:4 pr:8 pb:4 pl:8,
-   fill:#F3F3F3, stroke:#F3F3F3, cornerRadius:2,
-   position: top:191px = bottom:4px от нижнего края image */
-.badge-free {
+/* Badge stack: column container, positioned bottom-left of image */
+.badge-stack {
   position: absolute;
   bottom: 4px;
   left: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.badge-free {
+  min-width: 34px;
+  padding: 4px 8px;
   background: #F3F3F3;
   color: #1D1C1C;
-  padding: 4px 8px;
   border: 1px solid #F3F3F3;
   border-radius: 2px;
   font-size: 12px;
   font-weight: 400;
-  line-height: 13.2px;
+  line-height: 110%;
   font-family: Mulish, sans-serif;
   white-space: nowrap;
+  text-align: center;
+}
+
+.badge-new {
+  min-width: 34px;
+  padding: 4px 8px;
+  background: #BEC1F4;
+  color: #1D1C1C;
+  border: 1px solid #BEC1F4;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 110%;
+  font-family: Mulish, sans-serif;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .badge-free--details {
