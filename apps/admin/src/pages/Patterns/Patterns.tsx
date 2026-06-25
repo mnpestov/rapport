@@ -46,6 +46,7 @@ export function Patterns() {
     url: "",
     imageUrl: "",
     isFree: false,
+    isNew: false,
     categories: [] as string[],
     tags: [] as string[],
     instruments: [] as string[]
@@ -161,6 +162,7 @@ export function Patterns() {
       url: "",
       imageUrl: "",
       isFree: false,
+      isNew: false,
       categories: [],
       tags: [],
       instruments: []
@@ -177,6 +179,7 @@ export function Patterns() {
         url: res.url || "",
         imageUrl: res.imageUrl || "",
         isFree: res.isFree || false,
+        isNew: res.isNew || false,
         categories: (res.categories || []).map(c => c?.name || ""),
         tags: (res.tags || []).map(t => t?.name || ""),
         instruments: (res.instruments || []).map(i => i?.name || "")
@@ -208,6 +211,7 @@ export function Patterns() {
         if (!orig || formData.imageUrl !== orig.imageUrl) payload.imageUrl = formData.imageUrl;
         if (!orig || formData.authorName !== orig.authorName) payload.authorName = formData.authorName;
         if (!orig || formData.isFree !== orig.isFree) payload.isFree = formData.isFree;
+        if (!orig || formData.isNew !== orig.isNew) payload.isNew = formData.isNew;
         if (!orig || JSON.stringify(formData.categories) !== JSON.stringify(orig.categories)) payload.categories = formData.categories;
         if (!orig || JSON.stringify(formData.tags) !== JSON.stringify(orig.tags)) payload.tags = formData.tags;
         if (!orig || JSON.stringify(formData.instruments) !== JSON.stringify(orig.instruments)) payload.instruments = formData.instruments;
@@ -398,7 +402,16 @@ export function Patterns() {
                 />
               </div>
 
-              <div style={{ height: 45 }}></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, height: 45 }}>
+                <input
+                  type="checkbox"
+                  id="isNew"
+                  checked={formData.isNew}
+                  onChange={e => setFormData({ ...formData, isNew: e.target.checked })}
+                  style={{ width: 18, height: 18, accentColor: "#9B9A9A" }}
+                />
+                <label htmlFor="isNew" style={{ fontFamily: "Mulish", fontSize: 15, color: "#1D1C1C", cursor: "pointer" }}>Новинка</label>
+              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <label style={{ fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" }}>Характеристики <span style={{ color: "#9B9A9A", fontSize: 13 }}>(необязательно)</span></label>
@@ -462,12 +475,12 @@ export function Patterns() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 12, height: 45 }}>
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   id="isFree"
                   checked={formData.isFree}
                   onChange={e => setFormData({ ...formData, isFree: e.target.checked })}
-                  style={{ width: 18, height: 18, accentColor: "#9B9A9A" }} 
+                  style={{ width: 18, height: 18, accentColor: "#9B9A9A" }}
                 />
                 <label htmlFor="isFree" style={{ fontFamily: "Mulish", fontSize: 15, color: "#1D1C1C", cursor: "pointer" }}>Бесплатное</label>
               </div>

@@ -7,7 +7,6 @@ import { FilterModal, SelectedFilters } from '../../components/FilterModal/Filte
 import { CustomX } from '../../components/Icons/Icons';
 import './Catalog.css';
 
-type FilterType = 'all' | 'free' | 'new' | 'popular';
 
 export const Catalog: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +19,7 @@ export const Catalog: React.FC = () => {
   const [searchInput, setSearchInput] = useState(() => sessionStorage.getItem('catalog_search') || '');
   const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
   const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => sessionStorage.getItem('catalog_free_filter') === 'true');
+  const [isNewFilterActive, setIsNewFilterActive] = useState(() => sessionStorage.getItem('catalog_new_filter') === 'true');
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
@@ -61,8 +61,9 @@ export const Catalog: React.FC = () => {
   useEffect(() => {
     sessionStorage.setItem('catalog_search', searchInput);
     sessionStorage.setItem('catalog_free_filter', String(isFreeFilterActive));
+    sessionStorage.setItem('catalog_new_filter', String(isNewFilterActive));
     sessionStorage.setItem('catalog_advanced_filters', JSON.stringify(advancedFilters));
-  }, [searchInput, isFreeFilterActive, advancedFilters]);
+  }, [searchInput, isFreeFilterActive, isNewFilterActive, advancedFilters]);
 
   useEffect(() => {
     sessionStorage.setItem('catalog_offset', offset.toString());
@@ -82,7 +83,7 @@ export const Catalog: React.FC = () => {
     setOffset(0);
     setHasMore(true);
     setPatterns([]);
-  }, [debouncedSearch, isFreeFilterActive, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, advancedFilters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -100,6 +101,7 @@ export const Catalog: React.FC = () => {
         const options: FetchPatternsOptions = {
           search: debouncedSearch || undefined,
           isFree: isFreeFilterActive ? true : undefined,
+          isNew: isNewFilterActive ? true : undefined,
           limit: fetchLimit,
           offset: fetchOffset,
           categories: advancedFilters.categories.length > 0 ? advancedFilters.categories : undefined,
@@ -148,7 +150,7 @@ export const Catalog: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [debouncedSearch, isFreeFilterActive, offset, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, offset, advancedFilters]);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
@@ -219,15 +221,21 @@ export const Catalog: React.FC = () => {
         <div className="filter-separator" />
         <div className="catalog-filters">
           <button
+            className={`filter-btn ${isNewFilterActive ? 'active' : ''}`}
+            onClick={() => setIsNewFilterActive(v => !v)}
+          >
+            Новинки
+          </button>
+          <button
             className={`filter-btn ${isFreeFilterActive ? 'active' : ''}`}
-            onClick={() => setIsFreeFilterActive(!isFreeFilterActive)}
+            onClick={() => setIsFreeFilterActive(v => !v)}
           >
             Бесплатные
           </button>
         </div>
       </div>
 
-      {(isFreeFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '') && (
+      {(isFreeFilterActive || isNewFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '') && (
         <div className="catalog-found-count">
           найдено описаний: {totalPatterns}
         </div>

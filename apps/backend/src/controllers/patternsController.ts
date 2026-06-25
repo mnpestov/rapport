@@ -24,12 +24,7 @@ export const getPatterns = async (req: Request, res: Response) => {
     }
 
     if (isNew === 'true') {
-      // Считаем новинками добавленные за последние 30 дней
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      where.createdAt = {
-        gte: thirtyDaysAgo
-      };
+      where.isNew = true;
     }
 
     const parseArrayParam = (param: any): string[] => {

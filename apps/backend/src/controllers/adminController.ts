@@ -342,6 +342,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       url: pattern.url,
       imageUrl: pattern.imageUrl,
       isFree: pattern.isFree,
+      isNew: pattern.isNew,
       isVisible: pattern.isVisible,
       createdAt: pattern.createdAt,
       updatedAt: pattern.updatedAt,
@@ -365,7 +366,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
 export const updatePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, url, imageUrl, isFree, authorName, isVisible, categories, tags, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, authorName, isVisible, categories, tags, instruments } = req.body;
 
     const existing = await prisma.pattern.findUnique({ where: { id } });
     if (!existing) {
@@ -376,6 +377,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     const data: any = {};
     if (title !== undefined) data.title = title;
     if (isFree !== undefined) data.isFree = isFree;
+    if (isNew !== undefined) data.isNew = isNew;
     if (isVisible !== undefined) data.isVisible = isVisible;
     if (imageUrl !== undefined && imageUrl !== existing.imageUrl) {
       data.imageUrl = imageUrl;
@@ -451,7 +453,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 // POST /admin/patterns
 export const createPattern = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, url, imageUrl, isFree, authorName, categories, tags, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, authorName, categories, tags, instruments } = req.body;
     
     if (!title || !url || !imageUrl || !authorName) {
       res.status(400).json({ error: "Missing required fields" });
@@ -479,6 +481,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       url: normUrl,
       imageUrl,
       isFree: isFree ?? false,
+      isNew: isNew ?? false,
       authorId: finalAuthorId,
       slug,
       isVisible: true,

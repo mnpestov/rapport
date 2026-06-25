@@ -58,6 +58,7 @@ export interface AdminPatternDetailDTO {
   url: string;
   imageUrl: string;
   isFree: boolean;
+  isNew: boolean;
   isVisible: boolean;
   createdAt: string;
   updatedAt: string;
@@ -106,6 +107,7 @@ export interface AdminPatternUpdateDTO {
   url?: string;
   imageUrl?: string;
   isFree?: boolean;
+  isNew?: boolean;
   authorName?: string;
   isVisible?: boolean;
   categories?: string[];
@@ -138,6 +140,7 @@ export interface AdminPatternCreateDTO {
   url: string;
   imageUrl: string;
   isFree?: boolean;
+  isNew?: boolean;
   authorName: string;
   categories?: string[];
   tags?: string[];
