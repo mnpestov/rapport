@@ -87,12 +87,14 @@ export const Catalog: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
+
     const loadPatterns = async () => {
       const isFirstLoadRestoring = isRestoringRef.current;
 
       if (offset === 0 && !isFirstLoadRestoring) setLoading(true);
       else if (!isFirstLoadRestoring) setIsFetchingMore(true);
-      
+
       setError(null);
       try {
         const fetchLimit = isFirstLoadRestoring ? offset + LIMIT : LIMIT;
@@ -108,6 +110,7 @@ export const Catalog: React.FC = () => {
           tags: advancedFilters.tags.length > 0 ? advancedFilters.tags : undefined,
           instruments: advancedFilters.instruments.length > 0 ? advancedFilters.instruments : undefined,
           authors: advancedFilters.authors.length > 0 ? advancedFilters.authors : undefined,
+          signal: controller.signal,
         };
 
         const { data, total } = await fetchPatterns(options);
@@ -135,6 +138,7 @@ export const Catalog: React.FC = () => {
           }
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error(err);
         if (isMounted) setError("Не удалось загрузить каталог");
       } finally {
@@ -149,6 +153,7 @@ export const Catalog: React.FC = () => {
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, offset, advancedFilters]);
 

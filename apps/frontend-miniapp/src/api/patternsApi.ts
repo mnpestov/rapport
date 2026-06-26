@@ -22,6 +22,7 @@ export interface FetchPatternsOptions {
   tags?: string[];
   instruments?: string[];
   authors?: string[];
+  signal?: AbortSignal;
 }
 
 export interface FilterOption {
@@ -72,7 +73,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, {}, 10000);
+  const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, { signal: options.signal }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch patterns: ${response.status}`);
   }

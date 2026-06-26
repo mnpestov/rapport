@@ -21,6 +21,7 @@ function App() {
     // Clear saved catalog filters on fresh app start
     sessionStorage.removeItem('catalog_search');
     sessionStorage.removeItem('catalog_free_filter');
+    sessionStorage.removeItem('catalog_new_filter');
     sessionStorage.removeItem('catalog_advanced_filters');
 
     // Инициализация Telegram Web App (Этап 1)

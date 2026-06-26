@@ -10,6 +10,9 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
+  // Propagate an external abort signal (e.g. from effect cleanup) into our
+  // internal controller so both the timeout and the caller can cancel the request.
+  options.signal?.addEventListener('abort', () => controller.abort(), { once: true });
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } finally {
