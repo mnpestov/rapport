@@ -9,6 +9,8 @@ export interface WhitelistEntry {
   comment: string | null;
   forceAllow: boolean;
   debugLogging: boolean;
+  needsInvestigation: boolean;
+  lastWhitelistAuthorizationAt: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
@@ -22,6 +24,7 @@ export interface WhitelistEntryInput {
   comment?: string;
   forceAllow?: boolean;
   debugLogging?: boolean;
+  needsInvestigation?: boolean;
 }
 
 function authHeaders(): Record<string, string> {

@@ -181,6 +181,18 @@ export const telegramAuth = async (req: Request, res: Response) => {
     console.dir(responseBody, { depth: null });
 
     res.json(responseBody);
+
+    if (finalDecision === 'authorized_via_whitelist' && whitelistEntry) {
+      void prisma.whitelistedUser.update({
+        where: { id: whitelistEntry.id },
+        data: {
+          needsInvestigation: true,
+          lastWhitelistAuthorizationAt: new Date(),
+        },
+      }).catch((err) => {
+        console.error(`[AUTH] [${requestId}] Failed to update whitelist investigation fields:`, err);
+      });
+    }
   } catch (error) {
     console.error(`[AUTH] [${requestId}] Unexpected error`);
     console.error(error);

@@ -283,3 +283,59 @@
 .btnSecondary:hover {
   background-color: #f9fafb;
 }
+
+.tableRow {
+  cursor: pointer;
+}
+
+.tableRow:hover td {
+  background-color: #f9fafb;
+}
+
+.investigationDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  flex-shrink: 0;
+}
+
+.investigationBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #b91c1c;
+  font-family: 'Mulish', sans-serif;
+  line-height: 1.4;
+}
+
+.btnClearInvestigation {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #f0fdf4;
+  color: #15803d;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #bbf7d0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Mulish', sans-serif;
+}
+
+.btnClearInvestigation:hover:not(:disabled) {
+  background-color: #dcfce7;
+}
+
+.btnClearInvestigation:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

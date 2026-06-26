@@ -160,9 +160,11 @@ model WhitelistedUser {
   firstName    String?
   lastName     String?
   comment      String?
-  forceAllow   Boolean  @default(false)
-  debugLogging Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  forceAllow                   Boolean   @default(false)
+  debugLogging                 Boolean   @default(false)
+  needsInvestigation           Boolean   @default(false)
+  lastWhitelistAuthorizationAt DateTime?
+  createdAt                    DateTime  @default(now())
   updatedAt    DateTime @updatedAt
   createdBy    String?
 }

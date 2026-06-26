@@ -11,6 +11,8 @@ function serialize(entry: {
   comment: string | null;
   forceAllow: boolean;
   debugLogging: boolean;
+  needsInvestigation: boolean;
+  lastWhitelistAuthorizationAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string | null;
@@ -18,6 +20,7 @@ function serialize(entry: {
   return {
     ...entry,
     telegramId: entry.telegramId.toString(),
+    lastWhitelistAuthorizationAt: entry.lastWhitelistAuthorizationAt?.toISOString() ?? null,
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),
   };
@@ -97,7 +100,7 @@ export const createWhitelistEntry = async (req: Request, res: Response) => {
 
 export const updateWhitelistEntry = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { username, firstName, lastName, comment, forceAllow, debugLogging } = req.body;
+  const { username, firstName, lastName, comment, forceAllow, debugLogging, needsInvestigation } = req.body;
 
   try {
     const entry = await prisma.whitelistedUser.update({
@@ -109,6 +112,7 @@ export const updateWhitelistEntry = async (req: Request, res: Response) => {
         comment: comment ?? undefined,
         ...(forceAllow !== undefined ? { forceAllow: Boolean(forceAllow) } : {}),
         ...(debugLogging !== undefined ? { debugLogging: Boolean(debugLogging) } : {}),
+        ...(needsInvestigation !== undefined ? { needsInvestigation: Boolean(needsInvestigation) } : {}),
       },
     });
     return res.json(serialize(entry));

@@ -127,6 +127,21 @@ export function Whitelist() {
     }
   };
 
+  const handleClearInvestigation = async () => {
+    if (!editingEntry) return;
+    try {
+      setIsSaving(true);
+      await updateWhitelistEntry(editingEntry.id, { needsInvestigation: false });
+      toast.success("Отметка снята");
+      setIsModalOpen(false);
+      await loadEntries();
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось снять отметку");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDelete = (entry: WhitelistEntry) => {
     setEntryToDelete(entry);
     setConfirmOpen(true);
@@ -206,8 +221,18 @@ export function Whitelist() {
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.id}>
-                <td className={styles.tdText}>{entry.telegramId}</td>
+              <tr key={entry.id} className={styles.tableRow} onClick={() => handleOpenEdit(entry)}>
+                <td className={styles.tdText}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {entry.telegramId}
+                    {entry.needsInvestigation && (
+                      <span
+                        className={styles.investigationDot}
+                        title="Был авторизован через белый список — требует проверки"
+                      />
+                    )}
+                  </span>
+                </td>
                 <td className={styles.tdText}>
                   {entry.username ? `@${entry.username}` : <span className={styles.tdMuted}>—</span>}
                 </td>
@@ -231,7 +256,7 @@ export function Whitelist() {
                   {new Date(entry.createdAt).toLocaleDateString("ru-RU")}
                 </td>
                 <td>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
                     <button
                       className={styles.iconBtn}
                       title="Редактировать"
@@ -268,6 +293,26 @@ export function Whitelist() {
         title={editingEntry ? "Редактировать запись" : "Добавить в белый список"}
       >
         <form onSubmit={handleSave} className={styles.form}>
+          {editingEntry?.needsInvestigation && (
+            <div className={styles.investigationBanner}>
+              <span>⚠️</span>
+              <div>
+                <div>Пользователь был авторизован через белый список (без реальной подписки). Проверьте и снимите отметку.</div>
+                {editingEntry.lastWhitelistAuthorizationAt && (
+                  <div style={{ marginTop: 4, fontSize: 12, opacity: 0.85 }}>
+                    Последний вход:{" "}
+                    {new Date(editingEntry.lastWhitelistAuthorizationAt).toLocaleString("ru-RU", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div className={styles.formGroup}>
             <label>
               Telegram ID <span className={styles.required}>*</span>
@@ -352,6 +397,16 @@ export function Whitelist() {
             <button type="button" className={styles.btnSecondary} onClick={() => setIsModalOpen(false)}>
               Отмена
             </button>
+            {editingEntry?.needsInvestigation && (
+              <button
+                type="button"
+                className={styles.btnClearInvestigation}
+                onClick={handleClearInvestigation}
+                disabled={isSaving}
+              >
+                ✓ Расследовано
+              </button>
+            )}
             <button
               type="submit"
               className={styles.btnPrimary}
