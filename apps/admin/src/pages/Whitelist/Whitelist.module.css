@@ -1,0 +1,285 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pageTitle {
+  color: #83942C;
+  font-family: 'Mulish', sans-serif;
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 110%;
+  margin: 0;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 100px;
+}
+
+.controlsPanel {
+  display: flex;
+  padding: 13px 15px 16px 15px;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-radius: 2px;
+  background: #FFF;
+}
+
+.searchWrapper {
+  display: flex;
+  padding: 13px 15px 16px 15px;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 242px;
+  border-radius: 2px;
+  background: #FFF;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  font-family: 'Mulish', sans-serif;
+  font-size: 15px;
+  color: #1D1C1C;
+  width: 160px;
+  background: transparent;
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
+}
+
+.rightControls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.btnAdd {
+  display: flex;
+  height: 32px;
+  padding: 0 10px;
+  align-items: center;
+  gap: 10px;
+  border-radius: 2px;
+  background: #A9AE36;
+  color: #1D1C1C;
+  text-align: center;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12.64px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btnAdd:hover {
+  opacity: 0.9;
+}
+
+.tableWrapper {
+  border-radius: 2px;
+  background: #FFF;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  color: #1D1C1C;
+  font-family: 'Mulish', sans-serif;
+  font-size: 17px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 110%;
+  padding: 16px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #E5E7EB;
+  vertical-align: middle;
+}
+
+.tdText {
+  color: #1D1C1C;
+  font-family: 'Mulish', sans-serif;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+}
+
+.tdMuted {
+  color: #9ca3af;
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.centerState {
+  padding: 48px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+  font-family: 'Mulish', sans-serif;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  font-family: 'Mulish', sans-serif;
+}
+
+.required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: 'Mulish', sans-serif;
+}
+
+.input:focus {
+  border-color: #111827;
+}
+
+.textarea {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: 'Mulish', sans-serif;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.textarea:focus {
+  border-color: #111827;
+}
+
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  font-family: 'Mulish', sans-serif;
+  line-height: 1.4;
+}
+
+.checkboxLabel code {
+  font-size: 12px;
+  background: #f3f4f6;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #374151;
+}
+
+.checkbox {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #111827;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: 'Mulish', sans-serif;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: #374151;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: white;
+  color: #374151;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Mulish', sans-serif;
+}
+
+.btnSecondary:hover {
+  background-color: #f9fafb;
+}

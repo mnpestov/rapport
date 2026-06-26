@@ -5,7 +5,7 @@ import { Login } from './pages/Login/Login'
 import { Dashboard } from './pages/Dashboard/Dashboard'
 import { Patterns } from './pages/Patterns/Patterns'
 import { Authors } from './pages/Authors/Authors'
-
+import { Whitelist } from './pages/Whitelist/Whitelist'
 
 import { Toaster } from 'react-hot-toast';
 
@@ -24,6 +24,7 @@ export default function App() {
             <Route path="patterns" element={<Patterns />} />
             <Route path="authors" element={<Authors />} />
             <Route path="stats" element={<Dashboard />} />
+            <Route path="whitelist" element={<Whitelist />} />
           </Route>
         </Route>
 

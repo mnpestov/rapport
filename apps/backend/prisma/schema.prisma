@@ -146,3 +146,23 @@ model SubscribeClick {
 
   @@index([userId])
 }
+
+// ---------------------------------------------------------------------------
+// Whitelist — users who bypass the subscription gate.
+// telegramId is stored as BigInt to match the User model.
+// createdBy stores the admin's userId as a plain string (no FK) so entries
+// survive admin account deletions.
+// ---------------------------------------------------------------------------
+model WhitelistedUser {
+  id           String   @id @default(uuid())
+  telegramId   BigInt   @unique
+  username     String?
+  firstName    String?
+  lastName     String?
+  comment      String?
+  forceAllow   Boolean  @default(false)
+  debugLogging Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String?
+}

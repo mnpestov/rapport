@@ -98,4 +98,16 @@ router.get("/categories", getCategories);
 router.get("/tags", getTags);
 router.get("/instruments", getInstruments);
 
+import {
+  getWhitelist,
+  createWhitelistEntry,
+  updateWhitelistEntry,
+  deleteWhitelistEntry,
+} from "../controllers/whitelistController";
+
+router.get("/whitelist", getWhitelist);
+router.post("/whitelist", createWhitelistEntry);
+router.patch("/whitelist/:id", updateWhitelistEntry);
+router.delete("/whitelist/:id", deleteWhitelistEntry);
+
 export default router;
