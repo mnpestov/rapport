@@ -74,7 +74,7 @@ function App() {
     };
 
     // Добавлена искусственная задержка (500мс) чтобы моргание спиннера не было слишком быстрым
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
       checkAccess();
     }, 500);
 
@@ -83,6 +83,7 @@ function App() {
 
     return () => {
       isMounted = false;
+      clearTimeout(timerId);
       window.removeEventListener("auth:recheck", checkAccess);
     };
   }, []);

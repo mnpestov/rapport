@@ -14,9 +14,26 @@ export const telegramAuth = async (req: Request, res: Response) => {
   const gatewayRequestId = requestId;
   const authStart = Date.now();
 
-  console.log(`[AUTH] [${requestId}] Request started`);
+  console.log(`[AUTH] [${requestId}] Step 1: Request started`);
+  console.log(`[AUTH] [${requestId}] Step 1: content-type=${req.headers["content-type"] ?? "(none)"} method=${req.method} url=${req.url}`);
 
-  const { initData } = req.body;
+  console.log(`[AUTH] [${requestId}] Step 2: req.body available`);
+  console.log(`[AUTH] [${requestId}] Step 2: typeof req.body=${typeof req.body} req.body===undefined=${req.body === undefined}`);
+  if (req.body !== undefined && req.body !== null && typeof req.body === "object") {
+    console.log(`[AUTH] [${requestId}] Step 2: Object.keys(req.body)=${JSON.stringify(Object.keys(req.body))}`);
+  }
+
+  let initData: string | undefined;
+  try {
+    console.log(`[AUTH] [${requestId}] Step 3: initData extracted`);
+    initData = req.body?.initData;
+  } catch (bodyErr) {
+    console.error(`[AUTH] [${requestId}] Step 3: EXCEPTION accessing req.body.initData`, bodyErr);
+    throw bodyErr;
+  }
+
+  console.log(`[AUTH] [${requestId}] Step 4: initData length=${initData != null ? String(initData).length : "n/a"} type=${typeof initData}`);
+
   if (!initData) {
     return res.status(400).json({ error: "initData is required" });
   }
@@ -51,7 +68,9 @@ export const telegramAuth = async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Server configuration error" });
     }
 
+    console.log(`[AUTH] [${requestId}] Step 5: validateTelegramWebAppData() start`);
     const { isValid, user } = validateTelegramWebAppData(initData, botToken);
+    console.log(`[AUTH] [${requestId}] Step 6: validateTelegramWebAppData() done isValid=${isValid} hasUser=${!!user}`);
     if (!isValid || !user) {
       console.error(`[AUTH] [${requestId}] Telegram validation FAILED`);
       return res.status(401).json({ error: "Unauthorized" });
