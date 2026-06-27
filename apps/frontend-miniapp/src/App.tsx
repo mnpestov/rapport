@@ -5,9 +5,12 @@ import { PatternDetails } from './pages/PatternDetails/PatternDetails';
 import { Favorites } from './pages/Favorites/Favorites';
 import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
+import { Maintenance } from './pages/Maintenance/Maintenance';
 import { authenticate } from './api/authApi';
 
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
+
+const MAINTENANCE_MODE = true;
 
 type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized";
 
@@ -87,6 +90,10 @@ function App() {
       window.removeEventListener("auth:recheck", checkAccess);
     };
   }, []);
+
+  if (MAINTENANCE_MODE) {
+    return <Maintenance />;
+  }
 
   if (appState === "loading" || appState === "fetching_channel") {
     return <LoadingScreen />;
