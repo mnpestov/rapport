@@ -152,7 +152,11 @@ importers:
         specifier: ^5.2.0
         version: 5.4.21(@types/node@20.19.42)
 
-  packages/shared: {}
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
 
 packages:
 
