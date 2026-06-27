@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
+import { checkTelegramSubscriptionDetailed } from "../utils/checkSubscription";
 
 // Serialize a WhitelistedUser record — BigInt telegramId → string for JSON transport.
 function serialize(entry: {
@@ -136,6 +137,43 @@ export const deleteWhitelistEntry = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Запись не найдена" });
     }
     console.error("[Whitelist] Failed to delete:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const checkWhitelistSubscription = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  let telegramId: bigint;
+  try {
+    const entry = await prisma.whitelistedUser.findUnique({
+      where: { id },
+      select: { telegramId: true },
+    });
+    if (!entry) {
+      return res.status(404).json({ error: "Запись не найдена" });
+    }
+    telegramId = entry.telegramId;
+  } catch (error) {
+    console.error("[Whitelist] Failed to find entry for subscription check:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+  try {
+    const result = await checkTelegramSubscriptionDetailed(Number(telegramId));
+    const gwResp = result.gatewayResponse as Record<string, unknown> | null;
+
+    return res.json({
+      telegramId: telegramId.toString(),
+      isSubscriber: result.isSubscriber,
+      telegramStatus: (gwResp?.telegramStatus as string | null) ?? null,
+      telegramOk: (gwResp?.telegramOk as boolean | null) ?? null,
+      gatewayStatusCode: result.gatewayStatusCode,
+      isParticipantIdInvalid: result.isParticipantIdInvalid,
+      gatewayDurationMs: result.gatewayDurationMs,
+    });
+  } catch (error) {
+    console.error("[Whitelist] Subscription check failed:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

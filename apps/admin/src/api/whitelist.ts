@@ -77,3 +77,25 @@ export const deleteWhitelistEntry = async (id: string): Promise<void> => {
     throw new Error(body.error || `Failed to delete entry: ${response.statusText}`);
   }
 };
+
+export interface SubscriptionCheckResult {
+  telegramId: string;
+  isSubscriber: boolean;
+  telegramStatus: string | null;
+  telegramOk: boolean | null;
+  gatewayStatusCode: number | string | null;
+  isParticipantIdInvalid: boolean;
+  gatewayDurationMs: number | null;
+}
+
+export const checkWhitelistSubscription = async (id: string): Promise<SubscriptionCheckResult> => {
+  const response = await fetch(`${API_URL}/admin/whitelist/${id}/check-subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to check subscription: ${response.statusText}`);
+  }
+  return response.json();
+};

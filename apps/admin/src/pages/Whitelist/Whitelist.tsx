@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, SquarePen, Search, ShieldCheck, Bug } from "lucide-react";
+import { Plus, Trash2, SquarePen, Search, ShieldCheck, Bug, Signal } from "lucide-react";
 import {
   getWhitelist,
   createWhitelistEntry,
   updateWhitelistEntry,
   deleteWhitelistEntry,
+  checkWhitelistSubscription,
   WhitelistEntry,
 } from "../../api/whitelist";
 import { Modal } from "../../components/Modal/Modal";
@@ -47,6 +48,8 @@ export function Whitelist() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<WhitelistEntry | null>(null);
+
+  const [checkingSubId, setCheckingSubId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -142,6 +145,34 @@ export function Whitelist() {
     }
   };
 
+  const handleCheckSubscription = async (e: React.MouseEvent, entry: WhitelistEntry) => {
+    e.stopPropagation();
+    setCheckingSubId(entry.id);
+    try {
+      const result = await checkWhitelistSubscription(entry.id);
+      const { telegramStatus, telegramOk, isParticipantIdInvalid, isSubscriber, gatewayStatusCode, gatewayDurationMs } = result;
+      const ms = gatewayDurationMs != null ? ` (${gatewayDurationMs}ms)` : "";
+
+      if (isParticipantIdInvalid) {
+        toast.error(`PARTICIPANT_ID_INVALID${ms}`, { duration: 7000 });
+      } else if (telegramOk === false) {
+        toast.error(`Telegram error: HTTP ${gatewayStatusCode}${ms}`, { duration: 7000 });
+      } else if (telegramStatus === "member" || telegramStatus === "creator" || telegramStatus === "administrator") {
+        toast.success(`Подписан — ${telegramStatus}${ms}`, { duration: 5000 });
+      } else if (telegramStatus !== null) {
+        toast.error(`Не подписан — ${telegramStatus}${ms}`, { duration: 6000 });
+      } else if (isSubscriber) {
+        toast(`Gateway недоступен — ответ не получен${ms}`, { icon: "⚠️", duration: 6000 });
+      } else {
+        toast.error(`Не подписан${ms}`, { duration: 6000 });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Ошибка проверки подписки");
+    } finally {
+      setCheckingSubId(null);
+    }
+  };
+
   const handleDelete = (entry: WhitelistEntry) => {
     setEntryToDelete(entry);
     setConfirmOpen(true);
@@ -216,7 +247,7 @@ export function Whitelist() {
               <th title="Разрешить вход без подписки">Доступ</th>
               <th title="Полное логирование авторизации">Отладка</th>
               <th>Добавлен</th>
-              <th style={{ width: 80 }}>Действия</th>
+              <th style={{ width: 112 }}>Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -257,6 +288,15 @@ export function Whitelist() {
                 </td>
                 <td>
                   <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className={styles.iconBtn}
+                      title="Проверить подписку"
+                      disabled={checkingSubId === entry.id}
+                      onClick={(e) => handleCheckSubscription(e, entry)}
+                      style={{ color: "#6366f1" }}
+                    >
+                      <Signal size={16} />
+                    </button>
                     <button
                       className={styles.iconBtn}
                       title="Редактировать"
