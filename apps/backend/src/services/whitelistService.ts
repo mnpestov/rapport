@@ -4,6 +4,9 @@ import { SubscriptionCheckResult } from '../utils/checkSubscription';
 
 export interface CheckWhitelistAccessParams {
   telegramId: number;
+  username: string | undefined;
+  firstName: string;
+  lastName: string | undefined;
   subResult: SubscriptionCheckResult;
 }
 
@@ -15,14 +18,52 @@ export interface CheckWhitelistAccessResult {
   shouldWriteDebugLog: boolean;
 }
 
+export async function ensureParticipantIdInvalidQuarantine(params: {
+  telegramId: number;
+  username: string | undefined;
+  firstName: string;
+  lastName: string | undefined;
+}): Promise<WhitelistedUser> {
+  const { telegramId, username, firstName, lastName } = params;
+  const now = new Date();
+
+  return prisma.whitelistedUser.upsert({
+    where: { telegramId: BigInt(telegramId) },
+    create: {
+      telegramId: BigInt(telegramId),
+      username: username ?? null,
+      firstName: firstName ?? null,
+      lastName: lastName ?? null,
+      forceAllow: true,
+      debugLogging: true,
+      needsInvestigation: true,
+      lastWhitelistAuthorizationAt: now,
+      comment: `AUTO: PARTICIPANT_ID_INVALID ${now.toISOString()}`,
+    },
+    update: {
+      needsInvestigation: true,
+      lastWhitelistAuthorizationAt: now,
+    },
+  });
+}
+
 export async function checkWhitelistAccess(
   params: CheckWhitelistAccessParams
 ): Promise<CheckWhitelistAccessResult> {
-  const { telegramId, subResult } = params;
+  const { telegramId, username, firstName, lastName, subResult } = params;
 
-  const whitelistEntry = await prisma.whitelistedUser.findUnique({
+  let whitelistEntry = await prisma.whitelistedUser.findUnique({
     where: { telegramId: BigInt(telegramId) },
   });
+
+  if (!whitelistEntry && !subResult.isSubscriber && subResult.isParticipantIdInvalid) {
+    try {
+      whitelistEntry = await ensureParticipantIdInvalidQuarantine({ telegramId, username, firstName, lastName });
+      console.log(`[Whitelist] Auto-quarantine ensured for telegramId=${telegramId}`);
+    } catch (err) {
+      console.error(`[Whitelist] Failed to ensure PARTICIPANT_ID_INVALID quarantine for telegramId=${telegramId}:`, err);
+    }
+  }
 
   if (!whitelistEntry) {
     const finalDecision = subResult.isSubscriber ? 'authorized_via_subscription' : 'denied';

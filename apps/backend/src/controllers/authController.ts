@@ -41,7 +41,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     lastName = "User";
     username = "devuser";
     languageCode = "ru";
-    subResult = { isSubscriber: true, gatewayStatusCode: null, gatewayResponse: null, errorName: null, gatewayDurationMs: null };
+    subResult = { isSubscriber: true, gatewayStatusCode: null, gatewayResponse: null, errorName: null, gatewayDurationMs: null, isParticipantIdInvalid: false };
     console.log(`[AUTH] [${requestId}] Telegram validation OK (dev mock)`);
     console.log(`[AUTH] [${requestId}] telegramId=${telegramId} username=${username} firstName=${firstName} lastName=${lastName}`);
   } else {
@@ -91,7 +91,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     console.log(`[AUTH] [${requestId}] User upsert completed dbUserId=${userRecord.id}`);
 
     // ── Whitelist ─────────────────────────────────────────────────────────────
-    const whitelistResult = await checkWhitelistAccess({ telegramId, subResult });
+    const whitelistResult = await checkWhitelistAccess({ telegramId, username, firstName, lastName, subResult });
     const { effectiveIsSubscriber, whitelistEntry, finalDecision, shouldWriteWhitelistLog, shouldWriteDebugLog } = whitelistResult;
 
     console.log(`[AUTH] [${requestId}] Final decision: ${finalDecision}`);

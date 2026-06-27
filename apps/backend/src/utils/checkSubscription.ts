@@ -4,6 +4,7 @@ export interface SubscriptionCheckResult {
   gatewayResponse: unknown;
   errorName: string | null;
   gatewayDurationMs: number | null;
+  isParticipantIdInvalid: boolean;
 }
 
 async function _fetchSubscriptionResult(userId: number, requestId?: string): Promise<SubscriptionCheckResult> {
@@ -12,13 +13,14 @@ async function _fetchSubscriptionResult(userId: number, requestId?: string): Pro
 
   if (!gatewayUrl || !gatewayKey) {
     console.error("[CheckSubscription] TELEGRAM_GATEWAY_URL or TELEGRAM_GATEWAY_API_KEY is not configured. Falling back to true (fail-open).");
-    return { isSubscriber: true, gatewayStatusCode: null, gatewayResponse: null, errorName: null, gatewayDurationMs: null };
+    return { isSubscriber: true, gatewayStatusCode: null, gatewayResponse: null, errorName: null, gatewayDurationMs: null, isParticipantIdInvalid: false };
   }
 
   let isSubscriber = true;
   let gatewayResponse: unknown = null;
   let statusCode: number | string | null = null;
   let errorName: string | null = null;
+  let isParticipantIdInvalid = false;
   const gatewayStart = Date.now();
   let gatewayDurationMs: number | null = null;
 
@@ -51,6 +53,9 @@ async function _fetchSubscriptionResult(userId: number, requestId?: string): Pro
       isSubscriber = true;
     } else if (data && typeof data.isSubscriber === 'boolean') {
       isSubscriber = data.isSubscriber;
+      if (!isSubscriber && data.telegramOk === false && data.telegramResponse?.description === 'Bad Request: PARTICIPANT_ID_INVALID') {
+        isParticipantIdInvalid = true;
+      }
     } else {
       console.warn(`[CheckSubscription] Unexpected gateway response format. Falling back to true (fail-open).`);
       isSubscriber = true;
@@ -73,7 +78,7 @@ async function _fetchSubscriptionResult(userId: number, requestId?: string): Pro
   if (errorName) debugParts.push(`error=${errorName}`);
   console.log(debugParts.join(' '));
 
-  return { isSubscriber, gatewayStatusCode: statusCode, gatewayResponse, errorName, gatewayDurationMs };
+  return { isSubscriber, gatewayStatusCode: statusCode, gatewayResponse, errorName, gatewayDurationMs, isParticipantIdInvalid };
 }
 
 // Original contract — returns only the boolean. requestId is optional; existing callers unchanged.
