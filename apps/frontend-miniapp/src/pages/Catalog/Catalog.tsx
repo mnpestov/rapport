@@ -23,11 +23,11 @@ export const Catalog: React.FC = () => {
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
-  
+
   const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>(() => {
     const saved = sessionStorage.getItem('catalog_advanced_filters');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { }
     }
     return {
       categories: [],
@@ -161,13 +161,13 @@ export const Catalog: React.FC = () => {
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
     if (loading || isFetchingMore) return;
     if (observerRef.current) observerRef.current.disconnect();
-    
+
     observerRef.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
         setOffset(prev => prev + LIMIT);
       }
     });
-    
+
     if (node) observerRef.current.observe(node);
   }, [loading, isFetchingMore, hasMore]);
 
@@ -252,11 +252,18 @@ export const Catalog: React.FC = () => {
         </div>
       </div>
 
-      {(isFreeFilterActive || isNewFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '') && (
+      {/* {(isFreeFilterActive || isNewFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '') && (
         <div className="catalog-found-count">
           найдено описаний: {totalPatterns}
         </div>
-      )}
+      )} */}
+
+      <div className="catalog-found-count">
+        {(isFreeFilterActive || isNewFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '')
+          ? 'найдено описаний:'
+          : 'всего описаний:'}{' '}
+        {totalPatterns}
+      </div>
 
       {loading && <p className="loading-message">Загрузка каталога...</p>}
       {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
