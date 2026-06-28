@@ -8,3 +8,5 @@ export interface UserDTO {
 }
 
 export const API_URL = "/api";
+
+export * from './contracts/botDiagnostic';

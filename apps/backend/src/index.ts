@@ -11,6 +11,7 @@ import favoritesRouter from "./routes/favorites";
 import channelRouter from "./routes/channel";
 import analyticsRouter from "./routes/analytics";
 import adminRouter from "./routes/admin";
+import internalRouter from "./routes/internal";
 
 const uploadsDir = path.join(__dirname, "../uploads/patterns");
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -42,6 +43,7 @@ app.use("/favorites", favoritesRouter);
 app.use("/channel", channelRouter);
 app.use("/analytics", analyticsRouter);
 app.use("/admin", adminRouter);
+app.use("/internal", internalRouter);
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);
