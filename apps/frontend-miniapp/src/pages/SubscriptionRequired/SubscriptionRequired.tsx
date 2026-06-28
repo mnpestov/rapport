@@ -24,9 +24,9 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
   const handleSupportBot = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openTelegramLink) {
-      tg.openTelegramLink("https://t.me/rapportapp_bot");
+      tg.openTelegramLink("https://t.me/rapportapp_bot?start=support");
     } else {
-      window.open("https://t.me/rapportapp_bot", "_blank");
+      window.open("https://t.me/rapportapp_bot?start=support", "_blank");
     }
   };
 
