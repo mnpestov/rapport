@@ -142,6 +142,58 @@ export const deleteWhitelistEntry = async (req: Request, res: Response) => {
   }
 };
 
+export const notifyWhitelistUser = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  let telegramId: bigint;
+  try {
+    const entry = await prisma.whitelistedUser.findUnique({
+      where: { id },
+      select: { telegramId: true },
+    });
+    if (!entry) {
+      return res.status(404).json({ error: "Запись не найдена" });
+    }
+    telegramId = entry.telegramId;
+  } catch (error) {
+    console.error("[Whitelist] Failed to find entry for notification:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+  const botToken = process.env.BOT_TOKEN;
+  if (!botToken) {
+    return res.status(500).json({ error: "BOT_TOKEN not configured" });
+  }
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: telegramId.toString(),
+        text: "Мы разобрались с проблемой — попробуйте открыть приложение снова.",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "Я всё равно не могу войти", callback_data: "support:escalate" }],
+            [{ text: "Открыть Раппорт", url: "https://t.me/rapportapp_bot/rapport" }],
+          ],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error("[Whitelist] Telegram sendMessage failed:", err);
+      return res.status(502).json({ error: "Failed to send Telegram message" });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("[Whitelist] Failed to send notification:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const checkWhitelistSubscription = async (req: Request, res: Response) => {
   const { id } = req.params;
 
