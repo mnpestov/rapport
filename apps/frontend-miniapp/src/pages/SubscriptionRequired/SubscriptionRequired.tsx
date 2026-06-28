@@ -21,6 +21,15 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
     }
   };
 
+  const handleSupportBot = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink("https://t.me/rapportapp_bot");
+    } else {
+      window.open("https://t.me/rapportapp_bot", "_blank");
+    }
+  };
+
   const handleCheck = () => {
     window.dispatchEvent(new CustomEvent("auth:recheck"));
     setShowToast(true);
@@ -74,6 +83,9 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
           Проверка подписки...
         </div>
       )}
+      <button className="subscription-link-support" onClick={handleSupportBot}>
+        Я подписан, но не могу войти в приложение
+      </button>
     </div>
   );
 };
