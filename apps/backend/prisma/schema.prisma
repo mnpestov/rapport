@@ -163,6 +163,7 @@ model WhitelistedUser {
   forceAllow                   Boolean   @default(false)
   debugLogging                 Boolean   @default(false)
   needsInvestigation           Boolean   @default(false)
+  contactedViaBot              Boolean   @default(false)
   lastWhitelistAuthorizationAt DateTime?
   createdAt                    DateTime  @default(now())
   updatedAt    DateTime @updatedAt

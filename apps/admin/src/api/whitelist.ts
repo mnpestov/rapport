@@ -10,6 +10,7 @@ export interface WhitelistEntry {
   forceAllow: boolean;
   debugLogging: boolean;
   needsInvestigation: boolean;
+  contactedViaBot: boolean;
   lastWhitelistAuthorizationAt: string | null;
   createdAt: string;
   updatedAt: string;

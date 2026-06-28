@@ -1,5 +1,6 @@
 export type DiagnosticOutcome =
   | 'SUBSCRIBED'
+  | 'SUBSCRIBED_WHITELISTED'
   | 'NOT_SUBSCRIBED'
   | 'KICKED'
   | 'PARTICIPANT_ID_INVALID'

@@ -13,6 +13,7 @@ function serialize(entry: {
   forceAllow: boolean;
   debugLogging: boolean;
   needsInvestigation: boolean;
+  contactedViaBot: boolean;
   lastWhitelistAuthorizationAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

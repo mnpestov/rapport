@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import type { DiagnosticResponse, DiagnosticOutcome } from '@knitting/shared';
 import { checkTelegramSubscriptionDetailed, SubscriptionCheckResult } from '../utils/checkSubscription';
-import { ensureParticipantIdInvalidQuarantine } from './whitelistService';
+import { ensureParticipantIdInvalidQuarantine, ensureContactedViaBotWhitelist } from './whitelistService';
 import { prisma } from '../prismaClient';
 
 export interface RunDiagnosticParams {
@@ -49,7 +49,23 @@ export async function runDiagnostic(params: RunDiagnosticParams): Promise<Diagno
   if (isGatewayError(subResult)) {
     diagnosticCode = 'GATEWAY_ERROR';
   } else if (subResult.isSubscriber) {
-    diagnosticCode = 'SUBSCRIBED';
+    if (mode === 'diagnose-and-fix') {
+      try {
+        finalEntry = await ensureContactedViaBotWhitelist({
+          telegramId,
+          username,
+          firstName: firstName ?? '',
+          lastName,
+        });
+        actionTaken = existedBefore ? 'whitelist_updated' : 'whitelist_created';
+        diagnosticCode = 'SUBSCRIBED_WHITELISTED';
+      } catch (err) {
+        console.error('[DiagnosticService] ensureContactedViaBotWhitelist failed:', err);
+        diagnosticCode = 'SUBSCRIBED';
+      }
+    } else {
+      diagnosticCode = 'SUBSCRIBED';
+    }
   } else if (subResult.isParticipantIdInvalid) {
     if (mode === 'diagnose-and-fix') {
       try {

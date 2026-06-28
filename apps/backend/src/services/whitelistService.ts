@@ -47,6 +47,36 @@ export async function ensureParticipantIdInvalidQuarantine(params: {
   });
 }
 
+export async function ensureContactedViaBotWhitelist(params: {
+  telegramId: number;
+  username: string | undefined;
+  firstName: string;
+  lastName: string | undefined;
+}): Promise<WhitelistedUser> {
+  const { telegramId, username, firstName, lastName } = params;
+  const now = new Date();
+
+  return prisma.whitelistedUser.upsert({
+    where: { telegramId: BigInt(telegramId) },
+    create: {
+      telegramId: BigInt(telegramId),
+      username: username ?? null,
+      firstName: firstName ?? null,
+      lastName: lastName ?? null,
+      forceAllow: true,
+      debugLogging: true,
+      contactedViaBot: true,
+      comment: `BOT: Обратился через бота поддержки ${now.toISOString()}`,
+    },
+    update: {
+      contactedViaBot: true,
+      username: username ?? undefined,
+      firstName: firstName || undefined,
+      lastName: lastName ?? undefined,
+    },
+  });
+}
+
 export async function checkWhitelistAccess(
   params: CheckWhitelistAccessParams
 ): Promise<CheckWhitelistAccessResult> {

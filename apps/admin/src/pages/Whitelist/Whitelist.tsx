@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, SquarePen, Search, ShieldCheck, Bug, Signal } from "lucide-react";
+import { Plus, Trash2, SquarePen, Search, ShieldCheck, Bug, Signal, Bot } from "lucide-react";
 import {
   getWhitelist,
   createWhitelistEntry,
@@ -246,6 +246,7 @@ export function Whitelist() {
               <th>Комментарий</th>
               <th title="Разрешить вход без подписки">Доступ</th>
               <th title="Полное логирование авторизации">Отладка</th>
+              <th title="Обратился через бота поддержки">Бот</th>
               <th>Добавлен</th>
               <th style={{ width: 112 }}>Действия</th>
             </tr>
@@ -279,6 +280,13 @@ export function Whitelist() {
                 <td>
                   {entry.debugLogging ? (
                     <span title="Отладка включена"><Bug size={18} color="#f59e0b" /></span>
+                  ) : (
+                    <span className={styles.tdMuted}>—</span>
+                  )}
+                </td>
+                <td>
+                  {entry.contactedViaBot ? (
+                    <span title="Обратился через бота поддержки"><Bot size={18} color="#6366f1" /></span>
                   ) : (
                     <span className={styles.tdMuted}>—</span>
                   )}
@@ -318,7 +326,7 @@ export function Whitelist() {
             ))}
             {entries.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={8} className={styles.centerState}>
+                <td colSpan={9} className={styles.centerState}>
                   Белый список пуст
                 </td>
               </tr>

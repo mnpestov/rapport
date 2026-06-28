@@ -60,4 +60,31 @@ export class BackendClient {
 
     return data as DiagnosticResponse;
   }
+
+  async escalate(userId: number): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/escalate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId: userId }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] escalate timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`[BackendClient] escalate ${response.status}: ${text}`);
+    }
+  }
 }

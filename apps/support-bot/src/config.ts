@@ -13,4 +13,5 @@ export const config = {
   healthPort: parseInt(process.env.HEALTH_PORT ?? '3001', 10),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   telegramApiRoot: process.env.TELEGRAM_GATEWAY_BASE_URL ?? 'https://api.telegram.org',
+  adminTelegramId: process.env.ADMIN_TELEGRAM_ID ? parseInt(process.env.ADMIN_TELEGRAM_ID, 10) : null,
 };
