@@ -10,7 +10,7 @@ import { authenticate } from './api/authApi';
 
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized";
 
@@ -46,7 +46,7 @@ function App() {
       try {
         const tg = (window as any).Telegram?.WebApp;
         let initData = tg?.initData || "";
-        
+
         if (!initData && import.meta.env.DEV) {
           initData = "mock_dev";
         }
