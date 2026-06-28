@@ -6,6 +6,7 @@ import {
   updateWhitelistEntry,
   deleteWhitelistEntry,
   checkWhitelistSubscription,
+  notifyWhitelistUser,
   WhitelistEntry,
 } from "../../api/whitelist";
 import { Modal } from "../../components/Modal/Modal";
@@ -50,6 +51,7 @@ export function Whitelist() {
   const [entryToDelete, setEntryToDelete] = useState<WhitelistEntry | null>(null);
 
   const [checkingSubId, setCheckingSubId] = useState<string | null>(null);
+  const [isNotifying, setIsNotifying] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -441,6 +443,30 @@ export function Whitelist() {
               </span>
             </label>
           </div>
+          {editingEntry?.contactedViaBot && (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                style={{ width: "100%" }}
+                disabled={isNotifying}
+                onClick={async () => {
+                  if (!editingEntry) return;
+                  setIsNotifying(true);
+                  try {
+                    await notifyWhitelistUser(editingEntry.id);
+                    toast.success("Сообщение отправлено пользователю");
+                  } catch (err: any) {
+                    toast.error(err.message || "Не удалось отправить сообщение");
+                  } finally {
+                    setIsNotifying(false);
+                  }
+                }}
+              >
+                {isNotifying ? "Отправка..." : "📩 Уведомить об исправлении"}
+              </button>
+            </div>
+          )}
           <div className={styles.formActions}>
             <button type="button" className={styles.btnSecondary} onClick={() => setIsModalOpen(false)}>
               Отмена

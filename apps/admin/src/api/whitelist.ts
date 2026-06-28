@@ -89,6 +89,17 @@ export interface SubscriptionCheckResult {
   gatewayDurationMs: number | null;
 }
 
+export const notifyWhitelistUser = async (id: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/admin/whitelist/${id}/notify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to send notification: ${response.statusText}`);
+  }
+};
+
 export const checkWhitelistSubscription = async (id: string): Promise<SubscriptionCheckResult> => {
   const response = await fetch(`${API_URL}/admin/whitelist/${id}/check-subscription`, {
     method: "POST",

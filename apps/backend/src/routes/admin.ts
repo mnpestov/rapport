@@ -104,6 +104,7 @@ import {
   updateWhitelistEntry,
   deleteWhitelistEntry,
   checkWhitelistSubscription,
+  notifyWhitelistUser,
 } from "../controllers/whitelistController";
 
 router.get("/whitelist", getWhitelist);
@@ -111,5 +112,6 @@ router.post("/whitelist", createWhitelistEntry);
 router.patch("/whitelist/:id", updateWhitelistEntry);
 router.delete("/whitelist/:id", deleteWhitelistEntry);
 router.post("/whitelist/:id/check-subscription", checkWhitelistSubscription);
+router.post("/whitelist/:id/notify", notifyWhitelistUser);
 
 export default router;
