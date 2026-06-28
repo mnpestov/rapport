@@ -16,6 +16,7 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openTelegramLink) {
       tg.openTelegramLink("https://t.me/fashionhurma");
+      setTimeout(() => tg.close(), 300);
     } else {
       window.open("https://t.me/fashionhurma", "_blank");
     }
@@ -25,6 +26,7 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.openTelegramLink) {
       tg.openTelegramLink("https://t.me/rapportapp_bot?start=support");
+      setTimeout(() => tg.close(), 300);
     } else {
       window.open("https://t.me/rapportapp_bot?start=support", "_blank");
     }
