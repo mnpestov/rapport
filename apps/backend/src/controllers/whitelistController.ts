@@ -166,7 +166,8 @@ export const notifyWhitelistUser = async (req: Request, res: Response) => {
   }
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const gatewayBase = process.env.TELEGRAM_GATEWAY_BASE_URL ?? "https://api.telegram.org";
+    const response = await fetch(`${gatewayBase}/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
