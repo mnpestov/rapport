@@ -8,9 +8,9 @@ export class BackendClient {
 
   constructor() {
     const backendUrl = process.env.BACKEND_URL;
-    const botApiKey = process.env.BOT_API_KEY;
+    const botApiKey = process.env.BACKEND_BOT_API_KEY;
     if (!backendUrl) throw new Error('[BackendClient] Missing env: BACKEND_URL');
-    if (!botApiKey) throw new Error('[BackendClient] Missing env: BOT_API_KEY');
+    if (!botApiKey) throw new Error('[BackendClient] Missing env: BACKEND_BOT_API_KEY');
     this.baseUrl = backendUrl;
     this.apiKey = botApiKey;
   }
