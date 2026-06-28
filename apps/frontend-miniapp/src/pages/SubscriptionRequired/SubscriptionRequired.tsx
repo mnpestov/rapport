@@ -49,10 +49,10 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
       {channel ? (
         <div className="subscription-channel-info">
           <div className="subscription-avatar-wrapper">
-            <img 
-              src={channel.photoUrl || avatarPlaceholder} 
-              alt="Аватар канала" 
-              className="subscription-avatar" 
+            <img
+              src={channel.photoUrl || avatarPlaceholder}
+              alt="Аватар канала"
+              className="subscription-avatar"
             />
           </div>
           <div className="subscription-channel-title">
@@ -86,7 +86,7 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
         </div>
       )}
       <button className="subscription-link-support" onClick={handleSupportBot}>
-        Я подписан, но не могу войти в приложение
+        Я подписана, но не могу войти в приложение
       </button>
     </div>
   );

@@ -10,6 +10,8 @@ body {
   /* App is light-themed (dark text on white); force white so unstyled
      areas never bleed the Telegram dark-theme background. */
   background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {
