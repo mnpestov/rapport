@@ -7,7 +7,9 @@ import { handleDiagnosticStart } from './handlers/callbackQuery';
 import { handleFallback } from './handlers/fallback';
 
 export function createBot(): Bot<CustomContext> {
-  const bot = new Bot<CustomContext>(config.botToken);
+  const bot = new Bot<CustomContext>(config.botToken, {
+    client: { apiRoot: config.telegramApiRoot },
+  });
 
   bot.use(updateLogger);
 
