@@ -176,7 +176,9 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       topLinkClicksRaw,
       topFavoritesRaw,
     ] = await Promise.all([
-      prisma.user.count(),
+      analyticsFrom
+        ? prisma.user.count({ where: { lastSeenAt: { gte: analyticsFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) } } })
+        : prisma.user.count(),
       prisma.user.count({ where: { createdAt: { gte: newUsersFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) } } }),
       prisma.patternView.count({ where: dateFilter }),
       prisma.patternLinkClick.count({ where: dateFilter }),

@@ -201,6 +201,15 @@ export const telegramAuth = async (req: Request, res: Response) => {
 
     res.json(responseBody);
 
+    if (effectiveIsSubscriber) {
+      void prisma.user.update({
+        where: { id: userRecord.id },
+        data: { lastSeenAt: new Date() },
+      }).catch((err) => {
+        console.error(`[AUTH] [${requestId}] Failed to update lastSeenAt:`, err);
+      });
+    }
+
     if (finalDecision === 'authorized_via_whitelist' && whitelistEntry) {
       void prisma.whitelistedUser.update({
         where: { id: whitelistEntry.id },

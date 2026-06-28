@@ -69,12 +69,12 @@ function TopTable({ title, icon, items }: TopTableProps) {
 // Period config
 // ──────────────────────────────────────────────
 
-const PERIODS: { value: Period; label: string; newUsersLabel: string }[] = [
-  { value: "7d", label: "7 дней", newUsersLabel: "Новых за 7 дней" },
-  { value: "30d", label: "30 дней", newUsersLabel: "Новых за 30 дней" },
-  { value: "90d", label: "90 дней", newUsersLabel: "Новых за 90 дней" },
-  { value: "all", label: "Всё время", newUsersLabel: "Новых за неделю" },
-  { value: "custom", label: "Свой период", newUsersLabel: "Новых за период" },
+const PERIODS: { value: Period; label: string; newUsersLabel: string; totalUsersLabel: string }[] = [
+  { value: "7d", label: "7 дней", newUsersLabel: "Новых за 7 дней", totalUsersLabel: "Посетителей за 7 дней" },
+  { value: "30d", label: "30 дней", newUsersLabel: "Новых за 30 дней", totalUsersLabel: "Посетителей за 30 дней" },
+  { value: "90d", label: "90 дней", newUsersLabel: "Новых за 90 дней", totalUsersLabel: "Посетителей за 90 дней" },
+  { value: "all", label: "Всё время", newUsersLabel: "Новых за неделю", totalUsersLabel: "Всего пользователей" },
+  { value: "custom", label: "Свой период", newUsersLabel: "Новых за период", totalUsersLabel: "Посетителей за период" },
 ];
 
 // ──────────────────────────────────────────────
@@ -198,7 +198,7 @@ export function Dashboard() {
 
       {/* Stat cards grid */}
       <div className={styles.statsGrid}>
-        <StatCard label="Всего пользователей" value={stats.totalUsers} />
+        <StatCard label={currentPeriod.totalUsersLabel} value={stats.totalUsers} />
         <StatCard label={currentPeriod.newUsersLabel} value={stats.newUsersInPeriod} />
         <StatCard label="Переходов по ссылкам" value={stats.totalPatternLinkClicks} />
         <StatCard label="Просмотров карточек" value={stats.totalPatternViews} />
