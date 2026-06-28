@@ -14,7 +14,7 @@ const RETRY_KEYBOARD = new InlineKeyboard().text('Проверить ещё ра
 const RETRY_AFTER_ERROR_KEYBOARD = new InlineKeyboard().text('Проверить ещё раз', 'diagnostic:retry');
 const WHITELISTED_KEYBOARD = new InlineKeyboard()
   .text('Я всё равно не могу войти', 'support:escalate').row()
-  .text('Проверить ещё раз', 'diagnostic:start');
+  .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
 
 const MESSAGES: Record<DiagnosticOutcome, string> = {
   SUBSCRIBED: 'У вас есть доступ.\n\nПопробуйте открыть приложение ещё раз.',
