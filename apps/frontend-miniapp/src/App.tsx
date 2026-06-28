@@ -51,6 +51,11 @@ function App() {
           initData = "mock_dev";
         }
 
+        if (!initData) {
+          if (isMounted) setAppState("unauthorized");
+          return;
+        }
+
         const response = await authenticate(initData);
         if (isMounted) {
           if (response.isSubscriber) {
