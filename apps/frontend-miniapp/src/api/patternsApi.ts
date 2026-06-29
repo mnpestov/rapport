@@ -39,6 +39,7 @@ export interface FiltersResponse {
 
 import { API_URL } from "./config";
 import { fetchWithTimeout } from "./fetchWithTimeout";
+import { getAuthHeaders } from "./authApi";
 
 export interface FetchPatternsResponse {
   data: Pattern[];
@@ -73,7 +74,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, { signal: options.signal }, 10000);
+  const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, { signal: options.signal, headers: getAuthHeaders() }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch patterns: ${response.status}`);
   }
@@ -90,7 +91,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
 };
 
 export const fetchPatternById = async (id: string): Promise<Pattern> => {
-  const response = await fetchWithTimeout(`${API_URL}/patterns/${id}`, {}, 10000);
+  const response = await fetchWithTimeout(`${API_URL}/patterns/${id}`, { headers: getAuthHeaders() }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch pattern ${id}: ${response.status}`);
   }
@@ -104,7 +105,7 @@ export const fetchPatternById = async (id: string): Promise<Pattern> => {
 };
 
 export const fetchFilters = async (): Promise<FiltersResponse> => {
-  const response = await fetchWithTimeout(`${API_URL}/filters`, {}, 10000);
+  const response = await fetchWithTimeout(`${API_URL}/filters`, { headers: getAuthHeaders() }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch filters: ${response.status}`);
   }
@@ -120,7 +121,7 @@ export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
 
   const response = await fetchWithTimeout(`${API_URL}/patterns/batch`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify({ ids }),
   }, 10000);
 

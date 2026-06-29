@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
+import { softAuth } from "./middlewares/softAuth";
 import healthRouter from "./routes/health";
 import authRouter from "./routes/auth";
 import patternsRouter from "./routes/patterns";
@@ -22,6 +23,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(softAuth);
 
 // Раздача статических файлов из папки public
 app.use(express.static(path.join(__dirname, "../public")));
@@ -31,7 +33,8 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Глобальное логирование входящих запросов
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  const uid = req.user?.telegramId ?? "anon";
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} uid=${uid}`);
   next();
 });
 
