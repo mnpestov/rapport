@@ -8,6 +8,15 @@ import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionR
 import { Maintenance } from './pages/Maintenance/Maintenance';
 import { authenticate } from './api/authApi';
 
+function logFrontend(event: string, extra?: Record<string, unknown>) {
+  const payload = { event, userAgent: navigator.userAgent, ...extra };
+  fetch('/diag/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 
 const MAINTENANCE_MODE = false;
@@ -47,16 +56,27 @@ function App() {
         const tg = (window as any).Telegram?.WebApp;
         let initData = tg?.initData || "";
 
+        logFrontend('AUTH_START', { initDataLength: initData.length });
+
         if (!initData && import.meta.env.DEV) {
           initData = "mock_dev";
         }
 
         if (!initData) {
-          if (isMounted) setAppState("unauthorized");
-          return;
+          logFrontend('AUTH_EMPTY_INITDATA');
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          const tgRetry = (window as any).Telegram?.WebApp;
+          initData = tgRetry?.initData || "";
+          if (!initData) {
+            logFrontend('AUTH_GUARD_FIRED');
+            if (isMounted) setAppState("unauthorized");
+            return;
+          }
+          logFrontend('AUTH_EMPTY_RETRY_OK', { initDataLength: initData.length });
         }
 
         const response = await authenticate(initData);
+        logFrontend('AUTH_RESULT', { isSubscriber: response.isSubscriber });
         if (isMounted) {
           if (response.isSubscriber) {
             setAppState("authorized");
@@ -70,6 +90,7 @@ function App() {
           }
         }
       } catch (error) {
+        logFrontend('AUTH_ERROR', { error: (error as Error).message });
         if (isMounted) {
           setAppState("fetching_channel");
           const info = await fetchChannelInfo();
