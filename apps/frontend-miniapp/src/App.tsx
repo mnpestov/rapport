@@ -67,15 +67,24 @@ function App() {
           platform: tg?.platform ?? null,
         });
 
-        if (!tg && !import.meta.env.DEV) {
-          if (/Telegram/i.test(navigator.userAgent)) {
-            logFrontend('AUTH_OUTDATED_TELEGRAM', {});
-            if (isMounted) setAppState("update_telegram");
-          } else {
+        if (!import.meta.env.DEV) {
+          if (!tg) {
+            // telegram-web-app.js не загрузился (telegram.org заблокирован или старый клиент)
+            if (/Telegram/i.test(navigator.userAgent)) {
+              logFrontend('AUTH_OUTDATED_TELEGRAM', {});
+              if (isMounted) setAppState("update_telegram");
+            } else {
+              logFrontend('AUTH_BROWSER_ACCESS', {});
+              if (isMounted) setAppState("telegram_only");
+            }
+            return;
+          }
+          if (tg.platform === 'unknown' && !initData) {
+            // telegram-web-app.js загрузился, но открыто в браузере (не в Telegram)
             logFrontend('AUTH_BROWSER_ACCESS', {});
             if (isMounted) setAppState("telegram_only");
+            return;
           }
-          return;
         }
 
         if (!initData && import.meta.env.DEV) {
