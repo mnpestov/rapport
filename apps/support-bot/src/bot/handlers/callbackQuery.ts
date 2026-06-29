@@ -59,6 +59,8 @@ async function runDiagnosticFlow(ctx: CallbackCtx, isRetry: boolean): Promise<vo
   const username = ctx.from.username ?? undefined;
   const firstName = ctx.from.first_name ?? undefined;
   const lastName = ctx.from.last_name ?? undefined;
+  const languageCode = ctx.from.language_code ?? undefined;
+  const isPremium = ctx.from.is_premium ?? false;
 
   logEvent({
     event: 'CALLBACK_QUERY_RECEIVED',
@@ -93,6 +95,8 @@ async function runDiagnosticFlow(ctx: CallbackCtx, isRetry: boolean): Promise<vo
     telegramId,
     diagnosticCode: result.diagnosticCode,
     backendRequestId: result.meta.requestId,
+    languageCode: languageCode ?? null,
+    isPremium,
     isRetry,
   });
 
@@ -104,6 +108,8 @@ async function runDiagnosticFlow(ctx: CallbackCtx, isRetry: boolean): Promise<vo
       `ID: <code>${telegramId}</code>`,
       username ? `Username: @${username}` : null,
       nameParts ? `Имя: ${nameParts}` : null,
+      languageCode ? `Язык: ${languageCode}` : null,
+      isPremium ? `Premium: да` : null,
     ]
       .filter(Boolean)
       .join('\n');
@@ -134,6 +140,8 @@ export async function handleEscalate(ctx: CallbackCtx): Promise<void> {
   const username = ctx.from.username ?? undefined;
   const firstName = ctx.from.first_name ?? undefined;
   const lastName = ctx.from.last_name ?? undefined;
+  const languageCode = ctx.from.language_code ?? undefined;
+  const isPremium = ctx.from.is_premium ?? false;
 
   logEvent({
     event: 'ESCALATION_REQUESTED',
@@ -162,6 +170,8 @@ export async function handleEscalate(ctx: CallbackCtx): Promise<void> {
     `ID: <code>${telegramId}</code>`,
     username ? `Username: @${username}` : null,
     nameParts ? `Имя: ${nameParts}` : null,
+    languageCode ? `Язык: ${languageCode}` : null,
+    isPremium ? `Premium: да` : null,
   ]
     .filter(Boolean)
     .join('\n');

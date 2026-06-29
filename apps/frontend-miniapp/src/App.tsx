@@ -9,6 +9,7 @@ import { Maintenance } from './pages/Maintenance/Maintenance';
 import { authenticate } from './api/authApi';
 import { TelegramOnly } from './pages/TelegramOnly/TelegramOnly';
 import { UpdateTelegram } from './pages/UpdateTelegram/UpdateTelegram';
+import { LoadError } from './pages/LoadError/LoadError';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -23,7 +24,7 @@ import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 
 const MAINTENANCE_MODE = false;
 
-type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" | "telegram_only" | "update_telegram";
+type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" | "telegram_only" | "update_telegram" | "load_error";
 
 function App() {
   const [appState, setAppState] = useState<AppState>("loading");
@@ -57,6 +58,17 @@ function App() {
       try {
         const tg = (window as any).Telegram?.WebApp;
         let initData = tg?.initData || "";
+        let restoredFromSession = false;
+
+        if (initData) {
+          sessionStorage.setItem('tg_initData', initData);
+        } else {
+          const stored = sessionStorage.getItem('tg_initData');
+          if (stored) {
+            initData = stored;
+            restoredFromSession = true;
+          }
+        }
 
         const telegramId = tg?.initDataUnsafe?.user?.id ?? null;
         logFrontend('AUTH_START', {
@@ -65,14 +77,21 @@ function App() {
           tgExists: !!tg,
           tgVersion: tg?.version ?? null,
           platform: tg?.platform ?? null,
+          restoredFromSession,
         });
 
         if (!import.meta.env.DEV) {
           if (!tg) {
-            // telegram-web-app.js не загрузился (telegram.org заблокирован или старый клиент)
             if (/Telegram/i.test(navigator.userAgent)) {
-              logFrontend('AUTH_OUTDATED_TELEGRAM', {});
-              if (isMounted) setAppState("update_telegram");
+              const versionMatch = navigator.userAgent.match(/Telegram[^/]*\/(\d+)/i);
+              const majorVersion = versionMatch ? parseInt(versionMatch[1], 10) : 0;
+              if (majorVersion > 0 && majorVersion < 6) {
+                logFrontend('AUTH_OUTDATED_TELEGRAM', {});
+                if (isMounted) setAppState("update_telegram");
+              } else {
+                logFrontend('AUTH_SDK_LOAD_FAILED', {});
+                if (isMounted) setAppState("load_error");
+              }
             } else {
               logFrontend('AUTH_BROWSER_ACCESS', {});
               if (isMounted) setAppState("telegram_only");
@@ -158,6 +177,10 @@ function App() {
 
   if (appState === "update_telegram") {
     return <UpdateTelegram />;
+  }
+
+  if (appState === "load_error") {
+    return <LoadError />;
   }
 
   if (appState === "loading" || appState === "fetching_channel") {

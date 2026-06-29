@@ -9,7 +9,7 @@ export const TelegramOnly: React.FC = () => {
         <img src={logo} alt="Rapport" className="telegram-only-logo" />
         <h1 className="telegram-only-title">Только в Telegram</h1>
         <p className="telegram-only-text">
-          Раппорт — это Telegram Mini App. Он работает только внутри Telegram — откройте приложение через Telegram, чтобы продолжить.
+          Раппорт — это Mini App. Он работает только внутри мессенджера — откройте приложение через Telegram, чтобы продолжить.
         </p>
         <a
           className="telegram-only-button"
