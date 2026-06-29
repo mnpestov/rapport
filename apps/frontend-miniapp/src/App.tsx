@@ -57,7 +57,13 @@ function App() {
         let initData = tg?.initData || "";
 
         const telegramId = tg?.initDataUnsafe?.user?.id ?? null;
-        logFrontend('AUTH_START', { telegramId, initDataLength: initData.length });
+        logFrontend('AUTH_START', {
+          telegramId,
+          initDataLength: initData.length,
+          tgExists: !!tg,
+          tgVersion: tg?.version ?? null,
+          platform: tg?.platform ?? null,
+        });
 
         if (!initData && import.meta.env.DEV) {
           initData = "mock_dev";
