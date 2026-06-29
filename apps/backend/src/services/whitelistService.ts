@@ -86,15 +86,6 @@ export async function checkWhitelistAccess(
     where: { telegramId: BigInt(telegramId) },
   });
 
-  if (!whitelistEntry && !subResult.isSubscriber && subResult.isParticipantIdInvalid) {
-    try {
-      whitelistEntry = await ensureParticipantIdInvalidQuarantine({ telegramId, username, firstName, lastName });
-      console.log(`[Whitelist] Auto-quarantine ensured for telegramId=${telegramId}`);
-    } catch (err) {
-      console.error(`[Whitelist] Failed to ensure PARTICIPANT_ID_INVALID quarantine for telegramId=${telegramId}:`, err);
-    }
-  }
-
   if (!whitelistEntry) {
     const finalDecision = subResult.isSubscriber ? 'authorized_via_subscription' : 'denied';
     return {

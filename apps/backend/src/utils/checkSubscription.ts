@@ -85,7 +85,7 @@ async function _fetchSubscriptionResult(userId: number, requestId?: string): Pro
 async function _fetchWithRetry(userId: number, requestId?: string): Promise<SubscriptionCheckResult> {
   const result = await _fetchSubscriptionResult(userId, requestId);
 
-  if (!result.isSubscriber && result.errorName === null && result.gatewayStatusCode === 200) {
+  if (!result.isSubscriber && result.errorName === null && result.gatewayStatusCode === 200 && !result.isParticipantIdInvalid) {
     console.log(`[CheckSubscription] isSubscriber=false for userId=${userId}, retrying after 600ms`);
     await new Promise<void>(resolve => setTimeout(resolve, 600));
     const retry = await _fetchSubscriptionResult(userId, requestId);
