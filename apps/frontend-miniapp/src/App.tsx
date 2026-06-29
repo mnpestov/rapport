@@ -86,6 +86,7 @@ function App() {
         logFrontend('AUTH_RESULT', { telegramId, isSubscriber: response.isSubscriber });
         if (isMounted) {
           if (response.isSubscriber) {
+            logFrontend('APP_READY', { telegramId });
             setAppState("authorized");
           } else {
             setAppState("fetching_channel");
