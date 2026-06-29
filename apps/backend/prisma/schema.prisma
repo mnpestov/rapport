@@ -154,6 +154,23 @@ model SubscribeClick {
 // createdBy stores the admin's userId as a plain string (no FK) so entries
 // survive admin account deletions.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Bot inbox — every message a user sends to the support bot, for analysis.
+// ---------------------------------------------------------------------------
+model BotInboundMessage {
+  id          String   @id @default(uuid())
+  telegramId  BigInt
+  username    String?
+  firstName   String?
+  messageType String   // text | sticker | photo | voice | video | document | other
+  text        String?
+  fileId      String?
+  createdAt   DateTime @default(now())
+
+  @@index([telegramId])
+  @@index([createdAt])
+}
+
 model WhitelistedUser {
   id           String   @id @default(uuid())
   telegramId   BigInt   @unique

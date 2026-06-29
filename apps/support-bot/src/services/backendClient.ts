@@ -61,6 +61,31 @@ export class BackendClient {
     return data as DiagnosticResponse;
   }
 
+  async saveMessage(params: {
+    telegramId: number;
+    username?: string | null;
+    firstName?: string | null;
+    messageType: string;
+    text?: string | null;
+    fileId?: string | null;
+  }): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      await fetch(`${this.baseUrl}/internal/bot/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+    } catch {
+      // fire-and-forget, never throw
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async escalate(userId: number): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
