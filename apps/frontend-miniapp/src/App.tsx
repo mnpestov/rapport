@@ -56,27 +56,28 @@ function App() {
         const tg = (window as any).Telegram?.WebApp;
         let initData = tg?.initData || "";
 
-        logFrontend('AUTH_START', { initDataLength: initData.length });
+        const telegramId = tg?.initDataUnsafe?.user?.id ?? null;
+        logFrontend('AUTH_START', { telegramId, initDataLength: initData.length });
 
         if (!initData && import.meta.env.DEV) {
           initData = "mock_dev";
         }
 
         if (!initData) {
-          logFrontend('AUTH_EMPTY_INITDATA');
+          logFrontend('AUTH_EMPTY_INITDATA', { telegramId });
           await new Promise(resolve => setTimeout(resolve, 1500));
           const tgRetry = (window as any).Telegram?.WebApp;
           initData = tgRetry?.initData || "";
           if (!initData) {
-            logFrontend('AUTH_GUARD_FIRED');
+            logFrontend('AUTH_GUARD_FIRED', { telegramId });
             if (isMounted) setAppState("unauthorized");
             return;
           }
-          logFrontend('AUTH_EMPTY_RETRY_OK', { initDataLength: initData.length });
+          logFrontend('AUTH_EMPTY_RETRY_OK', { telegramId, initDataLength: initData.length });
         }
 
         const response = await authenticate(initData);
-        logFrontend('AUTH_RESULT', { isSubscriber: response.isSubscriber });
+        logFrontend('AUTH_RESULT', { telegramId, isSubscriber: response.isSubscriber });
         if (isMounted) {
           if (response.isSubscriber) {
             setAppState("authorized");
@@ -90,7 +91,8 @@ function App() {
           }
         }
       } catch (error) {
-        logFrontend('AUTH_ERROR', { error: (error as Error).message });
+        const tgErr = (window as any).Telegram?.WebApp;
+        logFrontend('AUTH_ERROR', { telegramId: tgErr?.initDataUnsafe?.user?.id ?? null, error: (error as Error).message });
         if (isMounted) {
           setAppState("fetching_channel");
           const info = await fetchChannelInfo();
