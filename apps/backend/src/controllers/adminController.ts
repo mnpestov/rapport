@@ -12,7 +12,7 @@ function normalizeUrl(urlStr: string): string {
     url.hostname = url.hostname.toLowerCase();
     let pathname = url.pathname.replace(/\/$/, "");
     if (!pathname) pathname = "/";
-    return url.protocol + "//" + url.hostname + pathname + url.search;
+    return url.protocol + "//" + url.hostname + pathname + url.search + url.hash;
   } catch (e) {
     return trimmed.toLowerCase().replace(/\/$/, "");
   }
