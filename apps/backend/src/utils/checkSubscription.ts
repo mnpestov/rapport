@@ -81,14 +81,26 @@ async function _fetchSubscriptionResult(userId: number, requestId?: string): Pro
   return { isSubscriber, gatewayStatusCode: statusCode, gatewayResponse, errorName, gatewayDurationMs, isParticipantIdInvalid };
 }
 
-// Original contract — returns only the boolean. requestId is optional; existing callers unchanged.
-export async function checkTelegramSubscription(userId: number, requestId?: string): Promise<boolean> {
+// Retry once on a clean false — Telegram getChatMember can return stale data on first call.
+async function _fetchWithRetry(userId: number, requestId?: string): Promise<SubscriptionCheckResult> {
   const result = await _fetchSubscriptionResult(userId, requestId);
+
+  if (!result.isSubscriber && result.errorName === null && result.gatewayStatusCode === 200) {
+    console.log(`[CheckSubscription] isSubscriber=false for userId=${userId}, retrying after 600ms`);
+    await new Promise<void>(resolve => setTimeout(resolve, 600));
+    const retry = await _fetchSubscriptionResult(userId, requestId);
+    console.log(`[CheckSubscription] Retry result for userId=${userId}: isSubscriber=${retry.isSubscriber}`);
+    return retry;
+  }
+
+  return result;
+}
+
+export async function checkTelegramSubscription(userId: number, requestId?: string): Promise<boolean> {
+  const result = await _fetchWithRetry(userId, requestId);
   return result.isSubscriber;
 }
 
-// Extended variant — returns full gateway details for whitelist logging.
-// Use this only where gateway details are needed (authController whitelist path).
 export async function checkTelegramSubscriptionDetailed(userId: number, requestId?: string): Promise<SubscriptionCheckResult> {
-  return _fetchSubscriptionResult(userId, requestId);
+  return _fetchWithRetry(userId, requestId);
 }
