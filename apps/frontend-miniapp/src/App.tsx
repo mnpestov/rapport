@@ -7,6 +7,8 @@ import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { Maintenance } from './pages/Maintenance/Maintenance';
 import { authenticate } from './api/authApi';
+import { TelegramOnly } from './pages/TelegramOnly/TelegramOnly';
+import { UpdateTelegram } from './pages/UpdateTelegram/UpdateTelegram';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -21,7 +23,7 @@ import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 
 const MAINTENANCE_MODE = false;
 
-type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized";
+type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" | "telegram_only" | "update_telegram";
 
 function App() {
   const [appState, setAppState] = useState<AppState>("loading");
@@ -64,6 +66,17 @@ function App() {
           tgVersion: tg?.version ?? null,
           platform: tg?.platform ?? null,
         });
+
+        if (!tg && !import.meta.env.DEV) {
+          if (/Telegram/i.test(navigator.userAgent)) {
+            logFrontend('AUTH_OUTDATED_TELEGRAM', {});
+            if (isMounted) setAppState("update_telegram");
+          } else {
+            logFrontend('AUTH_BROWSER_ACCESS', {});
+            if (isMounted) setAppState("telegram_only");
+          }
+          return;
+        }
 
         if (!initData && import.meta.env.DEV) {
           initData = "mock_dev";
@@ -128,6 +141,14 @@ function App() {
 
   if (MAINTENANCE_MODE) {
     return <Maintenance />;
+  }
+
+  if (appState === "telegram_only") {
+    return <TelegramOnly />;
+  }
+
+  if (appState === "update_telegram") {
+    return <UpdateTelegram />;
   }
 
   if (appState === "loading" || appState === "fetching_channel") {
