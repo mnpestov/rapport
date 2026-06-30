@@ -11,6 +11,7 @@ import {
 } from "../../api/whitelist";
 import { Modal } from "../../components/Modal/Modal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
+import { ChatPanel } from "./ChatPanel";
 import toast from "react-hot-toast";
 import styles from "./Whitelist.module.css";
 
@@ -341,7 +342,10 @@ export function Whitelist() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingEntry ? "Редактировать запись" : "Добавить в белый список"}
+        maxWidth={editingEntry ? 1060 : 500}
       >
+        <div style={{ display: "flex", gap: 0, alignItems: "stretch" }}>
+        <div style={{ flex: "0 0 440px", minWidth: 0 }}>
         <form onSubmit={handleSave} className={styles.form}>
           {editingEntry?.needsInvestigation && (
             <div className={styles.investigationBanner}>
@@ -490,6 +494,16 @@ export function Whitelist() {
             </button>
           </div>
         </form>
+        </div>
+        {editingEntry && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ChatPanel
+              telegramId={editingEntry.telegramId}
+              displayName={[editingEntry.firstName, editingEntry.lastName].filter(Boolean).join(" ") || editingEntry.username || editingEntry.telegramId}
+            />
+          </div>
+        )}
+        </div>
       </Modal>
 
       <ConfirmDialog

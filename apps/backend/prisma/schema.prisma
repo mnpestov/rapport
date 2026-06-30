@@ -155,8 +155,19 @@ model SubscribeClick {
 // survive admin account deletions.
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
-// Bot inbox — every message a user sends to the support bot, for analysis.
+// Bot chat — messages between admin and users via the support bot.
 // ---------------------------------------------------------------------------
+model AdminBotMessage {
+  id         String   @id @default(uuid())
+  telegramId BigInt
+  text       String
+  sentAt     DateTime @default(now())
+  sentBy     String?
+
+  @@index([telegramId])
+  @@index([sentAt])
+}
+
 model BotInboundMessage {
   id          String   @id @default(uuid())
   telegramId  BigInt

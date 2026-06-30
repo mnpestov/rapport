@@ -114,4 +114,11 @@ router.delete("/whitelist/:id", deleteWhitelistEntry);
 router.post("/whitelist/:id/check-subscription", checkWhitelistSubscription);
 router.post("/whitelist/:id/notify", notifyWhitelistUser);
 
+import { getChatHistory, sendChatMessage, getChatFile } from "../controllers/chatController";
+
+// file route must be before :telegramId to avoid routing conflict
+router.get("/chat/file/:fileId", getChatFile);
+router.get("/chat/:telegramId", getChatHistory);
+router.post("/chat/:telegramId/send", sendChatMessage);
+
 export default router;
