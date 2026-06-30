@@ -1,4 +1,3 @@
-import { GrammyError } from 'grammy';
 import { logEvent } from '../../logger';
 import type { CustomContext } from '../context';
 import { BackendClient } from '../../services/backendClient';
@@ -44,21 +43,6 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
     });
   }
 
-  // Service messages (new_chat_member, allow_write_to_pm, etc.) have no content — don't reply
+  // Service messages (new_chat_member, allow_write_to_pm, etc.) have no content — ignore
   if (messageType === 'other') return;
-
-  try {
-    await ctx.reply('Я не понимаю это сообщение. Воспользуйтесь кнопками.');
-  } catch (err) {
-    if (err instanceof GrammyError && err.error_code === 403) {
-      logEvent({
-        event: 'REPLY_BLOCKED',
-        requestId: ctx.requestId,
-        telegramId,
-        reason: 'bot_blocked_by_user',
-      });
-      return;
-    }
-    throw err;
-  }
 }

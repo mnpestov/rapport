@@ -115,14 +115,6 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
 export const getChatFile = async (req: Request, res: Response): Promise<void> => {
   const { fileId } = req.params;
 
-  // Allow token via query param for use in <img src> / <audio src> tags
-  if (!req.user) {
-    const { verifyToken } = await import("../utils/jwt");
-    const qToken = typeof req.query.token === "string" ? req.query.token : null;
-    if (!qToken) { res.status(401).json({ error: "Unauthorized" }); return; }
-    try { req.user = verifyToken(qToken); } catch { res.status(401).json({ error: "Unauthorized" }); return; }
-  }
-
   const botToken = process.env.BOT_TOKEN;
   const gatewayBase = process.env.TELEGRAM_GATEWAY_BASE_URL ?? "https://api.telegram.org";
 
