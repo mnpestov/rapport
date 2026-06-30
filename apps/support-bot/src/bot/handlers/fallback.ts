@@ -44,6 +44,9 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
     });
   }
 
+  // Service messages (new_chat_member, allow_write_to_pm, etc.) have no content — don't reply
+  if (messageType === 'other') return;
+
   try {
     await ctx.reply('Я не понимаю это сообщение. Воспользуйтесь кнопками.');
   } catch (err) {
