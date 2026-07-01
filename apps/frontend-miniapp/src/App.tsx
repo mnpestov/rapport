@@ -78,6 +78,11 @@ function App() {
           tgVersion: tg?.version ?? null,
           platform: tg?.platform ?? null,
           restoredFromSession,
+          navType: (window as any).navigation?.entries?.()[0]?.type ?? null,
+          perfNavType: (performance as any)?.navigation?.type ?? null,
+          hashLength: location.hash.length,
+          pathname: location.pathname,
+          referrer: document.referrer || null,
         });
 
         if (!import.meta.env.DEV) {
