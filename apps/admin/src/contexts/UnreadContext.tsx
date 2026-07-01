@@ -1,28 +1,38 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { getUnreadMessages, UnreadInfo } from "../api/chat";
+import { getUnreadMessages } from "../api/chat";
 
 interface UnreadContextValue {
-  total: number;
-  unreadUsers: Set<string>;
+  whitelistTotal: number;
+  whitelistUsers: Set<string>;
+  allTotal: number;
+  allUsers: Set<string>;
   refresh: () => void;
 }
 
 const UnreadContext = createContext<UnreadContextValue>({
-  total: 0,
-  unreadUsers: new Set(),
+  whitelistTotal: 0,
+  whitelistUsers: new Set(),
+  allTotal: 0,
+  allUsers: new Set(),
   refresh: () => {},
 });
 
 export function UnreadProvider({ children }: { children: React.ReactNode }) {
-  const [info, setInfo] = useState<UnreadInfo>({ total: 0, users: [] });
+  const [whitelistTotal, setWhitelistTotal] = useState(0);
+  const [whitelistUsers, setWhitelistUsers] = useState<Set<string>>(new Set());
+  const [allTotal, setAllTotal] = useState(0);
+  const [allUsers, setAllUsers] = useState<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
     try {
       const data = await getUnreadMessages();
-      setInfo(data);
+      setWhitelistTotal(data.whitelist.total);
+      setWhitelistUsers(new Set(data.whitelist.users.map((u) => u.telegramId)));
+      setAllTotal(data.all.total);
+      setAllUsers(new Set(data.all.users.map((u) => u.telegramId)));
     } catch {
-      // silent — admin may be on a different page
+      // silent
     }
   }, []);
 
@@ -35,13 +45,11 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   }, [poll]);
 
   useEffect(() => {
-    document.title = info.total > 0 ? `Rapport Admin (${info.total})` : "Rapport Admin";
-  }, [info.total]);
-
-  const unreadUsers = new Set(info.users.map((u) => u.telegramId));
+    document.title = allTotal > 0 ? `Rapport Admin (${allTotal})` : "Rapport Admin";
+  }, [allTotal]);
 
   return (
-    <UnreadContext.Provider value={{ total: info.total, unreadUsers, refresh: poll }}>
+    <UnreadContext.Provider value={{ whitelistTotal, whitelistUsers, allTotal, allUsers, refresh: poll }}>
       {children}
     </UnreadContext.Provider>
   );

@@ -1,11 +1,11 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { FileText, TrendingUp, Users, LogOut, ShieldCheck } from "lucide-react";
+import { FileText, TrendingUp, Users, LogOut, ShieldCheck, MessageSquare } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 
 export function Sidebar() {
   const navigate = useNavigate();
-  const { total } = useUnread();
+  const { whitelistTotal, allTotal } = useUnread();
 
   const handleLogout = () => {
     localStorage.removeItem("jwt_token");
@@ -50,6 +50,17 @@ export function Sidebar() {
         </NavLink>
 
         <NavLink
+          to="/requests"
+          className={({ isActive }) =>
+            `${styles.navItem} ${isActive ? styles.active : ""}`
+          }
+        >
+          <MessageSquare size={20} className={styles.icon} />
+          <span className={styles.label}>Обращения</span>
+          {allTotal > 0 && <span className={styles.badge}>{allTotal}</span>}
+        </NavLink>
+
+        <NavLink
           to="/whitelist"
           className={({ isActive }) =>
             `${styles.navItem} ${isActive ? styles.active : ""}`
@@ -57,7 +68,7 @@ export function Sidebar() {
         >
           <ShieldCheck size={20} className={styles.icon} />
           <span className={styles.label}>Белый список</span>
-          {total > 0 && <span className={styles.badge}>{total}</span>}
+          {whitelistTotal > 0 && <span className={styles.badge}>{whitelistTotal}</span>}
         </NavLink>
       </nav>
 

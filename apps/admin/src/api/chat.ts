@@ -35,9 +35,14 @@ export const sendChatMessage = async (telegramId: string, text: string): Promise
   return res.json();
 };
 
-export interface UnreadInfo {
+interface UnreadGroup {
   total: number;
   users: { telegramId: string; unreadCount: number }[];
+}
+
+export interface UnreadInfo {
+  all: UnreadGroup;
+  whitelist: UnreadGroup;
 }
 
 export const getUnreadMessages = async (): Promise<UnreadInfo> => {
@@ -45,6 +50,25 @@ export const getUnreadMessages = async (): Promise<UnreadInfo> => {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(`Failed to fetch unread: ${res.statusText}`);
+  return res.json();
+};
+
+export interface RequestUser {
+  telegramId: string;
+  username: string | null;
+  firstName: string | null;
+  lastMessageAt: string;
+  lastMessageText: string | null;
+  lastMessageType: string;
+  unreadCount: number;
+  isWhitelisted: boolean;
+}
+
+export const getRequests = async (): Promise<RequestUser[]> => {
+  const res = await fetch(`${API_URL}/admin/requests`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch requests: ${res.statusText}`);
   return res.json();
 };
 

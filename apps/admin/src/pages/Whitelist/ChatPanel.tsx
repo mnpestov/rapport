@@ -7,6 +7,7 @@ import { useUnread } from "../../contexts/UnreadContext";
 interface Props {
   telegramId: string;
   displayName: string;
+  onRead?: () => void;
 }
 
 function MediaMessage({ msg }: { msg: ChatMessage }) {
@@ -57,7 +58,7 @@ function MediaMessage({ msg }: { msg: ChatMessage }) {
   );
 }
 
-export function ChatPanel({ telegramId, displayName }: Props) {
+export function ChatPanel({ telegramId, displayName, onRead }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -76,7 +77,9 @@ export function ChatPanel({ telegramId, displayName }: Props) {
   };
 
   useEffect(() => {
-    markChatAsRead(telegramId).then(refreshUnread).catch(() => {});
+    markChatAsRead(telegramId)
+      .then(() => { refreshUnread(); onRead?.(); })
+      .catch(() => {});
     load();
     const id = setInterval(load, 3000);
     return () => clearInterval(id);

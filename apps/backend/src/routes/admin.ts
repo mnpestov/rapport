@@ -114,7 +114,7 @@ router.delete("/whitelist/:id", deleteWhitelistEntry);
 router.post("/whitelist/:id/check-subscription", checkWhitelistSubscription);
 router.post("/whitelist/:id/notify", notifyWhitelistUser);
 
-import { getChatHistory, sendChatMessage, getChatFile, getUnreadMessages, markChatAsRead } from "../controllers/chatController";
+import { getChatHistory, sendChatMessage, getChatFile, getUnreadMessages, markChatAsRead, getRequests } from "../controllers/chatController";
 
 // static routes must be before :telegramId wildcard to avoid routing conflict
 router.get("/chat/unread", getUnreadMessages);
@@ -122,5 +122,7 @@ router.get("/chat/file/:fileId", getChatFile);
 router.get("/chat/:telegramId", getChatHistory);
 router.post("/chat/:telegramId/send", sendChatMessage);
 router.patch("/chat/:telegramId/read", markChatAsRead);
+
+router.get("/requests", getRequests);
 
 export default router;

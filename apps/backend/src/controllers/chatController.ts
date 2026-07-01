@@ -113,7 +113,7 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
 };
 
 export const getUnreadMessages = async (_req: Request, res: Response): Promise<void> => {
-  const rows = await prisma.$queryRaw<{ telegramId: bigint; unreadCount: bigint }[]>`
+  const allRows = await prisma.$queryRaw<{ telegramId: bigint; unreadCount: bigint }[]>`
     SELECT bim."telegramId", COUNT(*) AS "unreadCount"
     FROM "BotInboundMessage" bim
     LEFT JOIN "AdminChatState" acs ON acs."telegramId" = bim."telegramId"
@@ -122,12 +122,74 @@ export const getUnreadMessages = async (_req: Request, res: Response): Promise<v
     HAVING COUNT(*) > 0
   `;
 
-  const users = rows.map((r) => ({
-    telegramId: r.telegramId.toString(),
-    unreadCount: Number(r.unreadCount),
-  }));
+  const whitelistRows = await prisma.$queryRaw<{ telegramId: bigint; unreadCount: bigint }[]>`
+    SELECT bim."telegramId", COUNT(*) AS "unreadCount"
+    FROM "BotInboundMessage" bim
+    INNER JOIN "WhitelistedUser" wu ON wu."telegramId" = bim."telegramId"
+    LEFT JOIN "AdminChatState" acs ON acs."telegramId" = bim."telegramId"
+    WHERE acs."lastReadAt" IS NULL OR bim."createdAt" > acs."lastReadAt"
+    GROUP BY bim."telegramId"
+    HAVING COUNT(*) > 0
+  `;
 
-  res.json({ total: users.reduce((sum, u) => sum + u.unreadCount, 0), users });
+  const toUserList = (rows: { telegramId: bigint; unreadCount: bigint }[]) =>
+    rows.map((r) => ({ telegramId: r.telegramId.toString(), unreadCount: Number(r.unreadCount) }));
+
+  const allUsers = toUserList(allRows);
+  const whitelistUsers = toUserList(whitelistRows);
+
+  res.json({
+    all: { total: allUsers.reduce((s, u) => s + u.unreadCount, 0), users: allUsers },
+    whitelist: { total: whitelistUsers.reduce((s, u) => s + u.unreadCount, 0), users: whitelistUsers },
+  });
+};
+
+export const getRequests = async (_req: Request, res: Response): Promise<void> => {
+  const latest = await prisma.$queryRaw<{
+    telegramId: bigint;
+    username: string | null;
+    firstName: string | null;
+    lastMessageAt: Date;
+    lastMessageText: string | null;
+    lastMessageType: string;
+  }[]>`
+    SELECT DISTINCT ON (bim."telegramId")
+      bim."telegramId",
+      bim.username,
+      bim."firstName",
+      bim."createdAt" AS "lastMessageAt",
+      bim.text AS "lastMessageText",
+      bim."messageType" AS "lastMessageType"
+    FROM "BotInboundMessage" bim
+    ORDER BY bim."telegramId", bim."createdAt" DESC
+  `;
+
+  const unreadRows = await prisma.$queryRaw<{ telegramId: bigint; unreadCount: bigint }[]>`
+    SELECT bim."telegramId", COUNT(*) AS "unreadCount"
+    FROM "BotInboundMessage" bim
+    LEFT JOIN "AdminChatState" acs ON acs."telegramId" = bim."telegramId"
+    WHERE acs."lastReadAt" IS NULL OR bim."createdAt" > acs."lastReadAt"
+    GROUP BY bim."telegramId"
+  `;
+  const unreadMap = new Map(unreadRows.map((r) => [r.telegramId.toString(), Number(r.unreadCount)]));
+
+  const whitelistIds = await prisma.whitelistedUser.findMany({ select: { telegramId: true } });
+  const whitelistSet = new Set(whitelistIds.map((w) => w.telegramId.toString()));
+
+  const result = latest
+    .map((u) => ({
+      telegramId: u.telegramId.toString(),
+      username: u.username,
+      firstName: u.firstName,
+      lastMessageAt: u.lastMessageAt.toISOString(),
+      lastMessageText: u.lastMessageText,
+      lastMessageType: u.lastMessageType,
+      unreadCount: unreadMap.get(u.telegramId.toString()) ?? 0,
+      isWhitelisted: whitelistSet.has(u.telegramId.toString()),
+    }))
+    .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+
+  res.json(result);
 };
 
 export const markChatAsRead = async (req: Request, res: Response): Promise<void> => {
