@@ -26,6 +26,9 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
   const { messageType, fileId } = detectMessageType(ctx);
   const text = ctx.message?.text ?? null;
 
+  // Service messages (new_chat_member, allow_write_to_pm, etc.) have no content — ignore
+  if (messageType === 'other') return;
+
   logEvent({
     event: 'UNHANDLED_UPDATE',
     requestId: ctx.requestId,
@@ -45,7 +48,4 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
       fileId: fileId ?? null,
     });
   }
-
-  // Service messages (new_chat_member, allow_write_to_pm, etc.) have no content — ignore
-  if (messageType === 'other') return;
 }

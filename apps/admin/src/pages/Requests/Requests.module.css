@@ -186,6 +186,26 @@
   margin-bottom: 3px;
 }
 
+.subTagSubscribed {
+  display: inline-block;
+  font-family: 'Mulish', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #16a34a;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
+.subTagNotSubscribed {
+  display: inline-block;
+  font-family: 'Mulish', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
 .cardBottom {
   display: flex;
   align-items: center;

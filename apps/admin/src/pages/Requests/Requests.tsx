@@ -137,6 +137,13 @@ export function Requests() {
                   <span className={styles.cardTime}>{formatTime(user.lastMessageAt)}</span>
                 </div>
                 <div className={styles.cardTgId}>{user.telegramId}</div>
+                {user.isSubscribed !== null && (
+                  <div
+                    className={user.isSubscribed ? styles.subTagSubscribed : styles.subTagNotSubscribed}
+                  >
+                    {user.isSubscribed ? "✓ Подписан" : "✗ Не подписан"}
+                  </div>
+                )}
                 <div className={styles.cardBottom}>
                   <span className={styles.cardPreview}>{lastMessagePreview(user)}</span>
                   {user.unreadCount > 0 && (

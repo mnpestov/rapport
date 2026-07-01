@@ -104,3 +104,33 @@ export async function checkTelegramSubscription(userId: number, requestId?: stri
 export async function checkTelegramSubscriptionDetailed(userId: number, requestId?: string): Promise<SubscriptionCheckResult> {
   return _fetchWithRetry(userId, requestId);
 }
+
+// Single-attempt check with a shorter timeout — used for bulk admin queries where retry would be too slow.
+export async function checkTelegramSubscriptionOnce(userId: number): Promise<boolean | null> {
+  const gatewayUrl = process.env.TELEGRAM_GATEWAY_URL;
+  const gatewayKey = process.env.TELEGRAM_GATEWAY_API_KEY;
+  if (!gatewayUrl || !gatewayKey) return null;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    let response;
+    try {
+      response = await fetch(gatewayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Gateway-Key": gatewayKey },
+        body: JSON.stringify({ userId }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    const data = await response.json().catch(() => null);
+    if (response.ok && data && typeof data.isSubscriber === 'boolean') {
+      return data.isSubscriber;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

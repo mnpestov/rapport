@@ -62,6 +62,7 @@ export interface RequestUser {
   lastMessageType: string;
   unreadCount: number;
   isWhitelisted: boolean;
+  isSubscribed: boolean | null;
 }
 
 export const getRequests = async (): Promise<RequestUser[]> => {

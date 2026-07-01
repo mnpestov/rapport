@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
+import { checkTelegramSubscriptionOnce } from "../utils/checkSubscription";
 
 export interface ChatMessage {
   id: string;
@@ -176,8 +177,12 @@ export const getRequests = async (_req: Request, res: Response): Promise<void> =
   const whitelistIds = await prisma.whitelistedUser.findMany({ select: { telegramId: true } });
   const whitelistSet = new Set(whitelistIds.map((w) => w.telegramId.toString()));
 
+  const subscriptionResults = await Promise.all(
+    latest.map((u) => checkTelegramSubscriptionOnce(Number(u.telegramId)).catch(() => null))
+  );
+
   const result = latest
-    .map((u) => ({
+    .map((u, i) => ({
       telegramId: u.telegramId.toString(),
       username: u.username,
       firstName: u.firstName,
@@ -186,6 +191,7 @@ export const getRequests = async (_req: Request, res: Response): Promise<void> =
       lastMessageType: u.lastMessageType,
       unreadCount: unreadMap.get(u.telegramId.toString()) ?? 0,
       isWhitelisted: whitelistSet.has(u.telegramId.toString()),
+      isSubscribed: subscriptionResults[i],
     }))
     .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
 
