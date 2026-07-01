@@ -136,6 +136,7 @@ export function Requests() {
                   </span>
                   <span className={styles.cardTime}>{formatTime(user.lastMessageAt)}</span>
                 </div>
+                <div className={styles.cardTgId}>{user.telegramId}</div>
                 <div className={styles.cardBottom}>
                   <span className={styles.cardPreview}>{lastMessagePreview(user)}</span>
                   {user.unreadCount > 0 && (
