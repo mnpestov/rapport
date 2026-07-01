@@ -136,8 +136,7 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
       return res.json({ data: [] });
     }
 
-    // Cap at 50 to prevent abuse
-    const validIds = ids.filter((id): id is string => typeof id === "string").slice(0, 50);
+    const validIds = ids.filter((id): id is string => typeof id === "string").slice(0, 500);
 
     const patterns = await prisma.pattern.findMany({
       where: { 
