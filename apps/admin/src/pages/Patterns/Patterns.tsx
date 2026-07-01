@@ -347,7 +347,7 @@ export function Patterns() {
           {status === "archive" && (
             <button 
               className={styles.btnAdd} 
-              style={{ background: "#3b82f6" }}
+              style={{ background: "#D8520F" }}
               disabled={selectedIds.size === 0}
               onClick={handleRestoreSelected}
             >

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "pnpm -r run dev",
     "build": "pnpm -r run build",
-    "lint": "pnpm -r run lint"
+    "lint": "pnpm -r run lint",
+    "deploy": "cd /var/www/rapport && git pull && cd apps/backend && pnpm prisma migrate deploy && cd /var/www/rapport && pnpm install && pnpm build && pm2 restart rapport-api && pm2 restart rapport-support-bot --update-env"
   },
   "engines": {
     "node": ">=18"
