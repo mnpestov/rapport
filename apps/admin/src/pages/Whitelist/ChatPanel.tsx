@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Download, FileText, Mic } from "lucide-react";
-import { getChatHistory, sendChatMessage, getChatFileUrl, ChatMessage } from "../../api/chat";
+import { getChatHistory, sendChatMessage, getChatFileUrl, markChatAsRead, ChatMessage } from "../../api/chat";
 import styles from "./ChatPanel.module.css";
+import { useUnread } from "../../contexts/UnreadContext";
 
 interface Props {
   telegramId: string;
@@ -63,6 +64,7 @@ export function ChatPanel({ telegramId, displayName }: Props) {
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { refresh: refreshUnread } = useUnread();
 
   const load = async () => {
     try {
@@ -74,6 +76,7 @@ export function ChatPanel({ telegramId, displayName }: Props) {
   };
 
   useEffect(() => {
+    markChatAsRead(telegramId).then(refreshUnread).catch(() => {});
     load();
     const id = setInterval(load, 3000);
     return () => clearInterval(id);

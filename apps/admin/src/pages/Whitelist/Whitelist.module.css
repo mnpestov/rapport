@@ -292,6 +292,15 @@
   background-color: #f9fafb;
 }
 
+.unreadDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6366f1;
+  flex-shrink: 0;
+}
+
 .investigationDot {
   display: inline-block;
   width: 8px;

@@ -1,9 +1,11 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { FileText, TrendingUp, Users, LogOut, ShieldCheck } from "lucide-react";
 import styles from "./Sidebar.module.css";
+import { useUnread } from "../../contexts/UnreadContext";
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const { total } = useUnread();
 
   const handleLogout = () => {
     localStorage.removeItem("jwt_token");
@@ -55,6 +57,7 @@ export function Sidebar() {
         >
           <ShieldCheck size={20} className={styles.icon} />
           <span className={styles.label}>Белый список</span>
+          {total > 0 && <span className={styles.badge}>{total}</span>}
         </NavLink>
       </nav>
 

@@ -35,6 +35,26 @@ export const sendChatMessage = async (telegramId: string, text: string): Promise
   return res.json();
 };
 
+export interface UnreadInfo {
+  total: number;
+  users: { telegramId: string; unreadCount: number }[];
+}
+
+export const getUnreadMessages = async (): Promise<UnreadInfo> => {
+  const res = await fetch(`${API_URL}/admin/chat/unread`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch unread: ${res.statusText}`);
+  return res.json();
+};
+
+export const markChatAsRead = async (telegramId: string): Promise<void> => {
+  await fetch(`${API_URL}/admin/chat/${telegramId}/read`, {
+    method: "PATCH",
+    headers: authHeaders(),
+  });
+};
+
 export const getChatFileUrl = (fileId: string): string => {
   const token = localStorage.getItem("jwt_token") ?? "";
   return `${API_URL}/admin/chat/file/${encodeURIComponent(fileId)}?token=${encodeURIComponent(token)}`;

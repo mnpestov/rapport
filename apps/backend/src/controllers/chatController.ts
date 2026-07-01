@@ -112,6 +112,44 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
   res.status(201).json(message);
 };
 
+export const getUnreadMessages = async (_req: Request, res: Response): Promise<void> => {
+  const rows = await prisma.$queryRaw<{ telegramId: bigint; unreadCount: bigint }[]>`
+    SELECT bim."telegramId", COUNT(*) AS "unreadCount"
+    FROM "BotInboundMessage" bim
+    LEFT JOIN "AdminChatState" acs ON acs."telegramId" = bim."telegramId"
+    WHERE acs."lastReadAt" IS NULL OR bim."createdAt" > acs."lastReadAt"
+    GROUP BY bim."telegramId"
+    HAVING COUNT(*) > 0
+  `;
+
+  const users = rows.map((r) => ({
+    telegramId: r.telegramId.toString(),
+    unreadCount: Number(r.unreadCount),
+  }));
+
+  res.json({ total: users.reduce((sum, u) => sum + u.unreadCount, 0), users });
+};
+
+export const markChatAsRead = async (req: Request, res: Response): Promise<void> => {
+  const { telegramId } = req.params;
+
+  let tgId: bigint;
+  try {
+    tgId = BigInt(telegramId);
+  } catch {
+    res.status(400).json({ error: "Invalid telegramId" });
+    return;
+  }
+
+  await prisma.adminChatState.upsert({
+    where: { telegramId: tgId },
+    create: { telegramId: tgId, lastReadAt: new Date() },
+    update: { lastReadAt: new Date() },
+  });
+
+  res.json({ ok: true });
+};
+
 export const getChatFile = async (req: Request, res: Response): Promise<void> => {
   const { fileId } = req.params;
 

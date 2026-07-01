@@ -14,6 +14,7 @@ import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import { ChatPanel } from "./ChatPanel";
 import toast from "react-hot-toast";
 import styles from "./Whitelist.module.css";
+import { useUnread } from "../../contexts/UnreadContext";
 
 interface FormData {
   telegramId: string;
@@ -53,6 +54,7 @@ export function Whitelist() {
 
   const [checkingSubId, setCheckingSubId] = useState<string | null>(null);
   const [isNotifying, setIsNotifying] = useState(false);
+  const { unreadUsers } = useUnread();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -260,6 +262,12 @@ export function Whitelist() {
                 <td className={styles.tdText}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     {entry.telegramId}
+                    {unreadUsers.has(entry.telegramId) && (
+                      <span
+                        className={styles.unreadDot}
+                        title="Новое сообщение"
+                      />
+                    )}
                     {entry.needsInvestigation && (
                       <span
                         className={styles.investigationDot}
