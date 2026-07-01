@@ -188,6 +188,14 @@ export const notifyWhitelistUser = async (req: Request, res: Response) => {
       return res.status(502).json({ error: "Failed to send Telegram message" });
     }
 
+    await prisma.adminBotMessage.create({
+      data: {
+        telegramId,
+        text: "Мы разобрались с проблемой — попробуйте открыть приложение снова.",
+        sentBy: req.user?.userId ?? null,
+      },
+    });
+
     return res.json({ success: true });
   } catch (error) {
     console.error("[Whitelist] Failed to send notification:", error);
