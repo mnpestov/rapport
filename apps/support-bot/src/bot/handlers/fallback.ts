@@ -19,6 +19,9 @@ function detectMessageType(ctx: CustomContext): { messageType: string; fileId?: 
 }
 
 export async function handleFallback(ctx: CustomContext): Promise<void> {
+  // Only handle private messages — ignore channel discussion groups and group chats
+  if (ctx.chat?.type !== 'private') return;
+
   const telegramId = ctx.from?.id ?? null;
   const { messageType, fileId } = detectMessageType(ctx);
   const text = ctx.message?.text ?? null;
