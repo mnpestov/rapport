@@ -54,7 +54,7 @@ export function Whitelist() {
 
   const [checkingSubId, setCheckingSubId] = useState<string | null>(null);
   const [isNotifying, setIsNotifying] = useState(false);
-  const { unreadUsers } = useUnread();
+  const { whitelistUsers: unreadUsers } = useUnread();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
