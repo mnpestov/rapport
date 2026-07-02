@@ -684,3 +684,36 @@ export const getInstruments = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+function fixQuotes(title: string): string {
+  let isOpen = true;
+  return title.replace(/"/g, () => {
+    const q = isOpen ? '«' : '»';
+    isOpen = !isOpen;
+    return q;
+  });
+}
+
+export const fixArchiveQuotes = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const patterns = await prisma.pattern.findMany({
+      where: { isVisible: false, title: { contains: '"' } },
+      select: { id: true, title: true },
+    });
+
+    if (patterns.length === 0) {
+      res.json({ updated: 0 });
+      return;
+    }
+
+    await Promise.all(
+      patterns.map((p) =>
+        prisma.pattern.update({ where: { id: p.id }, data: { title: fixQuotes(p.title) } })
+      )
+    );
+
+    res.json({ updated: patterns.length });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

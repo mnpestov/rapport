@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus } from "lucide-react";
-import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById } from "../../api/patterns";
+import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
@@ -345,13 +345,29 @@ export function Patterns() {
             Убрать статус «Новинка»
           </button>
           {status === "archive" && (
-            <button 
-              className={styles.btnAdd} 
+            <button
+              className={styles.btnAdd}
               style={{ background: "#D8520F" }}
               disabled={selectedIds.size === 0}
               onClick={handleRestoreSelected}
             >
               Восстановить
+            </button>
+          )}
+          {status === "archive" && (
+            <button
+              className={styles.btnResetNew}
+              onClick={async () => {
+                try {
+                  const { updated } = await fixArchiveQuotes();
+                  toast.success(updated > 0 ? `Кавычки заменены в ${updated} описаниях` : "Описаний с кавычками не найдено");
+                  if (updated > 0) setPage(1);
+                } catch {
+                  toast.error("Не удалось заменить кавычки");
+                }
+              }}
+            >
+              Заменить кавычки
             </button>
           )}
           <button 

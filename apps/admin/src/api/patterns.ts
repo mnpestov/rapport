@@ -234,6 +234,16 @@ export const getInstruments = async (): Promise<DictionaryItem[]> => {
   return response.json();
 };
 
+export const fixArchiveQuotes = async (): Promise<{ updated: number }> => {
+  const token = localStorage.getItem("jwt_token");
+  const response = await fetch(`${API_URL}/admin/patterns/fix-archive-quotes`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!response.ok) throw new Error("Failed to fix quotes");
+  return response.json();
+};
+
 export const uploadImage = async (file: File): Promise<{ url: string }> => {
   const token = localStorage.getItem("jwt_token");
   const formData = new FormData();
