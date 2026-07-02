@@ -17,8 +17,22 @@ export const Favorites: React.FC = () => {
   const [offset, setOffset] = useState(0);
   const hasMore = offset < favorites.length;
 
-  // Initial load and reset when favorites list changes
+  const prevFavoritesRef = useRef<string[]>([]);
+
   useEffect(() => {
+    const prev = prevFavoritesRef.current;
+    prevFavoritesRef.current = favorites;
+
+    // Pure removal: all current favorites were in the previous list, nothing added.
+    // Just filter the local state — no API call, no flash.
+    const isOnlyRemovals = prev.length > 0 && favorites.every(id => prev.includes(id));
+    if (isOnlyRemovals) {
+      const keepIds = new Set(favorites);
+      setPatterns(curr => curr.filter(p => keepIds.has(p.id)));
+      return;
+    }
+
+    // Initial load or additions — fetch from API.
     let isMounted = true;
 
     const loadInitial = async () => {
