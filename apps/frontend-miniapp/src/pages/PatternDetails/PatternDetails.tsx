@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { fetchPatternById, Pattern } from '../../api/patternsApi';
 import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
@@ -10,6 +10,7 @@ import './PatternDetails.css';
 export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const [pattern, setPattern] = useState<Pattern | null>(null);
@@ -43,7 +44,11 @@ export const PatternDetails: React.FC = () => {
   }, [id]);
 
   const handleBack = () => {
-    navigate('/');
+    if (location.key !== 'default') {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
   };
 
   const handleOpenLink = () => {
