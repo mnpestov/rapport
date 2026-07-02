@@ -697,7 +697,7 @@ function fixQuotes(title: string): string {
 export const fixArchiveQuotes = async (_req: Request, res: Response): Promise<void> => {
   try {
     const patterns = await prisma.pattern.findMany({
-      where: { isVisible: false, title: { contains: '"' } },
+      where: { title: { contains: '"' } },
       select: { id: true, title: true },
     });
 

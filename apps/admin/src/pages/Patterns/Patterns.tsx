@@ -354,22 +354,20 @@ export function Patterns() {
               Восстановить
             </button>
           )}
-          {status === "archive" && (
-            <button
-              className={styles.btnResetNew}
-              onClick={async () => {
-                try {
-                  const { updated } = await fixArchiveQuotes();
-                  toast.success(updated > 0 ? `Кавычки заменены в ${updated} описаниях` : "Описаний с кавычками не найдено");
-                  if (updated > 0) setPage(1);
-                } catch {
-                  toast.error("Не удалось заменить кавычки");
-                }
-              }}
-            >
-              Заменить кавычки
-            </button>
-          )}
+          <button
+            className={styles.btnResetNew}
+            onClick={async () => {
+              try {
+                const { updated } = await fixArchiveQuotes();
+                toast.success(updated > 0 ? `Кавычки заменены в ${updated} описаниях` : "Описаний с кавычками не найдено");
+                if (updated > 0) setPage(1);
+              } catch {
+                toast.error("Не удалось заменить кавычки");
+              }
+            }}
+          >
+            Заменить кавычки
+          </button>
           <button 
             className={styles.btnDelete} 
             disabled={selectedIds.size === 0}
