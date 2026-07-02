@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Check, X, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Check, X, Pencil, Trash2, Search } from "lucide-react";
 import { DictionaryItem, updateCategory, deleteCategory, updateTag, deleteTag } from "../../api/patterns";
 import { Modal } from "../../components/Modal/Modal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
@@ -27,6 +27,7 @@ function pluralize(count: number): string {
 
 export function DictionariesModal({ isOpen, onClose, categories, tags, onRefresh }: Props) {
   const [tab, setTab] = useState<Tab>("categories");
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [deletingItem, setDeletingItem] = useState<DictionaryItem | null>(null);
@@ -34,10 +35,14 @@ export function DictionariesModal({ isOpen, onClose, categories, tags, onRefresh
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const items = tab === "categories" ? categories : tags;
+  const allItems = tab === "categories" ? categories : tags;
+  const items = search.trim()
+    ? allItems.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : allItems;
 
   const switchTab = (next: Tab) => {
     setTab(next);
+    setSearch("");
     setEditingId(null);
     setEditingName("");
   };
@@ -124,6 +129,21 @@ export function DictionariesModal({ isOpen, onClose, categories, tags, onRefresh
           </button>
         </div>
 
+        <div className={styles.searchWrapper}>
+          <Search size={15} className={styles.searchIcon} />
+          <input
+            className={styles.searchInput}
+            placeholder="Поиск..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className={styles.searchClear} onClick={() => setSearch("")}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
         <div className={styles.list}>
           {items.map(item => (
             <div key={item.id} className={styles.item}>
@@ -163,7 +183,7 @@ export function DictionariesModal({ isOpen, onClose, categories, tags, onRefresh
             </div>
           ))}
           {items.length === 0 && (
-            <div className={styles.empty}>Нет элементов</div>
+            <div className={styles.empty}>{search ? "Ничего не найдено" : "Нет элементов"}</div>
           )}
         </div>
       </Modal>
