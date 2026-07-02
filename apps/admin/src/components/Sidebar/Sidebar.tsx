@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { FileText, TrendingUp, Users, LogOut, ShieldCheck, MessageSquare } from "lucide-react";
+import { FileText, TrendingUp, Users, LogOut, ShieldCheck, MessageSquare, BookUser } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 
@@ -69,6 +69,16 @@ export function Sidebar() {
           <ShieldCheck size={20} className={styles.icon} />
           <span className={styles.label}>Белый список</span>
           {whitelistTotal > 0 && <span className={styles.badge}>{whitelistTotal}</span>}
+        </NavLink>
+
+        <NavLink
+          to="/users"
+          className={({ isActive }) =>
+            `${styles.navItem} ${isActive ? styles.active : ""}`
+          }
+        >
+          <BookUser size={20} className={styles.icon} />
+          <span className={styles.label}>Пользователи</span>
         </NavLink>
       </nav>
 

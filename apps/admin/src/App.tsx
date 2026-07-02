@@ -7,6 +7,7 @@ import { Patterns } from './pages/Patterns/Patterns'
 import { Authors } from './pages/Authors/Authors'
 import { Whitelist } from './pages/Whitelist/Whitelist'
 import { Requests } from './pages/Requests/Requests'
+import { Users } from './pages/Users/Users'
 
 import { Toaster } from 'react-hot-toast';
 
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="stats" element={<Dashboard />} />
             <Route path="requests" element={<Requests />} />
             <Route path="whitelist" element={<Whitelist />} />
+            <Route path="users" element={<Users />} />
           </Route>
         </Route>
 

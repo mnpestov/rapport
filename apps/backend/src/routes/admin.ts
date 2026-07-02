@@ -125,4 +125,9 @@ router.patch("/chat/:telegramId/read", markChatAsRead);
 
 router.get("/requests", getRequests);
 
+import { getUsers, getUserSubscription } from "../controllers/usersController";
+
+router.get("/users", getUsers);
+router.get("/users/:telegramId/subscription", getUserSubscription);
+
 export default router;
