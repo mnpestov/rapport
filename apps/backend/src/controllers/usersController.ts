@@ -2,11 +2,22 @@ import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
 import { checkTelegramSubscriptionOnce } from "../utils/checkSubscription";
 
+const SORT_FIELDS = ["firstName", "lastSeenAt", "createdAt", "favoritesCount"] as const;
+const SORT_ORDERS = ["asc", "desc"] as const;
+type SortField = typeof SORT_FIELDS[number];
+type SortOrder = typeof SORT_ORDERS[number];
+
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
-  const { search, limit = "50", offset = "0" } = req.query;
+  const { search, limit = "50", offset = "0", sortBy = "lastSeenAt", sortOrder = "desc" } = req.query;
 
   const take = Math.min(parseInt(limit as string, 10) || 50, 100);
   const skip = parseInt(offset as string, 10) || 0;
+
+  const field: SortField = SORT_FIELDS.includes(sortBy as SortField) ? (sortBy as SortField) : "lastSeenAt";
+  const order: SortOrder = SORT_ORDERS.includes(sortOrder as SortOrder) ? (sortOrder as SortOrder) : "desc";
+  const orderBy: any = field === "favoritesCount"
+    ? { favorites: { _count: order } }
+    : { [field]: order };
 
   const where: any = {};
   if (search && typeof search === "string") {
@@ -27,7 +38,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
       where,
       take,
       skip,
-      orderBy: { lastSeenAt: "desc" },
+      orderBy,
       select: {
         id: true,
         telegramId: true,

@@ -74,6 +74,27 @@ thead th {
   white-space: nowrap;
 }
 
+.thSortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.thSortable:hover {
+  color: #374151;
+}
+
+.sortIconActive {
+  color: #83942C;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.sortIconInactive {
+  color: #d1d5db;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 tbody tr {
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer;

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Search, X, Heart } from "lucide-react";
-import { getUsers, getUserSubscription, AdminUser } from "../../api/users";
+import { Search, X, Heart, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { getUsers, getUserSubscription, AdminUser, SortField, SortOrder } from "../../api/users";
 import styles from "./Users.module.css";
 
 const LIMIT = 50;
@@ -128,20 +128,29 @@ function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
   );
 }
 
+function SortIcon({ field, sortBy, sortOrder }: { field: SortField; sortBy: SortField; sortOrder: SortOrder }) {
+  if (sortBy !== field) return <ChevronsUpDown size={13} className={styles.sortIconInactive} />;
+  return sortOrder === "asc"
+    ? <ChevronUp size={13} className={styles.sortIconActive} />
+    : <ChevronDown size={13} className={styles.sortIconActive} />;
+}
+
 export function Users() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
+  const [sortBy, setSortBy] = useState<SortField>("lastSeenAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [selected, setSelected] = useState<AdminUser | null>(null);
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async (q: string, off: number) => {
+  const load = useCallback(async (q: string, off: number, by: SortField, order: SortOrder) => {
     setIsLoading(true);
     try {
-      const res = await getUsers({ search: q || undefined, limit: LIMIT, offset: off });
+      const res = await getUsers({ search: q || undefined, limit: LIMIT, offset: off, sortBy: by, sortOrder: order });
       setUsers(res.data);
       setTotal(res.total);
     } catch {
@@ -152,16 +161,23 @@ export function Users() {
   }, []);
 
   useEffect(() => {
-    load(search, offset);
-  }, [offset]);
+    load(search, offset, sortBy, sortOrder);
+  }, [offset, sortBy, sortOrder]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
       setOffset(0);
-      load(value, 0);
+      load(value, 0, sortBy, sortOrder);
     }, 300);
+  };
+
+  const handleSort = (field: SortField) => {
+    const newOrder = sortBy === field && sortOrder === "desc" ? "asc" : "desc";
+    setSortBy(field);
+    setSortOrder(newOrder);
+    setOffset(0);
   };
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -187,12 +203,18 @@ export function Users() {
         <table>
           <thead>
             <tr>
-              <th>Имя</th>
+              <th className={styles.thSortable} onClick={() => handleSort("firstName")}>
+                Имя <SortIcon field="firstName" sortBy={sortBy} sortOrder={sortOrder} />
+              </th>
               <th>Username</th>
               <th>Telegram ID</th>
               <th>Платформа</th>
-              <th>Последний вход</th>
-              <th>Избранное</th>
+              <th className={styles.thSortable} onClick={() => handleSort("lastSeenAt")}>
+                Последний вход <SortIcon field="lastSeenAt" sortBy={sortBy} sortOrder={sortOrder} />
+              </th>
+              <th className={styles.thSortable} onClick={() => handleSort("favoritesCount")}>
+                Избранное <SortIcon field="favoritesCount" sortBy={sortBy} sortOrder={sortOrder} />
+              </th>
             </tr>
           </thead>
           <tbody>
