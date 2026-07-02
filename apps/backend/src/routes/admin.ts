@@ -94,10 +94,14 @@ router.post("/authors", createAuthor);
 router.patch("/authors/:id", updateAuthor);
 router.delete("/authors/:id", deleteAuthor);
 
-import { getCategories, getTags, getInstruments } from "../controllers/adminController";
+import { getCategories, updateCategory, deleteCategory, getTags, updateTag, deleteTag, getInstruments } from "../controllers/adminController";
 
 router.get("/categories", getCategories);
+router.patch("/categories/:id", updateCategory);
+router.delete("/categories/:id", deleteCategory);
 router.get("/tags", getTags);
+router.patch("/tags/:id", updateTag);
+router.delete("/tags/:id", deleteTag);
 router.get("/instruments", getInstruments);
 
 import {

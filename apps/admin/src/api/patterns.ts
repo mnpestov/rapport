@@ -205,6 +205,7 @@ export const deletePattern = async (id: string): Promise<{ success: boolean }> =
 export interface DictionaryItem {
   id: string;
   name: string;
+  patternsCount: number;
 }
 
 export const getCategories = async (): Promise<DictionaryItem[]> => {
@@ -232,6 +233,46 @@ export const getInstruments = async (): Promise<DictionaryItem[]> => {
   });
   if (!response.ok) throw new Error("Failed to fetch instruments");
   return response.json();
+};
+
+export const updateCategory = async (id: string, name: string): Promise<DictionaryItem> => {
+  const token = localStorage.getItem("jwt_token");
+  const response = await fetch(`${API_URL}/admin/categories/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error("Failed to update category");
+  return response.json();
+};
+
+export const deleteCategory = async (id: string): Promise<void> => {
+  const token = localStorage.getItem("jwt_token");
+  const response = await fetch(`${API_URL}/admin/categories/${id}`, {
+    method: "DELETE",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!response.ok) throw new Error("Failed to delete category");
+};
+
+export const updateTag = async (id: string, name: string): Promise<DictionaryItem> => {
+  const token = localStorage.getItem("jwt_token");
+  const response = await fetch(`${API_URL}/admin/tags/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error("Failed to update tag");
+  return response.json();
+};
+
+export const deleteTag = async (id: string): Promise<void> => {
+  const token = localStorage.getItem("jwt_token");
+  const response = await fetch(`${API_URL}/admin/tags/${id}`, {
+    method: "DELETE",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!response.ok) throw new Error("Failed to delete tag");
 };
 
 export const fixArchiveQuotes = async (): Promise<{ updated: number }> => {

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus } from "lucide-react";
 import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
+import { DictionariesModal } from "./DictionariesModal";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
@@ -41,6 +42,7 @@ export function Patterns() {
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetNewConfirmOpen, setResetNewConfirmOpen] = useState(false);
+  const [isDictModalOpen, setIsDictModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     authorName: "",
@@ -344,6 +346,9 @@ export function Patterns() {
           <button className={styles.btnResetNew} onClick={() => setResetNewConfirmOpen(true)}>
             Убрать статус «Новинка»
           </button>
+          <button className={styles.btnResetNew} onClick={() => setIsDictModalOpen(true)}>
+            Справочники
+          </button>
           {status === "archive" && (
             <button
               className={styles.btnAdd}
@@ -590,6 +595,14 @@ export function Patterns() {
         variant="danger"
         onConfirm={confirmResetAllIsNew}
         onCancel={() => setResetNewConfirmOpen(false)}
+      />
+
+      <DictionariesModal
+        isOpen={isDictModalOpen}
+        onClose={() => setIsDictModalOpen(false)}
+        categories={categoriesList}
+        tags={tagsList}
+        onRefresh={loadDictionaries}
       />
     </div>
   );
