@@ -17,7 +17,9 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
   const order: SortOrder = SORT_ORDERS.includes(sortOrder as SortOrder) ? (sortOrder as SortOrder) : "desc";
   const orderBy: any = field === "favoritesCount"
     ? { favorites: { _count: order } }
-    : { [field]: order };
+    : field === "lastSeenAt"
+      ? { lastSeenAt: { sort: order, nulls: "last" } }
+      : { [field]: order };
 
   const where: any = {};
   if (search && typeof search === "string") {
