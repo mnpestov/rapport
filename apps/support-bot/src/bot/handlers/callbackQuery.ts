@@ -3,7 +3,7 @@ import type { Filter } from 'grammy';
 import { logEvent } from '../../logger';
 import type { CustomContext } from '../context';
 import { BackendClient } from '../../services/backendClient';
-import { config } from '../../config';
+import { notifyAdmin } from '../admin';
 import type { DiagnosticOutcome } from '@knitting/shared';
 
 type CallbackCtx = Filter<CustomContext, 'callback_query:data'>;
@@ -34,24 +34,11 @@ const MESSAGES: Record<DiagnosticOutcome, string> = {
 };
 
 function keyboardFor(code: DiagnosticOutcome): InlineKeyboard {
-  if (code === 'SUBSCRIBED_WHITELISTED') return WHITELISTED_KEYBOARD;
+  if (code === 'SUBSCRIBED' || code === 'SUBSCRIBED_WHITELISTED' || code === 'AUTO_FIXED') {
+    return WHITELISTED_KEYBOARD;
+  }
   if (code === 'GATEWAY_ERROR') return RETRY_AFTER_ERROR_KEYBOARD;
   return RETRY_KEYBOARD;
-}
-
-async function notifyAdmin(ctx: CallbackCtx, message: string): Promise<void> {
-  const adminId = config.adminTelegramId;
-  if (!adminId) return;
-  try {
-    await ctx.api.sendMessage(adminId, message, { parse_mode: 'HTML' });
-  } catch (err) {
-    logEvent({
-      event: 'ADMIN_NOTIFY_ERROR',
-      requestId: ctx.requestId,
-      telegramId: ctx.from.id,
-      error: (err as Error).message,
-    });
-  }
 }
 
 async function runDiagnosticFlow(ctx: CallbackCtx, isRetry: boolean): Promise<void> {
@@ -136,12 +123,30 @@ export async function handleDiagnosticRetry(ctx: CallbackCtx): Promise<void> {
 }
 
 export async function handleEscalate(ctx: CallbackCtx): Promise<void> {
+  logEvent({
+    event: 'CACHE_CLEAR_INSTRUCTION_SENT',
+    requestId: ctx.requestId,
+    telegramId: ctx.from.id,
+  });
+
+  await ctx.answerCallbackQuery();
+
+  const text =
+    'Часто проблема решается простой очисткой кэша Telegram. Пожалуйста, попробуйте выполнить эти шаги:\n\n' +
+    '1. Настройки → Данные и память → Использование памяти\n' +
+    '2. Снимите все галочки, оставьте только «Прочее» и нажмите «Очистить».\n' +
+    '3. Полностью закройте Telegram (смахните из недавних) и откройте Раппорт заново.';
+
+  const keyboard = new InlineKeyboard()
+    .text('Очистка кэша не помогла', 'support:cache_failed').row()
+    .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
+
+  await ctx.reply(text, { reply_markup: keyboard });
+}
+
+export async function handleCacheFailed(ctx: CallbackCtx): Promise<void> {
   const telegramId = ctx.from.id;
   const username = ctx.from.username ?? undefined;
-  const firstName = ctx.from.first_name ?? undefined;
-  const lastName = ctx.from.last_name ?? undefined;
-  const languageCode = ctx.from.language_code ?? undefined;
-  const isPremium = ctx.from.is_premium ?? false;
 
   logEvent({
     event: 'ESCALATION_REQUESTED',
@@ -163,23 +168,9 @@ export async function handleEscalate(ctx: CallbackCtx): Promise<void> {
     });
   }
 
-  const nameParts = [firstName, lastName].filter(Boolean).join(' ');
-  const adminMsg = [
-    '<b>⚠️ Пользователь не может войти</b>',
-    '',
-    `ID: <code>${telegramId}</code>`,
-    username ? `Username: @${username}` : null,
-    nameParts ? `Имя: ${nameParts}` : null,
-    languageCode ? `Язык: ${languageCode}` : null,
-    isPremium ? `Premium: да` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  await notifyAdmin(ctx, adminMsg);
-  logEvent({ event: 'ESCALATION_TRIGGERED', requestId: ctx.requestId, telegramId });
+  ctx.session.awaitingScreenshot = true;
 
   await ctx.reply(
-    'Мы получили ваше обращение и проверим ситуацию вручную.\n\nЕсли потребуется дополнительная информация, мы свяжемся с вами.',
+    'Пожалуйста, пришлите скриншот экрана с ошибкой или кратко опишите проблему прямо в этот чат. Специалист рассмотрит обращение вручную.',
   );
 }

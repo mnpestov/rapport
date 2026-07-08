@@ -17,10 +17,12 @@ export async function handleStart(ctx: CustomContext): Promise<void> {
     startParam: startParam || null,
   });
 
-  const keyboard = new InlineKeyboard().text('Запустить диагностику', 'diagnostic:start');
+  const keyboard = new InlineKeyboard()
+    .text('Запустить диагностику', 'diagnostic:start').row()
+    .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
   await ctx.reply(
-    'Привет! Это бот поддержки Rapport.\n\n' +
-      'Если вы подписаны на канал, но не можете войти в приложение — нажмите кнопку ниже.',
+    'Привет! Это служба поддержки Rapport. 🛠\n\n' +
+      'Если вы не можете войти в приложение — запустите диагностику, и мы всё починим.',
     { reply_markup: keyboard },
   );
 

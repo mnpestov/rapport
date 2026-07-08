@@ -1,5 +1,9 @@
-import { Context } from 'grammy';
+import { Context, SessionFlavor } from 'grammy';
 
-export interface CustomContext extends Context {
+export interface SessionData {
+  awaitingScreenshot?: boolean;
+}
+
+export interface CustomContext extends Context, SessionFlavor<SessionData> {
   requestId: string;
 }

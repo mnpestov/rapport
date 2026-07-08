@@ -1,6 +1,8 @@
+import { InlineKeyboard } from 'grammy';
 import { logEvent } from '../../logger';
 import type { CustomContext } from '../context';
 import { BackendClient } from '../../services/backendClient';
+import { notifyAdmin } from '../admin';
 
 const backendClient = new BackendClient();
 
@@ -24,7 +26,7 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
 
   const telegramId = ctx.from?.id ?? null;
   const { messageType, fileId } = detectMessageType(ctx);
-  const text = ctx.message?.text ?? null;
+  const text = ctx.message?.text ?? ctx.message?.caption ?? null;
 
   // Service messages (new_chat_member, allow_write_to_pm, etc.) have no content — ignore
   if (messageType === 'other') return;
@@ -39,6 +41,31 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
   });
 
   if (telegramId) {
+    if (ctx.session.awaitingScreenshot) {
+      ctx.session.awaitingScreenshot = false;
+      
+      const username = ctx.from?.username;
+      const nameParts = [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(' ');
+      
+      const adminMsg = [
+        '<b>⚠️ Пользователь прислал данные (скриншот/текст)</b>',
+        '',
+        `ID: <code>${telegramId}</code>`,
+        username ? `Username: @${username}` : null,
+        nameParts ? `Имя: ${nameParts}` : null,
+        `Тип сообщения: ${messageType}`
+      ].filter(Boolean).join('\n');
+      
+      await notifyAdmin(ctx, adminMsg);
+      await ctx.reply('Спасибо! Мы получили информацию, администраторы уже уведомлены и скоро помогут вам.');
+    } else {
+      const keyboard = new InlineKeyboard().text('Запустить диагностику', 'diagnostic:start');
+      await ctx.reply(
+        'Я сохранил ваше сообщение для поддержки. Чтобы попытаться решить проблему автоматически прямо сейчас — нажмите кнопку ниже.',
+        { reply_markup: keyboard }
+      );
+    }
+
     backendClient.saveMessage({
       telegramId,
       username: ctx.from?.username ?? null,
