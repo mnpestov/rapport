@@ -85,8 +85,13 @@ export function ChatPanel({ telegramId, displayName, onRead }: Props) {
     return () => clearInterval(id);
   }, [telegramId]);
 
+  const prevMsgCount = useRef(0);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > prevMsgCount.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevMsgCount.current = messages.length;
   }, [messages]);
 
   const handleSend = async () => {
