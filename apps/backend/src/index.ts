@@ -1,4 +1,21 @@
 import "dotenv/config";
+
+// Fail fast in production if any dev-only backdoors are active.
+// DEV_BYPASS_ADMIN_AUTH skips all admin auth; ALLOW_DEV_AUTH allows
+// login without a real Telegram signature and leaks OTP codes in responses.
+if (process.env.NODE_ENV === "production") {
+  if (process.env.DEV_BYPASS_ADMIN_AUTH === "true") {
+    throw new Error(
+      "[FATAL] DEV_BYPASS_ADMIN_AUTH must not be enabled in production. Remove it from the environment."
+    );
+  }
+  if (process.env.ALLOW_DEV_AUTH === "true") {
+    throw new Error(
+      "[FATAL] ALLOW_DEV_AUTH must not be enabled in production. Remove it from the environment."
+    );
+  }
+}
+
 import express from "express";
 import cors from "cors";
 import fs from "fs";
@@ -12,6 +29,7 @@ import favoritesRouter from "./routes/favorites";
 import channelRouter from "./routes/channel";
 import analyticsRouter from "./routes/analytics";
 import adminRouter from "./routes/admin";
+import authorRouter from "./routes/author";
 import internalRouter from "./routes/internal";
 import diagRouter from "./routes/diag";
 
@@ -47,6 +65,7 @@ app.use("/favorites", favoritesRouter);
 app.use("/channel", channelRouter);
 app.use("/analytics", analyticsRouter);
 app.use("/admin", adminRouter);
+app.use("/author", authorRouter);
 app.use("/internal", internalRouter);
 app.use("/diag", diagRouter);
 

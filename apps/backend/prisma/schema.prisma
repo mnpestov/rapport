@@ -27,35 +27,54 @@ model Pattern {
   favoritedBy UserFavorite[]
   views       PatternView[]
   linkClicks  PatternLinkClick[]
+  drafts      Draft[]
 }
 
 model Author {
   id       String    @id @default(uuid())
   name     String    @unique
   patterns Pattern[]
+  drafts   Draft[]
+  user     User?     @relation("UserAuthor")
 }
 
 model ProductType {
   id       String    @id @default(uuid())
   name     String    @unique
   patterns Pattern[]
+  drafts   Draft[]
 }
 
 model Instrument {
   id       String    @id @default(uuid())
   name     String    @unique
   patterns Pattern[]
+  drafts   Draft[]
 }
 
 model Tag {
   id       String    @id @default(uuid())
   name     String    @unique
   patterns Pattern[]
+  drafts   Draft[]
 }
 
 enum UserRole {
   USER
   AUTHOR
+  ADMIN
+}
+
+enum DraftStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Permission {
+  MINI_APP
+  AUTHOR_CABINET
   ADMIN
 }
 
@@ -79,6 +98,11 @@ model User {
   patternViews      PatternView[]
   patternLinkClicks PatternLinkClick[]
   subscribeClicks   SubscribeClick[]
+
+  authorId     String?  @unique
+  author       Author?  @relation("UserAuthor", fields: [authorId], references: [id])
+  permissions  UserPermission[]
+  closedDrafts Draft[]  @relation("DraftClosedBy")
 }
 
 model UserFavorite {
@@ -209,4 +233,60 @@ model WhitelistedUser {
   createdAt                    DateTime  @default(now())
   updatedAt    DateTime @updatedAt
   createdBy    String?
+}
+
+// ---------------------------------------------------------------------------
+// Author cabinet — granular permissions per user.
+// ---------------------------------------------------------------------------
+model UserPermission {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission
+
+  @@unique([userId, permission])
+}
+
+// ---------------------------------------------------------------------------
+// Draft — proposed create or edit of a Pattern by a linked author.
+//
+// patternId = null  → new pattern proposal
+// patternId ≠ null  → edit of an existing published pattern
+//
+// At most one *active* draft per pattern is enforced in application code.
+// The DB-level guarantee requires a partial unique index that Prisma cannot
+// express in schema syntax; add it manually to the generated migration SQL:
+//
+//   CREATE UNIQUE INDEX "Draft_active_patternId_key"
+//     ON "Draft"("patternId")
+//     WHERE "closedAt" IS NULL AND "patternId" IS NOT NULL;
+//
+// Closed drafts (closedAt IS NOT NULL) are retained as audit log.
+// ---------------------------------------------------------------------------
+model Draft {
+  id                String      @id @default(uuid())
+  patternId         String?
+  pattern           Pattern?    @relation(fields: [patternId], references: [id])
+  authorId          String
+  author            Author      @relation(fields: [authorId], references: [id])
+  status            DraftStatus @default(DRAFT)
+  moderationComment String?
+  title             String
+  url               String
+  imageUrl          String
+  isFree            Boolean     @default(false)
+  isNew             Boolean     @default(false)
+  closedAt          DateTime?
+  closedById        String?
+  closedBy          User?       @relation("DraftClosedBy", fields: [closedById], references: [id])
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  tags        Tag[]
+  categories  ProductType[]
+  instruments Instrument[]
+
+  @@index([patternId])
+  @@index([authorId])
+  @@index([status])
 }

@@ -189,6 +189,8 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
 };
 
 // GET /auth/me — current user from JWT (requires requireAuth).
+// Returns permissions[] and authorId so the frontend can route correctly
+// after login without an extra round-trip.
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   try {
@@ -201,6 +203,8 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         lastName: true,
         username: true,
         role: true,
+        authorId: true,
+        permissions: { select: { permission: true } },
       },
     });
 
@@ -210,7 +214,16 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     }
 
     res.json({
-      user: { ...user, telegramId: user.telegramId.toString() },
+      user: {
+        id: user.id,
+        telegramId: user.telegramId.toString(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        role: user.role,
+        authorId: user.authorId,
+        permissions: user.permissions.map((p) => p.permission),
+      },
     });
   } catch (error) {
     console.error("[Auth] getMe failed:", error);

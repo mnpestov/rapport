@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { DraftStatus, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import fs from "fs";
 import path from "path";
@@ -18,12 +19,27 @@ function normalizeUrl(urlStr: string): string {
   }
 }
 
-async function syncAuthor(name: string): Promise<string> {
+// find-or-create helpers with TOCTOU fix: catch P2002 and re-fetch on race.
+// syncAuthor is kept for the data import path only — admin pattern forms
+// must pass authorId directly (never free-text authorName).
+
+export async function syncAuthor(name: string): Promise<string> {
   const normalized = name.trim().replace(/\s+/g, " ");
   let author = await prisma.author.findFirst({
     where: { name: { equals: normalized, mode: "insensitive" } },
   });
-  if (!author) author = await prisma.author.create({ data: { name: normalized } });
+  if (!author) {
+    try {
+      author = await prisma.author.create({ data: { name: normalized } });
+    } catch (e: any) {
+      if (e.code === "P2002") {
+        author = await prisma.author.findFirst({
+          where: { name: { equals: normalized, mode: "insensitive" } },
+        });
+        if (!author) throw e;
+      } else throw e;
+    }
+  }
   return author.id;
 }
 
@@ -32,7 +48,16 @@ async function syncTags(names: string[]): Promise<string[]> {
   const ids: string[] = [];
   for (const name of normalized) {
     let item = await prisma.tag.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
-    if (!item) item = await prisma.tag.create({ data: { name } });
+    if (!item) {
+      try {
+        item = await prisma.tag.create({ data: { name } });
+      } catch (e: any) {
+        if (e.code === "P2002") {
+          item = await prisma.tag.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
+          if (!item) throw e;
+        } else throw e;
+      }
+    }
     ids.push(item.id);
   }
   return ids;
@@ -43,7 +68,16 @@ async function syncCategories(names: string[]): Promise<string[]> {
   const ids: string[] = [];
   for (const name of normalized) {
     let item = await prisma.productType.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
-    if (!item) item = await prisma.productType.create({ data: { name } });
+    if (!item) {
+      try {
+        item = await prisma.productType.create({ data: { name } });
+      } catch (e: any) {
+        if (e.code === "P2002") {
+          item = await prisma.productType.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
+          if (!item) throw e;
+        } else throw e;
+      }
+    }
     ids.push(item.id);
   }
   return ids;
@@ -54,7 +88,16 @@ async function syncInstruments(names: string[]): Promise<string[]> {
   const ids: string[] = [];
   for (const name of normalized) {
     let item = await prisma.instrument.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
-    if (!item) item = await prisma.instrument.create({ data: { name } });
+    if (!item) {
+      try {
+        item = await prisma.instrument.create({ data: { name } });
+      } catch (e: any) {
+        if (e.code === "P2002") {
+          item = await prisma.instrument.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
+          if (!item) throw e;
+        } else throw e;
+      }
+    }
     ids.push(item.id);
   }
   return ids;
@@ -369,11 +412,25 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
 export const updatePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, url, imageUrl, isFree, isNew, authorName, isVisible, categories, tags, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments } = req.body;
 
     const existing = await prisma.pattern.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ error: "Pattern not found" });
+      return;
+    }
+
+    // Block admin edits while an author's draft is under review — the draft
+    // approve transaction would silently overwrite any changes made here.
+    const activeDraft = await prisma.draft.findFirst({
+      where: { patternId: id, closedAt: null },
+    });
+    if (activeDraft) {
+      res.status(409).json({
+        error: "Pattern has an active author draft under review. Approve or reject it first.",
+        draftId: activeDraft.id,
+        draftStatus: activeDraft.status,
+      });
       return;
     }
 
@@ -397,10 +454,13 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
       data.url = normUrl;
     }
 
-    if (authorName) {
+    if (authorId) {
+      data.authorId = authorId;
+    } else if (authorName) {
+      // Legacy fallback for old admin frontend — prefer authorId going forward.
       data.authorId = await syncAuthor(authorName);
     }
-    
+
     if (Array.isArray(categories)) {
       const catIds = await syncCategories(categories);
       data.categories = { set: [], connect: catIds.map(id => ({ id })) };
@@ -445,9 +505,9 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 // POST /admin/patterns
 export const createPattern = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, url, imageUrl, isFree, isNew, authorName, categories, tags, instruments } = req.body;
-    
-    if (!title || !url || !imageUrl || !authorName) {
+    const { title, url, imageUrl, isFree, isNew, authorId, authorName, categories, tags, instruments } = req.body;
+
+    if (!title || !url || !imageUrl || (!authorId && !authorName)) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
@@ -465,7 +525,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       slug = `${slug}-${Date.now()}`;
     }
 
-    const finalAuthorId = await syncAuthor(authorName);
+    const finalAuthorId = authorId ?? await syncAuthor(authorName);
     
     const data: any = {
       title,
@@ -768,6 +828,291 @@ export const fixArchiveQuotes = async (_req: Request, res: Response): Promise<vo
 
     res.json({ updated: patterns.length });
   } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Stage 3 — Moderation, user-author linking, permission management
+// ---------------------------------------------------------------------------
+
+// GET /admin/drafts?status=PENDING
+export const getDraftsList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const statusParam = (req.query.status as string)?.toUpperCase();
+    const where: any = {};
+    if (statusParam) where.status = statusParam;
+    // By default only show open drafts
+    if (!("closedAt" in req.query)) where.closedAt = null;
+
+    const drafts = await prisma.draft.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      include: {
+        author: { select: { id: true, name: true } },
+        pattern: { select: { id: true, title: true } },
+        tags: { select: { id: true, name: true } },
+        categories: { select: { id: true, name: true } },
+        instruments: { select: { id: true, name: true } },
+      },
+    });
+
+    res.json(drafts);
+  } catch (error) {
+    console.error("[Admin] getDraftsList failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /admin/drafts/:id
+export const getDraftById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const draft = await prisma.draft.findUnique({
+      where: { id },
+      include: {
+        author: { select: { id: true, name: true } },
+        pattern: {
+          include: {
+            tags: { select: { id: true, name: true } },
+            categories: { select: { id: true, name: true } },
+            instruments: { select: { id: true, name: true } },
+          },
+        },
+        tags: { select: { id: true, name: true } },
+        categories: { select: { id: true, name: true } },
+        instruments: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!draft) {
+      res.status(404).json({ error: "Draft not found" });
+      return;
+    }
+
+    res.json(draft);
+  } catch (error) {
+    console.error("[Admin] getDraftById failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /admin/drafts/:id/approve
+export const approveDraft = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const adminId = req.user!.userId;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const draft = await tx.draft.findUnique({
+        where: { id },
+        include: {
+          tags: { select: { id: true } },
+          categories: { select: { id: true } },
+          instruments: { select: { id: true } },
+        },
+      });
+
+      if (!draft) throw Object.assign(new Error("NOT_FOUND"), { status: 404 });
+      if (draft.closedAt) throw Object.assign(new Error("ALREADY_CLOSED"), { status: 409 });
+      if (draft.status !== DraftStatus.PENDING)
+        throw Object.assign(new Error("NOT_PENDING"), { status: 409 });
+
+      const tagConnect = draft.tags.map((t) => ({ id: t.id }));
+      const catConnect = draft.categories.map((c) => ({ id: c.id }));
+      const instConnect = draft.instruments.map((i) => ({ id: i.id }));
+
+      if (draft.patternId === null) {
+        // New pattern — generate slug + check URL uniqueness
+        let slug = generateSlug(draft.title);
+        const slugExists = await tx.pattern.findUnique({ where: { slug } });
+        if (slugExists) slug = `${slug}-${Date.now()}`;
+
+        const normUrl = normalizeUrl(draft.url);
+        const urlExists = await tx.pattern.findFirst({ where: { url: normUrl } });
+        if (urlExists) throw Object.assign(new Error("URL_DUPLICATE"), { status: 409 });
+
+        await tx.pattern.create({
+          data: {
+            slug,
+            title: draft.title,
+            url: normUrl,
+            imageUrl: draft.imageUrl,
+            isFree: draft.isFree,
+            isNew: draft.isNew,
+            isVisible: true,
+            authorId: draft.authorId,
+            tags: { connect: tagConnect },
+            categories: { connect: catConnect },
+            instruments: { connect: instConnect },
+          },
+        });
+      } else {
+        // Edit existing pattern
+        await tx.pattern.update({
+          where: { id: draft.patternId },
+          data: {
+            title: draft.title,
+            url: normalizeUrl(draft.url),
+            imageUrl: draft.imageUrl,
+            isFree: draft.isFree,
+            isNew: draft.isNew,
+            tags: { set: [], connect: tagConnect },
+            categories: { set: [], connect: catConnect },
+            instruments: { set: [], connect: instConnect },
+          },
+        });
+      }
+
+      // Close draft as audit log — not hard-deleted
+      await tx.draft.update({
+        where: { id },
+        data: {
+          status: DraftStatus.APPROVED,
+          closedAt: new Date(),
+          closedById: adminId,
+        },
+      });
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.status === 404) { res.status(404).json({ error: "Draft not found" }); return; }
+    if (error.message === "ALREADY_CLOSED") { res.status(409).json({ error: "Draft is already closed" }); return; }
+    if (error.message === "NOT_PENDING") { res.status(409).json({ error: "Only PENDING drafts can be approved" }); return; }
+    if (error.message === "URL_DUPLICATE") { res.status(409).json({ error: "URL already exists in published patterns" }); return; }
+    console.error("[Admin] approveDraft failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /admin/drafts/:id/reject
+export const rejectDraft = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { comment } = req.body;
+    const adminId = req.user!.userId;
+
+    const draft = await prisma.draft.findUnique({ where: { id } });
+    if (!draft) { res.status(404).json({ error: "Draft not found" }); return; }
+    if (draft.closedAt) { res.status(409).json({ error: "Draft is already closed" }); return; }
+    if (draft.status !== DraftStatus.PENDING) {
+      res.status(409).json({ error: "Only PENDING drafts can be rejected" });
+      return;
+    }
+
+    await prisma.draft.update({
+      where: { id },
+      data: {
+        status: DraftStatus.REJECTED,
+        moderationComment: comment ?? null,
+        closedById: adminId,
+        // closedAt intentionally not set — rejected draft stays open for author to fix
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Admin] rejectDraft failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /admin/users/:id/link-author
+export const linkAuthor = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: userId } = req.params;
+    const { authorId } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+    if (authorId !== null && authorId !== undefined) {
+      const author = await prisma.author.findUnique({ where: { id: authorId } });
+      if (!author) { res.status(404).json({ error: "Author not found" }); return; }
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { authorId: authorId ?? null },
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      res.status(409).json({ error: "This author is already linked to another user" });
+      return;
+    }
+    console.error("[Admin] linkAuthor failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /admin/permissions?userId=xxx
+export const getPermissions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.query as { userId?: string };
+    const where = userId ? { userId } : undefined;
+
+    const permissions = await prisma.userPermission.findMany({
+      where,
+      include: { user: { select: { id: true, username: true, firstName: true } } },
+      orderBy: { userId: "asc" },
+    });
+
+    res.json(permissions);
+  } catch (error) {
+    console.error("[Admin] getPermissions failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /admin/permissions — { userId, permission }
+export const grantPermission = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, permission } = req.body;
+    if (!userId || !permission) {
+      res.status(400).json({ error: "userId and permission are required" });
+      return;
+    }
+    if (!Object.values(Permission).includes(permission)) {
+      res.status(400).json({ error: "Invalid permission value" });
+      return;
+    }
+
+    const entry = await prisma.userPermission.upsert({
+      where: { userId_permission: { userId, permission } },
+      create: { userId, permission },
+      update: {},
+    });
+
+    res.status(201).json(entry);
+  } catch (error: any) {
+    if (error.code === "P2003") {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    console.error("[Admin] grantPermission failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// DELETE /admin/permissions/:userId/:permission
+export const revokePermission = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, permission } = req.params;
+
+    await prisma.userPermission.delete({
+      where: { userId_permission: { userId, permission: permission as Permission } },
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      res.status(404).json({ error: "Permission entry not found" });
+      return;
+    }
+    console.error("[Admin] revokePermission failed:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
