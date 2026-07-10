@@ -99,10 +99,11 @@ model User {
   patternLinkClicks PatternLinkClick[]
   subscribeClicks   SubscribeClick[]
 
-  authorId     String?  @unique
-  author       Author?  @relation("UserAuthor", fields: [authorId], references: [id])
-  permissions  UserPermission[]
-  closedDrafts Draft[]  @relation("DraftClosedBy")
+  authorId      String?  @unique
+  author        Author?  @relation("UserAuthor", fields: [authorId], references: [id])
+  permissions   UserPermission[]
+  closedDrafts  Draft[]  @relation("DraftClosedBy")
+  refreshTokens RefreshToken[]
 }
 
 model UserFavorite {
@@ -233,6 +234,23 @@ model WhitelistedUser {
   createdAt                    DateTime  @default(now())
   updatedAt    DateTime @updatedAt
   createdBy    String?
+}
+
+// ---------------------------------------------------------------------------
+// Web auth — hashed refresh tokens for httpOnly-cookie rotation.
+// The raw JWT is never stored; only its SHA-256 digest is persisted.
+// ---------------------------------------------------------------------------
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean   @default(false)
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import { prisma } from "../prismaClient";
-import { generateToken } from "../utils/jwt";
+import { generateToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import { sendLoginCode } from "../services/loginCodeSender";
 
 /**
@@ -15,16 +15,31 @@ import { sendLoginCode } from "../services/loginCodeSender";
  * text — only their SHA-256 hash is persisted.
  */
 
-const CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const RESEND_COOLDOWN_MS = 60 * 1000; // min interval between codes per user
+const CODE_TTL_MS = 5 * 60 * 1_000;           // 5 minutes
+const RESEND_COOLDOWN_MS = 60 * 1_000;          // min interval between codes
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 3_600 * 1_000; // 30 days
+const GRACE_PERIOD_MS = 15 * 1_000;             // concurrent-refresh grace window
 
 function generateCode(): string {
-  // 6-digit numeric, cryptographically random.
   return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
 function hashCode(code: string): string {
   return crypto.createHash("sha256").update(code).digest("hex");
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie("refresh_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/auth",
+    maxAge: REFRESH_TOKEN_TTL_MS,
+  });
 }
 
 function normalizeUsername(value: unknown): string | null {
@@ -41,8 +56,7 @@ function findUserByUsername(username: string) {
 }
 
 // POST /auth/request-code — body: { username }. Resolves the user, then issues
-// and delivers (stubbed) a one-time code. Responses never reveal whether the
-// username exists.
+// and delivers a one-time code. Responses never reveal whether the username exists.
 export const requestCode = async (req: Request, res: Response): Promise<void> => {
   const username = normalizeUsername(req.body?.username);
   if (username === null) {
@@ -52,7 +66,6 @@ export const requestCode = async (req: Request, res: Response): Promise<void> =>
 
   try {
     const user = await findUserByUsername(username);
-    // Unknown username: respond OK without sending, to avoid user enumeration.
     if (!user) {
       if (process.env.ALLOW_DEV_AUTH === "true") {
         console.warn(`[DEV MODE] Попытка входа под несуществующим username: ${username}`);
@@ -65,21 +78,16 @@ export const requestCode = async (req: Request, res: Response): Promise<void> =>
 
     const telegramId = user.telegramId;
 
-    // Rate limit: at most one new code per RESEND_COOLDOWN_MS per user.
     const lastCode = await prisma.loginCode.findFirst({
       where: { telegramId },
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     });
-    if (
-      lastCode &&
-      Date.now() - lastCode.createdAt.getTime() < RESEND_COOLDOWN_MS
-    ) {
+    if (lastCode && Date.now() - lastCode.createdAt.getTime() < RESEND_COOLDOWN_MS) {
       res.status(429).json({ error: "Please wait before requesting a new code" });
       return;
     }
 
-    // One active code at a time: invalidate previous unused codes.
     await prisma.loginCode.updateMany({
       where: { telegramId, usedAt: null },
       data: { usedAt: new Date() },
@@ -89,17 +97,16 @@ export const requestCode = async (req: Request, res: Response): Promise<void> =>
     await prisma.loginCode.create({
       data: {
         telegramId,
-        code: hashCode(code), // store hash, never the plaintext
+        code: hashCode(code),
         expiresAt: new Date(Date.now() + CODE_TTL_MS),
       },
     });
 
-    // Deliver the plaintext code without blocking the response.
     sendLoginCode(telegramId, code).catch(console.error);
 
-    res.json({ 
+    res.json({
       ok: true,
-      devCode: process.env.ALLOW_DEV_AUTH === "true" ? code : undefined
+      devCode: process.env.ALLOW_DEV_AUTH === "true" ? code : undefined,
     });
   } catch (error) {
     console.error("[Auth] requestCode failed:", error);
@@ -107,8 +114,8 @@ export const requestCode = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// POST /auth/verify-code — body: { username | telegramId, code }. Validates the
-// hashed code and issues a JWT (userId + role).
+// POST /auth/verify-code — validates the one-time code, issues an access token
+// (JSON body) and a refresh token (httpOnly cookie, path=/auth).
 export const verifyCode = async (req: Request, res: Response): Promise<void> => {
   const code = req.body?.code;
   if (typeof code !== "string" || code.length === 0) {
@@ -117,7 +124,6 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
   }
 
   try {
-    // Resolve the target user from username (preferred) or telegramId (compat).
     let user;
     const username = normalizeUsername(req.body?.username);
     if (username !== null) {
@@ -137,7 +143,6 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
     }
 
     if (!user) {
-      // Do not distinguish unknown user from bad code.
       res.status(401).json({ error: "Invalid or expired code" });
       return;
     }
@@ -157,7 +162,6 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Mark used (one-time). Atomic guard so a code can only burn once.
     const burned = await prisma.loginCode.updateMany({
       where: { id: record.id, usedAt: null },
       data: { usedAt: new Date() },
@@ -167,14 +171,32 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const token = generateToken({
+    const accessToken = generateToken({
       userId: user.id,
       telegramId: user.telegramId.toString(),
       role: user.role,
     });
 
+    const rawRefreshToken = generateRefreshToken({ userId: user.id });
+    await prisma.refreshToken.create({
+      data: {
+        token: hashToken(rawRefreshToken),
+        userId: user.id,
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      },
+    });
+
+    setRefreshCookie(res, rawRefreshToken);
+
+    // Probabilistic GC — fire-and-forget, no await.
+    if (Math.random() < 0.05) {
+      prisma.refreshToken
+        .deleteMany({ where: { expiresAt: { lt: new Date() } } })
+        .catch(console.error);
+    }
+
     res.json({
-      token,
+      token: accessToken,
       user: {
         id: user.id,
         telegramId: user.telegramId.toString(),
@@ -189,8 +211,6 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
 };
 
 // GET /auth/me — current user from JWT (requires requireAuth).
-// Returns permissions[] and authorId so the frontend can route correctly
-// after login without an extra round-trip.
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   try {
@@ -229,4 +249,129 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     console.error("[Auth] getMe failed:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+};
+
+// POST /auth/refresh — rotates the refresh token and returns a new access token.
+// Requires X-Requested-With: XMLHttpRequest (CSRF guard).
+export const refresh = async (req: Request, res: Response): Promise<void> => {
+  if (req.headers["x-requested-with"] !== "XMLHttpRequest") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const rawToken = req.cookies?.refresh_token;
+  if (!rawToken) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    verifyRefreshToken(rawToken);
+  } catch {
+    res.clearCookie("refresh_token", { path: "/auth" });
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const tokenHash = hashToken(rawToken);
+
+  try {
+    const record = await prisma.refreshToken.findUnique({
+      where: { token: tokenHash },
+      include: { user: true },
+    });
+
+    if (!record || record.expiresAt < new Date()) {
+      res.clearCookie("refresh_token", { path: "/auth" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    if (record.revoked) {
+      if (record.revokedAt && Date.now() - record.revokedAt.getTime() <= GRACE_PERIOD_MS) {
+        // Concurrent refresh from another tab — reissue access token without rotating.
+        const accessToken = generateToken({
+          userId: record.user.id,
+          telegramId: record.user.telegramId.toString(),
+          role: record.user.role,
+        });
+        res.json({ token: accessToken });
+        return;
+      }
+      // Token reuse outside grace period — revoke all user tokens.
+      await prisma.refreshToken.updateMany({
+        where: { userId: record.userId, revoked: false },
+        data: { revoked: true, revokedAt: new Date() },
+      });
+      res.clearCookie("refresh_token", { path: "/auth" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    // Normal rotation: revoke old, create new.
+    const now = new Date();
+    await prisma.refreshToken.update({
+      where: { id: record.id },
+      data: { revoked: true, revokedAt: now },
+    });
+
+    const newRawToken = generateRefreshToken({ userId: record.userId });
+    await prisma.refreshToken.create({
+      data: {
+        token: hashToken(newRawToken),
+        userId: record.userId,
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      },
+    });
+
+    // Probabilistic GC — clean up expired and old revoked records.
+    if (Math.random() < 0.05) {
+      prisma.refreshToken.deleteMany({
+        where: {
+          OR: [
+            { expiresAt: { lt: now } },
+            { revoked: true, revokedAt: { lt: new Date(now.getTime() - GRACE_PERIOD_MS * 4) } },
+          ],
+        },
+      }).catch(console.error);
+    }
+
+    setRefreshCookie(res, newRawToken);
+
+    const accessToken = generateToken({
+      userId: record.user.id,
+      telegramId: record.user.telegramId.toString(),
+      role: record.user.role,
+    });
+
+    res.json({ token: accessToken });
+  } catch (error) {
+    console.error("[Auth] refresh failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /auth/logout — revokes the refresh token and clears the cookie.
+// Requires X-Requested-With: XMLHttpRequest (CSRF guard).
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  if (req.headers["x-requested-with"] !== "XMLHttpRequest") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const rawToken = req.cookies?.refresh_token;
+  res.clearCookie("refresh_token", { path: "/auth" });
+
+  if (rawToken) {
+    try {
+      await prisma.refreshToken.updateMany({
+        where: { token: hashToken(rawToken), revoked: false },
+        data: { revoked: true, revokedAt: new Date() },
+      });
+    } catch (error) {
+      console.error("[Auth] logout revoke failed:", error);
+    }
+  }
+
+  res.json({ ok: true });
 };

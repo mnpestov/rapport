@@ -18,6 +18,7 @@ if (process.env.NODE_ENV === "production") {
 
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import fs from "fs";
 import path from "path";
 import { softAuth } from "./middlewares/softAuth";
@@ -39,7 +40,19 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+const allowedOrigins = (process.env.ADMIN_CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
 app.use(softAuth);
 

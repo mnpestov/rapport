@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, JwtPayload } from "../utils/jwt";
 
-// Extend Express Request type to include authenticated user
 declare global {
   namespace Express {
     interface Request {
@@ -12,12 +11,7 @@ declare global {
 
 export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
-  // Allow token via query param for file download endpoints used in <img>/<audio> tags
-  const queryToken = typeof req.query.token === "string" ? req.query.token : null;
-
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.split(" ")[1]
-    : queryToken;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 
   if (!token) {
     res.status(401).json({ error: "Unauthorized" });

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { telegramAuth } from "../controllers/authController";
-import { requestCode, verifyCode, getMe } from "../controllers/webAuthController";
+import { requestCode, verifyCode, getMe, refresh, logout } from "../controllers/webAuthController";
 import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
@@ -12,5 +12,9 @@ router.post("/telegram", telegramAuth);
 router.post("/request-code", requestCode);
 router.post("/verify-code", verifyCode);
 router.get("/me", requireAuth, getMe);
+
+// Refresh token rotation and logout — no requireAuth (cookie-based).
+router.post("/refresh", refresh);
+router.post("/logout", logout);
 
 export default router;
