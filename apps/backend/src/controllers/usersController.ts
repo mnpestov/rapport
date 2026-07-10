@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Permission, UserRole } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { checkTelegramSubscriptionOnce } from "../utils/checkSubscription";
 
@@ -49,6 +50,9 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
         username: true,
         languageCode: true,
         isPremium: true,
+        role: true,
+        authorId: true,
+        author: { select: { id: true, name: true } },
         createdAt: true,
         lastSeenAt: true,
         platform: true,
@@ -68,6 +72,101 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     })),
     total,
   });
+};
+
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      telegramId: true,
+      firstName: true,
+      lastName: true,
+      username: true,
+      languageCode: true,
+      isPremium: true,
+      role: true,
+      authorId: true,
+      author: { select: { id: true, name: true } },
+      permissions: { select: { permission: true } },
+      createdAt: true,
+      lastSeenAt: true,
+      platform: true,
+      tgVersion: true,
+      userAgent: true,
+      _count: { select: { favorites: true } },
+    },
+  });
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json({
+    ...user,
+    telegramId: user.telegramId.toString(),
+    favoritesCount: user._count.favorites,
+    permissions: user.permissions.map((p) => p.permission),
+  });
+};
+
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { role, authorId } = req.body as { role?: UserRole; authorId?: string | null };
+
+  if (role !== undefined && !Object.values(UserRole).includes(role)) {
+    res.status(400).json({ error: "Invalid role" });
+    return;
+  }
+
+  if (role === UserRole.AUTHOR && !authorId) {
+    res.status(400).json({ error: "authorId is required when role is AUTHOR" });
+    return;
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: {
+          ...(role !== undefined ? { role } : {}),
+          ...(authorId !== undefined ? { authorId: authorId ?? null } : {}),
+        },
+      });
+
+      if (role === UserRole.AUTHOR) {
+        await tx.userPermission.upsert({
+          where: { userId_permission: { userId: id, permission: Permission.AUTHOR_CABINET } },
+          create: { userId: id, permission: Permission.AUTHOR_CABINET },
+          update: {},
+        });
+      } else if (role !== undefined) {
+        await tx.userPermission.deleteMany({
+          where: { userId: id, permission: Permission.AUTHOR_CABINET },
+        });
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    if (error.code === "P2002") {
+      res.status(409).json({ error: "This author is already linked to another user" });
+      return;
+    }
+    if (error.code === "P2003") {
+      res.status(404).json({ error: "Author not found" });
+      return;
+    }
+    console.error("[Admin] updateUser failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
 
 export const getUserSubscription = async (req: Request, res: Response): Promise<void> => {

@@ -47,7 +47,7 @@ import {
   notifyWhitelistUser,
 } from "../controllers/whitelistController";
 import { getChatHistory, sendChatMessage, getChatFile, getUnreadMessages, markChatAsRead, getRequests } from "../controllers/chatController";
-import { getUsers, getUserSubscription } from "../controllers/usersController";
+import { getUsers, getUserById, updateUser, getUserSubscription } from "../controllers/usersController";
 
 const router = Router();
 
@@ -160,6 +160,8 @@ router.get("/requests", getRequests);
 router.get("/users", getUsers);
 router.get("/users/:telegramId/subscription", getUserSubscription);
 router.post("/users/:id/link-author", linkAuthor);
+router.get("/users/:id", getUserById);
+router.patch("/users/:id", updateUser);
 
 // Moderation queue
 router.get("/drafts", getDraftsList);
