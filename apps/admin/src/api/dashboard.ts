@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export type Period = "7d" | "30d" | "90d" | "all" | "custom";
 
@@ -29,20 +30,21 @@ type FetchParams =
   | { period: Exclude<Period, "custom"> }
   | { from: string; to: string };
 
-export const getDashboardStats = async (params: FetchParams): Promise<DashboardResponse> => {
-  const token = localStorage.getItem("jwt_token");
-  const query = "from" in params
-    ? `from=${params.from}&to=${params.to}`
-    : `period=${params.period}`;
+export const getDashboardStats = async (
+  params: FetchParams
+): Promise<DashboardResponse> => {
+  const query =
+    "from" in params
+      ? `from=${params.from}&to=${params.to}`
+      : `period=${params.period}`;
 
-  const response = await fetch(`${API_URL}/admin/dashboard/stats?${query}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  const response = await fetchWithAuth(
+    `${API_URL}/admin/dashboard/stats?${query}`
+  );
+
   if (!response.ok) {
     throw new Error(`Failed to fetch dashboard stats: ${response.statusText}`);
   }
+
   return response.json();
 };

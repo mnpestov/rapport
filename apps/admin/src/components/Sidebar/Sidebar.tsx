@@ -2,13 +2,24 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { FileText, TrendingUp, Users, LogOut, ShieldCheck, MessageSquare, BookUser } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { logout } from "../../api/auth";
 
 export function Sidebar() {
   const navigate = useNavigate();
   const { whitelistTotal, allTotal } = useUnread();
+  const { clearToken } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
+  const handleLogout = async () => {
+    await logout();
+    clearToken();
+    try {
+      const bc = new BroadcastChannel("auth_channel");
+      bc.postMessage({ type: "LOGOUT" });
+      bc.close();
+    } catch {
+      // BroadcastChannel not available
+    }
     navigate("/login");
   };
 

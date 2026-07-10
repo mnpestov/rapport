@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { requestCode, verifyCode } from '../../api/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import styles from './Login.module.css';
 
@@ -10,6 +11,7 @@ export function Login() {
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { setToken, setUser, setIsAuthenticated } = useAuth();
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +21,7 @@ export function Login() {
       setIsLoading(true);
       const res = await requestCode(username);
       setStep(2);
-      
+
       if (res.devError) {
         toast.error('Ошибка разработчика: посмотрите консоль', { duration: 5000 });
       } else if (res.devCode) {
@@ -44,13 +46,15 @@ export function Login() {
     try {
       setIsLoading(true);
       const { token, user } = await verifyCode(username, code);
-      
+
       if (user.role !== 'ADMIN') {
         toast.error('У вас нет прав администратора');
         return;
       }
 
-      localStorage.setItem('jwt_token', token);
+      setToken(token);
+      setUser(user);
+      setIsAuthenticated(true);
       toast.success('Успешный вход');
       navigate('/patterns', { replace: true });
     } catch (err: any) {
@@ -65,8 +69,8 @@ export function Login() {
       <div className={styles.card}>
         <h1 className={styles.title}>Rapport Admin</h1>
         <p className={styles.subtitle}>
-          {step === 1 
-            ? 'Введите ваш Telegram username для входа' 
+          {step === 1
+            ? 'Введите ваш Telegram username для входа'
             : 'Введите 6-значный код, отправленный ботом'}
         </p>
 
@@ -84,8 +88,8 @@ export function Login() {
                 autoFocus
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className={styles.submitBtn}
               disabled={isLoading || !username.trim()}
             >
@@ -106,15 +110,15 @@ export function Login() {
                 autoFocus
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className={styles.submitBtn}
               disabled={isLoading || code.length !== 6}
             >
               {isLoading ? 'Проверка...' : 'Войти'}
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={styles.backBtn}
               onClick={() => {
                 setStep(1);

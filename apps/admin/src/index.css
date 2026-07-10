@@ -8,3 +8,7 @@ body {
 * {
   font-family: 'Mulish', sans-serif;
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

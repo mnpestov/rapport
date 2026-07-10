@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export interface WhitelistEntry {
   id: string;
@@ -28,24 +29,21 @@ export interface WhitelistEntryInput {
   needsInvestigation?: boolean;
 }
 
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem("jwt_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export const getWhitelist = async (search = ""): Promise<WhitelistEntry[]> => {
   const query = search ? `?search=${encodeURIComponent(search)}` : "";
-  const response = await fetch(`${API_URL}/admin/whitelist${query}`, {
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+  const response = await fetchWithAuth(`${API_URL}/admin/whitelist${query}`, {
+    headers: { "Content-Type": "application/json" },
   });
   if (!response.ok) throw new Error(`Failed to fetch whitelist: ${response.statusText}`);
   return response.json();
 };
 
-export const createWhitelistEntry = async (data: WhitelistEntryInput): Promise<WhitelistEntry> => {
-  const response = await fetch(`${API_URL}/admin/whitelist`, {
+export const createWhitelistEntry = async (
+  data: WhitelistEntryInput
+): Promise<WhitelistEntry> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/whitelist`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -55,10 +53,13 @@ export const createWhitelistEntry = async (data: WhitelistEntryInput): Promise<W
   return response.json();
 };
 
-export const updateWhitelistEntry = async (id: string, data: Partial<WhitelistEntryInput>): Promise<WhitelistEntry> => {
-  const response = await fetch(`${API_URL}/admin/whitelist/${id}`, {
+export const updateWhitelistEntry = async (
+  id: string,
+  data: Partial<WhitelistEntryInput>
+): Promise<WhitelistEntry> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/whitelist/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -69,9 +70,9 @@ export const updateWhitelistEntry = async (id: string, data: Partial<WhitelistEn
 };
 
 export const deleteWhitelistEntry = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/admin/whitelist/${id}`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/whitelist/${id}`, {
     method: "DELETE",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -90,9 +91,9 @@ export interface SubscriptionCheckResult {
 }
 
 export const notifyWhitelistUser = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/admin/whitelist/${id}/notify`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/whitelist/${id}/notify`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -100,11 +101,16 @@ export const notifyWhitelistUser = async (id: string): Promise<void> => {
   }
 };
 
-export const checkWhitelistSubscription = async (id: string): Promise<SubscriptionCheckResult> => {
-  const response = await fetch(`${API_URL}/admin/whitelist/${id}/check-subscription`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-  });
+export const checkWhitelistSubscription = async (
+  id: string
+): Promise<SubscriptionCheckResult> => {
+  const response = await fetchWithAuth(
+    `${API_URL}/admin/whitelist/${id}/check-subscription`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error || `Failed to check subscription: ${response.statusText}`);

@@ -1,9 +1,10 @@
 import { API_URL } from "./config";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export interface AdminPatternItem {
   id: string;
   title: string;
-  createdAt: string; // Date comes as ISO string
+  createdAt: string;
   category: string;
   characteristics: string;
   url: string;
@@ -27,22 +28,16 @@ export const getPatterns = async (
   status: string = "all",
   search: string = ""
 ): Promise<GetAdminPatternsResponse> => {
-  const token = localStorage.getItem("jwt_token");
-  
   const query = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
     status,
-    ...(search ? { search } : {})
+    ...(search ? { search } : {}),
   });
 
-  const response = await fetch(`${API_URL}/admin/patterns?${query.toString()}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  const response = await fetchWithAuth(
+    `${API_URL}/admin/patterns?${query.toString()}`
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch patterns: ${response.statusText}`);
@@ -62,39 +57,17 @@ export interface AdminPatternDetailDTO {
   isVisible: boolean;
   createdAt: string;
   updatedAt: string;
-  author: {
-    id: string;
-    name: string;
-  };
-  categories: {
-    id: string;
-    name: string;
-  }[];
-  tags: {
-    id: string;
-    name: string;
-  }[];
-  instruments: {
-    id: string;
-    name: string;
-  }[];
+  author: { id: string; name: string };
+  categories: { id: string; name: string }[];
+  tags: { id: string; name: string }[];
+  instruments: { id: string; name: string }[];
 }
 
 export const getPatternById = async (id: string): Promise<AdminPatternDetailDTO> => {
-  const token = localStorage.getItem("jwt_token");
-
-  const response = await fetch(`${API_URL}/admin/patterns/${id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  const response = await fetchWithAuth(`${API_URL}/admin/patterns/${id}`);
 
   if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Pattern not found");
-    }
+    if (response.status === 404) throw new Error("Pattern not found");
     throw new Error(`Failed to fetch pattern: ${response.statusText}`);
   }
 
@@ -115,15 +88,13 @@ export interface AdminPatternUpdateDTO {
   instruments?: string[];
 }
 
-export const updatePatternById = async (id: string, data: AdminPatternUpdateDTO): Promise<{ success: boolean; id: string }> => {
-  const token = localStorage.getItem("jwt_token");
-
-  const response = await fetch(`${API_URL}/admin/patterns/${id}`, {
+export const updatePatternById = async (
+  id: string,
+  data: AdminPatternUpdateDTO
+): Promise<{ success: boolean; id: string }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/patterns/${id}`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 
@@ -147,15 +118,12 @@ export interface AdminPatternCreateDTO {
   instruments?: string[];
 }
 
-export const createPattern = async (data: AdminPatternCreateDTO): Promise<{ success: boolean; id: string }> => {
-  const token = localStorage.getItem("jwt_token");
-
-  const response = await fetch(`${API_URL}/admin/patterns`, {
+export const createPattern = async (
+  data: AdminPatternCreateDTO
+): Promise<{ success: boolean; id: string }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/patterns`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 
@@ -168,13 +136,8 @@ export const createPattern = async (data: AdminPatternCreateDTO): Promise<{ succ
 };
 
 export const resetAllIsNew = async (): Promise<{ success: boolean; updated: number }> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/patterns/reset-new`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/patterns/reset-new`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -184,14 +147,8 @@ export const resetAllIsNew = async (): Promise<{ success: boolean; updated: numb
 };
 
 export const deletePattern = async (id: string): Promise<{ success: boolean }> => {
-  const token = localStorage.getItem("jwt_token");
-
-  const response = await fetch(`${API_URL}/admin/patterns/${id}`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/patterns/${id}`, {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
   });
 
   if (!response.ok) {
@@ -209,37 +166,27 @@ export interface DictionaryItem {
 }
 
 export const getCategories = async (): Promise<DictionaryItem[]> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/categories`, {
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  const response = await fetchWithAuth(`${API_URL}/admin/categories`);
   if (!response.ok) throw new Error("Failed to fetch categories");
   return response.json();
 };
 
 export const getTags = async (): Promise<DictionaryItem[]> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/tags`, {
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  const response = await fetchWithAuth(`${API_URL}/admin/tags`);
   if (!response.ok) throw new Error("Failed to fetch tags");
   return response.json();
 };
 
 export const getInstruments = async (): Promise<DictionaryItem[]> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/instruments`, {
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  const response = await fetchWithAuth(`${API_URL}/admin/instruments`);
   if (!response.ok) throw new Error("Failed to fetch instruments");
   return response.json();
 };
 
 export const updateCategory = async (id: string, name: string): Promise<DictionaryItem> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/categories/${id}`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/categories/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
   if (!response.ok) throw new Error("Failed to update category");
@@ -247,19 +194,16 @@ export const updateCategory = async (id: string, name: string): Promise<Dictiona
 };
 
 export const deleteCategory = async (id: string): Promise<void> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/categories/${id}`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/categories/${id}`, {
     method: "DELETE",
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
   if (!response.ok) throw new Error("Failed to delete category");
 };
 
 export const updateTag = async (id: string, name: string): Promise<DictionaryItem> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/tags/${id}`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/tags/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
   if (!response.ok) throw new Error("Failed to update tag");
@@ -267,35 +211,29 @@ export const updateTag = async (id: string, name: string): Promise<DictionaryIte
 };
 
 export const deleteTag = async (id: string): Promise<void> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/tags/${id}`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/tags/${id}`, {
     method: "DELETE",
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
   if (!response.ok) throw new Error("Failed to delete tag");
 };
 
 export const fixArchiveQuotes = async (): Promise<{ updated: number }> => {
-  const token = localStorage.getItem("jwt_token");
-  const response = await fetch(`${API_URL}/admin/patterns/fix-archive-quotes`, {
-    method: "POST",
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  const response = await fetchWithAuth(
+    `${API_URL}/admin/patterns/fix-archive-quotes`,
+    { method: "POST" }
+  );
   if (!response.ok) throw new Error("Failed to fix quotes");
   return response.json();
 };
 
 export const uploadImage = async (file: File): Promise<{ url: string }> => {
-  const token = localStorage.getItem("jwt_token");
   const formData = new FormData();
   formData.append("image", file);
 
-  const response = await fetch(`${API_URL}/admin/upload`, {
+  const response = await fetchWithAuth(`${API_URL}/admin/upload`, {
     method: "POST",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     body: formData,
+    // No Content-Type — browser sets multipart boundary automatically
   });
 
   if (!response.ok) {

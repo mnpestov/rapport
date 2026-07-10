@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Download, FileText, Mic } from "lucide-react";
-import { getChatHistory, sendChatMessage, getChatFileUrl, markChatAsRead, ChatMessage } from "../../api/chat";
+import {
+  getChatHistory,
+  sendChatMessage,
+  getChatFileUrl,
+  markChatAsRead,
+  ChatMessage,
+} from "../../api/chat";
+import { MediaLoader } from "../../components/MediaLoader/MediaLoader";
 import styles from "./ChatPanel.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 
@@ -11,34 +18,56 @@ interface Props {
 }
 
 function MediaMessage({ msg }: { msg: ChatMessage }) {
-  const fileUrl = msg.fileId ? getChatFileUrl(msg.fileId) : null;
+  if (!msg.fileId) return null;
 
-  if (msg.messageType === "photo" && fileUrl) {
-    return <img src={fileUrl} alt="фото" className={styles.mediaImg} />;
+  const url = getChatFileUrl(msg.fileId);
+
+  if (msg.messageType === "photo") {
+    return (
+      <MediaLoader url={url} className={styles.mediaImg}>
+        {(src) => <img src={src} alt="фото" className={styles.mediaImg} />}
+      </MediaLoader>
+    );
   }
 
-  if ((msg.messageType === "voice" || msg.messageType === "audio") && fileUrl) {
-    return <audio controls src={fileUrl} className={styles.audioPlayer} />;
+  if (msg.messageType === "voice" || msg.messageType === "audio") {
+    return (
+      <MediaLoader url={url}>
+        {(src) => <audio controls src={src} className={styles.audioPlayer} />}
+      </MediaLoader>
+    );
+  }
+
+  if (msg.messageType === "sticker") {
+    return (
+      <MediaLoader url={url} className={styles.stickerImg}>
+        {(src) => <img src={src} alt="стикер" className={styles.stickerImg} />}
+      </MediaLoader>
+    );
   }
 
   if (msg.messageType === "video" || msg.messageType === "video_note") {
     return (
-      <a href={fileUrl ?? "#"} target="_blank" rel="noreferrer" className={styles.fileLink}>
-        <Download size={14} /> Скачать видео
-      </a>
+      <MediaLoader url={url}>
+        {(src) => (
+          <a href={src} download className={styles.fileLink}>
+            <Download size={14} /> Скачать видео
+          </a>
+        )}
+      </MediaLoader>
     );
   }
 
   if (msg.messageType === "document") {
     return (
-      <a href={fileUrl ?? "#"} target="_blank" rel="noreferrer" className={styles.fileLink}>
-        <FileText size={14} /> Скачать файл
-      </a>
+      <MediaLoader url={url}>
+        {(src) => (
+          <a href={src} download className={styles.fileLink}>
+            <FileText size={14} /> Скачать файл
+          </a>
+        )}
+      </MediaLoader>
     );
-  }
-
-  if (msg.messageType === "sticker" && fileUrl) {
-    return <img src={fileUrl} alt="стикер" className={styles.stickerImg} />;
   }
 
   const label: Record<string, string> = {
@@ -78,7 +107,10 @@ export function ChatPanel({ telegramId, displayName, onRead }: Props) {
 
   useEffect(() => {
     markChatAsRead(telegramId)
-      .then(() => { refreshUnread(); onRead?.(); })
+      .then(() => {
+        refreshUnread();
+        onRead?.();
+      })
       .catch(() => {});
     load();
     const id = setInterval(load, 3000);
@@ -119,13 +151,14 @@ export function ChatPanel({ telegramId, displayName, onRead }: Props) {
   };
 
   const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <div className={styles.panel}>
-      <div className={styles.panelHeader}>
-        Чат с {displayName}
-      </div>
+      <div className={styles.panelHeader}>Чат с {displayName}</div>
 
       <div className={styles.messages}>
         {messages.length === 0 && (
@@ -134,7 +167,9 @@ export function ChatPanel({ telegramId, displayName, onRead }: Props) {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`${styles.bubble} ${msg.direction === "out" ? styles.bubbleOut : styles.bubbleIn}`}
+            className={`${styles.bubble} ${
+              msg.direction === "out" ? styles.bubbleOut : styles.bubbleIn
+            }`}
           >
             {msg.text && <span>{msg.text}</span>}
             {!msg.text && <MediaMessage msg={msg} />}
