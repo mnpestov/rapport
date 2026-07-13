@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getDashboardStats, DashboardResponse, TopPatternItem, Period } from "../../api/dashboard";
+import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
 import styles from "./Dashboard.module.css";
 
@@ -158,9 +159,7 @@ export function Dashboard() {
   return (
     <div className={styles.container} style={{ opacity: isRefreshing ? 0.6 : 1, transition: "opacity 0.15s" }}>
       {/* Header */}
-      <div className={styles.headerRow}>
-        <h1 className={styles.pageTitle}>Статистика</h1>
-      </div>
+      <PageHeader title="Статистика" />
 
       {/* Controls row */}
       <div className={styles.controlsRow}>

@@ -4,175 +4,12 @@
   gap: 24px;
 }
 
-.pageTitle {
-  color: #83942C;
-  font-family: 'Mulish', sans-serif;
-  font-size: 30px;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 110%; /* 33px */
-  margin: 0;
-}
-
-.headerRow {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-
-.controlsPanel {
-  display: flex;
-  padding: 13px 15px 16px 15px;
-  justify-content: space-between;
-  align-items: flex-end;
-  border-radius: 2px;
-  background: #FFF;
-}
-
-.leftControls {
-  display: flex;
-  gap: 24px;
-  align-items: flex-end;
-}
-
-.searchWrapper {
-  display: flex;
-  padding: 13px 15px 16px 15px;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  border-radius: 2px;
-  background: #FFF;
-  flex: 1;
-}
-
-.searchInput {
-  border: none;
-  outline: none;
-  font-family: 'Mulish', sans-serif;
-  font-size: 15px;
-  color: #1D1C1C;
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-}
-
-.searchInput::placeholder {
-  color: #9ca3af;
-}
-
-.tabsContainer {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.tab {
-  height: 32px;
-  padding: 0 12px;
-  background: transparent;
-  color: #4b5563;
-  border: none;
-  border-radius: 2px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  cursor: pointer;
-}
-
-.tabActive {
-  height: 32px;
-  padding: 0 12px;
-  background: #83942C;
-  color: #FFF;
-  border: none;
-  border-radius: 2px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  cursor: pointer;
-}
-
-.rightControls {
-  display: flex;
-  gap: 17px;
-  align-items: center;
-}
-
-.btnDelete {
-  display: flex;
-  width: 100px;
-  height: 32px;
-  padding: 8px 26px 9px 26px;
-  justify-content: center;
-  align-items: center;
-  border-radius: 2px;
-  background: #F3F3F3;
-  color: #1D1C1C;
-  text-align: center;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btnDelete:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btnAdd {
-  display: flex;
-  height: 32px;
-  padding: 0 10px;
-  align-items: center;
-  gap: 10px;
-  border-radius: 2px;
-  background: #A9AE36;
-  color: #FFF;
-  text-align: center;
-  font-family: 'Lato', sans-serif;
-  font-size: 12.64px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btnResetNew {
-  display: flex;
-  height: 32px;
-  padding: 0 10px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 2px;
-  background: #BEC1F4;
-  color: #1D1C1C;
-  text-align: center;
-  font-family: 'Lato', sans-serif;
-  font-size: 12.64px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  white-space: nowrap;
-}
-
-.btnAdd:hover, .btnDelete:hover:not(:disabled) {
-  opacity: 0.9;
-}
 
 .tableWrapper {
   border-radius: 2px;
   background: #FFF;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 
@@ -184,26 +21,11 @@
   font-family: 'Mulish', sans-serif;
 }
 
-.totalCount {
-  margin-left: auto;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
+/* ── Moderation queue ── */
+
+.moderationGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+  gap: 16px;
 }
 
-.totalCountLabel {
-  color: #1D1C1C;
-  font-family: 'Mulish', sans-serif;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 155%;
-}
-
-.totalCountValue {
-  color: #1D1C1C;
-  font-family: 'Lato', sans-serif;
-  font-size: 25.63px;
-  font-weight: 700;
-  line-height: normal;
-}

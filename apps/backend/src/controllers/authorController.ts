@@ -126,7 +126,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
 
     const authorId = await resolveAuthorId(userId);
 
-    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, thickness, densityStitches, densityRows } = req.body;
 
     if (!title || !url || !imageUrl) {
       res.status(400).json({ error: "title, url, and imageUrl are required" });
@@ -141,6 +141,9 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
         imageUrl,
         isFree: isFree ?? false,
         isNew: isNew ?? false,
+        thickness: thickness || null,
+        densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
+        densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
         tags: Array.isArray(tags) && tags.length > 0
           ? { connect: tags.map((id: string) => ({ id })) }
           : undefined,
@@ -151,9 +154,15 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
           ? { connect: instruments.map((id: string) => ({ id })) }
           : undefined,
       },
+      include: {
+        tags: { select: { id: true, name: true } },
+        categories: { select: { id: true, name: true } },
+        instruments: { select: { id: true, name: true } },
+        pattern: { select: { id: true, title: true } },
+      },
     });
 
-    res.status(201).json(draft);
+    res.status(201).json({ ...draft, _type: "draft" as const });
   } catch (error: any) {
     handleAuthorError(error, res, "createDraft");
   }
@@ -216,6 +225,9 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         imageUrl: pattern.imageUrl,
         isFree: pattern.isFree,
         isNew: pattern.isNew,
+        thickness: pattern.thickness,
+        densityStitches: pattern.densityStitches,
+        densityRows: pattern.densityRows,
         tags: pattern.tags.length > 0
           ? { connect: pattern.tags.map((t) => ({ id: t.id })) }
           : undefined,
@@ -226,9 +238,15 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
           ? { connect: pattern.instruments.map((i) => ({ id: i.id })) }
           : undefined,
       },
+      include: {
+        tags: { select: { id: true, name: true } },
+        categories: { select: { id: true, name: true } },
+        instruments: { select: { id: true, name: true } },
+        pattern: { select: { id: true, title: true } },
+      },
     });
 
-    res.status(201).json(draft);
+    res.status(201).json({ ...draft, _type: "draft" as const });
   } catch (error: any) {
     handleAuthorError(error, res, "createEditDraft");
   }
@@ -265,7 +283,7 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, thickness, densityStitches, densityRows } = req.body;
 
     const data: any = {};
     if (title !== undefined) data.title = title;
@@ -273,6 +291,9 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
     if (imageUrl !== undefined) data.imageUrl = imageUrl;
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
+    if (thickness !== undefined) data.thickness = thickness || null;
+    if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
+    if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
 
     if (Array.isArray(tags)) {
       data.tags = { set: [], connect: tags.map((id: string) => ({ id })) };
@@ -284,11 +305,54 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       data.instruments = { set: [], connect: instruments.map((id: string) => ({ id })) };
     }
 
-    const updated = await prisma.draft.update({ where: { id }, data });
+    const updated = await prisma.draft.update({
+      where: { id },
+      data,
+      include: {
+        tags: { select: { id: true, name: true } },
+        categories: { select: { id: true, name: true } },
+        instruments: { select: { id: true, name: true } },
+        pattern: { select: { id: true, title: true } },
+      },
+    });
 
-    res.json(updated);
+    res.json({ ...updated, _type: "draft" as const });
   } catch (error: any) {
     handleAuthorError(error, res, "updateDraft");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// DELETE /author/drafts/:id — permanently delete own draft
+// ---------------------------------------------------------------------------
+export const deleteDraft = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = await resolveAuthorId(req.user!.userId);
+    const { id } = req.params;
+
+    const draft = await prisma.draft.findUnique({ where: { id } });
+
+    if (!draft) {
+      res.status(404).json({ error: "Draft not found" });
+      return;
+    }
+
+    // IDOR check
+    if (draft.authorId !== authorId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    if (draft.status === DraftStatus.PENDING) {
+      res.status(400).json({ error: "Cannot delete a draft that is pending review" });
+      return;
+    }
+
+    await prisma.draft.delete({ where: { id } });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    handleAuthorError(error, res, "deleteDraft");
   }
 };
 
@@ -365,5 +429,34 @@ export const getDraft = async (req: Request, res: Response): Promise<void> => {
     res.json(draft);
   } catch (error: any) {
     handleAuthorError(error, res, "getDraft");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// POST /author/patterns/:id/archive — hide own published pattern (isVisible=false)
+// ---------------------------------------------------------------------------
+export const archivePattern = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = await resolveAuthorId(req.user!.userId);
+    const { id } = req.params;
+
+    const pattern = await prisma.pattern.findUnique({ where: { id } });
+
+    if (!pattern) {
+      res.status(404).json({ error: "Pattern not found" });
+      return;
+    }
+
+    // IDOR check
+    if (pattern.authorId !== authorId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    await prisma.pattern.update({ where: { id }, data: { isVisible: false } });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    handleAuthorError(error, res, "archivePattern");
   }
 };

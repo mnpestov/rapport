@@ -1,6 +1,8 @@
 import { API_URL } from "./config";
 import { fetchWithAuth } from "./fetchWithAuth";
 
+export type UserRole = 'USER' | 'AUTHOR' | 'ADMIN';
+
 export interface AdminUser {
   id: string;
   telegramId: string;
@@ -9,12 +11,19 @@ export interface AdminUser {
   username: string | null;
   languageCode: string | null;
   isPremium: boolean;
+  role: UserRole;
+  authorId: string | null;
+  author: { id: string; name: string } | null;
   createdAt: string;
   lastSeenAt: string | null;
   platform: string | null;
   tgVersion: string | null;
   userAgent: string | null;
   favoritesCount: number;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  permissions: string[];
 }
 
 export interface UsersResponse {
@@ -40,6 +49,28 @@ export const getUsers = async (params: {
   if (params.sortOrder) q.set("sortOrder", params.sortOrder);
   const res = await fetchWithAuth(`${API_URL}/admin/users?${q}`);
   if (!res.ok) throw new Error(`Failed to fetch users: ${res.statusText}`);
+  return res.json();
+};
+
+export const getUserById = async (id: string): Promise<AdminUserDetail> => {
+  const res = await fetchWithAuth(`${API_URL}/admin/users/${id}`);
+  if (!res.ok) throw new Error(`Failed to fetch user: ${res.statusText}`);
+  return res.json();
+};
+
+export const updateUser = async (
+  id: string,
+  data: { role?: UserRole; authorId?: string | null }
+): Promise<{ success: boolean }> => {
+  const res = await fetchWithAuth(`${API_URL}/admin/users/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any).error || `Failed to update user: ${res.statusText}`);
+  }
   return res.json();
 };
 

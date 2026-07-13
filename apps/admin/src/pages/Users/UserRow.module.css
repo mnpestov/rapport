@@ -1,0 +1,88 @@
+/* Inherits CSS custom properties from .container in Users.module.css via DOM cascade */
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: var(--pad-cell-v) var(--pad-cell-h);
+  font-family: 'Mulish', sans-serif;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+  background: var(--c-white);
+  border-bottom: var(--border) solid var(--c-bord);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  padding: var(--pad-cell-v) var(--pad-cell-h);
+  background: var(--c-white);
+  border-bottom: var(--border) solid var(--c-bord);
+  cursor: pointer;
+  transition: background 0.1s;
+  font-family: 'Mulish', sans-serif;
+  font-size: var(--fs-body);
+  color: var(--c-text);
+}
+
+.row:hover { background: #fafafa; }
+.row:last-child { border-bottom: none; }
+
+/* Sortable header button */
+.sortable {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(4px, 0.24vw, 8px);
+  font-family: 'Mulish', sans-serif;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-text);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortable:hover { color: var(--c-title); }
+
+.sortActive   { color: var(--c-title); }
+.sortInactive { color: var(--c-muted); }
+
+/* Column flex proportions (Figma: 203:182:80:228:158:54:40) */
+.colName     { flex: 2.24 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colUsername { flex: 2.01 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colRole     { flex: 0.88 1 0; }
+.colAuthor   { flex: 2.52 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colDate     { flex: 1.75 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colFav      { flex: 1 1 0; }
+.colEdit     { flex: 0 0 40px; display: flex; justify-content: flex-end; }
+
+/* Cell variants */
+.cellMuted { color: var(--c-muted); }
+.cellBold  { font-weight: 700; }
+
+.roleUser   { color: var(--c-muted); }
+.roleAuthor { color: var(--c-auth); font-weight: 700; }
+.roleAdmin  { color: var(--c-title); font-weight: 700; }
+
+.favCell {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(3px, 0.24vw, 6px);
+}
+
+.editBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text);
+}

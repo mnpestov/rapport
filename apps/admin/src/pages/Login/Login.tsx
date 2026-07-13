@@ -47,8 +47,12 @@ export function Login() {
       setIsLoading(true);
       const { token, user } = await verifyCode(username, code);
 
-      if (user.role !== 'ADMIN') {
-        toast.error('У вас нет прав администратора');
+      const hasAccess =
+        user.role === 'ADMIN' ||
+        (user.permissions ?? []).includes('AUTHOR_CABINET');
+
+      if (!hasAccess) {
+        toast.error('У вас нет доступа');
         return;
       }
 
@@ -56,7 +60,12 @@ export function Login() {
       setUser(user);
       setIsAuthenticated(true);
       toast.success('Успешный вход');
-      navigate('/patterns', { replace: true });
+
+      if (user.role === 'ADMIN') {
+        navigate('/patterns', { replace: true });
+      } else {
+        navigate('/cabinet/', { replace: true });
+      }
     } catch (err: any) {
       toast.error(err.message || 'Неверный или просроченный код');
     } finally {

@@ -4,21 +4,6 @@
   gap: 24px;
 }
 
-.pageTitle {
-  color: #83942C;
-  font-family: 'Mulish', sans-serif;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 110%;
-  margin: 0;
-}
-
-.headerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .controlsRow {
   display: flex;
   align-items: center;

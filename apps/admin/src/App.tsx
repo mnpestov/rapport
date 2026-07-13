@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { RequireAuth } from './routes/RequireAuth';
+import { RequireAuthor } from './routes/RequireAuthor';
 import { AdminLayout } from './layouts/AdminLayout';
 import { Login } from './pages/Login/Login';
 import { Dashboard } from './pages/Dashboard/Dashboard';
@@ -58,12 +59,18 @@ function AppRoutes() {
       <Route element={<RequireAuth />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="/patterns" replace />} />
-          <Route path="patterns" element={<Patterns />} />
+          <Route path="patterns" element={<Patterns variant="admin" />} />
           <Route path="authors" element={<Authors />} />
           <Route path="stats" element={<Dashboard />} />
           <Route path="requests" element={<Requests />} />
           <Route path="whitelist" element={<Whitelist />} />
           <Route path="users" element={<Users />} />
+        </Route>
+      </Route>
+
+      <Route element={<RequireAuthor />}>
+        <Route element={<AdminLayout variant="author" />}>
+          <Route path="cabinet" element={<Patterns variant="author" />} />
         </Route>
       </Route>
 

@@ -15,7 +15,7 @@
 .modal {
   position: relative;
   background: white;
-  border-radius: 16px;
+  border-radius: 2px;
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
@@ -36,8 +36,8 @@
 .title {
   margin: 0;
   font-family: 'Mulish', sans-serif;
-  font-size: 20.25px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 700;
   color: #1D1C1C;
 }
 

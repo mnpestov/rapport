@@ -1,11 +1,16 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { FileText, TrendingUp, Users, LogOut, ShieldCheck, MessageSquare, BookUser } from "lucide-react";
+import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2 } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { logout } from "../../api/auth";
 
-export function Sidebar() {
+interface SidebarProps {
+  variant?: "admin" | "author";
+  subtitle?: string;
+}
+
+export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
   const navigate = useNavigate();
   const { whitelistTotal, allTotal } = useUnread();
   const { clearToken } = useAuth();
@@ -29,72 +34,119 @@ export function Sidebar() {
         <img src="/logo-dark.svg" alt="Rapport" className={styles.logoImage} />
       </div>
 
+      {subtitle && <div className={styles.subtitle}>
+        <span className="author-name">{subtitle}</span>
+      </div>}
+
       <nav className={styles.nav}>
-        <NavLink
-          to="/patterns"
-          className={({ isActive }) =>
-            `${styles.navItem} ${isActive ? styles.active : ""}`
-          }
-        >
-          <FileText size={20} className={styles.icon} />
-          <span className={styles.label}>Описания</span>
-        </NavLink>
+        {variant === "admin" ? (
+          <NavLink
+            to="/patterns"
+            className={({ isActive }) =>
+              `${styles.navItem} ${isActive ? styles.active : ""}`
+            }
+          >
+            <LayoutList size={24} strokeWidth={1} className={styles.icon} />
+            <span className={styles.label}>Описания</span>
+          </NavLink>
+        ) : (
+          <NavLink
+            to="/cabinet"
+            end
+            className={({ isActive }) =>
+              `${styles.navItem} ${isActive ? styles.active : ""}`
+            }
+          >
+            <LayoutList size={24} strokeWidth={1} className={styles.icon} />
+            <span className={styles.label}>Описания</span>
+          </NavLink>
+        )}
 
-        <NavLink
-          to="/authors"
-          className={({ isActive }) =>
-            `${styles.navItem} ${isActive ? styles.active : ""}`
-          }
-        >
-          <Users size={20} className={styles.icon} />
-          <span className={styles.label}>Авторы</span>
-        </NavLink>
+        {variant === "admin" && (
+          <>
+            <NavLink
+              to="/authors"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <UserRound size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Авторы</span>
+            </NavLink>
 
-        <NavLink
-          to="/stats"
-          className={({ isActive }) =>
-            `${styles.navItem} ${isActive ? styles.active : ""}`
-          }
-        >
-          <TrendingUp size={20} className={styles.icon} />
-          <span className={styles.label}>Статистика</span>
-        </NavLink>
+            <NavLink
+              to="/stats"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <ChartColumnStacked size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Статистика</span>
+            </NavLink>
 
-        <NavLink
-          to="/requests"
-          className={({ isActive }) =>
-            `${styles.navItem} ${isActive ? styles.active : ""}`
-          }
-        >
-          <MessageSquare size={20} className={styles.icon} />
-          <span className={styles.label}>Обращения</span>
-          {allTotal > 0 && <span className={styles.badge}>{allTotal}</span>}
-        </NavLink>
+            <NavLink
+              to="/requests"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <MessageCircleCheck size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Обращения</span>
+              {allTotal > 0 && <span className={styles.badge}>{allTotal}</span>}
+            </NavLink>
 
-        <NavLink
-          to="/whitelist"
-          className={({ isActive }) =>
-            `${styles.navItem} ${isActive ? styles.active : ""}`
-          }
-        >
-          <ShieldCheck size={20} className={styles.icon} />
-          <span className={styles.label}>Белый список</span>
-          {whitelistTotal > 0 && <span className={styles.badge}>{whitelistTotal}</span>}
-        </NavLink>
+            <NavLink
+              to="/whitelist"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <FileUser size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Белый список</span>
+              {whitelistTotal > 0 && <span className={styles.badge}>{whitelistTotal}</span>}
+            </NavLink>
 
-        <NavLink
-          to="/users"
-          className={({ isActive }) =>
-            `${styles.navItem} ${isActive ? styles.active : ""}`
-          }
-        >
-          <BookUser size={20} className={styles.icon} />
-          <span className={styles.label}>Пользователи</span>
-        </NavLink>
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <BookUser size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Пользователи</span>
+            </NavLink>
+
+            <NavLink
+              to="/dictionaries"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <Info size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Справочник</span>
+            </NavLink>
+          </>
+        )}
+
+        {variant === "author" && (
+          <>
+            <span className={styles.navItem} aria-disabled="true">
+              <UserRound size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Профиль</span>
+              <span className={styles.soon}>скоро</span>
+            </span>
+
+            <span className={styles.navItem} aria-disabled="true">
+              <BarChart2 size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Статистика</span>
+              <span className={styles.soon}>скоро</span>
+            </span>
+          </>
+        )}
       </nav>
 
       <button className={styles.logoutBtn} onClick={handleLogout}>
-        <LogOut size={20} className={styles.icon} />
+        <LogOut size={24} strokeWidth={1} className={styles.icon} />
         <span className={styles.label}>Выйти</span>
       </button>
     </aside>

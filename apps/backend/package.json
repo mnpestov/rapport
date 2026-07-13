@@ -7,7 +7,8 @@
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "seed": "tsx prisma/seed.ts",
-    "import": "tsx src/data/import.ts"
+    "import": "tsx src/data/import.ts",
+    "import:author-sites": "tsx scripts/import-author-sites.ts"
   },
   "dependencies": {
     "@knitting/shared": "workspace:*",

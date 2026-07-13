@@ -1,9 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Search, X, Heart, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
-import { getUsers, getUserSubscription, AdminUser, SortField, SortOrder } from "../../api/users";
+import { X } from "lucide-react";
+import { UserRow, UserRowHeader } from "./UserRow";
+import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { getUsers, getUserSubscription, updateUser, AdminUser, AdminUserDetail, UserRole, SortField, SortOrder } from "../../api/users";
+import { getAuthors, AuthorItem } from "../../api/authors";
+import toast from "react-hot-toast";
 import styles from "./Users.module.css";
 
 const LIMIT = 50;
+
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -12,7 +17,7 @@ function formatDate(iso: string | null): string {
     " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function fullName(u: AdminUser): string {
+function fullName(u: Pick<AdminUser, "firstName" | "lastName">): string {
   const parts = [u.firstName, u.lastName].filter(Boolean).join(" ");
   return parts || "—";
 }
@@ -23,12 +28,152 @@ function platformLabel(platform: string | null): string {
   return map[platform.toLowerCase()] ?? platform;
 }
 
-function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
-  const [subStatus, setSubStatus] = useState<boolean | null | "loading">("loading");
+// ── Permission section — editable role + author link ──────────────────────────
+
+function PermissionsSection({
+  user,
+  onSaved,
+}: {
+  user: AdminUserDetail;
+  onSaved: (role: UserRole, authorId: string | null, authorName: string | null) => void;
+}) {
+  const [role, setRole] = useState<UserRole>(user.role);
+  const [authorId, setAuthorId] = useState<string | null>(user.authorId);
+  const [authorName, setAuthorName] = useState<string>(user.author?.name ?? "");
+  const [authorSearch, setAuthorSearch] = useState(user.author?.name ?? "");
+  const [allAuthors, setAllAuthors] = useState<AuthorItem[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    getUserSubscription(user.telegramId).then(setSubStatus);
-  }, [user.telegramId]);
+    if (role === "AUTHOR") {
+      getAuthors().then(setAllAuthors).catch(() => {});
+    }
+  }, [role]);
+
+  const filteredAuthors = allAuthors.filter((a) =>
+    a.name.toLowerCase().includes(authorSearch.toLowerCase())
+  );
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setRole(newRole);
+    if (newRole !== "AUTHOR") {
+      setAuthorId(null);
+      setAuthorName("");
+      setAuthorSearch("");
+    }
+  };
+
+  const handleSelectAuthor = (a: AuthorItem) => {
+    setAuthorId(a.id);
+    setAuthorName(a.name);
+    setAuthorSearch(a.name);
+    setShowDropdown(false);
+  };
+
+  const handleSave = async () => {
+    if (role === "AUTHOR" && !authorId) {
+      toast.error("Выберите автора");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateUser(user.id, {
+        role,
+        authorId: role === "AUTHOR" ? authorId : null,
+      });
+      toast.success("Разрешения обновлены");
+      onSaved(role, role === "AUTHOR" ? authorId : null, role === "AUTHOR" ? authorName : null);
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось сохранить");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isDirty = role !== user.role || authorId !== user.authorId;
+
+  return (
+    <div className={styles.permissionsSection}>
+      <div className={styles.sectionTitle}>Разрешения</div>
+
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Роль</span>
+        <select
+          className={styles.roleSelect}
+          value={role}
+          onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+        >
+          <option value="USER">User</option>
+          <option value="AUTHOR">Author</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </div>
+
+      {role === "AUTHOR" && (
+        <div className={styles.permRow}>
+          <span className={styles.rowLabel}>Автор</span>
+          <div className={styles.authorSearchWrap}>
+            <input
+              className={styles.authorSearchInput}
+              placeholder="Поиск автора..."
+              value={authorSearch}
+              onChange={(e) => {
+                setAuthorSearch(e.target.value);
+                setAuthorId(null);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+            />
+            {showDropdown && filteredAuthors.length > 0 && (
+              <ul className={styles.authorDropdown}>
+                {filteredAuthors.slice(0, 8).map((a) => (
+                  <li
+                    key={a.id}
+                    className={styles.authorDropdownItem}
+                    onMouseDown={() => handleSelectAuthor(a)}
+                  >
+                    {a.name}
+                    <span className={styles.authorDropdownCount}>{a.patternsCount}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isDirty && (
+        <button className={styles.savePermBtn} onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Сохранение..." : "Сохранить"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── User cart modal ────────────────────────────────────────────────────────────
+
+function UserModal({
+  user: initialUser,
+  onClose,
+  onUserUpdated,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onUserUpdated: (id: string, role: UserRole, authorId: string | null, authorName: string | null) => void;
+}) {
+  const [subStatus, setSubStatus] = useState<boolean | null | "loading">("loading");
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+
+  useEffect(() => {
+    getUserSubscription(initialUser.telegramId).then(setSubStatus);
+    // Load full user detail for permissions section
+    import("../../api/users").then(({ getUserById }) =>
+      getUserById(initialUser.id).then(setDetail).catch(() => {})
+    );
+  }, [initialUser.id, initialUser.telegramId]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
@@ -38,7 +183,7 @@ function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
     <div className={styles.overlay} onClick={handleOverlayClick}>
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
-          <span className={styles.modalName}>{fullName(user)}</span>
+          <span className={styles.modalName}>{fullName(initialUser)}</span>
           <button className={styles.closeBtn} onClick={onClose}><X size={16} /></button>
         </div>
 
@@ -47,32 +192,32 @@ function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
             <div className={styles.sectionTitle}>Основное</div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Telegram ID</span>
-              <span className={styles.rowValue}>{user.telegramId}</span>
+              <span className={styles.rowValue}>{initialUser.telegramId}</span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Username</span>
-              <span className={user.username ? styles.rowValue : styles.rowValueMuted}>
-                {user.username ? `@${user.username}` : "—"}
+              <span className={initialUser.username ? styles.rowValue : styles.rowValueMuted}>
+                {initialUser.username ? `@${initialUser.username}` : "—"}
               </span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Язык</span>
-              <span className={user.languageCode ? styles.rowValue : styles.rowValueMuted}>
-                {user.languageCode ?? "—"}
+              <span className={initialUser.languageCode ? styles.rowValue : styles.rowValueMuted}>
+                {initialUser.languageCode ?? "—"}
               </span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Telegram Premium</span>
-              <span className={styles.rowValue}>{user.isPremium ? "Да" : "Нет"}</span>
+              <span className={styles.rowValue}>{initialUser.isPremium ? "Да" : "Нет"}</span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Зарегистрирован</span>
-              <span className={styles.rowValue}>{formatDate(user.createdAt)}</span>
+              <span className={styles.rowValue}>{formatDate(initialUser.createdAt)}</span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Последний вход</span>
-              <span className={user.lastSeenAt ? styles.rowValue : styles.rowValueMuted}>
-                {formatDate(user.lastSeenAt)}
+              <span className={initialUser.lastSeenAt ? styles.rowValue : styles.rowValueMuted}>
+                {formatDate(initialUser.lastSeenAt)}
               </span>
             </div>
           </div>
@@ -83,20 +228,20 @@ function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
             <div className={styles.sectionTitle}>Устройство</div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Платформа</span>
-              <span className={user.platform ? styles.rowValue : styles.rowValueMuted}>
-                {platformLabel(user.platform)}
+              <span className={initialUser.platform ? styles.rowValue : styles.rowValueMuted}>
+                {platformLabel(initialUser.platform)}
               </span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Версия Telegram</span>
-              <span className={user.tgVersion ? styles.rowValue : styles.rowValueMuted}>
-                {user.tgVersion ?? "—"}
+              <span className={initialUser.tgVersion ? styles.rowValue : styles.rowValueMuted}>
+                {initialUser.tgVersion ?? "—"}
               </span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>User Agent</span>
-              <span className={user.userAgent ? styles.rowValue : styles.rowValueMuted}>
-                {user.userAgent ?? "—"}
+              <span className={initialUser.userAgent ? styles.rowValue : styles.rowValueMuted}>
+                {initialUser.userAgent ?? "—"}
               </span>
             </div>
           </div>
@@ -107,7 +252,7 @@ function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
             <div className={styles.sectionTitle}>Каталог</div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Избранное</span>
-              <span className={styles.rowValue}>{user.favoritesCount}</span>
+              <span className={styles.rowValue}>{initialUser.favoritesCount}</span>
             </div>
             <div className={styles.row}>
               <span className={styles.rowLabel}>Подписка на канал</span>
@@ -122,17 +267,26 @@ function UserModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
               )}
             </div>
           </div>
+
+          <div className={styles.divider} />
+
+          {detail ? (
+            <PermissionsSection
+              user={detail}
+              onSaved={(role, authorId, authorName) => {
+                onUserUpdated(initialUser.id, role, authorId, authorName);
+              }}
+            />
+          ) : (
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Разрешения</div>
+              <div className={styles.rowValueMuted} style={{ fontSize: 13 }}>Загрузка...</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}
-
-function SortIcon({ field, sortBy, sortOrder }: { field: SortField; sortBy: SortField; sortOrder: SortOrder }) {
-  if (sortBy !== field) return <ChevronsUpDown size={13} className={styles.sortIconInactive} />;
-  return sortOrder === "asc"
-    ? <ChevronUp size={13} className={styles.sortIconActive} />
-    : <ChevronDown size={13} className={styles.sortIconActive} />;
 }
 
 export function Users() {
@@ -180,81 +334,43 @@ export function Users() {
     setOffset(0);
   };
 
+  const handleUserUpdated = (id: string, role: UserRole, authorId: string | null, authorName: string | null) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id !== id
+          ? u
+          : {
+              ...u,
+              role,
+              authorId,
+              author: authorId && authorName ? { id: authorId, name: authorName } : null,
+            }
+      )
+    );
+  };
+
   const totalPages = Math.ceil(total / LIMIT);
   const currentPage = Math.floor(offset / LIMIT) + 1;
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.pageTitle}>Пользователи</h1>
-        <div className={styles.searchWrapper}>
-          <input
-            type="text"
-            placeholder="Поиск по имени, username, ID"
-            className={styles.searchInput}
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          <Search size={18} color="#9ca3af" />
-        </div>
-      </div>
+      <PageHeader
+        title="Пользователи"
+        search={{ value: search, onChange: handleSearchChange }}
+        totalCount={total > 0 ? { label: "Всего пользователей:", value: total } : undefined}
+      />
 
       <div className={styles.tableWrapper}>
-        <table>
-          <thead>
-            <tr>
-              <th className={styles.thSortable} onClick={() => handleSort("firstName")}>
-                Имя <SortIcon field="firstName" sortBy={sortBy} sortOrder={sortOrder} />
-              </th>
-              <th>Username</th>
-              <th>Telegram ID</th>
-              <th>Платформа</th>
-              <th className={styles.thSortable} onClick={() => handleSort("lastSeenAt")}>
-                Последний вход <SortIcon field="lastSeenAt" sortBy={sortBy} sortOrder={sortOrder} />
-              </th>
-              <th className={styles.thSortable} onClick={() => handleSort("favoritesCount")}>
-                Избранное <SortIcon field="favoritesCount" sortBy={sortBy} sortOrder={sortOrder} />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} style={{ textAlign: "center", color: "#9ca3af", padding: "32px" }}>
-                  Загрузка...
-                </td>
-              </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ textAlign: "center", color: "#9ca3af", padding: "32px" }}>
-                  Пользователи не найдены
-                </td>
-              </tr>
-            ) : users.map((u) => (
-              <tr key={u.id} onClick={() => setSelected(u)}>
-                <td>
-                  <div className={styles.cellName}>{fullName(u)}</div>
-                </td>
-                <td className={styles.cellMuted}>
-                  {u.username ? `@${u.username}` : "—"}
-                </td>
-                <td className={styles.cellMuted}>{u.telegramId}</td>
-                <td className={styles.cellMuted}>{platformLabel(u.platform)}</td>
-                <td className={styles.cellMuted}>{formatDate(u.lastSeenAt)}</td>
-                <td>
-                  {u.favoritesCount > 0 ? (
-                    <span className={styles.favCount}>
-                      <Heart size={13} />
-                      {u.favoritesCount}
-                    </span>
-                  ) : (
-                    <span className={styles.cellMuted}>—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <UserRowHeader sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+        {isLoading && (
+          <div style={{ textAlign: "center", color: "#9ca3af", padding: "32px" }}>Загрузка...</div>
+        )}
+        {!isLoading && users.length === 0 && (
+          <div style={{ textAlign: "center", color: "#9ca3af", padding: "32px" }}>Пользователи не найдены</div>
+        )}
+        {!isLoading && users.map((u) => (
+          <UserRow key={u.id} user={u} onClick={setSelected} onEdit={setSelected} />
+        ))}
       </div>
 
       {totalPages > 1 && (
@@ -278,7 +394,25 @@ export function Users() {
         </div>
       )}
 
-      {selected && <UserModal user={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <UserModal
+          user={selected}
+          onClose={() => setSelected(null)}
+          onUserUpdated={(id, role, authorId, authorName) => {
+            handleUserUpdated(id, role, authorId, authorName);
+            setSelected((prev) =>
+              prev && prev.id === id
+                ? {
+                    ...prev,
+                    role,
+                    authorId,
+                    author: authorId && authorName ? { id: authorId, name: authorName } : null,
+                  }
+                : prev
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

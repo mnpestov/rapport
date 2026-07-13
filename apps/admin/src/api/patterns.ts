@@ -12,6 +12,10 @@ export interface AdminPatternItem {
   instrument: string;
   preview: string;
   isVisible: boolean;
+  isFree?: boolean;
+  isNew: boolean;
+  thickness?: string;
+  density?: string;
 }
 
 export interface GetAdminPatternsResponse {
@@ -55,6 +59,9 @@ export interface AdminPatternDetailDTO {
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
+  thickness: string | null;
+  densityStitches: number | null;
+  densityRows: number | null;
   createdAt: string;
   updatedAt: string;
   author: { id: string; name: string };
@@ -86,6 +93,9 @@ export interface AdminPatternUpdateDTO {
   categories?: string[];
   tags?: string[];
   instruments?: string[];
+  thickness?: string;
+  densityStitches?: number | string;
+  densityRows?: number | string;
 }
 
 export const updatePatternById = async (
@@ -112,10 +122,14 @@ export interface AdminPatternCreateDTO {
   imageUrl: string;
   isFree?: boolean;
   isNew?: boolean;
+  isVisible?: boolean;
   authorName: string;
   categories?: string[];
   tags?: string[];
   instruments?: string[];
+  thickness?: string;
+  densityStitches?: number | string;
+  densityRows?: number | string;
 }
 
 export const createPattern = async (

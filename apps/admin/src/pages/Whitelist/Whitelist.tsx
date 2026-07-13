@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, SquarePen, Search, ShieldCheck, Bug, Signal, Bot } from "lucide-react";
+import { Plus, Trash2, SquarePen, ShieldCheck, Bug, Signal, Bot } from "lucide-react";
+import { PageHeader } from "../../components/PageHeader/PageHeader";
 import {
   getWhitelist,
   createWhitelistEntry,
@@ -217,19 +218,10 @@ export function Whitelist() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.headerRow}>
-        <h1 className={styles.pageTitle}>Белый список</h1>
-        <div className={styles.searchWrapper}>
-          <input
-            type="text"
-            placeholder="Поиск по ID, имени, username"
-            className={styles.searchInput}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search size={18} color="#9ca3af" />
-        </div>
-      </div>
+      <PageHeader
+        title="Белый список"
+        search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Поиск по ID, имени, username" }}
+      />
 
       <div className={styles.controlsPanel}>
         <div />

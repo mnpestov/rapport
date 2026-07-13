@@ -344,6 +344,11 @@ export const getPatternsList = async (req: Request, res: Response): Promise<void
       instrument: pattern.instruments.map((i) => i.name).join(", "),
       preview: pattern.imageUrl,
       isVisible: pattern.isVisible,
+      isNew: pattern.isNew,
+      thickness: pattern.thickness ?? undefined,
+      density: pattern.densityStitches != null && pattern.densityRows != null
+        ? `${pattern.densityStitches} х ${pattern.densityRows}`
+        : undefined,
     }));
 
     res.json({
@@ -390,6 +395,9 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       isFree: pattern.isFree,
       isNew: pattern.isNew,
       isVisible: pattern.isVisible,
+      thickness: pattern.thickness,
+      densityStitches: pattern.densityStitches,
+      densityRows: pattern.densityRows,
       createdAt: pattern.createdAt,
       updatedAt: pattern.updatedAt,
       author: {
@@ -412,7 +420,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
 export const updatePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, url, imageUrl, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, thickness, densityStitches, densityRows } = req.body;
 
     const existing = await prisma.pattern.findUnique({ where: { id } });
     if (!existing) {
@@ -439,6 +447,9 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
     if (isVisible !== undefined) data.isVisible = isVisible;
+    if (thickness !== undefined) data.thickness = thickness || null;
+    if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
+    if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
     if (imageUrl !== undefined && imageUrl !== existing.imageUrl) {
       data.imageUrl = imageUrl;
       // Old image file is deleted only after the DB update succeeds (see below).
@@ -505,7 +516,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 // POST /admin/patterns
 export const createPattern = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, url, imageUrl, isFree, isNew, authorId, authorName, categories, tags, instruments } = req.body;
+    const { title, url, imageUrl, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, thickness, densityStitches, densityRows } = req.body;
 
     if (!title || !url || !imageUrl || (!authorId && !authorName)) {
       res.status(400).json({ error: "Missing required fields" });
@@ -535,7 +546,10 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       isNew: isNew ?? false,
       authorId: finalAuthorId,
       slug,
-      isVisible: true,
+      isVisible: isVisible ?? true,
+      thickness: thickness || null,
+      densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
+      densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
     };
 
     if (Array.isArray(categories) && categories.length > 0) {
@@ -637,6 +651,7 @@ export const getAuthors = async (req: Request, res: Response): Promise<void> => 
     const mapped = authors.map(a => ({
       id: a.id,
       name: a.name,
+      site: a.site,
       patternsCount: a._count.patterns
     }));
 
@@ -649,14 +664,14 @@ export const getAuthors = async (req: Request, res: Response): Promise<void> => 
 
 export const createAuthor = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.body;
+    const { name, site } = req.body;
     if (!name) {
       res.status(400).json({ error: "Name is required" });
       return;
     }
 
     const author = await prisma.author.create({
-      data: { name }
+      data: { name, site: site || null }
     });
     res.status(201).json(author);
   } catch (error: any) {
@@ -672,8 +687,8 @@ export const createAuthor = async (req: Request, res: Response): Promise<void> =
 export const updateAuthor = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
-    
+    const { name, site } = req.body;
+
     if (!name) {
       res.status(400).json({ error: "Name is required" });
       return;
@@ -681,7 +696,7 @@ export const updateAuthor = async (req: Request, res: Response): Promise<void> =
 
     const author = await prisma.author.update({
       where: { id },
-      data: { name }
+      data: { name, site: site || null }
     });
     res.json(author);
   } catch (error: any) {
@@ -942,6 +957,9 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             isNew: draft.isNew,
             isVisible: true,
             authorId: draft.authorId,
+            thickness: draft.thickness,
+            densityStitches: draft.densityStitches,
+            densityRows: draft.densityRows,
             tags: { connect: tagConnect },
             categories: { connect: catConnect },
             instruments: { connect: instConnect },
@@ -957,6 +975,9 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             imageUrl: draft.imageUrl,
             isFree: draft.isFree,
             isNew: draft.isNew,
+            thickness: draft.thickness,
+            densityStitches: draft.densityStitches,
+            densityRows: draft.densityRows,
             tags: { set: [], connect: tagConnect },
             categories: { set: [], connect: catConnect },
             instruments: { set: [], connect: instConnect },
@@ -990,7 +1011,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
 export const rejectDraft = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { comment } = req.body;
+    const { moderationComment } = req.body;
     const adminId = req.user!.userId;
 
     const draft = await prisma.draft.findUnique({ where: { id } });
@@ -1005,7 +1026,7 @@ export const rejectDraft = async (req: Request, res: Response): Promise<void> =>
       where: { id },
       data: {
         status: DraftStatus.REJECTED,
-        moderationComment: comment ?? null,
+        moderationComment: moderationComment ?? null,
         closedById: adminId,
         // closedAt intentionally not set — rejected draft stays open for author to fix
       },

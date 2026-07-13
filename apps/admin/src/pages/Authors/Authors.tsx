@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, SquarePen, Search } from "lucide-react";
+import { Plus } from "lucide-react";
+import { AuthorRow, AuthorRowHeader } from "./AuthorRow";
+import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem } from "../../api/authors";
 import { Modal } from "../../components/Modal/Modal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
@@ -13,7 +15,7 @@ export function Authors() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAuthor, setEditingAuthor] = useState<AuthorItem | null>(null);
-  const [formData, setFormData] = useState({ name: "" });
+  const [formData, setFormData] = useState({ name: "", site: "" });
   const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,13 +51,13 @@ export function Authors() {
 
   const handleOpenCreate = () => {
     setEditingAuthor(null);
-    setFormData({ name: "" });
+    setFormData({ name: "", site: "" });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (author: AuthorItem) => {
     setEditingAuthor(author);
-    setFormData({ name: author.name });
+    setFormData({ name: author.name, site: author.site ?? "" });
     setIsModalOpen(true);
   };
 
@@ -69,10 +71,11 @@ export function Authors() {
 
     try {
       setIsSaving(true);
+      const payload = { name: formData.name.trim(), site: formData.site.trim() };
       if (editingAuthor) {
-        await updateAuthor(editingAuthor.id, formData.name);
+        await updateAuthor(editingAuthor.id, payload);
       } else {
-        await createAuthor(formData.name);
+        await createAuthor(payload);
       }
       toast.success(editingAuthor ? "Автор обновлен" : "Автор создан");
       setIsModalOpen(false);
@@ -124,19 +127,10 @@ export function Authors() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.headerRow}>
-        <h1 className={styles.pageTitle}>Авторы</h1>
-        <div className={styles.searchWrapper}>
-          <input 
-            type="text" 
-            placeholder="Поиск" 
-            className={styles.searchInput}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search size={18} color="#9ca3af" />
-        </div>
-      </div>
+      <PageHeader
+        title="Авторы"
+        search={{ value: searchQuery, onChange: setSearchQuery }}
+      />
 
       <div className={styles.controlsPanel}>
         <div className={styles.leftControls}></div>
@@ -149,50 +143,18 @@ export function Authors() {
       </div>
 
       <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Имя</th>
-              <th>Описаний</th>
-              <th style={{ width: 100 }}>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {authors.map((author) => (
-              <tr key={author.id}>
-                <td className={styles.tdText}>{author.name}</td>
-                <td className={styles.tdText}>{author.patternsCount}</td>
-                <td>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button 
-                      className={styles.iconBtn} 
-                      title="Редактировать"
-                      onClick={() => handleOpenEdit(author)}
-                    >
-                      <SquarePen size={16} />
-                    </button>
-                    <button 
-                      className={styles.iconBtn} 
-                      title="Удалить"
-                      onClick={() => handleDelete(author)}
-                      disabled={author.patternsCount > 0}
-                      style={{ color: author.patternsCount > 0 ? "#9ca3af" : "#ef4444" }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {authors.length === 0 && !isLoading && (
-              <tr>
-                <td colSpan={3} className={styles.centerState}>
-                  Авторов пока нет
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <AuthorRowHeader />
+        {authors.map((author) => (
+          <AuthorRow
+            key={author.id}
+            author={author}
+            onEdit={handleOpenEdit}
+            onDelete={handleDelete}
+          />
+        ))}
+        {authors.length === 0 && !isLoading && (
+          <div className={styles.centerState}>Авторов пока нет</div>
+        )}
       </div>
 
       <Modal 
@@ -203,14 +165,24 @@ export function Authors() {
         <form onSubmit={handleSave} className={styles.form}>
           <div className={styles.formGroup}>
             <label>Имя</label>
-            <input 
-              type="text" 
-              value={formData.name} 
+            <input
+              type="text"
+              value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className={styles.input}
               placeholder="Введите имя автора"
               autoFocus
               required
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label>Сайт</label>
+            <input
+              type="url"
+              value={formData.site}
+              onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+              className={styles.input}
+              placeholder="https://example.com"
             />
           </div>
           <div className={styles.formActions}>

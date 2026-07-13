@@ -195,6 +195,11 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
         .catch(console.error);
     }
 
+    const userPermissions = await prisma.userPermission.findMany({
+      where: { userId: user.id },
+      select: { permission: true },
+    });
+
     res.json({
       token: accessToken,
       user: {
@@ -202,6 +207,8 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
         telegramId: user.telegramId.toString(),
         firstName: user.firstName,
         role: user.role,
+        authorId: user.authorId,
+        permissions: userPermissions.map((p) => p.permission),
       },
     });
   } catch (error) {

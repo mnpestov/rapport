@@ -1,61 +1,153 @@
 .card {
   display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-bottom: 1px solid #e5e5e5;
+  width: 100%;
+}
+
+.row {
+  display: flex;
   align-items: center;
-  background: #FFF;
-  border-bottom: 1px solid #E5E7EB;
   min-width: 0;
-  overflow: hidden;
+  width: 100%;
+}
+
+.rejectBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 0 12px 44px;
+  padding: 4px 20px;
+  border-radius: 2px;
+  background: #D8520F;
+  color: #FFF;
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 120%;
 }
 
 .cell {
-  color: #1D1C1C;
+  color: #1d1c1c;
   font-family: 'Mulish', sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 110%;
-  padding: 12px 8px;
+  line-height: 1.4;
+  padding: 20px 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  flex-shrink: 1;
+}
+
+.dateCell {
+  color: #9b9a9a;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  padding: 20px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .headerCell {
-  color: #1D1C1C;
+  color: #1d1c1c;
   font-family: 'Mulish', sans-serif;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 110%;
-  padding: 16px 8px;
+  line-height: 1.4;
+  padding: 5px 8px;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
 }
 
+/* Fixed columns — иконки и изображения, не меняют размер */
 .colCheckbox {
-  flex: 0 0 56px;
+  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 0;
+  padding: 20px 0;
 }
 
 .colImage {
-  flex: 0 0 57px;
+  flex: 0 0 51px;
   display: flex;
   align-items: center;
-  padding: 12px 8px;
+  padding: 8px 4px;
 }
 
+.colFree {
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.colEdit {
+  flex: 0 0 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+/* Flexible columns — пропорционально делят доступную ширину */
 .colDate {
-  flex: 0 0 106px;
+  flex: 0 1 72px;
+  min-width: 56px;
 }
 
 .colTitle {
-  flex: 1 1 0;
-  min-width: 60px;
+  flex: 3 1 120px;
+  min-width: 80px;
   display: flex;
   align-items: center;
   gap: 8px;
   overflow: hidden;
+}
+
+.colCategory {
+  flex: 2 1 90px;
+  min-width: 60px;
+}
+
+.colChars {
+  flex: 2 1 90px;
+  min-width: 60px;
+}
+
+.colLink {
+  flex: 0 1 60px;
+  min-width: 45px;
+}
+
+.colAuthor {
+  flex: 2 1 100px;
+  min-width: 65px;
+}
+
+.colInstrument {
+  flex: 1 1 55px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.colThickness {
+  flex: 1 1 55px;
+  min-width: 40px;
+}
+
+.colDensity {
+  flex: 1 1 55px;
+  min-width: 40px;
 }
 
 .titleText {
@@ -65,68 +157,30 @@
   min-width: 0;
 }
 
-.hiddenBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #ef4444;
-  font-size: 12px;
-  font-family: 'Mulish', sans-serif;
-  flex-shrink: 0;
-}
-
-.colCategory {
-  flex: 0 0 131px;
-}
-
-.colChars {
-  flex: 0 0 131px;
-}
-
-.colLink {
-  flex: 0 0 76px;
-}
-
-.colAuthor {
-  flex: 0 0 131px;
-}
-
-.colInstrument {
-  flex: 0 0 116px;
-}
-
-.colEdit {
-  flex: 0 0 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 0;
-}
-
 .previewImage {
   width: 41px;
-  height: 50.606px;
+  height: 51px;
   border-radius: 2px;
   object-fit: cover;
-  background: lightgray;
 }
 
 .previewPlaceholder {
   width: 41px;
-  height: 50.606px;
+  height: 51px;
   border-radius: 2px;
-  background: lightgray;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: #9b9a9a;
 }
 
 .link {
-  color: #3b82f6;
+  color: #8ba89b;
+  font-weight: 700;
   text-decoration: none;
   font-family: 'Mulish', sans-serif;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .link:hover {
@@ -141,4 +195,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #1d1c1c;
+}
+
+.iconBtn:hover {
+  color: #a9ae36;
+}
+
+.iconBtn:disabled {
+  color: #d1d5db;
+  cursor: default;
 }

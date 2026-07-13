@@ -71,3 +71,4 @@ test-*.ts
 
 # Uploads
 apps/backend/uploads/
+.gstack/

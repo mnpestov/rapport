@@ -7,16 +7,19 @@ datasource db {
 }
 
 model Pattern {
-  id        String   @id @default(uuid())
-  slug      String   @unique
-  title     String
-  url       String
-  imageUrl  String
-  isFree    Boolean  @default(false)
-  isNew     Boolean  @default(false)
-  isVisible Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  slug            String   @unique
+  title           String
+  url             String
+  imageUrl        String
+  isFree          Boolean  @default(false)
+  isNew           Boolean  @default(false)
+  isVisible       Boolean  @default(true)
+  thickness       String?
+  densityStitches Int?
+  densityRows     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   authorId String
   author   Author @relation(fields: [authorId], references: [id])
@@ -33,6 +36,7 @@ model Pattern {
 model Author {
   id       String    @id @default(uuid())
   name     String    @unique
+  site     String?
   patterns Pattern[]
   drafts   Draft[]
   user     User?     @relation("UserAuthor")
@@ -294,6 +298,9 @@ model Draft {
   imageUrl          String
   isFree            Boolean     @default(false)
   isNew             Boolean     @default(false)
+  thickness         String?
+  densityStitches   Int?
+  densityRows       Int?
   closedAt          DateTime?
   closedById        String?
   closedBy          User?       @relation("DraftClosedBy", fields: [closedById], references: [id])

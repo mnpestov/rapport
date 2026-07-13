@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { Search } from "lucide-react";
 import { getRequests, RequestUser } from "../../api/chat";
+import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { ChatPanel } from "../Whitelist/ChatPanel";
 import { useUnread } from "../../contexts/UnreadContext";
 import styles from "./Requests.module.css";
@@ -82,19 +82,10 @@ export function Requests() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.pageTitle}>Обращения</h1>
-        <div className={styles.searchWrapper}>
-          <input
-            type="text"
-            placeholder="Поиск по ID, имени, username"
-            className={styles.searchInput}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Search size={18} color="#9ca3af" />
-        </div>
-      </div>
+      <PageHeader
+        title="Обращения"
+        search={{ value: search, onChange: setSearch, placeholder: "Поиск по ID, имени, username" }}
+      />
 
       <div className={styles.tabsContainer}>
         <button

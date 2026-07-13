@@ -8,8 +8,10 @@ import {
   createDraft,
   createEditDraft,
   updateDraft,
+  deleteDraft,
   submitDraft,
   getDraft,
+  archivePattern,
 } from "../controllers/authorController";
 
 const router = Router();
@@ -24,9 +26,11 @@ router.get("/patterns", getAuthorPatterns);
 router.get("/drafts/:id", getDraft);
 router.post("/drafts", createDraft);
 router.patch("/drafts/:id", updateDraft);
+router.delete("/drafts/:id", deleteDraft);
 router.post("/drafts/:id/submit", submitDraft);
 
 // Create an edit draft for an already-published pattern
 router.post("/patterns/:id/edit", createEditDraft);
+router.post("/patterns/:id/archive", archivePattern);
 
 export default router;

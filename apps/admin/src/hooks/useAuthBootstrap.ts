@@ -36,7 +36,10 @@ export function useAuthBootstrap() {
         clearTimeout(timer);
         setToken(token);
         setUser(user);
-        setIsAuthenticated(user.role === 'ADMIN');
+        const hasAccess =
+          user.role === 'ADMIN' ||
+          (user.permissions ?? []).includes('AUTHOR_CABINET');
+        setIsAuthenticated(hasAccess);
       } catch {
         if (cancelled) return;
         clearTimeout(timer);

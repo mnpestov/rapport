@@ -4,7 +4,13 @@ import { fetchWithAuth } from "./fetchWithAuth";
 export interface AuthorItem {
   id: string;
   name: string;
+  site: string | null;
   patternsCount: number;
+}
+
+export interface AuthorInput {
+  name: string;
+  site?: string;
 }
 
 export const getAuthors = async (search: string = ""): Promise<AuthorItem[]> => {
@@ -14,28 +20,28 @@ export const getAuthors = async (search: string = ""): Promise<AuthorItem[]> => 
   return response.json();
 };
 
-export const createAuthor = async (name: string): Promise<AuthorItem> => {
+export const createAuthor = async (data: AuthorInput): Promise<AuthorItem> => {
   const response = await fetchWithAuth(`${API_URL}/admin/authors`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(data),
   });
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || `Failed to create author: ${response.statusText}`);
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to create author: ${response.statusText}`);
   }
   return response.json();
 };
 
-export const updateAuthor = async (id: string, name: string): Promise<AuthorItem> => {
+export const updateAuthor = async (id: string, data: AuthorInput): Promise<AuthorItem> => {
   const response = await fetchWithAuth(`${API_URL}/admin/authors/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(data),
   });
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || `Failed to update author: ${response.statusText}`);
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to update author: ${response.statusText}`);
   }
   return response.json();
 };
