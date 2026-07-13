@@ -59,7 +59,6 @@ export interface AdminPatternDetailDTO {
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
-  thickness: string | null;
   densityStitches: number | null;
   densityRows: number | null;
   createdAt: string;
@@ -68,6 +67,7 @@ export interface AdminPatternDetailDTO {
   categories: { id: string; name: string }[];
   tags: { id: string; name: string }[];
   instruments: { id: string; name: string }[];
+  yarnRanges: { id: string; label: string }[];
 }
 
 export const getPatternById = async (id: string): Promise<AdminPatternDetailDTO> => {
@@ -93,7 +93,7 @@ export interface AdminPatternUpdateDTO {
   categories?: string[];
   tags?: string[];
   instruments?: string[];
-  thickness?: string;
+  yarnRangeIds?: string[];
   densityStitches?: number | string;
   densityRows?: number | string;
 }
@@ -127,7 +127,7 @@ export interface AdminPatternCreateDTO {
   categories?: string[];
   tags?: string[];
   instruments?: string[];
-  thickness?: string;
+  yarnRangeIds?: string[];
   densityStitches?: number | string;
   densityRows?: number | string;
 }
@@ -194,6 +194,19 @@ export const getTags = async (): Promise<DictionaryItem[]> => {
 export const getInstruments = async (): Promise<DictionaryItem[]> => {
   const response = await fetchWithAuth(`${API_URL}/admin/instruments`);
   if (!response.ok) throw new Error("Failed to fetch instruments");
+  return response.json();
+};
+
+export interface YarnRange {
+  id: string;
+  label: string;
+  minValue: number;
+  maxValue: number | null;
+}
+
+export const getYarnRanges = async (): Promise<YarnRange[]> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/yarn-ranges`);
+  if (!response.ok) throw new Error("Failed to fetch yarn ranges");
   return response.json();
 };
 

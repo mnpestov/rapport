@@ -327,6 +327,7 @@ export const getPatternsList = async (req: Request, res: Response): Promise<void
           categories: true,
           tags: true,
           instruments: true,
+          yarnRanges: true,
         },
       }),
       prisma.pattern.count({ where }),
@@ -345,7 +346,7 @@ export const getPatternsList = async (req: Request, res: Response): Promise<void
       preview: pattern.imageUrl,
       isVisible: pattern.isVisible,
       isNew: pattern.isNew,
-      thickness: pattern.thickness ?? undefined,
+      thickness: pattern.yarnRanges.map((y) => y.label).join(", ") || undefined,
       density: pattern.densityStitches != null && pattern.densityRows != null
         ? `${pattern.densityStitches} х ${pattern.densityRows}`
         : undefined,
@@ -377,6 +378,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
         categories: true,
         tags: true,
         instruments: true,
+        yarnRanges: true,
       },
     });
 
@@ -395,7 +397,6 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       isFree: pattern.isFree,
       isNew: pattern.isNew,
       isVisible: pattern.isVisible,
-      thickness: pattern.thickness,
       densityStitches: pattern.densityStitches,
       densityRows: pattern.densityRows,
       createdAt: pattern.createdAt,
@@ -407,6 +408,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       categories: pattern.categories.map((c) => ({ id: c.id, name: c.name })),
       tags: pattern.tags.map((t) => ({ id: t.id, name: t.name })),
       instruments: pattern.instruments.map((i) => ({ id: i.id, name: i.name })),
+      yarnRanges: pattern.yarnRanges.map((y) => ({ id: y.id, label: y.label })),
     };
 
     res.json(dto);
@@ -420,7 +422,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
 export const updatePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, url, imageUrl, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, thickness, densityStitches, densityRows } = req.body;
+    const { title, url, imageUrl, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const existing = await prisma.pattern.findUnique({ where: { id } });
     if (!existing) {
@@ -447,7 +449,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
     if (isVisible !== undefined) data.isVisible = isVisible;
-    if (thickness !== undefined) data.thickness = thickness || null;
+    if (Array.isArray(yarnRangeIds)) data.yarnRanges = { set: yarnRangeIds.map((id: string) => ({ id })) };
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
     if (imageUrl !== undefined && imageUrl !== existing.imageUrl) {
@@ -516,7 +518,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 // POST /admin/patterns
 export const createPattern = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, url, imageUrl, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, thickness, densityStitches, densityRows } = req.body;
+    const { title, url, imageUrl, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     if (!title || !url || !imageUrl || (!authorId && !authorName)) {
       res.status(400).json({ error: "Missing required fields" });
@@ -547,10 +549,13 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       authorId: finalAuthorId,
       slug,
       isVisible: isVisible ?? true,
-      thickness: thickness || null,
       densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
       densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
     };
+
+    if (Array.isArray(yarnRangeIds) && yarnRangeIds.length > 0) {
+      data.yarnRanges = { connect: yarnRangeIds.map((id: string) => ({ id })) };
+    }
 
     if (Array.isArray(categories) && categories.length > 0) {
       const catIds = await syncCategories(categories);
@@ -814,6 +819,16 @@ export const getInstruments = async (req: Request, res: Response): Promise<void>
   }
 };
 
+// GET /admin/yarn-ranges — fixed thickness buckets, not user-creatable.
+export const getYarnRanges = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ranges = await prisma.yarnRange.findMany({ orderBy: { sortOrder: 'asc' } });
+    res.json(ranges.map(r => ({ id: r.id, label: r.label, minValue: r.minValue, maxValue: r.maxValue })));
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 function fixQuotes(title: string): string {
   let isOpen = true;
   return title.replace(/"/g, () => {
@@ -925,6 +940,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
           tags: { select: { id: true } },
           categories: { select: { id: true } },
           instruments: { select: { id: true } },
+          yarnRanges: { select: { id: true } },
         },
       });
 
@@ -936,6 +952,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
       const tagConnect = draft.tags.map((t) => ({ id: t.id }));
       const catConnect = draft.categories.map((c) => ({ id: c.id }));
       const instConnect = draft.instruments.map((i) => ({ id: i.id }));
+      const yarnRangeConnect = draft.yarnRanges.map((y) => ({ id: y.id }));
 
       if (draft.patternId === null) {
         // New pattern — generate slug + check URL uniqueness
@@ -957,12 +974,12 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             isNew: draft.isNew,
             isVisible: true,
             authorId: draft.authorId,
-            thickness: draft.thickness,
             densityStitches: draft.densityStitches,
             densityRows: draft.densityRows,
             tags: { connect: tagConnect },
             categories: { connect: catConnect },
             instruments: { connect: instConnect },
+            yarnRanges: { connect: yarnRangeConnect },
           },
         });
       } else {
@@ -975,12 +992,12 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             imageUrl: draft.imageUrl,
             isFree: draft.isFree,
             isNew: draft.isNew,
-            thickness: draft.thickness,
             densityStitches: draft.densityStitches,
             densityRows: draft.densityRows,
             tags: { set: [], connect: tagConnect },
             categories: { set: [], connect: catConnect },
             instruments: { set: [], connect: instConnect },
+            yarnRanges: { set: [], connect: yarnRangeConnect },
           },
         });
       }

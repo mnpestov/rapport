@@ -4,7 +4,7 @@ import { Plus, X, Shield, Pen, ShieldX, Check } from "lucide-react";
 import { ModerationCard } from "./ModerationCard";
 import { ControlPanel, ControlPanelBtn } from "../../components/ControlPanel/ControlPanel";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
-import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, DictionaryItem, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
+import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader, PatternStatus } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
@@ -101,7 +101,7 @@ function toRowItem(item: CabinetItem, authorName: string): AdminPatternItem {
     preview: item.imageUrl,
     isVisible: true,
     isNew: item.isNew,
-    thickness: item.thickness ?? undefined,
+    thickness: item.yarnRanges.map((y) => y.label).join(", ") || undefined,
     density: item.densityStitches != null && item.densityRows != null
       ? `${item.densityStitches} х ${item.densityRows}`
       : undefined,
@@ -188,7 +188,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     categories: [] as string[],
     tags: [] as string[],
     instruments: [] as string[],
-    thickness: "",
+    yarnRangeIds: [] as string[],
     densityStitches: "",
     densityRows: "",
   });
@@ -196,6 +196,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [categoriesList, setCategoriesList] = useState<DictionaryItem[]>([]);
   const [tagsList, setTagsList] = useState<DictionaryItem[]>([]);
   const [instrumentsList, setInstrumentsList] = useState<DictionaryItem[]>([]);
+  const [yarnRangesList, setYarnRangesList] = useState<YarnRange[]>([]);
 
   useEffect(() => {
     if (isAuthor) return;
@@ -260,10 +261,11 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
   const loadDictionaries = async () => {
     try {
-      const [c, t, i] = await Promise.all([getCategories(), getTags(), getInstruments()]);
+      const [c, t, i, y] = await Promise.all([getCategories(), getTags(), getInstruments(), getYarnRanges()]);
       setCategoriesList(c);
       setTagsList(t);
       setInstrumentsList(i);
+      setYarnRangesList(y);
     } catch (err) {
       console.error("Failed to load dictionaries", err);
     }
@@ -407,7 +409,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       categories: [],
       tags: [],
       instruments: [],
-      thickness: "",
+      yarnRangeIds: [],
       densityStitches: "",
       densityRows: "",
     });
@@ -427,7 +429,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         categories: (res.categories || []).map(c => c?.name || ""),
         tags: (res.tags || []).map(t => t?.name || ""),
         instruments: (res.instruments || []).map(i => i?.name || ""),
-        thickness: res.thickness || "",
+        yarnRangeIds: (res.yarnRanges || []).map(y => y.id),
         densityStitches: res.densityStitches != null ? String(res.densityStitches) : "",
         densityRows: res.densityRows != null ? String(res.densityRows) : "",
       };
@@ -451,7 +453,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       categories: draft.categories.map((c) => c.name),
       tags: draft.tags.map((t) => t.name),
       instruments: draft.instruments.map((i) => i.name),
-      thickness: draft.thickness || "",
+      yarnRangeIds: draft.yarnRanges.map((y) => y.id),
       densityStitches: draft.densityStitches != null ? String(draft.densityStitches) : "",
       densityRows: draft.densityRows != null ? String(draft.densityRows) : "",
     });
@@ -490,7 +492,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         categories: mapNamesToIds(formData.categories, categoriesList),
         tags: mapNamesToIds(formData.tags, tagsList),
         instruments: mapNamesToIds(formData.instruments, instrumentsList),
-        thickness: formData.thickness.trim(),
+        yarnRangeIds: formData.yarnRangeIds,
         densityStitches: formData.densityStitches.trim(),
         densityRows: formData.densityRows.trim(),
       };
@@ -550,7 +552,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         if (!orig || JSON.stringify(formData.categories) !== JSON.stringify(orig.categories)) payload.categories = formData.categories;
         if (!orig || JSON.stringify(formData.tags) !== JSON.stringify(orig.tags)) payload.tags = formData.tags;
         if (!orig || JSON.stringify(formData.instruments) !== JSON.stringify(orig.instruments)) payload.instruments = formData.instruments;
-        if (!orig || formData.thickness !== orig.thickness) payload.thickness = formData.thickness.trim();
+        if (!orig || JSON.stringify(formData.yarnRangeIds) !== JSON.stringify(orig.yarnRangeIds)) payload.yarnRangeIds = formData.yarnRangeIds;
         if (!orig || formData.densityStitches !== orig.densityStitches) payload.densityStitches = formData.densityStitches.trim();
         if (!orig || formData.densityRows !== orig.densityRows) payload.densityRows = formData.densityRows.trim();
 
@@ -565,7 +567,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             author: formData.authorName,
             category: formData.categories.join(", "),
             instrument: formData.instruments.join(", "),
-            thickness: formData.thickness.trim() || undefined,
+            thickness: yarnRangesList
+              .filter((y) => formData.yarnRangeIds.includes(y.id))
+              .map((y) => y.label)
+              .join(", ") || undefined,
             density: formData.densityStitches.trim() && formData.densityRows.trim()
               ? `${formData.densityStitches.trim()} х ${formData.densityRows.trim()}`
               : undefined,
@@ -1034,14 +1039,18 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Толщина пряжи */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Толщина пряжи <span style={optionalStyle}>(необязательно)</span></label>
-                  <input
-                    type="text"
-                    value={formData.thickness}
-                    onChange={e => setFormData({ ...formData, thickness: e.target.value })}
-                    style={inputStyle}
-                    placeholder="Толщина пряжи"
-                    disabled={formReadonly}
+                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={optionalStyle}>(необязательно)</span></label>
+                  <CreatableSelect
+                    isMulti
+                    isDisabled={formReadonly}
+                    isValidNewOption={() => false}
+                    styles={selectStyles}
+                    options={yarnRangesList.map(y => ({ value: y.id, label: y.label }))}
+                    value={yarnRangesList
+                      .filter(y => formData.yarnRangeIds.includes(y.id))
+                      .map(y => ({ value: y.id, label: y.label }))}
+                    onChange={(vals) => setFormData({ ...formData, yarnRangeIds: vals.map(v => v.value) })}
+                    placeholder="Диапазон толщины"
                   />
                 </div>
 

@@ -29,6 +29,7 @@ import {
   updateTag,
   deleteTag,
   getInstruments,
+  getYarnRanges,
   getDraftsList,
   getDraftById,
   approveDraft,
@@ -108,6 +109,18 @@ const uploadHandler = [
 router.post("/upload", ...uploadHandler);
 
 // ---------------------------------------------------------------------------
+// Dictionary reads — accessible to admins AND author-cabinet users, since the
+// shared create/edit pattern form (used by both admin and author cabinet)
+// depends on them. Registered before the global requireAdmin middleware, same
+// reasoning as the upload route above.
+// ---------------------------------------------------------------------------
+const dictReadHandler = [requireAuth, requirePermissionOrAdmin(Permission.AUTHOR_CABINET)];
+router.get("/categories", ...dictReadHandler, getCategories);
+router.get("/tags", ...dictReadHandler, getTags);
+router.get("/instruments", ...dictReadHandler, getInstruments);
+router.get("/yarn-ranges", ...dictReadHandler, getYarnRanges);
+
+// ---------------------------------------------------------------------------
 // All remaining admin routes require an authenticated ADMIN user.
 // ---------------------------------------------------------------------------
 if (!isDevBypass) {
@@ -133,13 +146,10 @@ router.post("/authors", createAuthor);
 router.patch("/authors/:id", updateAuthor);
 router.delete("/authors/:id", deleteAuthor);
 
-router.get("/categories", getCategories);
 router.patch("/categories/:id", updateCategory);
 router.delete("/categories/:id", deleteCategory);
-router.get("/tags", getTags);
 router.patch("/tags/:id", updateTag);
 router.delete("/tags/:id", deleteTag);
-router.get("/instruments", getInstruments);
 
 router.get("/whitelist", getWhitelist);
 router.post("/whitelist", createWhitelistEntry);

@@ -15,7 +15,6 @@ model Pattern {
   isFree          Boolean  @default(false)
   isNew           Boolean  @default(false)
   isVisible       Boolean  @default(true)
-  thickness       String?
   densityStitches Int?
   densityRows     Int?
   createdAt       DateTime @default(now())
@@ -27,6 +26,7 @@ model Pattern {
   instruments Instrument[]
   categories  ProductType[]
   tags        Tag[]
+  yarnRanges  YarnRange[]
   favoritedBy UserFavorite[]
   views       PatternView[]
   linkClicks  PatternLinkClick[]
@@ -61,6 +61,18 @@ model Tag {
   name     String    @unique
   patterns Pattern[]
   drafts   Draft[]
+}
+
+// Fixed yarn-thickness buckets (m/100g), seeded — not user-creatable.
+// sortOrder controls display order; maxValue is null for the open-ended top bucket ("701+").
+model YarnRange {
+  id        String    @id @default(uuid())
+  label     String    @unique
+  minValue  Int
+  maxValue  Int?
+  sortOrder Int       @default(0)
+  patterns  Pattern[]
+  drafts    Draft[]
 }
 
 enum UserRole {
@@ -298,7 +310,6 @@ model Draft {
   imageUrl          String
   isFree            Boolean     @default(false)
   isNew             Boolean     @default(false)
-  thickness         String?
   densityStitches   Int?
   densityRows       Int?
   closedAt          DateTime?
@@ -310,6 +321,7 @@ model Draft {
   tags        Tag[]
   categories  ProductType[]
   instruments Instrument[]
+  yarnRanges  YarnRange[]
 
   @@index([patternId])
   @@index([authorId])

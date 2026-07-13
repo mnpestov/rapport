@@ -88,6 +88,7 @@ export const getAuthorPatterns = async (req: Request, res: Response): Promise<vo
           tags: { select: { id: true, name: true } },
           categories: { select: { id: true, name: true } },
           instruments: { select: { id: true, name: true } },
+          yarnRanges: { select: { id: true, label: true } },
           pattern: { select: { id: true, title: true } },
         },
       }),
@@ -98,6 +99,7 @@ export const getAuthorPatterns = async (req: Request, res: Response): Promise<vo
           tags: { select: { id: true, name: true } },
           categories: { select: { id: true, name: true } },
           instruments: { select: { id: true, name: true } },
+          yarnRanges: { select: { id: true, label: true } },
         },
       }),
     ]);
@@ -126,7 +128,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
 
     const authorId = await resolveAuthorId(userId);
 
-    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, thickness, densityStitches, densityRows } = req.body;
+    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     if (!title || !url || !imageUrl) {
       res.status(400).json({ error: "title, url, and imageUrl are required" });
@@ -141,7 +143,6 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
         imageUrl,
         isFree: isFree ?? false,
         isNew: isNew ?? false,
-        thickness: thickness || null,
         densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
         densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
         tags: Array.isArray(tags) && tags.length > 0
@@ -153,11 +154,15 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
         instruments: Array.isArray(instruments) && instruments.length > 0
           ? { connect: instruments.map((id: string) => ({ id })) }
           : undefined,
+        yarnRanges: Array.isArray(yarnRangeIds) && yarnRangeIds.length > 0
+          ? { connect: yarnRangeIds.map((id: string) => ({ id })) }
+          : undefined,
       },
       include: {
         tags: { select: { id: true, name: true } },
         categories: { select: { id: true, name: true } },
         instruments: { select: { id: true, name: true } },
+        yarnRanges: { select: { id: true, label: true } },
         pattern: { select: { id: true, title: true } },
       },
     });
@@ -189,6 +194,7 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         tags: { select: { id: true } },
         categories: { select: { id: true } },
         instruments: { select: { id: true } },
+        yarnRanges: { select: { id: true } },
       },
     });
 
@@ -225,7 +231,6 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         imageUrl: pattern.imageUrl,
         isFree: pattern.isFree,
         isNew: pattern.isNew,
-        thickness: pattern.thickness,
         densityStitches: pattern.densityStitches,
         densityRows: pattern.densityRows,
         tags: pattern.tags.length > 0
@@ -237,11 +242,15 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         instruments: pattern.instruments.length > 0
           ? { connect: pattern.instruments.map((i) => ({ id: i.id })) }
           : undefined,
+        yarnRanges: pattern.yarnRanges.length > 0
+          ? { connect: pattern.yarnRanges.map((y) => ({ id: y.id })) }
+          : undefined,
       },
       include: {
         tags: { select: { id: true, name: true } },
         categories: { select: { id: true, name: true } },
         instruments: { select: { id: true, name: true } },
+        yarnRanges: { select: { id: true, label: true } },
         pattern: { select: { id: true, title: true } },
       },
     });
@@ -283,7 +292,7 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, thickness, densityStitches, densityRows } = req.body;
+    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const data: any = {};
     if (title !== undefined) data.title = title;
@@ -291,7 +300,6 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
     if (imageUrl !== undefined) data.imageUrl = imageUrl;
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
-    if (thickness !== undefined) data.thickness = thickness || null;
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
 
@@ -304,6 +312,9 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
     if (Array.isArray(instruments)) {
       data.instruments = { set: [], connect: instruments.map((id: string) => ({ id })) };
     }
+    if (Array.isArray(yarnRangeIds)) {
+      data.yarnRanges = { set: yarnRangeIds.map((id: string) => ({ id })) };
+    }
 
     const updated = await prisma.draft.update({
       where: { id },
@@ -312,6 +323,7 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
         tags: { select: { id: true, name: true } },
         categories: { select: { id: true, name: true } },
         instruments: { select: { id: true, name: true } },
+        yarnRanges: { select: { id: true, label: true } },
         pattern: { select: { id: true, title: true } },
       },
     });
