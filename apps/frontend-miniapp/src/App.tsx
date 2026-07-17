@@ -34,10 +34,14 @@ function App() {
     let isMounted = true;
 
     // Clear saved catalog filters on fresh app start
-    sessionStorage.removeItem('catalog_search');
-    sessionStorage.removeItem('catalog_free_filter');
-    sessionStorage.removeItem('catalog_new_filter');
-    sessionStorage.removeItem('catalog_advanced_filters');
+    try {
+      sessionStorage.removeItem('catalog_search');
+      sessionStorage.removeItem('catalog_free_filter');
+      sessionStorage.removeItem('catalog_new_filter');
+      sessionStorage.removeItem('catalog_advanced_filters');
+    } catch (e) {
+      logFrontend('AUTH_SESSIONSTORAGE_BLOCKED', { error: (e as Error).message });
+    }
 
     // Инициализация Telegram Web App (Этап 1)
     try {
