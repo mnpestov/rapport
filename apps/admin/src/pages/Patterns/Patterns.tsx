@@ -30,6 +30,9 @@ import styles from "./Patterns.module.css";
 
 // ── Modal helpers ────────────────────────────────────────────────────────────
 
+const MAX_CATEGORIES = 2;
+const MAX_TAGS = 4;
+
 const labelStyle: React.CSSProperties = { fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" };
 const optionalStyle: React.CSSProperties = { color: "#9B9A9A", fontSize: 13 };
 const inputStyle: React.CSSProperties = {
@@ -226,7 +229,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       loadCabinetItems();
       getCabinetAuthor()
         .then(({ author }) => setCurrentAuthorName(author.name))
-        .catch(() => {});
+        .catch(() => { });
     } else {
       loadAuthors();
       loadStatusCounts();
@@ -401,7 +404,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     setAuthorEditingDraft(null);
     setFormData({
       title: "",
-      authorName: "",
+      authorName: isAuthor ? currentAuthorName : "",
       url: "",
       imageUrl: "",
       isFree: false,
@@ -445,7 +448,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const handleAuthorEditDraft = (draft: CabinetDraft) => {
     setFormData({
       title: draft.title,
-      authorName: "",
+      authorName: currentAuthorName,
       url: draft.url,
       imageUrl: draft.imageUrl,
       isFree: draft.isFree,
@@ -477,6 +480,11 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
   const handleAuthorSubmit = async (submitToModeration: boolean) => {
     if (!formData.title || !formData.url || !formData.imageUrl) {
+      toast.error("Пожалуйста, заполните все обязательные поля");
+      return;
+    }
+
+    if (submitToModeration && (formData.categories.length === 0 || formData.yarnRangeIds.length === 0)) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -533,6 +541,12 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
 
     if (!formData.title || !formData.url || !formData.imageUrl || !formData.authorName) {
+      toast.error("Пожалуйста, заполните все обязательные поля");
+      return;
+    }
+
+    const willBePublished = editingId ? status !== "archive" : isVisible;
+    if (willBePublished && (formData.categories.length === 0 || formData.yarnRangeIds.length === 0)) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -947,15 +961,22 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Категория */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Категория <span style={optionalStyle}>(необязательно)</span></label>
+                  <label style={labelStyle}>Категория <span style={{ color: "#ef4444" }}>*</span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
                     isValidNewOption={() => !isAuthor}
+                    isOptionDisabled={() => formData.categories.length >= MAX_CATEGORIES}
                     styles={selectStyles}
                     options={categoriesList.map(c => ({ value: c.name, label: c.name }))}
                     value={formData.categories.map(c => ({ value: c, label: c }))}
-                    onChange={(vals) => setFormData({ ...formData, categories: vals.map(v => v.value) })}
+                    onChange={(vals) => {
+                      if (vals.length > MAX_CATEGORIES) {
+                        toast.error(`Не более ${MAX_CATEGORIES} категорий`);
+                        return;
+                      }
+                      setFormData({ ...formData, categories: vals.map(v => v.value) });
+                    }}
                     placeholder="Категории"
                   />
                 </div>
@@ -980,33 +1001,39 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Характеристики */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Характеристики <span style={optionalStyle}>(необязательно)</span></label>
+                  <label style={labelStyle}>Характеристики <span style={optionalStyle}></span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
                     isValidNewOption={() => !isAuthor}
+                    isOptionDisabled={() => formData.tags.length >= MAX_TAGS}
                     styles={selectStyles}
                     options={tagsList.map(t => ({ value: t.name, label: t.name }))}
                     value={formData.tags.map(t => ({ value: t, label: t }))}
-                    onChange={(vals) => setFormData({ ...formData, tags: vals.map(v => v.value) })}
+                    onChange={(vals) => {
+                      if (vals.length > MAX_TAGS) {
+                        toast.error(`Не более ${MAX_TAGS} характеристик`);
+                        return;
+                      }
+                      setFormData({ ...formData, tags: vals.map(v => v.value) });
+                    }}
                     placeholder="Характеристики"
                   />
                 </div>
 
                 {/* Автор */}
-                {!isAuthor && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <label style={labelStyle}>Автор <span style={{ color: "#ef4444" }}>*</span></label>
-                    <CreatableSelect
-                      isClearable
-                      styles={selectStyles}
-                      options={authors.map(a => ({ value: a.name, label: a.name }))}
-                      value={formData.authorName ? { value: formData.authorName, label: formData.authorName } : null}
-                      onChange={(val) => setFormData({ ...formData, authorName: val?.value || "" })}
-                      placeholder="Автор"
-                    />
-                  </div>
-                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={labelStyle}>Автор <span style={{ color: "#ef4444" }}>*</span></label>
+                  <CreatableSelect
+                    isClearable
+                    isDisabled={isAuthor || formReadonly}
+                    styles={selectStyles}
+                    options={authors.map(a => ({ value: a.name, label: a.name }))}
+                    value={formData.authorName ? { value: formData.authorName, label: formData.authorName } : null}
+                    onChange={(val) => setFormData({ ...formData, authorName: val?.value || "" })}
+                    placeholder="Автор"
+                  />
+                </div>
 
                 {/* Ссылка */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1024,7 +1051,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Инструмент */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Инструмент <span style={optionalStyle}>(необязательно)</span></label>
+                  <label style={labelStyle}>Инструмент <span style={optionalStyle}></span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
@@ -1039,7 +1066,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Толщина пряжи */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={optionalStyle}>(необязательно)</span></label>
+                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={{ color: "#ef4444" }}>*</span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
@@ -1056,14 +1083,14 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Плотность */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Плотность (петли × ряды) в лицевой глади <span style={optionalStyle}>(необязательно)</span></label>
+                  <label style={labelStyle}>Плотность (петли × ряды) в лицевой глади <span style={optionalStyle}></span></label>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input
                       type="number"
                       value={formData.densityStitches}
                       onChange={e => setFormData({ ...formData, densityStitches: e.target.value })}
                       style={{ ...inputStyle, width: "calc(50% - 16px)" }}
-                      placeholder="46"
+                      placeholder=""
                       min={0}
                       disabled={formReadonly}
                     />
@@ -1073,7 +1100,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       value={formData.densityRows}
                       onChange={e => setFormData({ ...formData, densityRows: e.target.value })}
                       style={{ ...inputStyle, width: "calc(50% - 16px)" }}
-                      placeholder="52"
+                      placeholder=""
                       min={0}
                       disabled={formReadonly}
                     />
@@ -1150,8 +1177,8 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               isAuthor
                 ? `Черновики (${selectedIds.size} шт.) будут удалены безвозвратно, опубликованные описания — перемещены в архив. Черновики на модерации не будут затронуты.`
                 : status === "archive"
-                ? `Вы уверены, что хотите удалить выбранные карточки (${selectedIds.size} шт.) навсегда? Это действие необратимо, картинка также будет удалена.`
-                : `Вы уверены, что хотите скрыть выбранные описания (${selectedIds.size} шт.)? Они переместятся в архив.`
+                  ? `Вы уверены, что хотите удалить выбранные карточки (${selectedIds.size} шт.) навсегда? Это действие необратимо, картинка также будет удалена.`
+                  : `Вы уверены, что хотите скрыть выбранные описания (${selectedIds.size} шт.)? Они переместятся в архив.`
             }
             confirmText={isAuthor ? "Удалить" : status === "archive" ? "Удалить" : "Скрыть"}
             cancelText="Отмена"

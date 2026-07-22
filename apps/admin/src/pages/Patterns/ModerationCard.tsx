@@ -81,8 +81,16 @@ export function ModerationCard({ draft, onApprove, onReject }: ModerationCardPro
             <a href={draft.url} target="_blank" rel="noreferrer" className={styles.link}>ссылка</a>
           </Row>
           <Row label="Инструмент"><Stack items={draft.instruments} /></Row>
-          <Row label="Толщина нити"><span>—</span></Row>
-          <Row label="Плотность"><span>—</span></Row>
+          <Row label="Толщина нити">
+            <span>{draft.yarnRanges.length > 0 ? draft.yarnRanges.map((y) => y.label).join(", ") : "—"}</span>
+          </Row>
+          <Row label="Плотность">
+            <span>
+              {draft.densityStitches != null && draft.densityRows != null
+                ? `${draft.densityStitches} х ${draft.densityRows}`
+                : "—"}
+            </span>
+          </Row>
         </div>
 
         <div className={styles.actions}>

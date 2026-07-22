@@ -130,6 +130,7 @@ export function Authors() {
       <PageHeader
         title="Авторы"
         search={{ value: searchQuery, onChange: setSearchQuery }}
+        totalCount={{ label: "Всего авторов:", value: authors.length }}
       />
 
       <div className={styles.controlsPanel}>

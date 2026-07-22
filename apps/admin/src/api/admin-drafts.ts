@@ -17,9 +17,12 @@ export interface AdminDraft {
   closedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  densityStitches: number | null;
+  densityRows: number | null;
   tags: { id: string; name: string }[];
   categories: { id: string; name: string }[];
   instruments: { id: string; name: string }[];
+  yarnRanges: { id: string; label: string }[];
 }
 
 export const getAdminDrafts = async (status?: string): Promise<AdminDraft[]> => {

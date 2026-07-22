@@ -884,6 +884,7 @@ export const getDraftsList = async (req: Request, res: Response): Promise<void> 
         tags: { select: { id: true, name: true } },
         categories: { select: { id: true, name: true } },
         instruments: { select: { id: true, name: true } },
+        yarnRanges: { select: { id: true, label: true } },
       },
     });
 
