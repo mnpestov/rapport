@@ -54,3 +54,25 @@ export const recordSubscribeClick = async (req: Request, res: Response): Promise
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// POST /analytics/search-query
+export const recordSearchQuery = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { query, resultsCount } = req.body ?? {};
+  if (typeof query !== "string" || query.trim().length < 2) {
+    res.status(400).json({ error: "query must be a string with at least 2 characters" });
+    return;
+  }
+  if (typeof resultsCount !== "number" || !Number.isInteger(resultsCount) || resultsCount < 0) {
+    res.status(400).json({ error: "resultsCount is required" });
+    return;
+  }
+
+  try {
+    await AnalyticsService.recordSearchQuery(userId, query, resultsCount);
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error("[Analytics] recordSearchQuery failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

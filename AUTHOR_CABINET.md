@@ -1,6 +1,6 @@
 # Кабинет автора — полный контекст реализации
 
-> Обновлено: 2026-07-10 | Статус: Этапы 0–3 завершены, Этап 5 Backend завершён, Этап 4 и Этап 5 Frontend готовы к реализации
+> Обновлено: 2026-07-22 | Статус: Все этапы (0–5, backend и frontend) завершены
 
 ---
 
@@ -67,18 +67,17 @@ UI показывает три роли: **User / Author / Admin**. Под ка�
 
 ### Роутинг фронтенда
 Раздельные пути. После логина проверяем permissions:
-- `ADMIN` → `/` (текущая админка)
-- `AUTHOR_CABINET` → `/cabinet/`
+- `ADMIN` → `/patterns` (текущая админка)
+- `AUTHOR_CABINET` → `/cabinet`
 - ни то ни другое → 403
 
 ```
 /login          → OTP-форма (общая)
-/cabinet/*      → кабинет автора
-  /cabinet/                → список описаний
-  /cabinet/drafts/new      → новый черновик
-  /cabinet/drafts/:id      → редактирование черновика
-/               → существующая админка (без изменений в URL)
+/cabinet        → кабинет автора
+/patterns       → существующая админка
 ```
+
+**Фактическая реализация (отличается от исходной схемы выше):** отдельных урлов `/cabinet/drafts/new` и `/cabinet/drafts/:id` нет. Админка и кабинет автора рендерятся одним и тем же компонентом `apps/admin/src/pages/Patterns/Patterns.tsx` (проп `variant: "admin" | "author"`, переключается в `App.tsx`), создание и редактирование черновика/описания — через общую модалку внутри страницы `/cabinet`, а не через отдельные роуты.
 
 ---
 
@@ -206,15 +205,10 @@ npx prisma generate
 | GET | `/admin/permissions` | Список разрешений юзера |
 | POST | `/admin/permissions` | Выдать разрешение |
 | DELETE | `/admin/permissions/:userId/:permission` | Отозвать разрешение |
-
-### Расширения admin — НУЖНО ДОБАВИТЬ (Этап 5)
-
-| Метод | Путь | Описание |
-|-------|------|----------|
 | GET | `/admin/users/:id` | Детальная карточка пользователя (все поля + role + author + subscription) |
 | PATCH | `/admin/users/:id` | Обновить роль и/или привязку автора одним запросом (`{ role, authorId }`) |
 
-Текущий `GET /admin/users` (список) также нужно дополнить полями: `role`, `authorId`, `author.name` — для колонок «Роль» и «Имя автора» в таблице пользователей.
+`GET /admin/users` (список) дополнен полями `role`, `authorId`, `author.name` — используются в колонках «Роль» и «Имя автора» таблицы пользователей (`apps/admin/src/pages/Users/UserRow.tsx`).
 
 ### Изменения в существующих ендпоинтах
 - `GET /auth/me` — возвращает `authorId` и `permissions[]` ✅
@@ -235,16 +229,18 @@ apps/backend/
 ├── src/
 │   ├── index.ts                               # обновлён ✅
 │   ├── controllers/
-│   │   ├── adminController.ts                 # обновлён ✅ + нужно добавить getUserById, updateUser
+│   │   ├── adminController.ts                 # обновлён ✅
 │   │   ├── authorController.ts                # новый ✅
-│   │   ├── usersController.ts                 # нужно дополнить: +role, +author в list; +getUserById
+│   │   ├── usersController.ts                 # обновлён ✅ (+role, +author в list; +getUserById, +updateUser)
 │   │   └── webAuthController.ts               # обновлён ✅
 │   ├── middlewares/
 │   │   └── requirePermission.ts               # новый ✅
 │   └── routes/
-│       ├── admin.ts                           # обновлён ✅ + нужно добавить GET/PATCH /users/:id
+│       ├── admin.ts                           # обновлён ✅ (+GET/PATCH /users/:id)
 │       └── author.ts                          # новый ✅
 ```
+
+Фронтенд (`apps/admin/src/`): `pages/Patterns/Patterns.tsx` (общий компонент админки и кабинета автора), `pages/Patterns/ModerationCard.tsx`, `pages/Users/Users.tsx` + `UserRow.tsx`, `pages/Authors/Authors.tsx`, `App.tsx` (роутинг `/cabinet`).
 
 ---
 
@@ -337,9 +333,9 @@ Figma-файл: `9COGTtzDGVErNHED1K4wHE` (страница «Админка»)
 | 1 | Middleware (requirePermission) | ✅ Завершён |
 | 2 | Backend: author controller + routes | ✅ Завершён |
 | 3 | Backend: admin extensions (drafts + permissions) | ✅ Завершён |
-| 4 | Frontend: кабинет автора (/cabinet/*) | 🔜 Готов к старту |
+| 4 | Frontend: кабинет автора (/cabinet) | ✅ Завершён (архитектура отличается от исходного плана — см. раздел 2) |
 | 5 Backend | `GET /admin/users/:id`, `PATCH /admin/users/:id`, role/author в списке | ✅ Завершён (2026-07-10) |
-| 5 Frontend | Расширения UI: user_cart, таб «На модерации», Авторы | 🔜 Готов к старту |
+| 5 Frontend | Расширения UI: user_cart, таб «На модерации», Авторы | ✅ Завершён |
 
 ### Этап 5 Backend — что сделано (2026-07-10)
 
@@ -352,11 +348,11 @@ Figma-файл: `9COGTtzDGVErNHED1K4wHE` (страница «Админка»)
 - `GET /admin/users/:id` → `getUserById`
 - `PATCH /admin/users/:id` → `updateUser`
 
-### Что нужно сделать в Этапе 5 (фронтенд-часть)
-- [ ] Раздел Описания — таб «На модерации» с карточным видом
-- [ ] Раздел Пользователи — колонки «Роль» и «Имя автора» (данные уже есть в `GET /admin/users`)
-- [ ] Модал user_cart — select роли + search-select автора + `PATCH /admin/users/:id`
-- [ ] Раздел Авторы — модал редактирования (Имя + Сайт)
+### Этап 5 Frontend — что сделано
+- [x] Раздел Описания — таб «На модерации» с карточным видом: `Patterns.tsx` (`status === "moderation"`) рендерит `ModerationCard.tsx` — фото + поля черновика, кнопки «Опубликовать»/«Отклонить» на карточке, без diff-вида; модалка «Причина отклонения» с textarea → `POST /admin/drafts/:id/reject`
+- [x] Раздел Пользователи — колонки «Роль» и «Имя автора»: `apps/admin/src/pages/Users/UserRow.tsx`
+- [x] Модал user_cart — select роли + search-select автора + `PATCH /admin/users/:id`: `apps/admin/src/pages/Users/Users.tsx` (`PermissionsSection` внутри `UserModal`)
+- [x] Раздел Авторы — модал редактирования (Имя + Сайт): `apps/admin/src/pages/Authors/Authors.tsx` (`handleOpenEdit`)
 
 ---
 

@@ -801,7 +801,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                 disabled={selectedIds.size === 0}
                 onClick={handleAuthorPublishSelected}
               >
-                Опубликовать
+                Отправить на модерацию
               </ControlPanelBtn>
               <ControlPanelBtn
                 variant="danger"

@@ -12,15 +12,19 @@ interface PatternCardProps {
   imageUrl: string;
   isFree: boolean;
   isNew?: boolean;
+  // Fired before navigation, e.g. so the caller can log a search-query
+  // click-through while it still knows the active search context.
+  onBeforeNavigate?: () => void;
 }
 
-export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, imageUrl, isFree, isNew }) => {
+export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, imageUrl, isFree, isNew, onBeforeNavigate }) => {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const favorite = isFavorite(id);
 
   const handleCardClick = () => {
+    onBeforeNavigate?.();
     sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
     navigate(`/pattern/${id}`);
   };

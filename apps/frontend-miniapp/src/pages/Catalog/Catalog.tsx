@@ -5,7 +5,28 @@ import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResponse } from '../../api/patternsApi';
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
 import { CustomX } from '../../components/Icons/Icons';
+import { trackSearchQuery } from '../../api/analyticsApi';
 import './Catalog.css';
+
+const LOGGED_SEARCHES_KEY = 'catalog_logged_searches';
+const LOGGED_SEARCHES_CAP = 20;
+
+function getLoggedSearches(): string[] {
+  try {
+    const raw = sessionStorage.getItem(LOGGED_SEARCHES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function markSearchLogged(query: string): void {
+  const list = getLoggedSearches();
+  if (list.includes(query)) return;
+  list.push(query);
+  while (list.length > LOGGED_SEARCHES_CAP) list.shift();
+  sessionStorage.setItem(LOGGED_SEARCHES_KEY, JSON.stringify(list));
+}
 
 
 export const Catalog: React.FC = () => {
@@ -48,6 +69,22 @@ export const Catalog: React.FC = () => {
   const isRestoringRef = useRef(!!sessionStorage.getItem('catalog_scroll'));
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 10;
+
+  // Logs a search "intent" (not every debounced keystroke) at most once per
+  // normalized query — first of three triggers wins: pagination scroll,
+  // click-through to a pattern, or a 5s pause with no further typing.
+  // loggedSearchRef guards this mount; sessionStorage survives remounts
+  // (Catalog restores searchInput from sessionStorage on return navigation).
+  const loggedSearchRef = useRef<string | null>(null);
+  const logSearchOnce = useCallback((rawQuery: string, resultsCount: number) => {
+    const normalized = rawQuery.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (normalized.length < 2) return;
+    if (loggedSearchRef.current === normalized) return;
+    loggedSearchRef.current = normalized;
+    if (getLoggedSearches().includes(normalized)) return;
+    markSearchLogged(normalized);
+    trackSearchQuery(normalized, resultsCount).catch(() => {});
+  }, []);
 
   // Debounce search input (300ms)
   useEffect(() => {
@@ -126,6 +163,12 @@ export const Catalog: React.FC = () => {
           }
           setHasMore(fetchOffset + data.length < total);
 
+          // Trigger: loading a next page for an active search means the user
+          // scrolled past the first screen of results for this query.
+          if (fetchOffset > 0 && debouncedSearch) {
+            logSearchOnce(debouncedSearch, total);
+          }
+
           if (isFirstLoadRestoring) {
             isRestoringRef.current = false;
             setTimeout(() => {
@@ -155,7 +198,23 @@ export const Catalog: React.FC = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, offset, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, offset, advancedFilters, logSearchOnce]);
+
+  // Trigger: 5s pause with no further typing/scrolling/click-through — kept
+  // in a ref (not state) so the timer's closure always reads the latest
+  // count even though this effect only re-runs when debouncedSearch changes.
+  const totalPatternsRef = useRef(totalPatterns);
+  useEffect(() => {
+    totalPatternsRef.current = totalPatterns;
+  }, [totalPatterns]);
+
+  useEffect(() => {
+    if (!debouncedSearch || debouncedSearch.trim().length < 2) return;
+    const timer = setTimeout(() => {
+      logSearchOnce(debouncedSearch, totalPatternsRef.current);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [debouncedSearch, logSearchOnce]);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
@@ -282,6 +341,7 @@ export const Catalog: React.FC = () => {
               <PatternCard
                 key={pattern.id}
                 {...pattern}
+                onBeforeNavigate={() => logSearchOnce(debouncedSearch, totalPatterns)}
               />
             ))}
           </div>

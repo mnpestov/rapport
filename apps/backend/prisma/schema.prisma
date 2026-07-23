@@ -114,6 +114,7 @@ model User {
   patternViews      PatternView[]
   patternLinkClicks PatternLinkClick[]
   subscribeClicks   SubscribeClick[]
+  searchQueries     SearchQuery[]
 
   authorId      String?  @unique
   author        Author?  @relation("UserAuthor", fields: [authorId], references: [id])
@@ -190,6 +191,23 @@ model SubscribeClick {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Append-only log, one row per logged search intent (not per keystroke —
+// see triggers in Catalog.tsx: pagination scroll, click-through, or a 5s
+// pause). query is normalized (trim + lowercase + collapsed whitespace)
+// server-side so aggregation isn't case/whitespace-sensitive.
+model SearchQuery {
+  id           String   @id @default(uuid())
+  userId       String
+  query        String
+  resultsCount Int
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([query, createdAt])
 }
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,19 @@ export type Period = "7d" | "30d" | "90d" | "all" | "custom";
 export interface TopPatternItem {
   patternId: string;
   title: string;
+  authorName: string;
+  url: string;
+  count: number;
+}
+
+export interface TopAuthorItem {
+  authorId: string;
+  name: string;
+  count: number;
+}
+
+export interface TopSearchQueryItem {
+  query: string;
   count: number;
 }
 
@@ -23,6 +36,10 @@ export interface DashboardResponse {
   topByViews: TopPatternItem[];
   topByLinkClicks: TopPatternItem[];
   topByFavorites: TopPatternItem[];
+  topAuthorsByViews: TopAuthorItem[];
+  topAuthorsByLinkClicks: TopAuthorItem[];
+  topAuthorsByFavorites: TopAuthorItem[];
+  topSearchQueries: TopSearchQueryItem[];
   generatedAt: string;
 }
 

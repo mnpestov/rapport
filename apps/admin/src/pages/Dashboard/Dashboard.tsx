@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getDashboardStats, DashboardResponse, TopPatternItem, Period } from "../../api/dashboard";
+import { getDashboardStats, DashboardResponse, TopPatternItem, TopAuthorItem, TopSearchQueryItem, Period } from "../../api/dashboard";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
 import styles from "./Dashboard.module.css";
@@ -56,7 +56,84 @@ function TopTable({ title, icon, items }: TopTableProps) {
           {items.map((item, idx) => (
             <li key={item.patternId} className={styles.topItem}>
               <span className={styles.topIndex}>{idx + 1}.</span>
-              <span className={styles.topName}>{item.title}</span>
+              <div className={styles.topNameCol}>
+                <span className={styles.topName}>{item.title}</span>
+                <span className={styles.topSubtitle}>
+                  {item.authorName}
+                  {item.url && (
+                    <>
+                      {" · "}
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.topLink}>
+                        ссылка
+                      </a>
+                    </>
+                  )}
+                </span>
+              </div>
+              <span className={styles.topCount}>{item.count.toLocaleString("ru-RU")}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+interface TopAuthorTableProps {
+  title: string;
+  icon: React.ReactNode;
+  items: TopAuthorItem[];
+}
+
+function TopAuthorTable({ title, icon, items }: TopAuthorTableProps) {
+  return (
+    <div className={styles.topCard}>
+      <div className={styles.topCardHeader}>
+        {icon}
+        <span className={styles.topCardTitle}>{title}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className={styles.topEmpty}>Нет данных</div>
+      ) : (
+        <ol className={styles.topList}>
+          {items.map((item, idx) => (
+            <li key={item.authorId} className={styles.topItem}>
+              <span className={styles.topIndex}>{idx + 1}.</span>
+              <div className={styles.topNameCol}>
+                <span className={styles.topName}>{item.name}</span>
+              </div>
+              <span className={styles.topCount}>{item.count.toLocaleString("ru-RU")}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+interface TopSearchTableProps {
+  title: string;
+  icon: React.ReactNode;
+  items: TopSearchQueryItem[];
+}
+
+function TopSearchTable({ title, icon, items }: TopSearchTableProps) {
+  return (
+    <div className={styles.topCard}>
+      <div className={styles.topCardHeader}>
+        {icon}
+        <span className={styles.topCardTitle}>{title}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className={styles.topEmpty}>Нет данных</div>
+      ) : (
+        <ol className={styles.topList}>
+          {items.map((item, idx) => (
+            <li key={item.query} className={styles.topItem}>
+              <span className={styles.topIndex}>{idx + 1}.</span>
+              <div className={styles.topNameCol}>
+                <span className={styles.topName}>{item.query}</span>
+              </div>
               <span className={styles.topCount}>{item.count.toLocaleString("ru-RU")}</span>
             </li>
           ))}
@@ -237,6 +314,52 @@ export function Dashboard() {
           items={topByFavorites}
         />
       </div>
+
+      {/* Top authors */}
+      <div className={styles.topGrid}>
+        <TopAuthorTable
+          title="Топ авторов по просмотрам"
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#83942C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          }
+          items={data.topAuthorsByViews}
+        />
+        <TopAuthorTable
+          title="Топ авторов по переходам к описанию"
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#83942C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          }
+          items={data.topAuthorsByLinkClicks}
+        />
+        <TopAuthorTable
+          title="Топ авторов по избранному"
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#83942C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          }
+          items={data.topAuthorsByFavorites}
+        />
+      </div>
+
+      {/* Top search queries */}
+      <TopSearchTable
+        title="Топ поисковых запросов"
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#83942C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        }
+        items={data.topSearchQueries}
+      />
     </div>
   );
 }

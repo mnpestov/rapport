@@ -40,3 +40,7 @@ export const trackPatternLinkClick = async (patternId: string): Promise<void> =>
 export const trackSubscribeClick = async (): Promise<void> => {
   await sendAnalyticsEvent("subscribe-click");
 };
+
+export const trackSearchQuery = async (query: string, resultsCount: number): Promise<void> => {
+  await sendAnalyticsEvent("search-query", { query, resultsCount });
+};

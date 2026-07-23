@@ -208,6 +208,16 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       ? { createdAt: { ...createdAtRange } }
       : undefined;
 
+    // Raw SQL for author aggregation — groupBy can't aggregate across a joined
+    // relation, so this joins PatternView/LinkClick/Favorite -> Pattern -> Author.
+    // The (${x}::timestamptz IS NULL OR col >= ${x}) form keeps one static query
+    // for both "all time" (null bounds) and a bounded period, instead of
+    // conditionally building the WHERE clause as a string.
+    const sqlFrom = analyticsFrom ?? null;
+    const sqlTo = analyticsTo ?? null;
+
+    type TopAuthorRow = { authorId: string; name: string; count: number };
+
     const [
       totalUsers,
       newUsersInPeriod,
@@ -218,6 +228,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       topViewsRaw,
       topLinkClicksRaw,
       topFavoritesRaw,
+      topAuthorsByViewsRaw,
+      topAuthorsByLinkClicksRaw,
+      topAuthorsByFavoritesRaw,
+      topSearchQueriesRaw,
     ] = await Promise.all([
       analyticsFrom
         ? prisma.user.count({ where: { lastSeenAt: { gte: analyticsFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) } } })
@@ -248,6 +262,46 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         orderBy: { _count: { patternId: "desc" } },
         take: 10,
       }),
+      prisma.$queryRaw<TopAuthorRow[]>`
+        SELECT a.id as "authorId", a.name, COUNT(*)::int as count
+        FROM "PatternView" v
+        JOIN "Pattern" p ON p.id = v."patternId"
+        JOIN "Author" a ON a.id = p."authorId"
+        WHERE (${sqlFrom}::timestamptz IS NULL OR v."createdAt" >= ${sqlFrom}::timestamptz)
+          AND (${sqlTo}::timestamptz IS NULL OR v."createdAt" <= ${sqlTo}::timestamptz)
+        GROUP BY a.id, a.name
+        ORDER BY count DESC
+        LIMIT 10
+      `,
+      prisma.$queryRaw<TopAuthorRow[]>`
+        SELECT a.id as "authorId", a.name, COUNT(*)::int as count
+        FROM "PatternLinkClick" v
+        JOIN "Pattern" p ON p.id = v."patternId"
+        JOIN "Author" a ON a.id = p."authorId"
+        WHERE (${sqlFrom}::timestamptz IS NULL OR v."createdAt" >= ${sqlFrom}::timestamptz)
+          AND (${sqlTo}::timestamptz IS NULL OR v."createdAt" <= ${sqlTo}::timestamptz)
+        GROUP BY a.id, a.name
+        ORDER BY count DESC
+        LIMIT 10
+      `,
+      prisma.$queryRaw<TopAuthorRow[]>`
+        SELECT a.id as "authorId", a.name, COUNT(*)::int as count
+        FROM "UserFavorite" v
+        JOIN "Pattern" p ON p.id = v."patternId"
+        JOIN "Author" a ON a.id = p."authorId"
+        WHERE (${sqlFrom}::timestamptz IS NULL OR v."createdAt" >= ${sqlFrom}::timestamptz)
+          AND (${sqlTo}::timestamptz IS NULL OR v."createdAt" <= ${sqlTo}::timestamptz)
+        GROUP BY a.id, a.name
+        ORDER BY count DESC
+        LIMIT 10
+      `,
+      prisma.searchQuery.groupBy({
+        by: ["query"],
+        where: dateFilter,
+        _count: { query: true },
+        orderBy: { _count: { query: "desc" } },
+        take: 10,
+      }),
     ]);
 
     // Collect all unique patternIds we need titles for
@@ -261,16 +315,21 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     const patterns = await prisma.pattern.findMany({
       where: { id: { in: allPatternIds } },
-      select: { id: true, title: true },
+      select: { id: true, title: true, url: true, author: { select: { name: true } } },
     });
-    const titleMap = new Map(patterns.map((p) => [p.id, p.title]));
+    const patternMap = new Map(patterns.map((p) => [p.id, p]));
 
     const toTopList = (raw: { patternId: string; _count: { patternId: number } }[]) =>
-      raw.map((r) => ({
-        patternId: r.patternId,
-        title: titleMap.get(r.patternId) ?? "—",
-        count: r._count.patternId,
-      }));
+      raw.map((r) => {
+        const p = patternMap.get(r.patternId);
+        return {
+          patternId: r.patternId,
+          title: p?.title ?? "—",
+          authorName: p?.author.name ?? "—",
+          url: p?.url ?? "",
+          count: r._count.patternId,
+        };
+      });
 
     res.json({
       stats: {
@@ -284,6 +343,13 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       topByViews: toTopList(topViewsRaw),
       topByLinkClicks: toTopList(topLinkClicksRaw),
       topByFavorites: toTopList(topFavoritesRaw),
+      topAuthorsByViews: topAuthorsByViewsRaw,
+      topAuthorsByLinkClicks: topAuthorsByLinkClicksRaw,
+      topAuthorsByFavorites: topAuthorsByFavoritesRaw,
+      topSearchQueries: topSearchQueriesRaw.map((r) => ({
+        query: r.query,
+        count: r._count.query,
+      })),
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {

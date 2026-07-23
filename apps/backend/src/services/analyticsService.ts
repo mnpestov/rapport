@@ -17,4 +17,9 @@ export const AnalyticsService = {
   recordSubscribeClick(userId: string) {
     return prisma.subscribeClick.create({ data: { userId } });
   },
+
+  recordSearchQuery(userId: string, query: string, resultsCount: number) {
+    const normalized = query.trim().toLowerCase().replace(/\s+/g, " ");
+    return prisma.searchQuery.create({ data: { userId, query: normalized, resultsCount } });
+  },
 };

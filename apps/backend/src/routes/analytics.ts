@@ -4,6 +4,7 @@ import {
   recordPatternView,
   recordPatternLinkClick,
   recordSubscribeClick,
+  recordSearchQuery,
 } from "../controllers/analyticsController";
 
 const router = Router();
@@ -14,5 +15,6 @@ router.use(requireAuth);
 router.post("/pattern-view", recordPatternView);
 router.post("/pattern-link-click", recordPatternLinkClick);
 router.post("/subscribe-click", recordSubscribeClick);
+router.post("/search-query", recordSearchQuery);
 
 export default router;
