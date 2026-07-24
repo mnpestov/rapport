@@ -484,7 +484,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       return;
     }
 
-    if (submitToModeration && (formData.categories.length === 0 || formData.yarnRangeIds.length === 0)) {
+    if (submitToModeration && formData.categories.length === 0) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -546,7 +546,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
 
     const willBePublished = editingId ? status !== "archive" : isVisible;
-    if (willBePublished && (formData.categories.length === 0 || formData.yarnRangeIds.length === 0)) {
+    if (willBePublished && formData.categories.length === 0) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -1066,7 +1066,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Толщина пряжи */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={optionalStyle}>(необязательно)</span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
