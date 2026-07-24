@@ -259,28 +259,26 @@ def main():
                 item['yarnRanges'] = []
             item['isFree'] = False
         
-        cursor.execute('SELECT url FROM "Pattern" WHERE "authorId" = %s', (author_id,))
+        cursor.execute('SELECT url FROM "Pattern"')
         db_urls = {normalize_url(row[0]) for row in cursor.fetchall()}
         
-        cursor.execute("""
-          SELECT url FROM "AuthorSyncItem" i 
-          JOIN "AuthorSyncReport" r ON i."reportId" = r.id 
-          WHERE r."authorId" = %s AND i.status = 'REJECTED'
-        """, (author_id,))
-        rejected_urls = {normalize_url(row[0]) for row in cursor.fetchall()}
+        cursor.execute('SELECT url FROM "AuthorSyncItem"')
+        sync_urls = {normalize_url(row[0]) for row in cursor.fetchall()}
     
         def get_base_url(u):
             return u[:-2] if u.endswith('-1') else u
             
         base_db_urls = {get_base_url(u) for u in db_urls}
-        base_rejected_urls = {get_base_url(u) for u in rejected_urls}
+        base_sync_urls = {get_base_url(u) for u in sync_urls}
+        
+        all_existing_base_urls = base_db_urls.union(base_sync_urls)
     
         new_items = []
         base_new = set()
         for i in parsed_items:
             norm = normalize_url(i['url'])
             base_norm = get_base_url(norm)
-            if base_norm not in base_db_urls and base_norm not in base_rejected_urls:
+            if base_norm not in all_existing_base_urls:
                 if base_norm not in base_new:
                     new_items.append(i)
                     base_new.add(base_norm)
