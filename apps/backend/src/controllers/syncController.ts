@@ -151,7 +151,7 @@ export const startSync = async (req: Request, res: Response) => {
   
   isSyncing = true;
   
-  const scriptPath = path.join(__dirname, "../scripts/author_sync.py");
+  const scriptPath = path.resolve(__dirname, "../../src/scripts/author_sync.py");
   const pyProcess = spawn("python3", [scriptPath], {
     env: process.env // pass DATABASE_URL and other env vars
   });
