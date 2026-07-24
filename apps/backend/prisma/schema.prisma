@@ -34,12 +34,13 @@ model Pattern {
 }
 
 model Author {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  site     String?
-  patterns Pattern[]
-  drafts   Draft[]
-  user     User?     @relation("UserAuthor")
+  id          String             @id @default(uuid())
+  name        String             @unique
+  site        String?
+  patterns    Pattern[]
+  drafts      Draft[]
+  syncReports AuthorSyncReport[]
+  user        User?              @relation("UserAuthor")
 }
 
 model ProductType {
@@ -344,4 +345,44 @@ model Draft {
   @@index([patternId])
   @@index([authorId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Author Sync — auto-sync feature for parsing author sites
+// ---------------------------------------------------------------------------
+enum AuthorSyncReportStatus {
+  PENDING
+  PROCESSED
+}
+
+enum AuthorSyncItemStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AuthorSyncReport {
+  id        String                 @id @default(uuid())
+  authorId  String
+  author    Author                 @relation(fields: [authorId], references: [id])
+  status    AuthorSyncReportStatus @default(PENDING)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  
+  items     AuthorSyncItem[]
+
+  @@index([status])
+}
+
+model AuthorSyncItem {
+  id              String               @id @default(uuid())
+  reportId        String
+  report          AuthorSyncReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  status          AuthorSyncItemStatus @default(PENDING)
+  url             String
+  title           String               
+  parsedData      Json                 
+  
+  @@unique([reportId, url])            
+  @@index([reportId])
 }

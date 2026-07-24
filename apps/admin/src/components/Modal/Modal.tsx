@@ -8,9 +8,10 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: number;
+  noPadding?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = 500 }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = 500, noPadding = false }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -39,7 +40,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 500 }: Moda
             <X size={20} />
           </button>
         </div>
-        <div className={styles.content}>
+        <div className={`${styles.content} ${noPadding ? styles.noPadding : ''}`}>
           {children}
         </div>
       </div>

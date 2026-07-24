@@ -64,6 +64,11 @@
   overflow-y: auto;
 }
 
+.content.noPadding {
+  padding: 0;
+  overflow-y: visible;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
