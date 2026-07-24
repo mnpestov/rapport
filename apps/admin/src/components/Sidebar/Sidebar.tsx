@@ -4,6 +4,8 @@ import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { logout } from "../../api/auth";
+import { getPendingReports } from "../../api/authors";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
   variant?: "admin" | "author";
@@ -14,6 +16,15 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
   const navigate = useNavigate();
   const { whitelistTotal, allTotal } = useUnread();
   const { clearToken } = useAuth();
+  const [syncReportsCount, setSyncReportsCount] = useState(0);
+
+  useEffect(() => {
+    if (variant === "admin") {
+      getPendingReports()
+        .then(res => setSyncReportsCount(res.length))
+        .catch(console.error);
+    }
+  }, [variant]);
 
   const handleLogout = async () => {
     await logout();
@@ -72,6 +83,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
             >
               <UserRound size={24} strokeWidth={1} className={styles.icon} />
               <span className={styles.label}>Авторы</span>
+              {syncReportsCount > 0 && <span className={styles.badge}>{syncReportsCount}</span>}
             </NavLink>
 
             <NavLink

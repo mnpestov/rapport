@@ -72,3 +72,15 @@ test-*.ts
 # Uploads
 apps/backend/uploads/
 .gstack/
+
+# Ignored AI and data artifacts
+pattern_table.html
+yarn_report.html
+yarn_analytics.json
+implementation_plan*.md
+walkthrough.md
+
+# Dynamic Images
+apps/backend/public/images/patterns/*
+!apps/backend/public/images/patterns/.gitkeep
+

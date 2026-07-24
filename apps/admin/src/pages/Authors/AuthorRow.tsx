@@ -4,6 +4,9 @@ import styles from "./AuthorRow.module.css";
 
 interface AuthorRowProps {
   author: AuthorItem;
+  hasSyncReport?: boolean;
+  syncItemsCount?: number;
+  onSync?: () => void;
   onEdit: (author: AuthorItem) => void;
   onDelete: (author: AuthorItem) => void;
 }
@@ -19,10 +22,24 @@ export function AuthorRowHeader() {
   );
 }
 
-export function AuthorRow({ author, onEdit, onDelete }: AuthorRowProps) {
+export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdit, onDelete }: AuthorRowProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    // Stop if clicking on a button or link
+    if ((e.target as HTMLElement).closest("button, a")) return;
+    if (hasSyncReport && onSync) {
+      onSync();
+    }
+  };
+
   return (
-    <div className={styles.row}>
-      <span className={styles.colName}>{author.name}</span>
+    <div 
+      className={`${styles.row} ${hasSyncReport ? styles.rowClickable : ""}`} 
+      onClick={handleClick}
+    >
+      <span className={styles.colName}>
+        {author.name}
+        {hasSyncReport && <span className={styles.unreadDot}>{syncItemsCount || 0}</span>}
+      </span>
       <span className={styles.colSite}>
         {author.site ? (
           <a href={author.site} target="_blank" rel="noreferrer" className={styles.siteLink}>

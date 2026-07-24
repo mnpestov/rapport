@@ -40,6 +40,15 @@ import {
   revokePermission,
 } from "../controllers/adminController";
 import {
+  getPendingReports,
+  getReportById,
+  processSyncBatch,
+  rejectSyncItem,
+  getSyncStatus,
+  checkPendingAuthors,
+  startSync
+} from "../controllers/syncController";
+import {
   getWhitelist,
   createWhitelistEntry,
   updateWhitelistEntry,
@@ -183,5 +192,14 @@ router.post("/drafts/:id/reject", rejectDraft);
 router.get("/permissions", getPermissions);
 router.post("/permissions", grantPermission);
 router.delete("/permissions/:userId/:permission", revokePermission);
+
+// Author Sync
+router.get("/sync-reports", getPendingReports);
+router.get("/sync-reports/:reportId", getReportById);
+router.post("/sync-reports/:reportId/process-batch", processSyncBatch);
+router.post("/sync-items/:itemId/reject", rejectSyncItem);
+router.get("/sync-status", getSyncStatus);
+router.get("/sync-pending", checkPendingAuthors);
+router.post("/sync-start", startSync);
 
 export default router;

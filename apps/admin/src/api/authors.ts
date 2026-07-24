@@ -56,3 +56,82 @@ export const deleteAuthor = async (id: string): Promise<{ success: boolean }> =>
   }
   return response.json();
 };
+
+// --- SYNC API ---
+
+export interface SyncReportItem {
+  id: string;
+  reportId: string;
+  status: string;
+  url: string;
+  title: string;
+  parsedData: any;
+}
+
+export interface SyncReport {
+  id: string;
+  authorId: string;
+  status: string;
+  items?: SyncReportItem[];
+}
+
+export const getPendingReports = async (): Promise<{ id: string; authorId: string; itemsCount: number }[]> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-reports`);
+  if (!response.ok) throw new Error("Failed to fetch pending reports");
+  return response.json();
+};
+
+export const getReportById = async (reportId: string): Promise<SyncReport> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-reports/${reportId}`);
+  if (!response.ok) throw new Error("Failed to fetch report");
+  return response.json();
+};
+
+export const processSyncBatch = async (reportId: string, items: any[]): Promise<{ processed: number; total: number }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-reports/${reportId}/process-batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to process batch");
+  }
+  return response.json();
+};
+
+export const rejectSyncItem = async (itemId: string): Promise<{ success: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-items/${itemId}/reject`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to reject item");
+  }
+  return response.json();
+};
+
+export const getSyncStatus = async (): Promise<{ isRunning: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-status`);
+  if (!response.ok) throw new Error("Failed to fetch sync status");
+  return response.json();
+};
+
+export const checkPendingAuthors = async (): Promise<{ authors: string[] }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-pending`);
+  if (!response.ok) throw new Error("Failed to check pending authors");
+  return response.json();
+};
+
+export const startSync = async (): Promise<{ success: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-start`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to start sync");
+  }
+  return response.json();
+};
+
+
