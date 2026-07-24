@@ -49,7 +49,7 @@ export function Authors() {
   }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isSyncing) {
       interval = setInterval(async () => {
         try {
