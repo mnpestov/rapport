@@ -4,8 +4,7 @@ import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { logout } from "../../api/auth";
-import { getPendingReports } from "../../api/authors";
-import { useState, useEffect } from "react";
+
 
 interface SidebarProps {
   variant?: "admin" | "author";
@@ -14,17 +13,8 @@ interface SidebarProps {
 
 export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
   const navigate = useNavigate();
-  const { whitelistTotal, allTotal } = useUnread();
+  const { whitelistTotal, allTotal, syncReportsCount } = useUnread();
   const { clearToken } = useAuth();
-  const [syncReportsCount, setSyncReportsCount] = useState(0);
-
-  useEffect(() => {
-    if (variant === "admin") {
-      getPendingReports()
-        .then(res => setSyncReportsCount(res.length))
-        .catch(console.error);
-    }
-  }, [variant]);
 
   const handleLogout = async () => {
     await logout();

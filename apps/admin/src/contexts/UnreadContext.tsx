@@ -1,11 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { getUnreadMessages } from "../api/chat";
 
+import { getPendingReports } from "../api/authors";
+
 interface UnreadContextValue {
   whitelistTotal: number;
   whitelistUsers: Set<string>;
   allTotal: number;
   allUsers: Set<string>;
+  syncReportsCount: number;
   refresh: () => void;
 }
 
@@ -14,6 +17,7 @@ const UnreadContext = createContext<UnreadContextValue>({
   whitelistUsers: new Set(),
   allTotal: 0,
   allUsers: new Set(),
+  syncReportsCount: 0,
   refresh: () => {},
 });
 
@@ -22,6 +26,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const [whitelistUsers, setWhitelistUsers] = useState<Set<string>>(new Set());
   const [allTotal, setAllTotal] = useState(0);
   const [allUsers, setAllUsers] = useState<Set<string>>(new Set());
+  const [syncReportsCount, setSyncReportsCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
@@ -31,6 +36,9 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
       setWhitelistUsers(new Set(data.whitelist.users.map((u) => u.telegramId)));
       setAllTotal(data.all.total);
       setAllUsers(new Set(data.all.users.map((u) => u.telegramId)));
+      
+      const reports = await getPendingReports();
+      setSyncReportsCount(reports.length);
     } catch {
       // silent
     }
@@ -49,7 +57,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   }, [allTotal]);
 
   return (
-    <UnreadContext.Provider value={{ whitelistTotal, whitelistUsers, allTotal, allUsers, refresh: poll }}>
+    <UnreadContext.Provider value={{ whitelistTotal, whitelistUsers, allTotal, allUsers, syncReportsCount, refresh: poll }}>
       {children}
     </UnreadContext.Provider>
   );

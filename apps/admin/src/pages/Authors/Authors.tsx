@@ -8,9 +8,11 @@ import { Modal } from "../../components/Modal/Modal";
 import { SyncModal } from "./SyncModal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import toast from "react-hot-toast";
+import { useUnread } from "../../contexts/UnreadContext";
 import styles from "./Authors.module.css";
 
 export function Authors() {
+  const { refresh } = useUnread();
   const [authors, setAuthors] = useState<AuthorItem[]>([]);
   const [syncReports, setSyncReports] = useState<{ id: string; authorId: string; itemsCount: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +60,7 @@ export function Authors() {
             setIsSyncing(false);
             try {
               await loadAuthors();
+              refresh();
               toast.success("Синхронизация завершена");
             } catch (err) {
               toast.error("Синхронизация завершена, но не удалось обновить список");
@@ -316,7 +319,7 @@ export function Authors() {
         onClose={() => setSyncModalOpen(false)}
         reportId={syncModalReportId}
         authorName={syncModalAuthorName}
-        onSuccess={loadAuthors}
+        onSuccess={() => { loadAuthors(); refresh(); }}
       />
     </div>
   );
