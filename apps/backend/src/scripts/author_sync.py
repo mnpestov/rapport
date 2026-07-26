@@ -79,30 +79,62 @@ def parse_density(text):
     return None, None
 
 def scrape_author_site(site_url, yarn_ranges_db):
-    # Basic crawler to extract pattern links and images
+    # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
+    visited_pages = set()
+    pages_to_visit = [site_url]
+    product_links_dict = {}
+    
     try:
-        resp = requests.get(site_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
-        soup = BeautifulSoup(resp.text, 'html.parser')
+        while pages_to_visit and len(visited_pages) < 5:
+            current_url = pages_to_visit.pop(0)
+            if current_url in visited_pages:
+                continue
+                
+            visited_pages.add(current_url)
+            
+            try:
+                resp = requests.get(current_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
+                soup = BeautifulSoup(resp.text, 'html.parser')
+                
+                # Extract products
+                for a in soup.find_all('a'):
+                    href = a.get('href')
+                    img = a.find('img')
+                    if href and img:
+                        alt = img.get('alt', '').strip()
+                        src = img.get('data-src') or img.get('src')
+                        # Note: added '/catalog/' to support Hollywool and similar sites better
+                        if alt and src and ('/shop/' in href or '/tproduct/' in href or '/product/' in href or '/patterns/' in href or '/catalog/' in href):
+                            if not href.startswith('http'):
+                                href = urllib.parse.urljoin(site_url, href)
+                            if not src.startswith('http'):
+                                src = urllib.parse.urljoin(site_url, src)
+                                
+                            if href not in product_links_dict:
+                                product_links_dict[href] = {
+                                    'url': href,
+                                    'imageUrl': src,
+                                    'title': alt
+                                }
+                                
+                # Extract pagination links
+                for a in soup.find_all('a'):
+                    href = a.get('href')
+                    if href and re.search(r'page=|PAGEN_|[\?&]p=', href, re.I):
+                        if not href.startswith('http'):
+                            next_url = urllib.parse.urljoin(site_url, href)
+                        else:
+                            next_url = href
+                            
+                        # Only follow pagination on the same domain and path base
+                        if next_url.startswith(site_url.split('?')[0]) and next_url not in visited_pages and next_url not in pages_to_visit:
+                            pages_to_visit.append(next_url)
+            except Exception as e:
+                print(f"Error scraping page {current_url}: {e}")
+                
+        product_links = list(product_links_dict.values())
         
-        product_links = []
-        for a in soup.find_all('a'):
-            href = a.get('href')
-            img = a.find('img')
-            if href and img:
-                alt = img.get('alt', '').strip()
-                src = img.get('data-src') or img.get('src')
-                if alt and src and ('/shop/' in href or '/tproduct/' in href or '/product/' in href or '/patterns/' in href):
-                    if not href.startswith('http'):
-                        href = urllib.parse.urljoin(site_url, href)
-                    if not src.startswith('http'):
-                        src = urllib.parse.urljoin(site_url, src)
-                    product_links.append({
-                        'url': href,
-                        'imageUrl': src,
-                        'title': alt
-                    })
-                    
         # Request detail pages to extract text
         for p in product_links:
             try:
