@@ -83,8 +83,13 @@ def parse_density(text):
     return None, None
 
 def fetch_and_parse_detail(p, yarn_ranges_db):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+    }
     try:
-        detail_resp = requests.get(p['url'], headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
+        detail_resp = requests.get(p['url'], headers=headers, timeout=10)
         detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
         
         # Cleanup visually noisy tags
@@ -138,6 +143,11 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
     product_links_dict = {}
     all_product_links = []
     
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+    }
     try:
         while pages_to_visit and len(visited_pages) < 15:
             current_url = pages_to_visit.pop(0)
@@ -147,18 +157,35 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
             visited_pages.add(current_url)
             
             try:
-                resp = requests.get(current_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
+                resp = requests.get(current_url, headers=headers, timeout=10)
                 soup = BeautifulSoup(resp.text, 'html.parser')
                 
                 # Extract products
                 for a in soup.find_all('a'):
                     href = a.get('href')
+                    if not href:
+                        continue
+                        
                     img = a.find('img')
-                    if href and img:
-                        alt = img.get('alt', '').strip()
-                        src = img.get('data-src') or img.get('src')
-                        # Note: added '/catalog/' to support Hollywool and similar sites better
-                        if alt and src and ('/shop/' in href or '/tproduct/' in href or '/product/' in href or '/patterns/' in href or '/catalog/' in href):
+                    bg_style = a.get('style', '')
+                    has_bg_img = 'background-image' in bg_style
+                    
+                    if img or has_bg_img:
+                        alt = ''
+                        src = ''
+                        if img:
+                            alt = img.get('alt', '').strip()
+                            src = img.get('data-src') or img.get('src')
+                        if not src and has_bg_img:
+                            m = re.search(r"url\(['\"]?(.*?)['\"]?\)", bg_style)
+                            if m:
+                                src = m.group(1)
+                                
+                        if not alt:
+                            alt = a.get_text(separator=' ', strip=True)
+                            
+                        # Support for various site structures including romnastena and annaboronbekova
+                        if src and re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I):
                             if 'hollywool.ru' in site_url and 'besplatnye-opisaniya' not in href:
                                 continue
                                 
