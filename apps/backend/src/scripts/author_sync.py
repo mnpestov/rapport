@@ -188,6 +188,8 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                         if src and re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I):
                             if 'hollywool.ru' in site_url and 'besplatnye-opisaniya' not in href:
                                 continue
+                            if 'mustardyarn.ru' in site_url and 'opisanie' not in href:
+                                continue
                                 
                             if not href.startswith('http'):
                                 href = urllib.parse.urljoin(site_url, href)
@@ -218,6 +220,9 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                             next_url = urllib.parse.urljoin(site_url, href)
                         else:
                             next_url = href
+                            
+                        if 'mustardyarn.ru' in site_url and is_category and 'vse-opisanija' not in next_url:
+                            continue
                             
                         # Only follow links on the same domain
                         domain = urllib.parse.urlparse(site_url).netloc
