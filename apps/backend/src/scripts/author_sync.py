@@ -158,6 +158,9 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                         src = img.get('data-src') or img.get('src')
                         # Note: added '/catalog/' to support Hollywool and similar sites better
                         if alt and src and ('/shop/' in href or '/tproduct/' in href or '/product/' in href or '/patterns/' in href or '/catalog/' in href):
+                            if 'hollywool.ru' in site_url and 'besplatnye-opisaniya' not in href:
+                                continue
+                                
                             if not href.startswith('http'):
                                 href = urllib.parse.urljoin(site_url, href)
                             if not src.startswith('http'):
