@@ -139,7 +139,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
     all_product_links = []
     
     try:
-        while pages_to_visit and len(visited_pages) < 5:
+        while pages_to_visit and len(visited_pages) < 15:
             current_url = pages_to_visit.pop(0)
             if current_url in visited_pages:
                 continue
@@ -174,17 +174,29 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                                     'title': alt
                                 }
                                 
-                # Extract pagination links
+                # Extract pagination and category links
                 for a in soup.find_all('a'):
                     href = a.get('href')
-                    if href and re.search(r'page=|PAGEN_|[\?&]p=', href, re.I):
+                    if not href:
+                        continue
+                        
+                    is_pagination = re.search(r'page=|PAGEN_|[\?&]p=', href, re.I)
+                    is_category = re.search(r'/shop|/catalog|/pattern|/mk|/store|/category|/market|/master-klassy', href, re.I)
+                    
+                    if is_pagination or is_category:
+                        if 'cart' in href.lower() or 'checkout' in href.lower():
+                            continue
+                            
                         if not href.startswith('http'):
                             next_url = urllib.parse.urljoin(site_url, href)
                         else:
                             next_url = href
                             
-                        # Only follow pagination on the same domain and path base
-                        if next_url.startswith(site_url.split('?')[0]) and next_url not in visited_pages and next_url not in pages_to_visit:
+                        # Only follow links on the same domain
+                        domain = urllib.parse.urlparse(site_url).netloc
+                        next_domain = urllib.parse.urlparse(next_url).netloc
+                        
+                        if domain == next_domain and next_url not in visited_pages and next_url not in pages_to_visit:
                             pages_to_visit.append(next_url)
             except Exception as e:
                 print(f"Error scraping page {current_url}: {e}")
