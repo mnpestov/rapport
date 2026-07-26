@@ -5,6 +5,10 @@ import os
 import requests
 import re
 from bs4 import BeautifulSoup
+import concurrent.futures
+
+def get_base_url(u):
+    return u[:-2] if u.endswith('-1') else u
 
 def normalize_url(url):
     try:
@@ -78,7 +82,55 @@ def parse_density(text):
         return round(stitches), round(rows)
     return None, None
 
-def scrape_author_site(site_url, yarn_ranges_db):
+def fetch_and_parse_detail(p, yarn_ranges_db):
+    try:
+        detail_resp = requests.get(p['url'], headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
+        detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
+        
+        # Cleanup visually noisy tags
+        for tag in detail_soup(['nav', 'header', 'footer', 'aside', 'script', 'style']):
+            tag.decompose()
+            
+        target_title = re.sub(r'[\W_]+', '', p['title'].lower())
+        containers = detail_soup.find_all(class_=re.compile(r'js-product|t-item|t754__product-full|t-popup'))
+        valid_texts = []
+        
+        for c in containers:
+            c_text = c.get_text(separator=' ', strip=True)
+            if target_title in re.sub(r'[\W_]+', '', c_text.lower()):
+                valid_texts.append(c_text)
+        
+        if valid_texts:
+            text_content = max(valid_texts, key=len)
+        else:
+            text_content = detail_soup.get_text(separator=' ', strip=True)
+        
+        density_s, density_r = parse_density(text_content)
+        yarn_meters = parse_yarn(text_content)
+        
+        unique_yarns = []
+        seen_y = set()
+        for ym in set(yarn_meters):
+            for y_id, y_name, y_min, y_max in yarn_ranges_db:
+                if y_max is None: y_max = 999999
+                if y_min <= ym <= y_max:
+                    if y_id not in seen_y:
+                        unique_yarns.append({"id": y_id, "label": y_name})
+                        seen_y.add(y_id)
+                    break
+                    
+        p['densityStitches'] = density_s
+        p['densityRows'] = density_r
+        p['yarnRanges'] = unique_yarns
+        return p
+    except Exception as e:
+        print(f"Error scraping detail {p['url']}: {e}")
+        p['densityStitches'] = None
+        p['densityRows'] = None
+        p['yarnRanges'] = []
+        return p
+
+def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
     # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
     visited_pages = set()
@@ -133,53 +185,27 @@ def scrape_author_site(site_url, yarn_ranges_db):
             except Exception as e:
                 print(f"Error scraping page {current_url}: {e}")
                 
-        product_links = list(product_links_dict.values())
+        all_product_links = list(product_links_dict.values())
         
-        # Request detail pages to extract text
-        for p in product_links:
-            try:
-                detail_resp = requests.get(p['url'], headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
-                detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
+        # EARLIER DEDUPLICATION
+        new_product_links = []
+        for p in all_product_links:
+            base_norm = get_base_url(normalize_url(p['url']))
+            if base_norm not in all_existing_base_urls:
+                new_product_links.append(p)
+                all_existing_base_urls.add(base_norm) # Mark as seen to avoid duplicates within same run
                 
-                # Cleanup visually noisy tags
-                for tag in detail_soup(['nav', 'header', 'footer', 'aside', 'script', 'style']):
-                    tag.decompose()
-                    
-                target_title = re.sub(r'[\W_]+', '', p['title'].lower())
-                containers = detail_soup.find_all(class_=re.compile(r'js-product|t-item|t754__product-full|t-popup'))
-                valid_texts = []
-                
-                for c in containers:
-                    c_text = c.get_text(separator=' ', strip=True)
-                    if target_title in re.sub(r'[\W_]+', '', c_text.lower()):
-                        valid_texts.append(c_text)
-                
-                if valid_texts:
-                    text_content = max(valid_texts, key=len)
-                else:
-                    text_content = detail_soup.get_text(separator=' ', strip=True)
-                
-                density_s, density_r = parse_density(text_content)
-                yarn_meters = parse_yarn(text_content)
-                
-                unique_yarns = []
-                seen_y = set()
-                for ym in set(yarn_meters):
-                    for y_id, y_name, y_min, y_max in yarn_ranges_db:
-                        if y_max is None: y_max = 999999
-                        if y_min <= ym <= y_max:
-                            if y_id not in seen_y:
-                                unique_yarns.append({"id": y_id, "label": y_name})
-                                seen_y.add(y_id)
-                            break
-                            
-                p['densityStitches'] = density_s
-                p['densityRows'] = density_r
-                p['yarnRanges'] = unique_yarns
-                items.append(p)
-            except Exception as e:
-                print(f"Error scraping detail {p['url']}: {e}")
-                items.append(p)
+        print(f"Found {len(all_product_links)} products on {site_url}. {len(new_product_links)} are completely new.")
+        
+        if not new_product_links:
+            return []
+            
+        # ASYNCHRONOUS DEEP PARSE
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db) for p in new_product_links]
+            for future in concurrent.futures.as_completed(futures):
+                parsed_p = future.result()
+                items.append(parsed_p)
                 
     except Exception as e:
         print(f"Error scraping {site_url}: {e}")
@@ -191,6 +217,19 @@ def main():
         db_url = db_url.split('?')[0]
     conn = psycopg2.connect(db_url)
     cursor = conn.cursor()
+
+    # Pre-fetch ALL known URLs from the database globally ONCE
+    print("Loading global URL database for deduplication...")
+    cursor.execute('SELECT url FROM "Pattern" WHERE url IS NOT NULL')
+    db_urls = {normalize_url(row[0]) for row in cursor.fetchall() if row[0]}
+    
+    cursor.execute('SELECT url FROM "AuthorSyncItem" WHERE url IS NOT NULL')
+    sync_urls = {normalize_url(row[0]) for row in cursor.fetchall() if row[0]}
+
+    base_db_urls = {get_base_url(u) for u in db_urls}
+    base_sync_urls = {get_base_url(u) for u in sync_urls}
+    all_existing_base_urls = base_db_urls.union(base_sync_urls)
+    print(f"Loaded {len(all_existing_base_urls)} known unique URLs.")
 
     cursor.execute("""
         SELECT id, site FROM "Author" 
@@ -211,8 +250,9 @@ def main():
     yarn_ranges_db = cursor.fetchall()
     
     for author_id, site in authors:
+        print(f"---")
         print(f"Processing {site}...")
-        parsed_items = scrape_author_site(site, yarn_ranges_db)
+        parsed_items = scrape_author_site(site, yarn_ranges_db, all_existing_base_urls)
         
         # Enrich items
         for item in parsed_items:
@@ -291,31 +331,8 @@ def main():
                 item['yarnRanges'] = []
             item['isFree'] = False
         
-        cursor.execute('SELECT url FROM "Pattern"')
-        db_urls = {normalize_url(row[0]) for row in cursor.fetchall()}
-        
-        cursor.execute('SELECT url FROM "AuthorSyncItem"')
-        sync_urls = {normalize_url(row[0]) for row in cursor.fetchall()}
-    
-        def get_base_url(u):
-            return u[:-2] if u.endswith('-1') else u
-            
-        base_db_urls = {get_base_url(u) for u in db_urls}
-        base_sync_urls = {get_base_url(u) for u in sync_urls}
-        
-        all_existing_base_urls = base_db_urls.union(base_sync_urls)
-    
-        new_items = []
-        base_new = set()
-        for i in parsed_items:
-            norm = normalize_url(i['url'])
-            base_norm = get_base_url(norm)
-            if base_norm not in all_existing_base_urls:
-                if base_norm not in base_new:
-                    new_items.append(i)
-                    base_new.add(base_norm)
-    
-        if new_items:
+        # Save to DB
+        if parsed_items:
             try:
                 cursor.execute("""
                     INSERT INTO "AuthorSyncReport" ("id", "authorId", "status", "updatedAt") 
@@ -325,7 +342,7 @@ def main():
                 """, (author_id,))
                 report_id = cursor.fetchone()[0]
     
-                for item in new_items:
+                for item in parsed_items:
                     cursor.execute("""
                         INSERT INTO "AuthorSyncItem" ("id", "reportId", "status", "url", "title", "parsedData")
                         VALUES (gen_random_uuid(), %s, 'PENDING', %s, %s, %s)
@@ -333,7 +350,7 @@ def main():
                     """, (report_id, item['url'], item['title'], json.dumps(item)))
                 
                 conn.commit() 
-                print(f"Saved {len(new_items)} new items for {site}")
+                print(f"Saved {len(parsed_items)} new items for {site}")
             except Exception as e:
                 conn.rollback()
                 print(f"Failed to save {author_id}: {e}")
