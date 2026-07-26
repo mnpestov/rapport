@@ -136,6 +136,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
     visited_pages = set()
     pages_to_visit = [site_url]
     product_links_dict = {}
+    all_product_links = []
     
     try:
         while pages_to_visit and len(visited_pages) < 5:
@@ -201,7 +202,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
         print(f"Found {len(all_product_links)} products on {site_url}. {len(new_product_links)} are completely new.")
         
         if not new_product_links:
-            return []
+            return [], len(all_product_links)
             
         # ASYNCHRONOUS DEEP PARSE
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -212,7 +213,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                 
     except Exception as e:
         print(f"Error scraping {site_url}: {e}")
-    return items
+    return items, len(all_product_links)
 
 def main():
     db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5434/knitting_catalog')
@@ -235,7 +236,7 @@ def main():
     print(f"Loaded {len(all_existing_base_urls)} known unique URLs.")
 
     cursor.execute("""
-        SELECT id, site FROM "Author" 
+        SELECT id, name, site FROM "Author" 
         WHERE site IS NOT NULL 
         AND site NOT LIKE '%t.me%' 
         AND site NOT LIKE '%vk.com%'
@@ -252,10 +253,32 @@ def main():
     cursor.execute('SELECT id, label, "minValue", "maxValue" FROM "YarnRange" ORDER BY "minValue"')
     yarn_ranges_db = cursor.fetchall()
     
-    for author_id, site in authors:
+    stats = []
+    
+    for author_id, author_name, site in authors:
         print(f"---")
         print(f"Processing {site}...")
-        parsed_items = scrape_author_site(site, yarn_ranges_db, all_existing_base_urls)
+        parsed_items, site_count = scrape_author_site(site, yarn_ranges_db, all_existing_base_urls)
+        
+        # Calculate db_count
+        cursor.execute('SELECT COUNT(*) FROM "Pattern" WHERE "authorId" = %s', (author_id,))
+        db_pattern_count = cursor.fetchone()[0]
+        
+        cursor.execute('''
+            SELECT COUNT(i.id) FROM "AuthorSyncItem" i 
+            JOIN "AuthorSyncReport" r ON i."reportId" = r.id 
+            WHERE r."authorId" = %s
+        ''', (author_id,))
+        db_sync_count = cursor.fetchone()[0]
+        
+        db_count = db_pattern_count + db_sync_count
+        
+        stats.append({
+            'name': author_name,
+            'site': site,
+            'site_count': site_count,
+            'db_count': db_count
+        })
         
         # Enrich items
         for item in parsed_items:
@@ -359,6 +382,24 @@ def main():
                 print(f"Failed to save {author_id}: {e}")
         else:
             print(f"No new items for {site}")
+
+    # Generate Markdown Table
+    md_lines = []
+    md_lines.append("| Автор | Ссылка на сайт | кол-во описаний на сайте | кол-во описаний в бд |")
+    md_lines.append("|---|---|---|---|")
+    
+    # Sort by author name
+    stats.sort(key=lambda x: x['name'])
+    for s in stats:
+        md_lines.append(f"| {s['name']} | {s['site']} | {s['site_count']} | {s['db_count']} |")
+        
+    md_content = "\\n".join(md_lines)
+    
+    log_path = os.path.join(os.path.dirname(__file__), 'sync_stats.md')
+    with open(log_path, 'w', encoding='utf-8') as f:
+        f.write(md_content)
+        
+    print(f"\\nStats saved to {log_path}")
 
 if __name__ == "__main__":
     main()
