@@ -170,7 +170,9 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                     bg_style = a.get('style', '')
                     has_bg_img = 'background-image' in bg_style
                     
-                    if img or has_bg_img:
+                    has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
+                    
+                    if img or has_bg_img or has_valid_href:
                         alt = ''
                         src = ''
                         if img:
@@ -185,7 +187,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                             alt = a.get_text(separator=' ', strip=True)
                             
                         # Support for various site structures including romnastena and annaboronbekova
-                        if src and re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I):
+                        if has_valid_href and (src or alt):
                             if 'hollywool.ru' in site_url and 'besplatnye-opisaniya' not in href:
                                 continue
                             if 'mustardyarn.ru' in site_url and 'opisanie' not in href:
@@ -193,7 +195,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                                 
                             if not href.startswith('http'):
                                 href = urllib.parse.urljoin(site_url, href)
-                            if not src.startswith('http'):
+                            if src and not src.startswith('http'):
                                 src = urllib.parse.urljoin(site_url, src)
                                 
                             if href not in product_links_dict:
@@ -202,6 +204,11 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                                     'imageUrl': src,
                                     'title': alt
                                 }
+                            else:
+                                if not product_links_dict[href]['title'] and alt:
+                                    product_links_dict[href]['title'] = alt
+                                if not product_links_dict[href]['imageUrl'] and src:
+                                    product_links_dict[href]['imageUrl'] = src
                                 
                 # Extract pagination and category links
                 for a in soup.find_all('a'):
