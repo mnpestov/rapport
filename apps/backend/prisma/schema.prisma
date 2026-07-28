@@ -15,8 +15,8 @@ model Pattern {
   isFree          Boolean  @default(false)
   isNew           Boolean  @default(false)
   isVisible       Boolean  @default(true)
-  densityStitches Int?
-  densityRows     Int?
+  densityStitches Decimal? @db.Decimal(5, 2)
+  densityRows     Decimal? @db.Decimal(5, 2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -329,8 +329,8 @@ model Draft {
   imageUrl          String
   isFree            Boolean     @default(false)
   isNew             Boolean     @default(false)
-  densityStitches   Int?
-  densityRows       Int?
+  densityStitches   Decimal?    @db.Decimal(5, 2)
+  densityRows       Decimal?    @db.Decimal(5, 2)
   closedAt          DateTime?
   closedById        String?
   closedBy          User?       @relation("DraftClosedBy", fields: [closedById], references: [id])

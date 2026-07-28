@@ -17,8 +17,8 @@ export interface AdminDraft {
   closedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  densityStitches: number | null;
-  densityRows: number | null;
+  densityStitches: number | string | null;
+  densityRows: number | string | null;
   tags: { id: string; name: string }[];
   categories: { id: string; name: string }[];
   instruments: { id: string; name: string }[];

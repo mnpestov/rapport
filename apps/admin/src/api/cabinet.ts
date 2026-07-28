@@ -17,8 +17,8 @@ export interface CabinetDraft {
   imageUrl: string;
   isFree: boolean;
   isNew: boolean;
-  densityStitches: number | null;
-  densityRows: number | null;
+  densityStitches: number | string | null;
+  densityRows: number | string | null;
   createdAt: string;
   updatedAt: string;
   _type: 'draft';
@@ -36,8 +36,8 @@ export interface CabinetPattern {
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
-  densityStitches: number | null;
-  densityRows: number | null;
+  densityStitches: number | string | null;
+  densityRows: number | string | null;
   createdAt: string;
   updatedAt: string;
   _type: 'pattern';

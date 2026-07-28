@@ -59,8 +59,8 @@ export interface AdminPatternDetailDTO {
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
-  densityStitches: number | null;
-  densityRows: number | null;
+  densityStitches: number | string | null;
+  densityRows: number | string | null;
   createdAt: string;
   updatedAt: string;
   author: { id: string; name: string };
