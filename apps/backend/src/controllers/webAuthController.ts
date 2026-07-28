@@ -315,12 +315,33 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Normal rotation: revoke old, create new.
+    // Normal rotation: revoke old, create new. The revoke must be a single
+    // atomic "UPDATE ... WHERE revoked = false" so Postgres's row lock is
+    // what decides the race when two requests (e.g. React StrictMode's
+    // double effect) refresh the same cookie in the same instant — only one
+    // can flip revoked false->true. This is deliberately $executeRaw, not
+    // prisma.refreshToken.updateMany: verified empirically that Prisma 7's
+    // query engine does not compile updateMany here into one atomic
+    // statement — under concurrent load it let both requests "win", each
+    // proceeding to mint a token (jwt.sign's iat is second-granularity, so
+    // two tokens for the same userId within the same second hash
+    // identically and collide on the token unique constraint in create()).
+    // Raw SQL removes that layer entirely.
     const now = new Date();
-    await prisma.refreshToken.update({
-      where: { id: record.id },
-      data: { revoked: true, revokedAt: now },
-    });
+    const count = await prisma.$executeRaw`
+      UPDATE "RefreshToken" SET revoked = true, "revokedAt" = ${now}
+      WHERE id = ${record.id} AND revoked = false
+    `;
+
+    if (count === 0) {
+      const accessToken = generateToken({
+        userId: record.user.id,
+        telegramId: record.user.telegramId.toString(),
+        role: record.user.role,
+      });
+      res.json({ token: accessToken });
+      return;
+    }
 
     const newRawToken = generateRefreshToken({ userId: record.userId });
     await prisma.refreshToken.create({

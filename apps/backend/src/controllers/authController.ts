@@ -201,14 +201,16 @@ export const telegramAuth = async (req: Request, res: Response) => {
 
     res.json(responseBody);
 
-    if (effectiveIsSubscriber) {
-      void prisma.user.update({
-        where: { id: userRecord.id },
-        data: { lastSeenAt: new Date() },
-      }).catch((err) => {
-        console.error(`[AUTH] [${requestId}] Failed to update lastSeenAt:`, err);
-      });
-    }
+    // lastSeenAt tracks any successful authenticated visit, not just
+    // subscriber visits — the dashboard's "visitors in period" stat filters
+    // on this field and must not undercount non-subscribers who still use
+    // the app (see admin/dashboard/stats totalUsers via lastSeenAt).
+    void prisma.user.update({
+      where: { id: userRecord.id },
+      data: { lastSeenAt: new Date() },
+    }).catch((err) => {
+      console.error(`[AUTH] [${requestId}] Failed to update lastSeenAt:`, err);
+    });
 
     if (finalDecision === 'authorized_via_whitelist' && whitelistEntry) {
       void prisma.whitelistedUser.update({

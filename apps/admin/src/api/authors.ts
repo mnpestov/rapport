@@ -100,6 +100,17 @@ export const processSyncBatch = async (reportId: string, items: any[]): Promise<
   return response.json();
 };
 
+export const clearSyncReport = async (reportId: string): Promise<{ success: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-reports/${reportId}/clear`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to clear sync report");
+  }
+  return response.json();
+};
+
 export const rejectSyncItem = async (itemId: string): Promise<{ success: boolean }> => {
   const response = await fetchWithAuth(`${API_URL}/admin/sync-items/${itemId}/reject`, {
     method: "POST",

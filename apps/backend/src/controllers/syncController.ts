@@ -125,7 +125,40 @@ export const processSyncBatch = async (req: Request, res: Response) => {
 
 export const rejectSyncItem = async (req: Request, res: Response) => {
   const { itemId } = req.params;
-  await prisma.authorSyncItem.update({ where: { id: itemId }, data: { status: "REJECTED" } });
+  const updatedItem = await prisma.authorSyncItem.update({ 
+    where: { id: itemId }, 
+    data: { status: "REJECTED" } 
+  });
+  
+  const remaining = await prisma.authorSyncItem.count({ 
+    where: { reportId: updatedItem.reportId, status: "PENDING" } 
+  });
+  
+  if (remaining === 0) {
+    await prisma.authorSyncReport.update({ 
+      where: { id: updatedItem.reportId }, 
+      data: { status: "PROCESSED" } 
+    });
+  }
+  
+  res.json({ success: true });
+};
+
+export const clearSyncReport = async (req: Request, res: Response) => {
+  const { reportId } = req.params;
+  
+  await prisma.authorSyncItem.deleteMany({
+    where: {
+      reportId,
+      status: { not: "REJECTED" }
+    }
+  });
+
+  await prisma.authorSyncReport.update({
+    where: { id: reportId },
+    data: { status: "PROCESSED" }
+  });
+
   res.json({ success: true });
 };
 

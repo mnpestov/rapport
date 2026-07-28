@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../../components/Modal/Modal";
-import { getReportById, processSyncBatch, rejectSyncItem, SyncReport, SyncReportItem } from "../../api/authors";
+import { getReportById, processSyncBatch, rejectSyncItem, clearSyncReport, SyncReport, SyncReportItem } from "../../api/authors";
 import toast from "react-hot-toast";
 import styles from "./Authors.module.css";
 import { Loader2 } from "lucide-react";
 import { ModerationCard } from "../Patterns/ModerationCard";
 import { AdminDraft } from "../../api/admin-drafts";
+import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 
 interface SyncModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface SyncModalProps {
 export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: SyncModalProps) {
   const [report, setReport] = useState<SyncReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && reportId) {
@@ -67,9 +69,22 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
         onClose();
       } else {
         setReport(prev => prev ? { ...prev, items: newItems } : null);
+        onSuccess();
       }
     } catch (e: any) {
       toast.error(e.message || "Ошибка при отклонении");
+    }
+  };
+
+  const handleClear = async () => {
+    setConfirmClearOpen(false);
+    try {
+      await clearSyncReport(reportId!);
+      toast.success("Новинки очищены");
+      onSuccess();
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка при очистке");
     }
   };
 
@@ -85,7 +100,17 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
         ) : !report?.items?.length ? (
           <div style={{ padding: "40px", textAlign: "center" }}>Нет новых описаний для проверки.</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: "16px" }}>
+          <>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+              <button 
+                className={styles.btnSecondary} 
+                onClick={() => setConfirmClearOpen(true)}
+                style={{ color: "#ef4444", borderColor: "#ef4444" }}
+              >
+                Очистить новинки
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: "16px" }}>
             {report.items.map(item => {
               const pd = item.parsedData || {};
               const draft: AdminDraft = {
@@ -123,8 +148,20 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
               );
             })}
           </div>
+        </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmClearOpen}
+        title="Очистить новинки"
+        message="Уверены, что хотите очистить новинки? Одобренные и отклоненные сохранятся, остальные удалятся."
+        confirmText="Очистить"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={handleClear}
+        onCancel={() => setConfirmClearOpen(false)}
+      />
     </Modal>
   );
 }
