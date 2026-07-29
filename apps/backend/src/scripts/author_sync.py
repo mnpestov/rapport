@@ -82,7 +82,25 @@ def parse_density(text):
         return round(stitches), round(rows)
     return None, None
 
-def fetch_and_parse_detail(p, yarn_ranges_db):
+def detect_instruments(text, instruments_db):
+    # Крючок vs спицы — determined from word roots anywhere in the page text
+    # (title + description). "крюч" covers крючок/крючком/крючка; "стби" covers
+    # crochet-only stitch terms (столбик/столбики, without/with a "накид"), a
+    # secondary signal for pages that describe the technique without ever
+    # naming the tool directly. "спиц" covers спицы/спицами/спицах.
+    text_lower = text.lower()
+    has_crochet = bool(re.search(r'крюч|столбик', text_lower))
+    has_needles = bool(re.search(r'спиц', text_lower))
+    result = []
+    for i_id, i_name in instruments_db:
+        name_lower = i_name.lower()
+        if 'крюч' in name_lower and has_crochet:
+            result.append({"id": i_id, "name": i_name})
+        elif 'спиц' in name_lower and has_needles:
+            result.append({"id": i_id, "name": i_name})
+    return result
+
+def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -150,12 +168,14 @@ def fetch_and_parse_detail(p, yarn_ranges_db):
         p['densityStitches'] = density_s
         p['densityRows'] = density_r
         p['yarnRanges'] = unique_yarns
+        p['instruments'] = detect_instruments(p['title'] + ' ' + text_content, instruments_db)
         return p
     except Exception as e:
         print(f"Error scraping detail {p['url']}: {e}")
         p['densityStitches'] = None
         p['densityRows'] = None
         p['yarnRanges'] = []
+        p['instruments'] = []
         return p
 
 def fetch_title_and_image(url, headers):
@@ -242,7 +262,7 @@ def scrape_via_seed(seed_url, headers):
     print(f"Seed fallback for {seed_url}: {len(items)} product(s) discovered.")
     return items
 
-def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls, seed_url=None):
+def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_base_urls, seed_url=None):
     # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
     visited_pages = set()
@@ -401,7 +421,7 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls, seed_ur
             
         # ASYNCHRONOUS DEEP PARSE
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db) for p in new_product_links]
+            futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db, instruments_db) for p in new_product_links]
             for future in concurrent.futures.as_completed(futures):
                 parsed_p = future.result()
                 items.append(parsed_p)
@@ -460,18 +480,22 @@ def main():
     # Fetch categories
     cursor.execute('SELECT id, name FROM "ProductType"')
     categories_db = cursor.fetchall()
-    
+
     # Fetch YarnRanges
     cursor.execute('SELECT id, label, "minValue", "maxValue" FROM "YarnRange" ORDER BY "minValue"')
     yarn_ranges_db = cursor.fetchall()
-    
+
+    # Fetch Instruments (крючок/спицы)
+    cursor.execute('SELECT id, name FROM "Instrument"')
+    instruments_db = cursor.fetchall()
+
     stats = []
-    
+
     for author_id, author_name, site in authors:
         print(f"---")
         print(f"Processing {site}...")
         seed_url = find_seed_url(site, author_urls.get(author_id, []))
-        parsed_items, site_count = scrape_author_site(site, yarn_ranges_db, all_existing_base_urls, seed_url)
+        parsed_items, site_count = scrape_author_site(site, yarn_ranges_db, instruments_db, all_existing_base_urls, seed_url)
         
         # Calculate db_count
         cursor.execute('SELECT COUNT(*) FROM "Pattern" WHERE "authorId" = %s', (author_id,))
@@ -568,6 +592,8 @@ def main():
                 item['densityRows'] = None
             if 'yarnRanges' not in item:
                 item['yarnRanges'] = []
+            if 'instruments' not in item:
+                item['instruments'] = []
             item['isFree'] = False
         
         # Save to DB
