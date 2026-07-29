@@ -135,7 +135,91 @@ def fetch_and_parse_detail(p, yarn_ranges_db):
         p['yarnRanges'] = []
         return p
 
-def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
+def fetch_title_and_image(url, headers):
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        title_tag = soup.find('title')
+        title = title_tag.get_text(strip=True) if title_tag else ''
+        # Strip common storefront title suffixes ("- скачать на Eiwi | 123", "купить в интернет-магазине")
+        title = re.sub(r'\s*[-|]\s*(скачать на|купить).*$', '', title, flags=re.I).strip()
+        og_image = soup.find('meta', property='og:image')
+        image_url = og_image['content'].strip() if og_image and og_image.get('content') else ''
+        return title, image_url
+    except Exception as e:
+        print(f"Error fetching title/image for {url}: {e}")
+        return '', ''
+
+def find_seed_url(site, candidate_urls):
+    # Pick any already-known URL (published pattern or sync-queue item, any
+    # status) that lives on the same domain as the author's site but isn't the
+    # site's own listing page — a concrete product page to bootstrap discovery
+    # from when the listing page itself yields nothing (see scrape_via_seed()).
+    site_domain = urllib.parse.urlparse(site).netloc
+    site_path = urllib.parse.urlparse(site).path.rstrip('/')
+    for url in candidate_urls:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.netloc == site_domain and parsed.path.rstrip('/') != site_path:
+            return url
+    return None
+
+def scrape_via_seed(seed_url, headers):
+    # Fallback for authors whose site listing is JS-rendered (normal crawl finds
+    # zero products, e.g. eiwi.ru shops). seed_url is any already-known product
+    # page for this author (an existing Pattern.url or AuthorSyncItem.url on the
+    # same domain — see find_seed_url() in main()); same-shape same-domain links
+    # are harvested from it. These sites often leave real product <a href>
+    # targets in the raw HTML (e.g. for click tracking on a "related items"
+    # carousel) even though the carousel itself only renders visually via JS.
+    # Individual product pages on these sites DO render server-side, so each
+    # harvested link is fetched separately for its title/image before being
+    # handed to the normal deep-parse pipeline.
+    domain = urllib.parse.urlparse(seed_url).netloc
+    seed_path = urllib.parse.urlparse(seed_url).path
+    last_segment = seed_path.rsplit('/', 1)[-1]
+
+    if re.match(r'^\d+-.+\.html$', last_segment):
+        shape = re.compile(r'^/\d+-[\w-]+\.html$')
+        seed_depth = None
+    else:
+        shape = None
+        seed_depth = len([s for s in seed_path.split('/') if s])
+
+    try:
+        resp = requests.get(seed_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+    except Exception as e:
+        print(f"Error fetching seed {seed_url}: {e}")
+        return []
+
+    candidate_urls = {seed_url}
+    for a in soup.find_all('a'):
+        href = a.get('href')
+        if not href:
+            continue
+        full = href if href.startswith('http') else urllib.parse.urljoin(seed_url, href)
+        parsed = urllib.parse.urlparse(full)
+        if parsed.netloc != domain:
+            continue
+        if shape is not None:
+            if not shape.match(parsed.path):
+                continue
+        else:
+            depth = len([s for s in parsed.path.split('/') if s])
+            if depth != seed_depth or parsed.path == seed_path:
+                continue
+        candidate_urls.add(full)
+
+    items = []
+    for url in candidate_urls:
+        title, image_url = fetch_title_and_image(url, headers)
+        if not title:
+            continue
+        items.append({'url': url, 'imageUrl': image_url, 'title': title})
+    print(f"Seed fallback for {seed_url}: {len(items)} product(s) discovered.")
+    return items
+
+def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls, seed_url=None):
     # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
     visited_pages = set()
@@ -187,7 +271,10 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                             alt = a.get_text(separator=' ', strip=True)
                             
                         # Support for various site structures including romnastena and annaboronbekova
-                        if has_valid_href and (src or alt):
+                        # img/bg-image alone is enough — don't require has_valid_href too, some
+                        # sites (e.g. likewool.shop: /master-class/<slug>) use URL schemes outside
+                        # the whitelist above despite having proper product cards.
+                        if (has_valid_href or img or has_bg_img) and (src or alt):
                             if 'hollywool.ru' in site_url and 'besplatnye-opisaniya' not in href:
                                 continue
                             if 'mustardyarn.ru' in site_url and 'opisanie' not in href:
@@ -241,7 +328,16 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls):
                 print(f"Error scraping page {current_url}: {e}")
                 
         all_product_links = list(product_links_dict.values())
-        
+
+        # Normal crawl found nothing (typical of JS-rendered listing pages) —
+        # fall back to a known product page, if the author has one configured.
+        if not all_product_links and seed_url:
+            print(f"No products found via normal crawl on {site_url}, trying seed {seed_url}...")
+            for item in scrape_via_seed(seed_url, headers):
+                if item['url'] not in product_links_dict:
+                    product_links_dict[item['url']] = item
+            all_product_links = list(product_links_dict.values())
+
         # EARLIER DEDUPLICATION
         new_product_links = []
         for p in all_product_links:
@@ -287,15 +383,32 @@ def main():
     print(f"Loaded {len(all_existing_base_urls)} known unique URLs.")
 
     cursor.execute("""
-        SELECT id, name, site FROM "Author" 
-        WHERE site IS NOT NULL 
-        AND site NOT LIKE '%t.me%' 
+        SELECT id, name, site FROM "Author"
+        WHERE site IS NOT NULL
+        AND site NOT LIKE '%t.me%'
         AND site NOT LIKE '%vk.com%'
         AND site NOT LIKE '%instagram.com%'
     """)
-    
+
     authors = cursor.fetchall()
-    
+
+    # Existing per-author URLs (published patterns + anything already sitting in
+    # the sync queue, any status) — used as seed candidates for scrape_via_seed()
+    # when an author's own site listing is JS-rendered and yields nothing on its
+    # own. No dedicated "seed URL" field needed: as soon as a single product from
+    # a domain exists anywhere in our data, it can bootstrap discovery of the rest.
+    author_urls = {}
+    cursor.execute('SELECT "authorId", url FROM "Pattern" WHERE url IS NOT NULL')
+    for author_id, url in cursor.fetchall():
+        author_urls.setdefault(author_id, []).append(url)
+    cursor.execute('''
+        SELECT r."authorId", i.url FROM "AuthorSyncItem" i
+        JOIN "AuthorSyncReport" r ON i."reportId" = r.id
+        WHERE i.url IS NOT NULL
+    ''')
+    for author_id, url in cursor.fetchall():
+        author_urls.setdefault(author_id, []).append(url)
+
     # Fetch categories
     cursor.execute('SELECT id, name FROM "ProductType"')
     categories_db = cursor.fetchall()
@@ -309,7 +422,8 @@ def main():
     for author_id, author_name, site in authors:
         print(f"---")
         print(f"Processing {site}...")
-        parsed_items, site_count = scrape_author_site(site, yarn_ranges_db, all_existing_base_urls)
+        seed_url = find_seed_url(site, author_urls.get(author_id, []))
+        parsed_items, site_count = scrape_author_site(site, yarn_ranges_db, all_existing_base_urls, seed_url)
         
         # Calculate db_count
         cursor.execute('SELECT COUNT(*) FROM "Pattern" WHERE "authorId" = %s', (author_id,))
