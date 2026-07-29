@@ -255,7 +255,12 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls, seed_ur
                     has_bg_img = 'background-image' in bg_style
                     
                     has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
-                    
+                    has_product_class = 'product' in (a.get('class') or [])
+                    # Category/tag/pagination listing pages (WooCommerce etc.) can still slip
+                    # through the loose "/mk" substring above (e.g. "/product-category/mk-hat/")
+                    # — these are handled separately below as pages to crawl, never as products.
+                    is_listing_page = bool(re.search(r'/product-category/|/category/|/tag/|/page/\d|[?&]page=|PAGEN_|[?&]p=\d', href, re.I))
+
                     if img or has_bg_img or has_valid_href:
                         alt = ''
                         src = ''
@@ -270,21 +275,41 @@ def scrape_author_site(site_url, yarn_ranges_db, all_existing_base_urls, seed_ur
                         if not alt:
                             alt = a.get_text(separator=' ', strip=True)
                             
-                        # Support for various site structures including romnastena and annaboronbekova
-                        # img/bg-image alone is enough — don't require has_valid_href too, some
-                        # sites (e.g. likewool.shop: /master-class/<slug>) use URL schemes outside
-                        # the whitelist above despite having proper product cards.
-                        if (has_valid_href or img or has_bg_img) and (src or alt):
-                            if 'hollywool.ru' in site_url and 'besplatnye-opisaniya' not in href:
-                                continue
+                        # Support for various site structures including romnastena and annaboronbekova.
+                        # img/bg-image ALONE is not enough — that swept in homepage/category/logo
+                        # links on many WordPress/WooCommerce-style sites (any thumbnail-bearing nav
+                        # link qualified). Require either the URL whitelist OR an explicit `product`
+                        # CSS class token — the latter covers sites like likewool.shop
+                        # (/master-class/<slug>, outside the whitelist, but cards carry
+                        # class="product js--hover-preview").
+                        if (has_valid_href or has_product_class) and (src or alt) and not is_listing_page:
+                            if 'hollywool.ru' in site_url:
+                                # Real pattern pages are exactly one slug deep under
+                                # /besplatnye-opisaniya/<slug>/ — facet/filter pages (by yarn
+                                # brand, product type, etc.) nest an extra nonempty segment, e.g.
+                                # /besplatnye-opisaniya/brend_pryazhi/aura/ or /izdelie/kupalnik/ —
+                                # or, unnested, ARE the facet root itself (/izdelie/) or a
+                                # sort/query variant of the base listing page.
+                                href_path = href.split('?')[0].split('#')[0]
+                                m = re.search(r'besplatnye-opisaniya/(.*)', href_path)
+                                segments = [s for s in (m.group(1) if m else '').split('/') if s]
+                                facet_roots = {'izdelie', 'brend_pryazhi'}
+                                if len(segments) != 1 or segments[0] in facet_roots:
+                                    continue
                             if 'mustardyarn.ru' in site_url and 'opisanie' not in href:
                                 continue
-                                
+
                             if not href.startswith('http'):
                                 href = urllib.parse.urljoin(site_url, href)
                             if src and not src.startswith('http'):
                                 src = urllib.parse.urljoin(site_url, src)
-                                
+
+                            # Never treat a page the crawler itself is already treating as a
+                            # listing/category page (visited or queued, including the crawl's own
+                            # starting page) as a "product" — e.g. a breadcrumb/"back to catalog" link.
+                            if href.rstrip('/') in (u.rstrip('/') for u in visited_pages | set(pages_to_visit) | {site_url}):
+                                continue
+
                             if href not in product_links_dict:
                                 product_links_dict[href] = {
                                     'url': href,
