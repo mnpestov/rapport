@@ -21,8 +21,11 @@ def normalize_url(url):
 
 def parse_yarn(text):
     results = []
-    pattern1 = re.compile(r'(\d+)\s*м[а-я]*\s*(?:в|на|/|-)?\s*(\d+)\s*(?:г|g|гр)', re.IGNORECASE)
-    pattern2 = re.compile(r'(\d+)\s*(?:г|g|гр)\s*(?:в|на|/|-)?\s*(\d+)\s*м[а-я]*', re.IGNORECASE)
+    # \.? after the unit letters: abbreviation-with-period style ("150 м./50 гр.",
+    # "50 гр./150 м") is common enough that without it, the literal "." sitting
+    # between the unit and the separator/next number breaks the match entirely.
+    pattern1 = re.compile(r'(\d+)\s*м[а-я]*\.?\s*(?:в|на|/|-)?\s*(\d+)\s*(?:г|g|гр)\.?', re.IGNORECASE)
+    pattern2 = re.compile(r'(\d+)\s*(?:г|g|гр)\.?\s*(?:в|на|/|-)?\s*(\d+)\s*м[а-я]*\.?', re.IGNORECASE)
 
     matches = []
     for m in pattern1.finditer(text):
@@ -53,7 +56,12 @@ def parse_yarn(text):
     return results
 
 def parse_density(text):
-    pattern = re.compile(r'(\d+(?:[.,]\d+)?)\s*(?:п\.?|пет[а-я]*|ст\.?|столб[а-я]*)(?:.{1,30}?)(\d+(?:[.,]\d+)?)\s*(?:р\.?|ряд[а-я]*)', re.IGNORECASE)
+    # \b after the bare abbreviations (п, ст, р) — without it, "п" alone matches
+    # the first letter of ANY п-starting word (плотности, пряжа...), e.g. "На
+    # выбор 2 плотности: 21 п. * 30 р." wrongly reads "2" (from "2 плотности")
+    # as the stitch count instead of "21". пет.../столб.../ряд... already end in
+    # [а-я]*, which greedily consumes to a real word boundary, so they're unaffected.
+    pattern = re.compile(r'(\d+(?:[.,]\d+)?)\s*(?:п\b|пет[а-я]*|ст\b|столб[а-я]*)(?:.{1,30}?)(\d+(?:[.,]\d+)?)\s*(?:р\b|ряд[а-я]*)', re.IGNORECASE)
     for m in pattern.finditer(text):
         stitches_str = m.group(1).replace(',', '.')
         rows_str = m.group(2).replace(',', '.')
@@ -84,13 +92,21 @@ def parse_density(text):
 
 def detect_instruments(text, instruments_db):
     # Крючок vs спицы — determined from word roots anywhere in the page text
-    # (title + description). "крюч" covers крючок/крючком/крючка; "стби" covers
-    # crochet-only stitch terms (столбик/столбики, without/with a "накид"), a
-    # secondary signal for pages that describe the technique without ever
-    # naming the tool directly. "спиц" covers спицы/спицами/спицах.
+    # (title + description). "крюч" covers крючок/крючком/крючка; "столбик"
+    # (crochet-only stitch term) is a secondary signal for pages that describe
+    # the technique without ever naming the tool directly. "спиц" covers
+    # спицы/спицами/спицах. Single-technique shops sometimes never say "спицами"
+    # at all (it's implicit store-wide) but do give a gauge in "N петель" —
+    # "петл" is a needles fallback signal, but only when no crochet signal is
+    # present, since crochet occasionally uses "петля" too (воздушная петля,
+    # петля подъёма) — always alongside an explicit "крючок" mention in practice.
     text_lower = text.lower()
     has_crochet = bool(re.search(r'крюч|столбик', text_lower))
-    has_needles = bool(re.search(r'спиц', text_lower))
+    # \b-anchored: "петля" declines with a fleeting vowel (петля/петли but
+    # петель, петелька), so both пет+л... and пет+ел... stems are needed. Word
+    # boundary keeps this from matching inside unrelated words that happen to
+    # contain "пет" (компетентный, Петербург, петух...).
+    has_needles = bool(re.search(r'спиц', text_lower)) or (not has_crochet and bool(re.search(r'\bпет(?:л[а-я]*|ел[а-я]*)\b', text_lower)))
     result = []
     for i_id, i_name in instruments_db:
         name_lower = i_name.lower()
@@ -99,6 +115,13 @@ def detect_instruments(text, instruments_db):
         elif 'спиц' in name_lower and has_needles:
             result.append({"id": i_id, "name": i_name})
     return result
+
+def is_machine_knitting(text):
+    # Machine knitting (вязальная машина) isn't a technique we track at all — no
+    # Instrument row exists for it, and it's explicitly out of scope. "фонтур"
+    # (single/double-bed terminology) is unambiguous; the phrase forms cover
+    # sites that only ever say "для машин"/"машинное вязание" without "фонтур".
+    return bool(re.search(r'фонтур|вязальн[а-я]*\s*машин|машинн[а-я]*\s*вязан|для\s+машин[а-я]*\b', text.lower()))
 
 def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
     headers = {
@@ -113,15 +136,38 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
         # Extract h1/<title> before the cleanup below (harmless either way — these
         # live outside the decomposed tags anyway, but keep it up front so the
         # title fix is visually grouped with where it's read from below).
-        h1 = detail_soup.find('h1')
-        page_title = h1.get_text(strip=True) if h1 else ''
+        # Only trust h1 when it's the ONLY one on the page — some sites (eiwi.ru)
+        # misuse <h1> for the site logo/wordmark (and even a mobile search
+        # placeholder), appearing before the real product h1 in document order,
+        # so find('h1') silently grabs the wrong one. With >1 h1 present, the
+        # page's own <title> tag has proven more reliable across every site
+        # tested this session.
+        h1_tags = detail_soup.find_all('h1')
+        page_title = h1_tags[0].get_text(strip=True) if len(h1_tags) == 1 else ''
         if not page_title:
             title_tag = detail_soup.find('title')
             raw_title = title_tag.get_text(strip=True) if title_tag else ''
-            page_title = re.sub(r'\s*[-–—|&]\s*\S.*$', '', raw_title).strip()
+            # Require whitespace on BOTH sides of the separator — a bare hyphen with
+            # no surrounding spaces is almost always part of the title itself (e.g.
+            # "Описание-дополнение на носки"), not a "Title – Site Name" separator.
+            page_title = re.sub(r'\s+[-–—|&]\s+\S.*$', '', raw_title).strip()
 
-        # Cleanup visually noisy tags
-        for tag in detail_soup(['nav', 'header', 'footer', 'aside', 'script', 'style']):
+        # Cleanup visually noisy tags. <title> is included here (after already
+        # being read above) — site-wide branding often lives there (e.g. one
+        # site's <title> ends in "– knittingsamurai.ru Машинное вязание" on
+        # EVERY page), and it would otherwise leak into text_content via the
+        # get_text() fallback below, contaminating keyword-based detection
+        # (instrument, technique, etc.) with text that has nothing to do with
+        # this specific product.
+        for tag in detail_soup(['nav', 'header', 'footer', 'aside', 'script', 'style', 'title']):
+            tag.decompose()
+
+        # WooCommerce "related products" widget (<section class="related products">,
+        # standard across nearly all WooCommerce themes) lists OTHER items on the same
+        # page — when no isolated container matches below and text_content falls back
+        # to the whole page, this widget's text (other products' names/specs) leaks in
+        # and contaminates keyword-based detection with unrelated products' content.
+        for tag in detail_soup.find_all(class_=re.compile(r'\brelated\b')):
             tag.decompose()
 
         # Listing-page alt text / link text (p['title']) is used here to isolate
@@ -169,6 +215,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
         p['densityRows'] = density_r
         p['yarnRanges'] = unique_yarns
         p['instruments'] = detect_instruments(p['title'] + ' ' + text_content, instruments_db)
+        p['isMachineKnitting'] = is_machine_knitting(p['title'] + ' ' + text_content)
         return p
     except Exception as e:
         print(f"Error scraping detail {p['url']}: {e}")
@@ -176,6 +223,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
         p['densityRows'] = None
         p['yarnRanges'] = []
         p['instruments'] = []
+        p['isMachineKnitting'] = False
         return p
 
 def fetch_title_and_image(url, headers):
@@ -262,19 +310,99 @@ def scrape_via_seed(seed_url, headers):
     print(f"Seed fallback for {seed_url}: {len(items)} product(s) discovered.")
     return items
 
+def scrape_kitirrr_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+    # kitirrr.ru (Екатерина Кутушова) runs a Tilda Store block that's 100%
+    # client-side hydrated — no product links exist anywhere in the static HTML,
+    # neither on the listing page nor via a "related products" widget on detail
+    # pages (unlike eiwi.ru), so neither the generic crawler below nor
+    # scrape_via_seed() can find anything here. Tilda's own private Store API
+    # (undocumented — storepartuid/recid captured via a real browser network
+    # trace, not derivable from the page itself) returns the full product list
+    # AND each product's complete description HTML in one call, so this skips
+    # the per-product page fetch entirely — faster and simpler than the normal
+    # path, but only for this one site.
+    storepartuid = '225031935381'
+    recid = '351959523'
+    api_url = (
+        f"https://store.tildaapi.com/api/getproductslist/?storepartuid={storepartuid}"
+        f"&recid={recid}&getparts=true&getoptions=true&slice=1&size=200&flag_root=withroot"
+    )
+    try:
+        resp = requests.get(api_url, headers=headers, timeout=15)
+        data = resp.json()
+    except Exception as e:
+        print(f"Error fetching kitirrr.ru store API: {e}")
+        return [], 0
+
+    products = data.get('products', [])
+    items = []
+    for p in products:
+        product_url = p.get('url', '')
+        if not product_url:
+            continue
+        base_norm = get_base_url(normalize_url(product_url))
+        if base_norm in all_existing_base_urls:
+            continue
+        all_existing_base_urls.add(base_norm)
+
+        image_url = ''
+        try:
+            gallery = json.loads(p.get('gallery') or '[]')
+            if gallery:
+                image_url = gallery[0].get('img', '')
+        except Exception:
+            pass
+
+        title = p.get('title', '')
+        text_content = BeautifulSoup(p.get('text') or '', 'html.parser').get_text(separator=' ', strip=True)
+        combined = title + ' ' + text_content
+
+        density_s, density_r = parse_density(text_content)
+        yarn_meters = parse_yarn(text_content)
+        unique_yarns = []
+        seen_y = set()
+        for ym in set(yarn_meters):
+            for y_id, y_name, y_min, y_max in yarn_ranges_db:
+                if y_max is None: y_max = 999999
+                if y_min <= ym <= y_max:
+                    if y_id not in seen_y:
+                        unique_yarns.append({"id": y_id, "label": y_name})
+                        seen_y.add(y_id)
+                    break
+
+        items.append({
+            'url': product_url,
+            'title': title,
+            'imageUrl': image_url,
+            'densityStitches': density_s,
+            'densityRows': density_r,
+            'yarnRanges': unique_yarns,
+            'instruments': detect_instruments(combined, instruments_db),
+            'isMachineKnitting': is_machine_knitting(combined),
+        })
+    print(f"kitirrr.ru store API: {len(products)} products total, {len(items)} completely new.")
+    return items, len(products)
+
 def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_base_urls, seed_url=None):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+    }
+
+    # Site-specific branch — see scrape_kitirrr_store() docstring-comment above.
+    # Bypasses the generic crawler entirely for this one domain; every other
+    # site keeps using the normal path below untouched.
+    if 'kitirrr.ru' in site_url:
+        return scrape_kitirrr_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
+
     # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
     visited_pages = set()
     pages_to_visit = [site_url]
     product_links_dict = {}
     all_product_links = []
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
-    }
+
     try:
         while pages_to_visit and len(visited_pages) < 15:
             current_url = pages_to_visit.pop(0)
@@ -594,6 +722,8 @@ def main():
                 item['yarnRanges'] = []
             if 'instruments' not in item:
                 item['instruments'] = []
+            if 'isMachineKnitting' not in item:
+                item['isMachineKnitting'] = False
             item['isFree'] = False
         
         # Save to DB
@@ -608,11 +738,15 @@ def main():
                 report_id = cursor.fetchone()[0]
     
                 for item in parsed_items:
+                    # Machine knitting isn't tracked at all (no Instrument row, out of
+                    # scope) — save it straight to REJECTED so it never clutters the
+                    # admin review queue, while still counting as "known" for dedup.
+                    status = 'REJECTED' if item.get('isMachineKnitting') else 'PENDING'
                     cursor.execute("""
                         INSERT INTO "AuthorSyncItem" ("id", "reportId", "status", "url", "title", "parsedData")
-                        VALUES (gen_random_uuid(), %s, 'PENDING', %s, %s, %s)
+                        VALUES (gen_random_uuid(), %s, %s, %s, %s, %s)
                         ON CONFLICT ("reportId", "url") DO NOTHING
-                    """, (report_id, item['url'], item['title'], json.dumps(item)))
+                    """, (report_id, status, item['url'], item['title'], json.dumps(item)))
                 
                 conn.commit() 
                 print(f"Saved {len(parsed_items)} new items for {site}")
