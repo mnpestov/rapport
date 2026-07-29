@@ -92,24 +92,47 @@ def fetch_and_parse_detail(p, yarn_ranges_db):
         detail_resp = requests.get(p['url'], headers=headers, timeout=10)
         detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
         
+        # Extract h1/<title> before the cleanup below (harmless either way — these
+        # live outside the decomposed tags anyway, but keep it up front so the
+        # title fix is visually grouped with where it's read from below).
+        h1 = detail_soup.find('h1')
+        page_title = h1.get_text(strip=True) if h1 else ''
+        if not page_title:
+            title_tag = detail_soup.find('title')
+            raw_title = title_tag.get_text(strip=True) if title_tag else ''
+            page_title = re.sub(r'\s*[-–—|&]\s*\S.*$', '', raw_title).strip()
+
         # Cleanup visually noisy tags
         for tag in detail_soup(['nav', 'header', 'footer', 'aside', 'script', 'style']):
             tag.decompose()
-            
+
+        # Listing-page alt text / link text (p['title']) is used here to isolate
+        # the right container on multi-product pages (Tilda popups etc.) — keep
+        # using it for that match BEFORE any title correction below, since a
+        # page's own h1/title always legitimately contains its own product name
+        # and would match trivially, defeating the isolation.
         target_title = re.sub(r'[\W_]+', '', p['title'].lower())
         containers = detail_soup.find_all(class_=re.compile(r'js-product|t-item|t754__product-full|t-popup'))
         valid_texts = []
-        
+
         for c in containers:
             c_text = c.get_text(separator=' ', strip=True)
             if target_title in re.sub(r'[\W_]+', '', c_text.lower()):
                 valid_texts.append(c_text)
-        
+
+        # The listing page's own alt/link text is often unreliable (filename
+        # fragments, photo-app captions like "Processed with VSCO...", credits)
+        # even when the detail page has a clean, correctly formatted title in its
+        # own <h1>/<title>. Prefer that here — it doesn't affect the isolation
+        # match above, which already ran against the original listing-derived title.
+        if page_title:
+            p['title'] = page_title
+
         if valid_texts:
             text_content = max(valid_texts, key=len)
         else:
             text_content = detail_soup.get_text(separator=' ', strip=True)
-        
+
         density_s, density_r = parse_density(text_content)
         yarn_meters = parse_yarn(text_content)
         
