@@ -187,6 +187,8 @@ export function Authors() {
     }
   };
 
+  const totalPendingCount = syncReports.reduce((sum, r) => sum + r.itemsCount, 0);
+
   if (isLoading && authors.length === 0) {
     return <div className={styles.centerState}>Загрузка...</div>;
   }
@@ -211,7 +213,13 @@ export function Authors() {
       />
 
       <div className={styles.controlsPanel}>
-        <div className={styles.leftControls}></div>
+        <div className={styles.leftControls}>
+          {totalPendingCount > 0 && (
+            <span className={styles.pendingCounter}>
+              Найдено <span className={styles.pendingCounterValue}>{totalPendingCount}</span> новин{totalPendingCount === 1 ? "ки" : "ок"}
+            </span>
+          )}
+        </div>
         <div className={styles.rightControls}>
           <button 
             className={styles.btnSecondary} 

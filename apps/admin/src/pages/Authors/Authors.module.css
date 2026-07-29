@@ -19,6 +19,23 @@
   align-items: flex-end;
 }
 
+.pendingCounter {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 2px;
+  /* background: #F3F3F3; */
+  color: #1D1C1C;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12.64px;
+}
+
+.pendingCounterValue {
+  font-weight: 700;
+  margin: 0 4px;
+}
+
 .tabsContainer {
   display: flex;
   gap: 8px;
@@ -101,7 +118,8 @@
   transition: opacity 0.2s;
 }
 
-.btnAdd:hover, .btnDelete:hover:not(:disabled) {
+.btnAdd:hover,
+.btnDelete:hover:not(:disabled) {
   opacity: 0.9;
 }
 
