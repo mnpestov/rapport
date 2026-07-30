@@ -8,6 +8,12 @@ import { Readable } from "stream";
 import { spawn } from "child_process";
 
 let isSyncing = false;
+// Author.id currently being synced, or null when a full (all-authors) sync
+// is running. Only one sync — full or single-author — runs at a time; they
+// share isSyncing as a lock since main() does a global URL-dedup prefetch
+// and writes via a single DB connection regardless of scope.
+let syncingAuthorId: string | null = null;
+const SOCIAL_SITE_PATTERN = /t\.me|vk\.com|instagram\.com/i;
 
 export const getPendingReports = async (req: Request, res: Response) => {
   // Выборка только PENDING отчетов для бейджа
@@ -19,11 +25,13 @@ export const getPendingReports = async (req: Request, res: Response) => {
       _count: { select: { items: { where: { status: "PENDING" } } } }
     }
   });
-  const formatted = reports.map(r => ({
-    id: r.id,
-    authorId: r.authorId,
-    itemsCount: r._count.items
-  }));
+  const formatted = reports
+    .filter(r => r._count.items > 0)
+    .map(r => ({
+      id: r.id,
+      authorId: r.authorId,
+      itemsCount: r._count.items
+    }));
   res.json(formatted);
 };
 
@@ -163,48 +171,75 @@ export const clearSyncReport = async (req: Request, res: Response) => {
 };
 
 export const getSyncStatus = async (req: Request, res: Response) => {
-  res.json({ isRunning: isSyncing });
+  res.json({ isRunning: isSyncing, authorId: syncingAuthorId });
 };
 
 export const checkPendingAuthors = async (req: Request, res: Response) => {
   const pendingReports = await prisma.authorSyncReport.findMany({
     where: { status: "PENDING" },
-    include: { author: { select: { name: true } } }
+    include: { 
+      author: { select: { name: true } },
+      _count: { select: { items: { where: { status: "PENDING" } } } }
+    }
   });
   
-  // Get unique author names
-  const authorNames = Array.from(new Set(pendingReports.map(r => r.author.name)));
+  // Get unique author names only for reports that actually have pending items
+  const authorNames = Array.from(new Set(
+    pendingReports
+      .filter(r => r._count.items > 0)
+      .map(r => r.author.name)
+  ));
   res.json({ authors: authorNames });
 };
 
-export const startSync = async (req: Request, res: Response) => {
+const runSync = (res: Response, authorId: string | null) => {
   if (isSyncing) {
     return res.status(400).json({ error: "Sync already in progress" });
   }
-  
+
   isSyncing = true;
-  
+  syncingAuthorId = authorId;
+
   const scriptPath = path.resolve(__dirname, "../../src/scripts/author_sync.py");
-  const pyProcess = spawn("python3", [scriptPath], {
+  const args = authorId ? [scriptPath, authorId] : [scriptPath];
+  const pyProcess = spawn("python3", args, {
     env: process.env // pass DATABASE_URL and other env vars
   });
-  
+
   pyProcess.stdout.on('data', (data) => {
     console.log(`[Sync] ${data.toString().trim()}`);
   });
   pyProcess.stderr.on('data', (data) => {
     console.error(`[Sync Error] ${data.toString().trim()}`);
   });
-  
+
   pyProcess.on('error', (err) => {
     isSyncing = false;
+    syncingAuthorId = null;
     console.error(`[Sync] Failed to start subprocess:`, err);
   });
-  
+
   pyProcess.on('close', (code) => {
     isSyncing = false;
+    syncingAuthorId = null;
     console.log(`[Sync] Process exited with code ${code}`);
   });
-  
+
   res.json({ success: true });
+};
+
+export const startSync = async (req: Request, res: Response) => {
+  runSync(res, null);
+};
+
+export const startAuthorSync = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const author = await prisma.author.findUnique({ where: { id }, select: { site: true } });
+  if (!author) {
+    return res.status(404).json({ error: "Автор не найден" });
+  }
+  if (!author.site || SOCIAL_SITE_PATTERN.test(author.site)) {
+    return res.status(400).json({ error: "У автора не указан сайт для проверки новинок" });
+  }
+  runSync(res, id);
 };

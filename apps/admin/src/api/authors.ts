@@ -122,7 +122,7 @@ export const rejectSyncItem = async (itemId: string): Promise<{ success: boolean
   return response.json();
 };
 
-export const getSyncStatus = async (): Promise<{ isRunning: boolean }> => {
+export const getSyncStatus = async (): Promise<{ isRunning: boolean; authorId: string | null }> => {
   const response = await fetchWithAuth(`${API_URL}/admin/sync-status`);
   if (!response.ok) throw new Error("Failed to fetch sync status");
   return response.json();
@@ -136,6 +136,17 @@ export const checkPendingAuthors = async (): Promise<{ authors: string[] }> => {
 
 export const startSync = async (): Promise<{ success: boolean }> => {
   const response = await fetchWithAuth(`${API_URL}/admin/sync-start`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to start sync");
+  }
+  return response.json();
+};
+
+export const startAuthorSync = async (authorId: string): Promise<{ success: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/authors/${authorId}/sync-start`, {
     method: "POST",
   });
   if (!response.ok) {

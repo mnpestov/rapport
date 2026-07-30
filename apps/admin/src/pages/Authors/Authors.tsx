@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { AuthorRow, AuthorRowHeader } from "./AuthorRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
-import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem, getSyncStatus, checkPendingAuthors, startSync } from "../../api/authors";
+import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem, getSyncStatus, checkPendingAuthors, startSync, startAuthorSync } from "../../api/authors";
 import { getPendingReports } from "../../api/authors";
 import { Modal } from "../../components/Modal/Modal";
 import { SyncModal } from "./SyncModal";
@@ -36,13 +36,15 @@ export function Authors() {
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncingAuthorId, setSyncingAuthorId] = useState<string | null>(null);
   const [pendingSyncAuthors, setPendingSyncAuthors] = useState<{ isOpen: boolean; authors: string[] }>({ isOpen: false, authors: [] });
 
   useEffect(() => {
     const checkInitialStatus = async () => {
       try {
-        const { isRunning } = await getSyncStatus();
+        const { isRunning, authorId } = await getSyncStatus();
         setIsSyncing(isRunning);
+        setSyncingAuthorId(authorId);
       } catch (e) {
         console.error(e);
       }
@@ -55,9 +57,10 @@ export function Authors() {
     if (isSyncing) {
       interval = setInterval(async () => {
         try {
-          const { isRunning } = await getSyncStatus();
+          const { isRunning, authorId } = await getSyncStatus();
           if (!isRunning) {
             setIsSyncing(false);
+            setSyncingAuthorId(null);
             try {
               await loadAuthors();
               refresh();
@@ -65,6 +68,8 @@ export function Authors() {
             } catch (err) {
               toast.error("Синхронизация завершена, но не удалось обновить список");
             }
+          } else {
+            setSyncingAuthorId(authorId);
           }
         } catch (e) {
           console.error(e);
@@ -92,7 +97,19 @@ export function Authors() {
       setPendingSyncAuthors({ isOpen: false, authors: [] });
       await startSync();
       setIsSyncing(true);
+      setSyncingAuthorId(null);
       toast.success("Поиск новинок запущен в фоне");
+    } catch (err: any) {
+      toast.error(err.message || "Ошибка при запуске");
+    }
+  };
+
+  const handleRunAuthorSync = async (author: AuthorItem) => {
+    try {
+      await startAuthorSync(author.id);
+      setIsSyncing(true);
+      setSyncingAuthorId(author.id);
+      toast.success(`Проверка новинок для «${author.name}» запущена в фоне`);
     } catch (err: any) {
       toast.error(err.message || "Ошибка при запуске");
     }
@@ -253,6 +270,9 @@ export function Authors() {
                 setSyncModalAuthorName(author.name);
                 setSyncModalOpen(true);
               }}
+              onRunSync={handleRunAuthorSync}
+              isSyncingThisAuthor={isSyncing && syncingAuthorId === author.id}
+              isSyncBusy={isSyncing}
             />
           );
         })}

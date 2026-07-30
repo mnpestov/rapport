@@ -47,6 +47,7 @@ import {
   getSyncStatus,
   checkPendingAuthors,
   startSync,
+  startAuthorSync,
   clearSyncReport
 } from "../controllers/syncController";
 import {
@@ -203,5 +204,6 @@ router.post("/sync-items/:itemId/reject", rejectSyncItem);
 router.get("/sync-status", getSyncStatus);
 router.get("/sync-pending", checkPendingAuthors);
 router.post("/sync-start", startSync);
+router.post("/authors/:id/sync-start", startAuthorSync);
 
 export default router;
