@@ -69,7 +69,12 @@ def parse_density(text):
     # выбор 2 плотности: 21 п. * 30 р." wrongly reads "2" (from "2 плотности")
     # as the stitch count instead of "21". пет.../столб.../ряд... already end in
     # [а-я]*, which greedily consumes to a real word boundary, so they're unaffected.
-    pattern = re.compile(r'(\d+(?:[.,]\d+)?)\s*(?:п\b|пет[а-я]*|ст\b|столб[а-я]*)(?:.{1,30}?)(\d+(?:[.,]\d+)?)\s*(?:р\b|ряд[а-я]*)', re.IGNORECASE)
+    # (?:\s*-\s*\d+...)? after each captured number — swallows a dash-range's
+    # upper bound ("23-25 п") so group1/group2 land on the FIRST/lower number,
+    # consistent with the "always take the first value" convention. Without it,
+    # the number immediately adjacent to the unit marker wins (here, "25"), since
+    # the marker check runs right after the capture with nothing to skip past it.
+    pattern = re.compile(r'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*(?:п\b|пет[а-я]*|ст\b|столб[а-я]*)(?:.{1,30}?)(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*(?:р\b|ряд[а-я]*)', re.IGNORECASE)
     for m in pattern.finditer(text):
         stitches_str = m.group(1).replace(',', '.')
         rows_str = m.group(2).replace(',', '.')
@@ -187,6 +192,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
         containers = detail_soup.find_all(class_=re.compile(r'js-product|t-item|t754__product-full|t-popup'))
         valid_texts = []
         valid_texts_popup = []
+        is_single_product_page = False
 
         for c in containers:
             c_text = c.get_text(separator=' ', strip=True)
@@ -204,9 +210,19 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
                     valid_texts_popup.append(c_text)
                 else:
                     valid_texts.append(c_text)
+                # Tilda's dedicated single-product-page block (as opposed to its
+                # catalog/Store block) tags containers with "single" in the class
+                # (js-product-single, t-store-product_single — seen on knitmode.ru).
+                # That block is a truncated summary, not the full description — on
+                # a page that's ALREADY about only this one product, isolating to
+                # it is both unnecessary and lossy. Prefer the whole page instead.
+                if any('single' in cls for cls in classes):
+                    is_single_product_page = True
 
         if not valid_texts:
             valid_texts = valid_texts_popup
+        if is_single_product_page:
+            valid_texts = []
 
         # The listing page's own alt/link text is often unreliable (filename
         # fragments, photo-app captions like "Processed with VSCO...", credits)
