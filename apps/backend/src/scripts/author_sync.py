@@ -2,6 +2,7 @@ import psycopg2
 import json
 import urllib.parse
 import os
+import sys
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -354,78 +355,102 @@ def scrape_via_seed(seed_url, headers):
     print(f"Seed fallback for {seed_url}: {len(items)} product(s) discovered.")
     return items
 
-def scrape_kitirrr_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
-    # kitirrr.ru (Екатерина Кутушова) runs a Tilda Store block that's 100%
-    # client-side hydrated — no product links exist anywhere in the static HTML,
-    # neither on the listing page nor via a "related products" widget on detail
-    # pages (unlike eiwi.ru), so neither the generic crawler below nor
-    # scrape_via_seed() can find anything here. Tilda's own private Store API
-    # (undocumented — storepartuid/recid captured via a real browser network
-    # trace, not derivable from the page itself) returns the full product list
-    # AND each product's complete description HTML in one call, so this skips
-    # the per-product page fetch entirely — faster and simpler than the normal
-    # path, but only for this one site.
-    storepartuid = '225031935381'
-    recid = '351959523'
+def _fetch_tilda_store_products(storepartuid, recid, label, headers):
+    # Tilda "Store" blocks that are 100% client-side hydrated — no product
+    # links exist anywhere in the static HTML, neither on the listing page
+    # nor via a "related products" widget on detail pages (unlike eiwi.ru),
+    # so neither the generic crawler below nor scrape_via_seed() can find
+    # anything. Tilda's own private Store API (undocumented — storepartuid/
+    # recid only obtainable via a live browser network trace, never present
+    # in the static page) returns the full product list in one call.
     api_url = (
         f"https://store.tildaapi.com/api/getproductslist/?storepartuid={storepartuid}"
         f"&recid={recid}&getparts=true&getoptions=true&slice=1&size=200&flag_root=withroot"
     )
     try:
         resp = requests.get(api_url, headers=headers, timeout=15)
-        data = resp.json()
+        return resp.json().get('products', [])
     except Exception as e:
-        print(f"Error fetching kitirrr.ru store API: {e}")
-        return [], 0
+        print(f"Error fetching {label} store API: {e}")
+        return []
 
-    products = data.get('products', [])
-    items = []
-    for p in products:
-        product_url = p.get('url', '')
-        if not product_url:
-            continue
-        base_norm = get_base_url(normalize_url(product_url))
-        if base_norm in all_existing_base_urls:
-            continue
-        all_existing_base_urls.add(base_norm)
+def _tilda_store_image(p):
+    try:
+        gallery = json.loads(p.get('gallery') or '[]')
+        if gallery:
+            return gallery[0].get('img', '')
+    except Exception:
+        pass
+    return ''
 
-        image_url = ''
-        try:
-            gallery = json.loads(p.get('gallery') or '[]')
-            if gallery:
-                image_url = gallery[0].get('img', '')
-        except Exception:
-            pass
+def _make_tilda_store_full_handler(storepartuid, recid, label):
+    # Use when the API's own "text" field already carries each product's
+    # COMPLETE description (verified for kitirrr.ru) — parses density/yarn
+    # straight from the API response and skips the per-product page fetch
+    # entirely, faster than the normal path.
+    def handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+        products = _fetch_tilda_store_products(storepartuid, recid, label, headers)
+        items = []
+        for p in products:
+            product_url = p.get('url', '')
+            if not product_url:
+                continue
+            base_norm = get_base_url(normalize_url(product_url))
+            if base_norm in all_existing_base_urls:
+                continue
+            all_existing_base_urls.add(base_norm)
 
-        title = p.get('title', '')
-        text_content = BeautifulSoup(p.get('text') or '', 'html.parser').get_text(separator=' ', strip=True)
-        combined = title + ' ' + text_content
+            title = p.get('title', '')
+            text_content = BeautifulSoup(p.get('text') or '', 'html.parser').get_text(separator=' ', strip=True)
+            combined = title + ' ' + text_content
 
-        density_s, density_r = parse_density(text_content)
-        yarn_meters = parse_yarn(text_content)
-        unique_yarns = []
-        seen_y = set()
-        for ym in set(yarn_meters):
-            for y_id, y_name, y_min, y_max in yarn_ranges_db:
-                if y_max is None: y_max = 999999
-                if y_min <= ym <= y_max:
-                    if y_id not in seen_y:
-                        unique_yarns.append({"id": y_id, "label": y_name})
-                        seen_y.add(y_id)
-                    break
+            density_s, density_r = parse_density(text_content)
+            yarn_meters = parse_yarn(text_content)
+            unique_yarns = []
+            seen_y = set()
+            for ym in set(yarn_meters):
+                for y_id, y_name, y_min, y_max in yarn_ranges_db:
+                    if y_max is None: y_max = 999999
+                    if y_min <= ym <= y_max:
+                        if y_id not in seen_y:
+                            unique_yarns.append({"id": y_id, "label": y_name})
+                            seen_y.add(y_id)
+                        break
 
-        items.append({
-            'url': product_url,
-            'title': title,
-            'imageUrl': image_url,
-            'densityStitches': density_s,
-            'densityRows': density_r,
-            'yarnRanges': unique_yarns,
-            'instruments': detect_instruments(combined, instruments_db),
-            'isMachineKnitting': is_machine_knitting(combined),
-        })
-    print(f"kitirrr.ru store API: {len(products)} products total, {len(items)} completely new.")
-    return items, len(products)
+            items.append({
+                'url': product_url,
+                'title': title,
+                'imageUrl': _tilda_store_image(p),
+                'densityStitches': density_s,
+                'densityRows': density_r,
+                'yarnRanges': unique_yarns,
+                'instruments': detect_instruments(combined, instruments_db),
+                'isMachineKnitting': is_machine_knitting(combined),
+            })
+        print(f"{label} store API: {len(products)} products total, {len(items)} completely new.")
+        return items, len(products)
+    return handler
+
+def _make_tilda_store_discovery_handler(storepartuid, recid, label):
+    # Use when the API's "text" field is only a short marketing teaser, not
+    # the real pattern description (verified for knitmode.ru — density/yarn
+    # info lives on the actual product page, already handled correctly by
+    # fetch_and_parse_detail per this session's earlier density-fix work for
+    # this exact site). This only resolves url/title/image from the API —
+    # same shape as scrape_via_seed() — and hands off to the normal
+    # per-product deep-parse pipeline for everything else.
+    def handler(headers):
+        products = _fetch_tilda_store_products(storepartuid, recid, label, headers)
+        items = [
+            {'url': p['url'], 'title': p.get('title', ''), 'imageUrl': _tilda_store_image(p)}
+            for p in products if p.get('url')
+        ]
+        print(f"{label} store API: {len(items)} product(s) discovered.")
+        return items
+    return handler
+
+scrape_kitirrr_store = _make_tilda_store_full_handler('225031935381', '351959523', 'kitirrr.ru')
+discover_knitmode_products = _make_tilda_store_discovery_handler('779903633633', '188641560', 'knitmode.ru')
 
 def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
     # bysergeeva.ru (Екатерина Сергеева) uses old-style Tilda hash routing
@@ -498,6 +523,96 @@ def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_ur
     print(f"bysergeeva.ru: {len(full_containers)} products total, {len(items)} completely new.")
     return items, len(full_containers)
 
+# Full-site handlers that bypass the generic crawler entirely (JS-hydrated
+# stores where the generic per-anchor loop finds nothing on the page itself,
+# AND the API response carries each product's complete description so no
+# per-product page fetch is needed either). Keyed by a domain substring
+# matched against site_url.
+SITE_HANDLERS = {
+    'kitirrr.ru': scrape_kitirrr_store,
+    'bysergeeva.ru': scrape_bysergeeva_store,
+}
+
+# Discovery-only handlers: same JS-hydrated-listing problem, but the product
+# URLs/titles/images they resolve still need the normal per-product page
+# fetch (fetch_and_parse_detail) for density/yarn/instrument parsing — used
+# as a scrape_via_seed()-shaped alternative when the generic crawl finds
+# nothing and no seed_url is configured. Keyed by a domain substring.
+DISCOVERY_HANDLERS = {
+    'knitmode.ru': discover_knitmode_products,
+}
+
+def _helenyakovleva_extract_image(a):
+    # The t-card__link title anchor carries no image of its own — Tilda's
+    # "Cards" (t774) block puts the product photo in a sibling branch of the
+    # card's DOM tree (t774__imgwrapper, a sibling of the anchor's own
+    # t774__content ancestor), not inside or next to the anchor itself. Walk
+    # up from the anchor until an ancestor's subtree contains a bg-image div
+    # (t-bgimg) and take the FIRST one in document order — each card has two
+    # (a hover-swap pair, "_first_hover" then "_second"), and the first is
+    # always the primary photo (verified against all 15 products on the
+    # site: every one resolves, none accidentally grab the hover-alternate).
+    node = a
+    for _ in range(6):
+        node = node.parent
+        if node is None:
+            break
+        bgimg = node.find(class_=re.compile(r'\bt-bgimg\b'))
+        if bgimg:
+            if bgimg.get('data-original'):
+                return bgimg.get('data-original')
+            style = bgimg.get('style', '')
+            m = re.search(r"url\(['\"]?(.*?)['\"]?\)", style)
+            if m:
+                return m.group(1)
+    return None
+
+def _hollywool_exclude_product(href):
+    # Real pattern pages are exactly one slug deep under
+    # /besplatnye-opisaniya/<slug>/ — facet/filter pages (by yarn
+    # brand, product type, etc.) nest an extra nonempty segment, e.g.
+    # /besplatnye-opisaniya/brend_pryazhi/aura/ or /izdelie/kupalnik/ —
+    # or, unnested, ARE the facet root itself (/izdelie/) or a
+    # sort/query variant of the base listing page.
+    href_path = href.split('?')[0].split('#')[0]
+    m = re.search(r'besplatnye-opisaniya/(.*)', href_path)
+    segments = [s for s in (m.group(1) if m else '').split('/') if s]
+    facet_roots = {'izdelie', 'brend_pryazhi'}
+    return len(segments) != 1 or segments[0] in facet_roots
+
+# Per-domain tweaks to the generic crawler's per-anchor product/pagination
+# detection, keyed by a domain substring matched against site_url. Every hook
+# is optional:
+#   extra_product_class(a_classes) -> bool     additional signal an anchor is a product link
+#   exclude_product(href)          -> bool     True to skip an otherwise-matched product anchor
+#   exclude_pagination(next_url, is_category) -> bool   True to skip an otherwise-matched pagination/category link
+#   extract_image(a)               -> str|None additional image lookup when the anchor itself has none
+DOMAIN_CRAWL_HOOKS = {
+    # helenyakovleva.com uses Tilda's "Cards" block (t774) instead of the
+    # "Store" block seen elsewhere — its title link carries class
+    # "t-card__link" with no img/bg-image on the anchor itself (the image
+    # sits in an unrelated sibling element the generic per-anchor checks
+    # don't reach). "t-card" alone is too generic to trust site-wide (used
+    # for all sorts of non-product Tilda blocks), so this is domain-scoped.
+    'helenyakovleva.com': {
+        'extra_product_class': lambda a_classes: 't-card__link' in a_classes,
+        'extract_image': _helenyakovleva_extract_image,
+    },
+    'hollywool.ru': {
+        'exclude_product': _hollywool_exclude_product,
+    },
+    'mustardyarn.ru': {
+        'exclude_product': lambda href: 'opisanie' not in href,
+        'exclude_pagination': lambda next_url, is_category: is_category and 'vse-opisanija' not in next_url,
+    },
+}
+
+def _get_crawl_hooks(site_url):
+    for domain, hooks in DOMAIN_CRAWL_HOOKS.items():
+        if domain in site_url:
+            return hooks
+    return {}
+
 def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_base_urls, seed_url=None):
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -505,13 +620,14 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
         "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
     }
 
-    # Site-specific branches — see the respective docstring-comments above.
-    # Bypass the generic crawler entirely for these two domains; every other
-    # site keeps using the normal path below untouched.
-    if 'kitirrr.ru' in site_url:
-        return scrape_kitirrr_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
-    if 'bysergeeva.ru' in site_url:
-        return scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
+    # Full-site handlers — see SITE_HANDLERS above. Bypass the generic
+    # crawler entirely for matched domains; every other site keeps using
+    # the normal path below untouched.
+    for domain, handler in SITE_HANDLERS.items():
+        if domain in site_url:
+            return handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
+
+    hooks = _get_crawl_hooks(site_url)
 
     # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
@@ -545,14 +661,7 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                     has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
                     a_classes = a.get('class') or []
                     has_product_class = 'product' in a_classes
-                    # helenyakovleva.com uses Tilda's "Cards" block (t774) instead of
-                    # the "Store" block seen elsewhere — its title link carries class
-                    # "t-card__link" with no img/bg-image on the anchor itself (the
-                    # image sits in an unrelated sibling element the per-anchor checks
-                    # above don't reach). "t-card" is too generic a class to trust
-                    # site-wide (used for all sorts of non-product Tilda blocks), so
-                    # this is scoped to this one domain rather than added above.
-                    if 'helenyakovleva.com' in site_url and 't-card__link' in a_classes:
+                    if hooks.get('extra_product_class') and hooks['extra_product_class'](a_classes):
                         has_product_class = True
                     # Category/tag/pagination listing pages (WooCommerce etc.) can still slip
                     # through the loose "/mk" substring above (e.g. "/product-category/mk-hat/")
@@ -569,7 +678,10 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                             m = re.search(r"url\(['\"]?(.*?)['\"]?\)", bg_style)
                             if m:
                                 src = m.group(1)
-                                
+
+                        if not src and hooks.get('extract_image'):
+                            src = hooks['extract_image'](a) or ''
+
                         if not alt:
                             alt = a.get_text(separator=' ', strip=True)
                             
@@ -581,20 +693,7 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                         # (/master-class/<slug>, outside the whitelist, but cards carry
                         # class="product js--hover-preview").
                         if (has_valid_href or has_product_class) and (src or alt) and not is_listing_page:
-                            if 'hollywool.ru' in site_url:
-                                # Real pattern pages are exactly one slug deep under
-                                # /besplatnye-opisaniya/<slug>/ — facet/filter pages (by yarn
-                                # brand, product type, etc.) nest an extra nonempty segment, e.g.
-                                # /besplatnye-opisaniya/brend_pryazhi/aura/ or /izdelie/kupalnik/ —
-                                # or, unnested, ARE the facet root itself (/izdelie/) or a
-                                # sort/query variant of the base listing page.
-                                href_path = href.split('?')[0].split('#')[0]
-                                m = re.search(r'besplatnye-opisaniya/(.*)', href_path)
-                                segments = [s for s in (m.group(1) if m else '').split('/') if s]
-                                facet_roots = {'izdelie', 'brend_pryazhi'}
-                                if len(segments) != 1 or segments[0] in facet_roots:
-                                    continue
-                            if 'mustardyarn.ru' in site_url and 'opisanie' not in href:
+                            if hooks.get('exclude_product') and hooks['exclude_product'](href):
                                 continue
 
                             if not href.startswith('http'):
@@ -638,9 +737,9 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                         else:
                             next_url = href
                             
-                        if 'mustardyarn.ru' in site_url and is_category and 'vse-opisanija' not in next_url:
+                        if hooks.get('exclude_pagination') and hooks['exclude_pagination'](next_url, is_category):
                             continue
-                            
+
                         # Only follow links on the same domain
                         domain = urllib.parse.urlparse(site_url).netloc
                         next_domain = urllib.parse.urlparse(next_url).netloc
@@ -653,8 +752,19 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
         all_product_links = list(product_links_dict.values())
 
         # Normal crawl found nothing (typical of JS-rendered listing pages) —
-        # fall back to a known product page, if the author has one configured.
-        if not all_product_links and seed_url:
+        # try a domain-specific discovery API first, else fall back to a
+        # known product page, if the author has one configured.
+        discovery_handler = None
+        for domain, handler in DISCOVERY_HANDLERS.items():
+            if domain in site_url:
+                discovery_handler = handler
+                break
+        if not all_product_links and discovery_handler:
+            for item in discovery_handler(headers):
+                if item['url'] not in product_links_dict:
+                    product_links_dict[item['url']] = item
+            all_product_links = list(product_links_dict.values())
+        elif not all_product_links and seed_url:
             print(f"No products found via normal crawl on {site_url}, trying seed {seed_url}...")
             for item in scrape_via_seed(seed_url, headers):
                 if item['url'] not in product_links_dict:
@@ -686,6 +796,12 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
     return items, len(all_product_links)
 
 def main():
+    # Optional CLI arg: a single Author.id to sync instead of every author —
+    # used by the admin UI's per-author "Проверить новинки" button. Everything
+    # else (global URL dedup prefetch, categories/yarn/instruments lookups,
+    # enrichment, DB writes) runs identically either way.
+    target_author_id = sys.argv[1] if len(sys.argv) > 1 else None
+
     db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5434/knitting_catalog')
     if '?' in db_url:
         db_url = db_url.split('?')[0]
@@ -705,13 +821,26 @@ def main():
     all_existing_base_urls = base_db_urls.union(base_sync_urls)
     print(f"Loaded {len(all_existing_base_urls)} known unique URLs.")
 
-    cursor.execute("""
-        SELECT id, name, site FROM "Author"
-        WHERE site IS NOT NULL
-        AND site NOT LIKE '%t.me%'
-        AND site NOT LIKE '%vk.com%'
-        AND site NOT LIKE '%instagram.com%'
-    """)
+    if target_author_id:
+        # Separate literal query (rather than appending "AND id = %s" to the
+        # bulk query below) — once a params tuple is passed, psycopg2 parses
+        # the WHOLE string for %-placeholders, so the LIKE patterns' bare %
+        # must be doubled to %% here (unlike the params-free branch below).
+        cursor.execute("""
+            SELECT id, name, site FROM "Author"
+            WHERE id = %s AND site IS NOT NULL
+            AND site NOT LIKE '%%t.me%%'
+            AND site NOT LIKE '%%vk.com%%'
+            AND site NOT LIKE '%%instagram.com%%'
+        """, (target_author_id,))
+    else:
+        cursor.execute("""
+            SELECT id, name, site FROM "Author"
+            WHERE site IS NOT NULL
+            AND site NOT LIKE '%t.me%'
+            AND site NOT LIKE '%vk.com%'
+            AND site NOT LIKE '%instagram.com%'
+        """)
 
     authors = cursor.fetchall()
 
@@ -883,23 +1012,25 @@ def main():
         else:
             print(f"No new items for {site}")
 
-    # Generate Markdown Table
-    md_lines = []
-    md_lines.append("| Автор | Ссылка на сайт | кол-во описаний на сайте | кол-во описаний в бд |")
-    md_lines.append("|---|---|---|---|")
-    
-    # Sort by author name
-    stats.sort(key=lambda x: x['name'])
-    for s in stats:
-        md_lines.append(f"| {s['name']} | {s['site']} | {s['site_count']} | {s['db_count']} |")
-        
-    md_content = "\\n".join(md_lines)
-    
-    log_path = os.path.join(os.path.dirname(__file__), 'sync_stats.md')
-    with open(log_path, 'w', encoding='utf-8') as f:
-        f.write(md_content)
-        
-    print(f"\\nStats saved to {log_path}")
+    # Generate Markdown Table — bulk runs only. A single-author run would
+    # otherwise clobber the full cross-author report with just one row.
+    if not target_author_id:
+        md_lines = []
+        md_lines.append("| Автор | Ссылка на сайт | кол-во описаний на сайте | кол-во описаний в бд |")
+        md_lines.append("|---|---|---|---|")
+
+        # Sort by author name
+        stats.sort(key=lambda x: x['name'])
+        for s in stats:
+            md_lines.append(f"| {s['name']} | {s['site']} | {s['site_count']} | {s['db_count']} |")
+
+        md_content = "\\n".join(md_lines)
+
+        log_path = os.path.join(os.path.dirname(__file__), 'sync_stats.md')
+        with open(log_path, 'w', encoding='utf-8') as f:
+            f.write(md_content)
+
+        print(f"\\nStats saved to {log_path}")
 
 if __name__ == "__main__":
     main()
