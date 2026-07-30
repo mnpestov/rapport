@@ -36,8 +36,12 @@ def parse_yarn(text):
     # "," in the separator class: "50гр, 167м" (comma-space, no other joiner)
     # found on lenakotikova.ru — without it, the comma sits between the two
     # numbers unmatched by any alternative, breaking the match entirely.
-    pattern1 = re.compile(r'(\d+)\s*м[а-я]*\.?\s*(?:в|на|/|-|,)?\s*(\d+)\s*(?:г|g|гр)\.?', re.IGNORECASE)
-    pattern2 = re.compile(r'(\d+)\s*(?:г|g|гр)\.?\s*(?:в|на|/|-|,)?\s*(\d+)\s*м[а-я]*\.?', re.IGNORECASE)
+    # (?:\s*-\s*\d+)? after each captured number — same "take the first/lower
+    # value" fix already applied to parse_density's dash-ranges. Without it,
+    # a stated range like "300-375м/100г" grabs 375 (the digit adjacent to
+    # the unit marker) instead of 300 (the first/lower value convention).
+    pattern1 = re.compile(r'(\d+)(?:\s*-\s*\d+)?\s*м[а-я]*\.?\s*(?:в|на|/|-|,)?\s*(\d+)(?:\s*-\s*\d+)?\s*(?:г|g|гр)\.?', re.IGNORECASE)
+    pattern2 = re.compile(r'(\d+)(?:\s*-\s*\d+)?\s*(?:г|g|гр)\.?\s*(?:в|на|/|-|,)?\s*(\d+)(?:\s*-\s*\d+)?\s*м[а-я]*\.?', re.IGNORECASE)
 
     matches = []
     for m in pattern1.finditer(text):
@@ -507,76 +511,79 @@ scrape_lenakotikova_shop_store = _make_tilda_multi_store_full_handler(
     'lenakotikova.ru/shop'
 )
 
-def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
-    # bysergeeva.ru (Екатерина Сергеева) uses old-style Tilda hash routing
-    # ("/#!/tproduct/<storepartuid>-<lid>") — the fragment never reaches the
-    # server, so every product URL serves the exact same page. Unlike kitirrr.ru
-    # though, this page IS server-rendered: every product's full description
-    # already sits in the static HTML as a <div class="t754__product-full"
-    # data-product-lid="..."> (hidden via CSS, shown by JS on click) — no API
-    # call needed, just isolate each container directly from one page fetch.
-    storepartuid = '582150733'
-    site_url = 'https://bysergeeva.ru/'
-    try:
-        resp = requests.get(site_url, headers=headers, timeout=15)
-        soup = BeautifulSoup(resp.text, 'html.parser')
-    except Exception as e:
-        print(f"Error fetching bysergeeva.ru: {e}")
-        return [], 0
+def _make_tilda_hashroute_store_handler(storepartuid, site_url, label):
+    # Old-style Tilda hash routing ("/#!/tproduct/<storepartuid>-<lid>") —
+    # the fragment never reaches the server, so every product URL serves the
+    # exact same page. Unlike the store.tildaapi.com sites above, this page
+    # IS server-rendered: every product's full description already sits in
+    # the static HTML as a <div class="t754__product-full"
+    # data-product-lid="..."> (hidden via CSS, shown by JS on click) — no
+    # API call needed, just isolate each container directly from one fetch.
+    def handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+        try:
+            resp = requests.get(site_url, headers=headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+        except Exception as e:
+            print(f"Error fetching {label}: {e}")
+            return [], 0
 
-    for tag in soup(['nav', 'header', 'footer', 'aside', 'script', 'style', 'title']):
-        tag.decompose()
+        for tag in soup(['nav', 'header', 'footer', 'aside', 'script', 'style', 'title']):
+            tag.decompose()
 
-    full_containers = soup.find_all('div', class_='t754__product-full')
-    items = []
-    for c in full_containers:
-        lid = c.get('data-product-lid')
-        if not lid:
-            continue
-        product_url = f"https://bysergeeva.ru/#!/tproduct/{storepartuid}-{lid}"
-        base_norm = get_base_url(normalize_url(product_url))
-        if base_norm in all_existing_base_urls:
-            continue
-        all_existing_base_urls.add(base_norm)
+        full_containers = soup.find_all('div', class_='t754__product-full')
+        items = []
+        for c in full_containers:
+            lid = c.get('data-product-lid')
+            if not lid:
+                continue
+            product_url = f"{site_url}#!/tproduct/{storepartuid}-{lid}"
+            base_norm = get_base_url(normalize_url(product_url))
+            if base_norm in all_existing_base_urls:
+                continue
+            all_existing_base_urls.add(base_norm)
 
-        title_el = soup.find(attrs={'field': f'li_title__{lid}'})
-        title = title_el.get_text(strip=True) if title_el else ''
+            title_el = soup.find(attrs={'field': f'li_title__{lid}'})
+            title = title_el.get_text(strip=True) if title_el else ''
 
-        image_url = ''
-        for card in soup.find_all(attrs={'data-product-lid': lid}):
-            bgimg = card.find(class_='js-product-img')
-            if bgimg and bgimg.get('data-original'):
-                image_url = bgimg['data-original']
-                break
-
-        text_content = c.get_text(separator=' ', strip=True)
-        combined = title + ' ' + text_content
-
-        density_s, density_r = parse_density(text_content)
-        yarn_meters = parse_yarn(text_content)
-        unique_yarns = []
-        seen_y = set()
-        for ym in set(yarn_meters):
-            for y_id, y_name, y_min, y_max in yarn_ranges_db:
-                if y_max is None: y_max = 999999
-                if y_min <= ym <= y_max:
-                    if y_id not in seen_y:
-                        unique_yarns.append({"id": y_id, "label": y_name})
-                        seen_y.add(y_id)
+            image_url = ''
+            for card in soup.find_all(attrs={'data-product-lid': lid}):
+                bgimg = card.find(class_='js-product-img')
+                if bgimg and bgimg.get('data-original'):
+                    image_url = bgimg['data-original']
                     break
 
-        items.append({
-            'url': product_url,
-            'title': title,
-            'imageUrl': image_url,
-            'densityStitches': density_s,
-            'densityRows': density_r,
-            'yarnRanges': unique_yarns,
-            'instruments': detect_instruments(combined, instruments_db),
-            'isMachineKnitting': is_machine_knitting(combined),
-        })
-    print(f"bysergeeva.ru: {len(full_containers)} products total, {len(items)} completely new.")
-    return items, len(full_containers)
+            text_content = c.get_text(separator=' ', strip=True)
+            combined = title + ' ' + text_content
+
+            density_s, density_r = parse_density(text_content)
+            yarn_meters = parse_yarn(text_content)
+            unique_yarns = []
+            seen_y = set()
+            for ym in set(yarn_meters):
+                for y_id, y_name, y_min, y_max in yarn_ranges_db:
+                    if y_max is None: y_max = 999999
+                    if y_min <= ym <= y_max:
+                        if y_id not in seen_y:
+                            unique_yarns.append({"id": y_id, "label": y_name})
+                            seen_y.add(y_id)
+                        break
+
+            items.append({
+                'url': product_url,
+                'title': title,
+                'imageUrl': image_url,
+                'densityStitches': density_s,
+                'densityRows': density_r,
+                'yarnRanges': unique_yarns,
+                'instruments': detect_instruments(combined, instruments_db),
+                'isMachineKnitting': is_machine_knitting(combined),
+            })
+        print(f"{label}: {len(full_containers)} products total, {len(items)} completely new.")
+        return items, len(full_containers)
+    return handler
+
+scrape_bysergeeva_store = _make_tilda_hashroute_store_handler('582150733', 'https://bysergeeva.ru/', 'bysergeeva.ru')
+scrape_likavyazhi_store = _make_tilda_hashroute_store_handler('1251845301', 'https://likavyazhi.ru/shop', 'likavyazhi.ru')
 
 # Full-site handlers that bypass the generic crawler entirely (JS-hydrated
 # stores where the generic per-anchor loop finds nothing on the page itself,
@@ -609,6 +616,11 @@ DISCOVERY_HANDLERS = {
 # final result. Keyed by a domain substring.
 SUPPLEMENTAL_STORE_HANDLERS = {
     'lenakotikova.ru': scrape_lenakotikova_shop_store,
+    # likavyazhi.ru: most patterns are standalone alias pages with no site
+    # nav linking to them at all (orphaned — genuinely undiscoverable by any
+    # crawler, not a script bug), but /shop is the same hash-routed Tilda
+    # Store pattern as bysergeeva.ru.
+    'likavyazhi.ru': scrape_likavyazhi_store,
 }
 
 def _helenyakovleva_extract_image(a):
@@ -671,8 +683,18 @@ def _hollywool_exclude_product(href):
 #   exclude_product(href)          -> bool     True to skip an otherwise-matched product anchor
 #   exclude_pagination(next_url, is_category) -> bool   True to skip an otherwise-matched pagination/category link
 #   extra_pagination_match(href)   -> bool     additional signal a link is a category/listing page to crawl
+#   extra_valid_href_match(href)   -> bool     additional signal a link is itself a product page
 #   extract_image(a)               -> str|None additional image lookup when the anchor itself has none
 DOMAIN_CRAWL_HOOKS = {
+    # elzestores.ru's product URLs ("/sweaters/<slug>", "/cardigans/<slug>",
+    # "/skirts/<slug>") don't match any of the generic product-URL keywords
+    # (no /shop/, /product/, catalog/, etc.) — the crawler already reaches
+    # the /catalog listing page fine (matches "/catalog" directly), but every
+    # product anchor on it gets skipped since neither has_valid_href nor
+    # has_product_class recognizes these category-named paths.
+    'elzestores.ru': {
+        'extra_valid_href_match': lambda href: bool(re.search(r'/(sweaters|cardigans|skirts)/[\w-]+', href)),
+    },
     # helenyakovleva.com uses Tilda's "Cards" block (t774) instead of the
     # "Store" block seen elsewhere — its title link carries class
     # "t-card__link" with no img/bg-image on the anchor itself (the image
@@ -768,6 +790,8 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                     has_bg_img = 'background-image' in bg_style
                     
                     has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
+                    if not has_valid_href and hooks.get('extra_valid_href_match') and hooks['extra_valid_href_match'](href):
+                        has_valid_href = True
                     a_classes = a.get('class') or []
                     has_product_class = 'product' in a_classes
                     if hooks.get('extra_product_class') and hooks['extra_product_class'](a_classes):
@@ -787,6 +811,14 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                             m = re.search(r"url\(['\"]?(.*?)['\"]?\)", bg_style)
                             if m:
                                 src = m.group(1)
+
+                        # Tilda's lazy-loaded bg-image marker (class t-bgimg +
+                        # data-original) — the inline background-image style
+                        # above is only populated by JS at runtime, so on sites
+                        # that don't also inline it statically, has_bg_img stays
+                        # False even though data-original already has the URL.
+                        if not src and a.get('data-original'):
+                            src = a.get('data-original')
 
                         if not src and hooks.get('extract_image'):
                             src = hooks['extract_image'](a) or ''
