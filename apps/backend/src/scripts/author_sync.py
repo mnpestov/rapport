@@ -33,8 +33,11 @@ def parse_yarn(text):
     # \.? after the unit letters: abbreviation-with-period style ("150 м./50 гр.",
     # "50 гр./150 м") is common enough that without it, the literal "." sitting
     # between the unit and the separator/next number breaks the match entirely.
-    pattern1 = re.compile(r'(\d+)\s*м[а-я]*\.?\s*(?:в|на|/|-)?\s*(\d+)\s*(?:г|g|гр)\.?', re.IGNORECASE)
-    pattern2 = re.compile(r'(\d+)\s*(?:г|g|гр)\.?\s*(?:в|на|/|-)?\s*(\d+)\s*м[а-я]*\.?', re.IGNORECASE)
+    # "," in the separator class: "50гр, 167м" (comma-space, no other joiner)
+    # found on lenakotikova.ru — without it, the comma sits between the two
+    # numbers unmatched by any alternative, breaking the match entirely.
+    pattern1 = re.compile(r'(\d+)\s*м[а-я]*\.?\s*(?:в|на|/|-|,)?\s*(\d+)\s*(?:г|g|гр)\.?', re.IGNORECASE)
+    pattern2 = re.compile(r'(\d+)\s*(?:г|g|гр)\.?\s*(?:в|на|/|-|,)?\s*(\d+)\s*м[а-я]*\.?', re.IGNORECASE)
 
     matches = []
     for m in pattern1.finditer(text):
@@ -100,8 +103,15 @@ def parse_density(text):
         if is_1x1:
             stitches *= 10
             rows *= 10
-            
-        return round(stitches), round(rows)
+
+        # round(x) with no ndigits rounds to the nearest INTEGER, silently
+        # destroying legitimate fractional gauge values from the source text
+        # (e.g. "26,2 столбика и 12,7 рядов" -> (26, 13), losing both
+        # decimals — found via lenakotikova.ru's pillow-cover series, whose
+        # gauge is routinely given to one decimal place). round(x, 1) keeps
+        # that precision while still trimming float noise from the str->float
+        # conversion above.
+        return round(stitches, 1), round(rows, 1)
     return None, None
 
 def detect_instruments(text, instruments_db):
@@ -488,6 +498,14 @@ scrape_lavkabulavka_store = _make_tilda_multi_store_full_handler(
     ],
     'lavkabulavka.com'
 )
+scrape_lenakotikova_shop_store = _make_tilda_multi_store_full_handler(
+    [
+        ('521369177112', '242976439'),
+        ('353760773042', '1275014991'),
+        ('904469969012', '1270465011'),
+    ],
+    'lenakotikova.ru/shop'
+)
 
 def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
     # bysergeeva.ru (Екатерина Сергеева) uses old-style Tilda hash routing
@@ -580,6 +598,19 @@ DISCOVERY_HANDLERS = {
     'knitmode.ru': discover_knitmode_products,
 }
 
+# Supplemental full-parse store sections: for sites where PART of the
+# catalog is plain server-rendered (already found by the generic crawler
+# below, or via a DOMAIN_CRAWL_HOOKS-assisted crawl) and another part sits
+# in a JS-hydrated Tilda Store block the crawler structurally cannot see —
+# e.g. lenakotikova.ru, where /freepatterns is a normal page but /shop is a
+# Store block. Unlike SITE_HANDLERS (full bypass) or DISCOVERY_HANDLERS
+# (fallback only when the crawl finds nothing), these run UNCONDITIONALLY
+# alongside the generic crawl, merging their own fully-parsed items into the
+# final result. Keyed by a domain substring.
+SUPPLEMENTAL_STORE_HANDLERS = {
+    'lenakotikova.ru': scrape_lenakotikova_shop_store,
+}
+
 def _helenyakovleva_extract_image(a):
     # The t-card__link title anchor carries no image of its own — Tilda's
     # "Cards" (t774) block puts the product photo in a sibling branch of the
@@ -605,6 +636,21 @@ def _helenyakovleva_extract_image(a):
                 return m.group(1)
     return None
 
+def _lenakotikova_extract_image(a):
+    # /freepatterns uses Tilda's "404" gallery block (t404) — each card's
+    # bg-image div (class t-bgimg, with a data-original attribute) sits
+    # directly INSIDE the anchor itself (unlike helenyakovleva.com's t774
+    # cards, where it's a sibling branch), so a plain subtree search on the
+    # anchor is enough, no ancestor walk-up needed.
+    bgimg = a.find(class_=re.compile(r'\bt-bgimg\b'))
+    if not bgimg:
+        return None
+    if bgimg.get('data-original'):
+        return bgimg.get('data-original')
+    style = bgimg.get('style', '')
+    m = re.search(r"url\(['\"]?(.*?)['\"]?\)", style)
+    return m.group(1) if m else None
+
 def _hollywool_exclude_product(href):
     # Real pattern pages are exactly one slug deep under
     # /besplatnye-opisaniya/<slug>/ — facet/filter pages (by yarn
@@ -624,6 +670,7 @@ def _hollywool_exclude_product(href):
 #   extra_product_class(a_classes) -> bool     additional signal an anchor is a product link
 #   exclude_product(href)          -> bool     True to skip an otherwise-matched product anchor
 #   exclude_pagination(next_url, is_category) -> bool   True to skip an otherwise-matched pagination/category link
+#   extra_pagination_match(href)   -> bool     additional signal a link is a category/listing page to crawl
 #   extract_image(a)               -> str|None additional image lookup when the anchor itself has none
 DOMAIN_CRAWL_HOOKS = {
     # helenyakovleva.com uses Tilda's "Cards" block (t774) instead of the
@@ -635,6 +682,19 @@ DOMAIN_CRAWL_HOOKS = {
     'helenyakovleva.com': {
         'extra_product_class': lambda a_classes: 't-card__link' in a_classes,
         'extract_image': _helenyakovleva_extract_image,
+    },
+    # lenakotikova.ru's /freepatterns section uses Tilda's "404" gallery
+    # block — title link carries class "t404__link", no img tag and no
+    # inline style (the bg-image lives on a nested div, see
+    # _lenakotikova_extract_image above).
+    'lenakotikova.ru': {
+        'extra_product_class': lambda a_classes: 't404__link' in a_classes,
+        'extract_image': _lenakotikova_extract_image,
+        # The generic is_category regex requires a literal "/pattern"
+        # substring (slash immediately before "pattern") — "/freepatterns"
+        # has "free" in between, so it never matches and the crawler never
+        # queues that page starting from the site root.
+        'extra_pagination_match': lambda href: 'freepatterns' in href,
     },
     'hollywool.ru': {
         'exclude_product': _hollywool_exclude_product,
@@ -673,6 +733,7 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
     pages_to_visit = [site_url]
     product_links_dict = {}
     all_product_links = []
+    extra_total = 0
 
     try:
         while pages_to_visit and len(visited_pages) < 15:
@@ -687,11 +748,21 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                 soup = BeautifulSoup(resp.text, 'html.parser')
                 
                 # Extract products
+                site_domain = urllib.parse.urlparse(site_url).netloc
                 for a in soup.find_all('a'):
                     href = a.get('href')
                     if not href:
                         continue
-                        
+
+                    # Absolute off-domain hrefs (e.g. a "related products" widget
+                    # linking to an unrelated third-party shop) can still match
+                    # the product-URL patterns below (e.g. any "/shop/" path) and
+                    # get misattributed as this author's own new pattern — the
+                    # pagination/category loop below already guards against this
+                    # for its own links, product links need the same guard.
+                    if href.startswith('http') and urllib.parse.urlparse(href).netloc != site_domain:
+                        continue
+
                     img = a.find('img')
                     bg_style = a.get('style', '')
                     has_bg_img = 'background-image' in bg_style
@@ -765,7 +836,9 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                         
                     is_pagination = re.search(r'page=|PAGEN_|[\?&]p=', href, re.I)
                     is_category = re.search(r'/shop|/catalog|/pattern|/mk|/store|/category|/market|/master-klassy', href, re.I)
-                    
+                    if not is_category and hooks.get('extra_pagination_match') and hooks['extra_pagination_match'](href):
+                        is_category = True
+
                     if is_pagination or is_category:
                         if 'cart' in href.lower() or 'checkout' in href.lower():
                             continue
@@ -818,20 +891,31 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                 all_existing_base_urls.add(base_norm) # Mark as seen to avoid duplicates within same run
                 
         print(f"Found {len(all_product_links)} products on {site_url}. {len(new_product_links)} are completely new.")
-        
-        if not new_product_links:
-            return [], len(all_product_links)
-            
+
+        # Supplemental full-parse store sections — see SUPPLEMENTAL_STORE_HANDLERS
+        # above. Runs unconditionally alongside whatever the generic crawl (+
+        # DISCOVERY_HANDLERS) found, since this covers content the crawler
+        # structurally cannot see regardless of success elsewhere on the site.
+        extra_items = []
+        for domain, handler in SUPPLEMENTAL_STORE_HANDLERS.items():
+            if domain in site_url:
+                extra_items, extra_total = handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
+                break
+
+        if not new_product_links and not extra_items:
+            return extra_items, len(all_product_links) + extra_total
+
         # ASYNCHRONOUS DEEP PARSE
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db, instruments_db) for p in new_product_links]
             for future in concurrent.futures.as_completed(futures):
                 parsed_p = future.result()
                 items.append(parsed_p)
-                
+        items.extend(extra_items)
+
     except Exception as e:
         print(f"Error scraping {site_url}: {e}")
-    return items, len(all_product_links)
+    return items, len(all_product_links) + extra_total
 
 def main():
     # Optional CLI arg: a single Author.id to sync instead of every author —
