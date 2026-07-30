@@ -15,7 +15,15 @@ def normalize_url(url):
         parsed = urllib.parse.urlparse(url.strip().lower())
         path = parsed.path.rstrip('/')
         if not path: path = '/'
-        return f"{parsed.netloc}{path}"
+        result = f"{parsed.netloc}{path}"
+        # Hash-routed SPA sites (e.g. bysergeeva.ru: "/#!/tproduct/<lid>") put the
+        # only distinguishing info in the fragment — urlparse splits it off from
+        # path entirely, so without this every such URL on a domain collapses to
+        # the same normalized value and dedup can't tell products apart. No other
+        # known site's Pattern.url has a fragment, so this is a no-op elsewhere.
+        if parsed.fragment:
+            result += f"#{parsed.fragment}"
+        return result
     except:
         return url.strip().lower().rstrip('/')
 
@@ -178,18 +186,38 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
         target_title = re.sub(r'[\W_]+', '', p['title'].lower())
         containers = detail_soup.find_all(class_=re.compile(r'js-product|t-item|t754__product-full|t-popup'))
         valid_texts = []
+        valid_texts_popup = []
 
         for c in containers:
             c_text = c.get_text(separator=' ', strip=True)
             if target_title in re.sub(r'[\W_]+', '', c_text.lower()):
-                valid_texts.append(c_text)
+                # t-popup/t-popup__container is a single SHARED modal shell Tilda
+                # reuses across every product on the page — on sites where all
+                # products live on one page (hash-routed "#!/tproduct/..." URLs,
+                # e.g. bysergeeva.ru), this shared shell can independently satisfy
+                # the title match and, being huge, wins the max(key=len) below over
+                # the correct narrow per-product container — silently blending
+                # multiple products' density/yarn text together. Deprioritize it:
+                # only fall back to a t-popup match when nothing more specific matched.
+                classes = c.get('class') or []
+                if any('t-popup' in cls for cls in classes):
+                    valid_texts_popup.append(c_text)
+                else:
+                    valid_texts.append(c_text)
+
+        if not valid_texts:
+            valid_texts = valid_texts_popup
 
         # The listing page's own alt/link text is often unreliable (filename
         # fragments, photo-app captions like "Processed with VSCO...", credits)
         # even when the detail page has a clean, correctly formatted title in its
         # own <h1>/<title>. Prefer that here — it doesn't affect the isolation
         # match above, which already ran against the original listing-derived title.
-        if page_title:
+        # EXCEPT for hash-routed URLs ("#!/tproduct/..." — bysergeeva.ru and similar):
+        # the fragment never reaches the server, so every such URL serves the same
+        # generic page and its h1/<title> is the site's own tagline, not this
+        # product's name — trust the listing-derived title instead in that case.
+        if page_title and '#' not in p['url']:
             p['title'] = page_title
 
         if valid_texts:
@@ -383,6 +411,77 @@ def scrape_kitirrr_store(yarn_ranges_db, instruments_db, all_existing_base_urls,
     print(f"kitirrr.ru store API: {len(products)} products total, {len(items)} completely new.")
     return items, len(products)
 
+def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+    # bysergeeva.ru (Екатерина Сергеева) uses old-style Tilda hash routing
+    # ("/#!/tproduct/<storepartuid>-<lid>") — the fragment never reaches the
+    # server, so every product URL serves the exact same page. Unlike kitirrr.ru
+    # though, this page IS server-rendered: every product's full description
+    # already sits in the static HTML as a <div class="t754__product-full"
+    # data-product-lid="..."> (hidden via CSS, shown by JS on click) — no API
+    # call needed, just isolate each container directly from one page fetch.
+    storepartuid = '582150733'
+    site_url = 'https://bysergeeva.ru/'
+    try:
+        resp = requests.get(site_url, headers=headers, timeout=15)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+    except Exception as e:
+        print(f"Error fetching bysergeeva.ru: {e}")
+        return [], 0
+
+    for tag in soup(['nav', 'header', 'footer', 'aside', 'script', 'style', 'title']):
+        tag.decompose()
+
+    full_containers = soup.find_all('div', class_='t754__product-full')
+    items = []
+    for c in full_containers:
+        lid = c.get('data-product-lid')
+        if not lid:
+            continue
+        product_url = f"https://bysergeeva.ru/#!/tproduct/{storepartuid}-{lid}"
+        base_norm = get_base_url(normalize_url(product_url))
+        if base_norm in all_existing_base_urls:
+            continue
+        all_existing_base_urls.add(base_norm)
+
+        title_el = soup.find(attrs={'field': f'li_title__{lid}'})
+        title = title_el.get_text(strip=True) if title_el else ''
+
+        image_url = ''
+        for card in soup.find_all(attrs={'data-product-lid': lid}):
+            bgimg = card.find(class_='js-product-img')
+            if bgimg and bgimg.get('data-original'):
+                image_url = bgimg['data-original']
+                break
+
+        text_content = c.get_text(separator=' ', strip=True)
+        combined = title + ' ' + text_content
+
+        density_s, density_r = parse_density(text_content)
+        yarn_meters = parse_yarn(text_content)
+        unique_yarns = []
+        seen_y = set()
+        for ym in set(yarn_meters):
+            for y_id, y_name, y_min, y_max in yarn_ranges_db:
+                if y_max is None: y_max = 999999
+                if y_min <= ym <= y_max:
+                    if y_id not in seen_y:
+                        unique_yarns.append({"id": y_id, "label": y_name})
+                        seen_y.add(y_id)
+                    break
+
+        items.append({
+            'url': product_url,
+            'title': title,
+            'imageUrl': image_url,
+            'densityStitches': density_s,
+            'densityRows': density_r,
+            'yarnRanges': unique_yarns,
+            'instruments': detect_instruments(combined, instruments_db),
+            'isMachineKnitting': is_machine_knitting(combined),
+        })
+    print(f"bysergeeva.ru: {len(full_containers)} products total, {len(items)} completely new.")
+    return items, len(full_containers)
+
 def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_base_urls, seed_url=None):
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -390,11 +489,13 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
         "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
     }
 
-    # Site-specific branch — see scrape_kitirrr_store() docstring-comment above.
-    # Bypasses the generic crawler entirely for this one domain; every other
+    # Site-specific branches — see the respective docstring-comments above.
+    # Bypass the generic crawler entirely for these two domains; every other
     # site keeps using the normal path below untouched.
     if 'kitirrr.ru' in site_url:
         return scrape_kitirrr_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
+    if 'bysergeeva.ru' in site_url:
+        return scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers)
 
     # Basic crawler to extract pattern links and images, with simple pagination support
     items = []
