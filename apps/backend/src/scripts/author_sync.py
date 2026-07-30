@@ -36,24 +36,27 @@ def parse_yarn(text):
     # "," in the separator class: "50гр, 167м" (comma-space, no other joiner)
     # found on lenakotikova.ru — without it, the comma sits between the two
     # numbers unmatched by any alternative, breaking the match entirely.
-    # (?:\s*-\s*\d+)? after each captured number — same "take the first/lower
-    # value" fix already applied to parse_density's dash-ranges. Without it,
-    # a stated range like "300-375м/100г" grabs 375 (the digit adjacent to
-    # the unit marker) instead of 300 (the first/lower value convention).
-    pattern1 = re.compile(r'(\d+)(?:\s*-\s*\d+)?\s*м[а-я]*\.?\s*(?:в|на|/|-|,)?\s*(\d+)(?:\s*-\s*\d+)?\s*(?:г|g|гр)\.?', re.IGNORECASE)
-    pattern2 = re.compile(r'(\d+)(?:\s*-\s*\d+)?\s*(?:г|g|гр)\.?\s*(?:в|на|/|-|,)?\s*(\d+)(?:\s*-\s*\d+)?\s*м[а-я]*\.?', re.IGNORECASE)
+    # (?:\s*-\s*\d+(?:[.,]\d+)?)? after each captured number — same "take the
+    # first/lower value" fix already applied to parse_density's dash-ranges.
+    # Without it, a stated range like "300-375м/100г" grabs 375 (the digit
+    # adjacent to the unit marker) instead of 300 (the first/lower value
+    # convention). (?:[.,]\d+)? on the captured number itself allows a
+    # decimal ("387,5 м/100 гр") — without it, "387,5" only matches its
+    # fractional half ("5 м/100 гр"), producing a bogus near-zero result.
+    pattern1 = re.compile(r'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*м[а-я]*\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*(?:г|g|гр)\.?', re.IGNORECASE)
+    pattern2 = re.compile(r'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*(?:г|g|гр)\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*м[а-я]*\.?', re.IGNORECASE)
 
     matches = []
     for m in pattern1.finditer(text):
         matches.append((m, m.group(1), m.group(2)))
     for m in pattern2.finditer(text):
         matches.append((m, m.group(2), m.group(1)))
-        
+
     word_to_num = {'две': 2, 'три': 3, 'четыре': 4, 'пять': 5, 'шесть': 6}
-    
+
     for match, meters, grams in matches:
-        m_val = float(meters)
-        g_val = float(grams)
+        m_val = float(meters.replace(',', '.'))
+        g_val = float(grams.replace(',', '.'))
         if g_val == 0: continue
         
         m_per_100 = (m_val * 100) / g_val
@@ -61,13 +64,22 @@ def parse_yarn(text):
         start = max(0, match.start() - 35)
         end = min(len(text), match.end() + 35)
         context = text[start:end].lower()
-        
+
+        # "1500 м/100 гр ... в 5 сложений, итоговый метраж = 300 м/100 гр" —
+        # the author's own already-divided final value sits close enough to
+        # the "в N сложений" thread-count phrase (describing the RAW value
+        # stated earlier) that its context window reaches it too, dividing
+        # an already-final number a second time. "итогов" immediately before
+        # a match is an explicit "this is the final value" marker — skip the
+        # division for that specific match when present.
+        final_marker = 'итогов' in text[max(0, match.start() - 25):match.start()].lower()
+
         thread_match = re.search(r'в\s+(\d+|две|три|четыре|пять|шесть)\s+(?:нит|слож)', context)
-        if thread_match:
+        if thread_match and not final_marker:
             val = thread_match.group(1)
             threads = int(val) if val.isdigit() else word_to_num.get(val, 1)
             m_per_100 = m_per_100 / threads
-            
+
         results.append(m_per_100)
     return results
 
@@ -493,6 +505,7 @@ def _make_tilda_store_discovery_handler(storepartuid, recid, label):
 scrape_kitirrr_store = _make_tilda_store_full_handler('225031935381', '351959523', 'kitirrr.ru')
 discover_knitmode_products = _make_tilda_store_discovery_handler('779903633633', '188641560', 'knitmode.ru')
 scrape_tsinbal_store = _make_tilda_store_full_handler('827480422531', '503488787', 'tsinbal.ru')
+scrape_knithappens_store = _make_tilda_store_full_handler('233633767262', '1366229501', 'knithappens.ru')
 scrape_lavkabulavka_store = _make_tilda_multi_store_full_handler(
     [
         ('683175431561', '336506525'),   # /clothes
@@ -596,6 +609,7 @@ SITE_HANDLERS = {
     'bysergeeva.ru': scrape_bysergeeva_store,
     'lavkabulavka.com': scrape_lavkabulavka_store,
     'tsinbal.ru': scrape_tsinbal_store,
+    'knithappens.ru': scrape_knithappens_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
