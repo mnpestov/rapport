@@ -383,6 +383,35 @@ def _tilda_store_image(p):
         pass
     return ''
 
+def _parse_tilda_store_product(p, yarn_ranges_db, instruments_db):
+    title = p.get('title', '')
+    text_content = BeautifulSoup(p.get('text') or '', 'html.parser').get_text(separator=' ', strip=True)
+    combined = title + ' ' + text_content
+
+    density_s, density_r = parse_density(text_content)
+    yarn_meters = parse_yarn(text_content)
+    unique_yarns = []
+    seen_y = set()
+    for ym in set(yarn_meters):
+        for y_id, y_name, y_min, y_max in yarn_ranges_db:
+            if y_max is None: y_max = 999999
+            if y_min <= ym <= y_max:
+                if y_id not in seen_y:
+                    unique_yarns.append({"id": y_id, "label": y_name})
+                    seen_y.add(y_id)
+                break
+
+    return {
+        'url': p['url'],
+        'title': title,
+        'imageUrl': _tilda_store_image(p),
+        'densityStitches': density_s,
+        'densityRows': density_r,
+        'yarnRanges': unique_yarns,
+        'instruments': detect_instruments(combined, instruments_db),
+        'isMachineKnitting': is_machine_knitting(combined),
+    }
+
 def _make_tilda_store_full_handler(storepartuid, recid, label):
     # Use when the API's own "text" field already carries each product's
     # COMPLETE description (verified for kitirrr.ru) — parses density/yarn
@@ -392,43 +421,41 @@ def _make_tilda_store_full_handler(storepartuid, recid, label):
         products = _fetch_tilda_store_products(storepartuid, recid, label, headers)
         items = []
         for p in products:
-            product_url = p.get('url', '')
-            if not product_url:
+            if not p.get('url'):
                 continue
-            base_norm = get_base_url(normalize_url(product_url))
+            base_norm = get_base_url(normalize_url(p['url']))
             if base_norm in all_existing_base_urls:
                 continue
             all_existing_base_urls.add(base_norm)
-
-            title = p.get('title', '')
-            text_content = BeautifulSoup(p.get('text') or '', 'html.parser').get_text(separator=' ', strip=True)
-            combined = title + ' ' + text_content
-
-            density_s, density_r = parse_density(text_content)
-            yarn_meters = parse_yarn(text_content)
-            unique_yarns = []
-            seen_y = set()
-            for ym in set(yarn_meters):
-                for y_id, y_name, y_min, y_max in yarn_ranges_db:
-                    if y_max is None: y_max = 999999
-                    if y_min <= ym <= y_max:
-                        if y_id not in seen_y:
-                            unique_yarns.append({"id": y_id, "label": y_name})
-                            seen_y.add(y_id)
-                        break
-
-            items.append({
-                'url': product_url,
-                'title': title,
-                'imageUrl': _tilda_store_image(p),
-                'densityStitches': density_s,
-                'densityRows': density_r,
-                'yarnRanges': unique_yarns,
-                'instruments': detect_instruments(combined, instruments_db),
-                'isMachineKnitting': is_machine_knitting(combined),
-            })
+            items.append(_parse_tilda_store_product(p, yarn_ranges_db, instruments_db))
         print(f"{label} store API: {len(products)} products total, {len(items)} completely new.")
         return items, len(products)
+    return handler
+
+def _make_tilda_multi_store_full_handler(sections, label):
+    # Some sites (lavkabulavka.com) split their catalog across several
+    # independent Tilda Store blocks — one per category page (clothes,
+    # accessories, bags, free patterns, home decor) — each with its own
+    # storepartuid/recid pair (found by grepping each page's inline
+    # t_store_init(...) call, same discovery method as the single-section
+    # sites above). Results are merged and deduplicated by URL — a product
+    # can be tagged into more than one section (e.g. a scarf/hat combo
+    # listed under both "accessories" and "clothes").
+    def handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+        seen_urls = set()
+        items = []
+        for storepartuid, recid in sections:
+            for p in _fetch_tilda_store_products(storepartuid, recid, label, headers):
+                if not p.get('url') or p['url'] in seen_urls:
+                    continue
+                seen_urls.add(p['url'])
+                base_norm = get_base_url(normalize_url(p['url']))
+                if base_norm in all_existing_base_urls:
+                    continue
+                all_existing_base_urls.add(base_norm)
+                items.append(_parse_tilda_store_product(p, yarn_ranges_db, instruments_db))
+        print(f"{label} store API ({len(sections)} sections): {len(seen_urls)} products total, {len(items)} completely new.")
+        return items, len(seen_urls)
     return handler
 
 def _make_tilda_store_discovery_handler(storepartuid, recid, label):
@@ -451,6 +478,16 @@ def _make_tilda_store_discovery_handler(storepartuid, recid, label):
 
 scrape_kitirrr_store = _make_tilda_store_full_handler('225031935381', '351959523', 'kitirrr.ru')
 discover_knitmode_products = _make_tilda_store_discovery_handler('779903633633', '188641560', 'knitmode.ru')
+scrape_lavkabulavka_store = _make_tilda_multi_store_full_handler(
+    [
+        ('683175431561', '336506525'),   # /clothes
+        ('560698987201', '336511034'),   # /accessories
+        ('162415681281', '336506426'),   # /bags
+        ('124891535411', '866022053'),   # /freepatterns
+        ('497210869703', '2503817561'),  # /lbhome (home decor)
+    ],
+    'lavkabulavka.com'
+)
 
 def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
     # bysergeeva.ru (Екатерина Сергеева) uses old-style Tilda hash routing
@@ -531,6 +568,7 @@ def scrape_bysergeeva_store(yarn_ranges_db, instruments_db, all_existing_base_ur
 SITE_HANDLERS = {
     'kitirrr.ru': scrape_kitirrr_store,
     'bysergeeva.ru': scrape_bysergeeva_store,
+    'lavkabulavka.com': scrape_lavkabulavka_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
