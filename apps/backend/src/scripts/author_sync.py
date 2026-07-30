@@ -543,13 +543,23 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                     has_bg_img = 'background-image' in bg_style
                     
                     has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
-                    has_product_class = 'product' in (a.get('class') or [])
+                    a_classes = a.get('class') or []
+                    has_product_class = 'product' in a_classes
+                    # helenyakovleva.com uses Tilda's "Cards" block (t774) instead of
+                    # the "Store" block seen elsewhere — its title link carries class
+                    # "t-card__link" with no img/bg-image on the anchor itself (the
+                    # image sits in an unrelated sibling element the per-anchor checks
+                    # above don't reach). "t-card" is too generic a class to trust
+                    # site-wide (used for all sorts of non-product Tilda blocks), so
+                    # this is scoped to this one domain rather than added above.
+                    if 'helenyakovleva.com' in site_url and 't-card__link' in a_classes:
+                        has_product_class = True
                     # Category/tag/pagination listing pages (WooCommerce etc.) can still slip
                     # through the loose "/mk" substring above (e.g. "/product-category/mk-hat/")
                     # — these are handled separately below as pages to crawl, never as products.
                     is_listing_page = bool(re.search(r'/product-category/|/category/|/tag/|/page/\d|[?&]page=|PAGEN_|[?&]p=\d', href, re.I))
 
-                    if img or has_bg_img or has_valid_href:
+                    if img or has_bg_img or has_valid_href or has_product_class:
                         alt = ''
                         src = ''
                         if img:
