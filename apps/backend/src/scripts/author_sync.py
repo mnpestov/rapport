@@ -492,6 +492,7 @@ def _make_tilda_store_discovery_handler(storepartuid, recid, label):
 
 scrape_kitirrr_store = _make_tilda_store_full_handler('225031935381', '351959523', 'kitirrr.ru')
 discover_knitmode_products = _make_tilda_store_discovery_handler('779903633633', '188641560', 'knitmode.ru')
+scrape_tsinbal_store = _make_tilda_store_full_handler('827480422531', '503488787', 'tsinbal.ru')
 scrape_lavkabulavka_store = _make_tilda_multi_store_full_handler(
     [
         ('683175431561', '336506525'),   # /clothes
@@ -594,6 +595,7 @@ SITE_HANDLERS = {
     'kitirrr.ru': scrape_kitirrr_store,
     'bysergeeva.ru': scrape_bysergeeva_store,
     'lavkabulavka.com': scrape_lavkabulavka_store,
+    'tsinbal.ru': scrape_tsinbal_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
