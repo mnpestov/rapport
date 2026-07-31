@@ -43,8 +43,16 @@ def parse_yarn(text):
     # convention). (?:[.,]\d+)? on the captured number itself allows a
     # decimal ("387,5 м/100 гр") — without it, "387,5" only matches its
     # fractional half ("5 м/100 гр"), producing a bogus near-zero result.
-    pattern1 = re.compile(r'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*м[а-я]*\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*(?:г|g|гр)\.?', re.IGNORECASE)
-    pattern2 = re.compile(r'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*(?:г|g|гр)\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*м[а-я]*\.?', re.IGNORECASE)
+    # Unit tokens are tightened to actual meter/gram words instead of a bare
+    # "м"/"г" + any following letters — the loose version matched the FIRST
+    # letter of any м-/г-word (e.g. "0-9 месяцев", "2 года" — an age-range
+    # label, nothing to do with yarn), fabricating a yarn match out of
+    # unrelated size-chart text (found on viajeuvie.com: "0-9 месяцев = 1
+    # моток; 9 мес. – 2 года" was misread as "9 м / 2 г").
+    unit_m = r'(?:метр[а-я]*|м(?![а-я]))'
+    unit_g = r'(?:гр[а-я]*|г(?![а-я])|g)'
+    pattern1 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?', re.IGNORECASE)
+    pattern2 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?', re.IGNORECASE)
 
     matches = []
     for m in pattern1.finditer(text):
