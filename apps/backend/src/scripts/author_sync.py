@@ -49,10 +49,15 @@ def parse_yarn(text):
     # label, nothing to do with yarn), fabricating a yarn match out of
     # unrelated size-chart text (found on viajeuvie.com: "0-9 месяцев = 1
     # моток; 9 мес. – 2 года" was misread as "9 м / 2 г").
+    # dash class covers en-dash "–" and em-dash "—" alongside the plain
+    # hyphen — "110 метров – 50 грамм" (en-dash, found on viajeuvie.com)
+    # otherwise doesn't match "-" in either the separator or the dash-range
+    # swallow group, silently dropping the entire yarn spec.
+    dash = r'[-–—]'
     unit_m = r'(?:метр[а-я]*|м(?![а-я]))'
     unit_g = r'(?:гр[а-я]*|г(?![а-я])|g)'
-    pattern1 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?', re.IGNORECASE)
-    pattern2 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?\s*(?:в|на|/|-|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?', re.IGNORECASE)
+    pattern1 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?\s*(?:в|на|/|{dash}|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?', re.IGNORECASE)
+    pattern2 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?\s*(?:в|на|/|{dash}|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?', re.IGNORECASE)
 
     matches = []
     for m in pattern1.finditer(text):
