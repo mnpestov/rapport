@@ -6,6 +6,7 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import { spawn } from "child_process";
+import { syncCategories, syncTags, syncInstruments } from "./adminController";
 
 let isSyncing = false;
 // Author.id currently being synced, or null when a full (all-authors) sync
@@ -42,6 +43,55 @@ export const getReportById = async (req: Request, res: Response) => {
     include: { items: { where: { status: "PENDING" } } }
   });
   res.json(report);
+};
+
+// PATCH /admin/sync-items/:itemId — persists admin edits to a pending novelty
+// item BEFORE it's approved (processSyncBatch always re-reads title/url/parsedData
+// fresh from the DB row, so edits saved here take effect on the next approve).
+export const updateSyncItem = async (req: Request, res: Response) => {
+  const { itemId } = req.params;
+  const { title, url, imageUrl, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds } = req.body;
+
+  const existing = await prisma.authorSyncItem.findUnique({ where: { id: itemId } });
+  if (!existing) {
+    return res.status(404).json({ error: "Item not found" });
+  }
+
+  const prevParsedData = (existing.parsedData as any) || {};
+
+  const [catIds, tagIds, instIds] = await Promise.all([
+    syncCategories(Array.isArray(categories) ? categories : []),
+    syncTags(Array.isArray(tags) ? tags : []),
+    syncInstruments(Array.isArray(instruments) ? instruments : []),
+  ]);
+
+  const [categoryRecords, tagRecords, instrumentRecords, yarnRangeRecords] = await Promise.all([
+    prisma.productType.findMany({ where: { id: { in: catIds } }, select: { id: true, name: true } }),
+    prisma.tag.findMany({ where: { id: { in: tagIds } }, select: { id: true, name: true } }),
+    prisma.instrument.findMany({ where: { id: { in: instIds } }, select: { id: true, name: true } }),
+    prisma.yarnRange.findMany({ where: { id: { in: Array.isArray(yarnRangeIds) ? yarnRangeIds : [] } }, select: { id: true, label: true } }),
+  ]);
+
+  const parsedData = {
+    ...prevParsedData,
+    imageUrl: imageUrl !== undefined ? imageUrl : prevParsedData.imageUrl,
+    isFree: !!isFree,
+    isNew: !!isNew,
+    densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
+    densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
+    categories: categoryRecords,
+    tags: tagRecords,
+    instruments: instrumentRecords,
+    yarnRanges: yarnRangeRecords,
+  };
+
+  const data: any = { parsedData };
+  if (title !== undefined && String(title).trim()) data.title = String(title).trim();
+  if (url !== undefined && String(url).trim()) data.url = String(url).trim();
+
+  const updated = await prisma.authorSyncItem.update({ where: { id: itemId }, data });
+
+  res.json({ id: updated.id, title: updated.title, url: updated.url, parsedData: updated.parsedData });
 };
 
 export const processSyncBatch = async (req: Request, res: Response) => {
@@ -101,10 +151,12 @@ export const processSyncBatch = async (req: Request, res: Response) => {
             imageUrl: `/images/patterns/${filename}`,
             authorId: dbItem.report.authorId,
             isVisible: false, // В АРХИВ
-            isFree: false,
+            isFree: parsedData.isFree ?? false,
+            isNew: parsedData.isNew ?? false,
             densityStitches: parsedData.densityStitches || null,
             densityRows: parsedData.densityRows || null,
             categories: { connect: (parsedData.categories || []).map((c: any) => ({ id: c.id })) },
+            tags: { connect: (parsedData.tags || []).map((t: any) => ({ id: t.id })) },
             instruments: { connect: (parsedData.instruments || []).map((i: any) => ({ id: i.id })) },
             yarnRanges: { connect: (parsedData.yarnRanges || []).map((y: any) => ({ id: y.id })) },
           }

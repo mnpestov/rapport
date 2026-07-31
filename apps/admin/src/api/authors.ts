@@ -111,6 +111,36 @@ export const clearSyncReport = async (reportId: string): Promise<{ success: bool
   return response.json();
 };
 
+export interface SyncItemUpdateDTO {
+  title: string;
+  url: string;
+  imageUrl: string;
+  isFree: boolean;
+  isNew: boolean;
+  categories: string[];
+  tags: string[];
+  instruments: string[];
+  yarnRangeIds: string[];
+  densityStitches: number | string;
+  densityRows: number | string;
+}
+
+export const updateSyncItem = async (
+  itemId: string,
+  data: SyncItemUpdateDTO
+): Promise<SyncReportItem> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-items/${itemId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to update sync item");
+  }
+  return response.json();
+};
+
 export const rejectSyncItem = async (itemId: string): Promise<{ success: boolean }> => {
   const response = await fetchWithAuth(`${API_URL}/admin/sync-items/${itemId}/reject`, {
     method: "POST",

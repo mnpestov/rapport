@@ -43,7 +43,7 @@ export async function syncAuthor(name: string): Promise<string> {
   return author.id;
 }
 
-async function syncTags(names: string[]): Promise<string[]> {
+export async function syncTags(names: string[]): Promise<string[]> {
   const normalized = [...new Set(names.map(n => n.trim().replace(/\s+/g, " ")).filter(Boolean))];
   const ids: string[] = [];
   for (const name of normalized) {
@@ -63,7 +63,7 @@ async function syncTags(names: string[]): Promise<string[]> {
   return ids;
 }
 
-async function syncCategories(names: string[]): Promise<string[]> {
+export async function syncCategories(names: string[]): Promise<string[]> {
   const normalized = [...new Set(names.map(n => n.trim().replace(/\s+/g, " ")).filter(Boolean))];
   const ids: string[] = [];
   for (const name of normalized) {
@@ -83,7 +83,7 @@ async function syncCategories(names: string[]): Promise<string[]> {
   return ids;
 }
 
-async function syncInstruments(names: string[]): Promise<string[]> {
+export async function syncInstruments(names: string[]): Promise<string[]> {
   const normalized = [...new Set(names.map(n => n.trim().replace(/\s+/g, " ")).filter(Boolean))];
   const ids: string[] = [];
   for (const name of normalized) {

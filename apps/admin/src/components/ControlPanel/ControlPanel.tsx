@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
+import { List, LayoutGrid } from "lucide-react";
 import styles from "./ControlPanel.module.css";
 
 export interface ControlPanelTab {
@@ -66,5 +67,35 @@ export function ControlPanelBtn({ variant, icon, children, className, ...props }
       {icon}
       {children}
     </button>
+  );
+}
+
+export type ViewMode = "list" | "grid";
+
+interface ViewToggleProps {
+  value: ViewMode;
+  onChange: (value: ViewMode) => void;
+}
+
+export function ViewToggle({ value, onChange }: ViewToggleProps) {
+  return (
+    <div className={styles.viewToggle}>
+      <button
+        type="button"
+        title="Списком"
+        className={`${styles.viewToggleBtn} ${value === "list" ? styles.viewToggleBtnActive : ""}`}
+        onClick={() => onChange("list")}
+      >
+        <List size={18} strokeWidth={1.5} />
+      </button>
+      <button
+        type="button"
+        title="Карточками"
+        className={`${styles.viewToggleBtn} ${value === "grid" ? styles.viewToggleBtnActive : ""}`}
+        onClick={() => onChange("grid")}
+      >
+        <LayoutGrid size={18} strokeWidth={1.5} />
+      </button>
+    </div>
   );
 }

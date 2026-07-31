@@ -140,11 +140,12 @@
 .actions {
   display: flex;
   gap: 12px;
+  justify-content: space-between;
 }
 
 .approveBtn {
   min-height: 32px;
-  padding: 9px 12px;
+  padding: 5px 10px;
   border: none;
   border-radius: 2px;
   background: #bec1f4;
@@ -160,9 +161,27 @@
   opacity: 0.9;
 }
 
+.editBtn {
+  min-height: 32px;
+  padding: 5px 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1d1c1c;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.editBtn:hover {
+  background: #f3f3f3;
+}
+
 .rejectBtn {
   min-height: 32px;
-  padding: 9px 12px;
+  padding: 5px 5px;
   border: 1px solid #d8520f;
   border-radius: 2px;
   background: #d8520f;

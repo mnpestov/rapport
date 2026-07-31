@@ -7,6 +7,7 @@ interface ModerationCardProps {
   draft: AdminDraft;
   onApprove: (id: string) => Promise<void>;
   onReject: (draft: AdminDraft) => void;
+  onEdit?: (draft: AdminDraft) => void;
   approveLabel?: string;
   rejectLabel?: string;
 }
@@ -49,7 +50,7 @@ function Stack({ items }: { items: { id: string; name: string }[] }) {
   );
 }
 
-export function ModerationCard({ draft, onApprove, onReject, approveLabel = "Опубликовать", rejectLabel = "Отклонить" }: ModerationCardProps) {
+export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabel = "Опубликовать", rejectLabel = "Отклонить" }: ModerationCardProps) {
   const imgSrc = getImageUrl(draft.imageUrl);
 
   return (
@@ -102,6 +103,11 @@ export function ModerationCard({ draft, onApprove, onReject, approveLabel = "О�
           <button className={styles.rejectBtn} onClick={() => onReject(draft)}>
             {rejectLabel}
           </button>
+          {onEdit && (
+            <button className={styles.editBtn} onClick={() => onEdit(draft)}>
+              Редактировать
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -1,0 +1,280 @@
+import React, { useEffect, useState } from "react";
+import CreatableSelect from "react-select/creatable";
+import toast from "react-hot-toast";
+import { Modal } from "../../components/Modal/Modal";
+import { ImageCropper } from "../../components/ImageCropper/ImageCropper";
+import { getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange } from "../../api/patterns";
+import { SyncReportItem, updateSyncItem, SyncItemUpdateDTO } from "../../api/authors";
+import { AdminDraft } from "../../api/admin-drafts";
+import { MAX_CATEGORIES, MAX_TAGS, labelStyle, optionalStyle, inputStyle, selectStyles, btnStyle, ModalCheckbox } from "../Patterns/formShared";
+
+interface SyncItemEditModalProps {
+  isOpen: boolean;
+  item: AdminDraft | null;
+  onClose: () => void;
+  onSaved: (updated: SyncReportItem) => void;
+}
+
+interface FormState {
+  title: string;
+  url: string;
+  imageUrl: string;
+  isFree: boolean;
+  isNew: boolean;
+  categories: string[];
+  tags: string[];
+  instruments: string[];
+  yarnRangeIds: string[];
+  densityStitches: string;
+  densityRows: string;
+}
+
+function toFormState(item: AdminDraft): FormState {
+  return {
+    title: item.title || "",
+    url: item.url || "",
+    imageUrl: item.imageUrl || "",
+    isFree: item.isFree ?? false,
+    isNew: item.isNew ?? true,
+    categories: item.categories.map((c) => c.name),
+    tags: item.tags.map((t) => t.name),
+    instruments: item.instruments.map((i) => i.name),
+    yarnRangeIds: item.yarnRanges.map((y) => y.id),
+    densityStitches: item.densityStitches != null ? String(item.densityStitches) : "",
+    densityRows: item.densityRows != null ? String(item.densityRows) : "",
+  };
+}
+
+export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEditModalProps) {
+  const [formData, setFormData] = useState<FormState | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [categoriesList, setCategoriesList] = useState<DictionaryItem[]>([]);
+  const [tagsList, setTagsList] = useState<DictionaryItem[]>([]);
+  const [instrumentsList, setInstrumentsList] = useState<DictionaryItem[]>([]);
+  const [yarnRangesList, setYarnRangesList] = useState<YarnRange[]>([]);
+
+  useEffect(() => {
+    if (isOpen && item) {
+      setFormData(toFormState(item));
+    }
+  }, [isOpen, item]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    Promise.all([getCategories(), getTags(), getInstruments(), getYarnRanges()])
+      .then(([c, t, i, y]) => {
+        setCategoriesList(c);
+        setTagsList(t);
+        setInstrumentsList(i);
+        setYarnRangesList(y);
+      })
+      .catch(() => toast.error("Не удалось загрузить справочники"));
+  }, [isOpen]);
+
+  if (!isOpen || !item || !formData) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.url || !formData.imageUrl) {
+      toast.error("Пожалуйста, заполните все обязательные поля");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const payload: SyncItemUpdateDTO = {
+        title: formData.title.trim(),
+        url: formData.url.trim(),
+        imageUrl: formData.imageUrl.trim(),
+        isFree: formData.isFree,
+        isNew: formData.isNew,
+        categories: formData.categories,
+        tags: formData.tags,
+        instruments: formData.instruments,
+        yarnRangeIds: formData.yarnRangeIds,
+        densityStitches: formData.densityStitches.trim(),
+        densityRows: formData.densityRows.trim(),
+      };
+      const updated = await updateSyncItem(item.id, payload);
+      toast.success("Сохранено");
+      onSaved(updated);
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось сохранить изменения");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Редактировать новинку" maxWidth={760}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 30 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 20, rowGap: 30 }}>
+
+          {/* Название */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Название <span style={{ color: "#ef4444" }}>*</span></label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              style={inputStyle}
+              placeholder="Название"
+              required
+            />
+          </div>
+
+          {/* Категория */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Категория <span style={optionalStyle}></span></label>
+            <CreatableSelect
+              isMulti
+              isOptionDisabled={() => formData.categories.length >= MAX_CATEGORIES}
+              styles={selectStyles}
+              options={categoriesList.map(c => ({ value: c.name, label: c.name }))}
+              value={formData.categories.map(c => ({ value: c, label: c }))}
+              onChange={(vals: any) => {
+                if (vals.length > MAX_CATEGORIES) {
+                  toast.error(`Не более ${MAX_CATEGORIES} категорий`);
+                  return;
+                }
+                setFormData({ ...formData, categories: vals.map((v: any) => v.value) });
+              }}
+              placeholder="Категории"
+            />
+          </div>
+
+          {/* Новинка */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ModalCheckbox checked={formData.isNew} onChange={v => setFormData({ ...formData, isNew: v })} label="Новинка" />
+          </div>
+
+          {/* Бесплатное */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ModalCheckbox checked={formData.isFree} onChange={v => setFormData({ ...formData, isFree: v })} label="Бесплатное" />
+          </div>
+
+          {/* Характеристики */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Характеристики <span style={optionalStyle}></span></label>
+            <CreatableSelect
+              isMulti
+              isOptionDisabled={() => formData.tags.length >= MAX_TAGS}
+              styles={selectStyles}
+              options={tagsList.map(t => ({ value: t.name, label: t.name }))}
+              value={formData.tags.map(t => ({ value: t, label: t }))}
+              onChange={(vals: any) => {
+                if (vals.length > MAX_TAGS) {
+                  toast.error(`Не более ${MAX_TAGS} характеристик`);
+                  return;
+                }
+                setFormData({ ...formData, tags: vals.map((v: any) => v.value) });
+              }}
+              placeholder="Характеристики"
+            />
+          </div>
+
+          {/* Ссылка */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Ссылка <span style={{ color: "#ef4444" }}>*</span></label>
+            <input
+              type="url"
+              value={formData.url}
+              onChange={e => setFormData({ ...formData, url: e.target.value })}
+              style={inputStyle}
+              placeholder="Вставить ссылку"
+              required
+            />
+          </div>
+
+          {/* Инструмент */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Инструмент <span style={optionalStyle}></span></label>
+            <CreatableSelect
+              isMulti
+              styles={selectStyles}
+              options={instrumentsList.map(i => ({ value: i.name, label: i.name }))}
+              value={formData.instruments.map(i => ({ value: i, label: i }))}
+              onChange={(vals: any) => setFormData({ ...formData, instruments: vals.map((v: any) => v.value) })}
+              placeholder="Инструмент"
+            />
+          </div>
+
+          {/* Толщина пряжи */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Толщина пряжи (м/100г) <span style={optionalStyle}>(необязательно)</span></label>
+            <CreatableSelect
+              isMulti
+              isValidNewOption={() => false}
+              styles={selectStyles}
+              options={yarnRangesList.map(y => ({ value: y.id, label: y.label }))}
+              value={yarnRangesList
+                .filter(y => formData.yarnRangeIds.includes(y.id))
+                .map(y => ({ value: y.id, label: y.label }))}
+              onChange={(vals: any) => setFormData({ ...formData, yarnRangeIds: vals.map((v: any) => v.value) })}
+              placeholder="Диапазон толщины"
+            />
+          </div>
+
+          {/* Плотность */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Плотность (петли × ряды) в лицевой глади <span style={optionalStyle}></span></label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="number"
+                value={formData.densityStitches}
+                onChange={e => setFormData({ ...formData, densityStitches: e.target.value })}
+                style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                min={0}
+              />
+              <span style={{ fontFamily: "Mulish", fontSize: 14, color: "#1d1c1c", flexShrink: 0 }}>×</span>
+              <input
+                type="number"
+                value={formData.densityRows}
+                onChange={e => setFormData({ ...formData, densityRows: e.target.value })}
+                style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                min={0}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Петли</span>
+              <span style={{ width: 16 }} />
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Ряды</span>
+            </div>
+          </div>
+
+          {/* Загрузить фото */}
+          <div>
+            <ImageCropper
+              onImageUploaded={(url) => setFormData({ ...formData, imageUrl: url })}
+              currentUrl={formData.imageUrl}
+              customButtonText={formData.imageUrl ? "Изменить фото" : "Загрузить  фото"}
+              customButtonProps={{
+                style: {
+                  width: "100%", height: 45, padding: "8px 16px",
+                  background: "#a9ae36", borderRadius: 2, color: "#FFF",
+                  fontFamily: "Mulish", fontSize: 15, border: "none",
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  boxSizing: "border-box",
+                }
+              }}
+            />
+          </div>
+
+          <div />
+
+        </div>
+
+        {/* Кнопки */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 20 }}>
+          <button type="button" onClick={onClose} style={btnStyle("#f3f3f3", "#1d1c1c")}>
+            Закрыть
+          </button>
+          <button type="submit" disabled={isSaving} style={btnStyle("#a9ae36", "#ffffff")}>
+            {isSaving ? "Сохранение..." : "Сохранить"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}

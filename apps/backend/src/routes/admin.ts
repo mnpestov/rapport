@@ -43,6 +43,7 @@ import {
   getPendingReports,
   getReportById,
   processSyncBatch,
+  updateSyncItem,
   rejectSyncItem,
   getSyncStatus,
   checkPendingAuthors,
@@ -200,6 +201,7 @@ router.get("/sync-reports", getPendingReports);
 router.get("/sync-reports/:reportId", getReportById);
 router.post("/sync-reports/:reportId/process-batch", processSyncBatch);
 router.delete("/sync-reports/:reportId/clear", clearSyncReport);
+router.patch("/sync-items/:itemId", updateSyncItem);
 router.post("/sync-items/:itemId/reject", rejectSyncItem);
 router.get("/sync-status", getSyncStatus);
 router.get("/sync-pending", checkPendingAuthors);

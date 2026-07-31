@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { ModerationCard } from "../Patterns/ModerationCard";
 import { AdminDraft } from "../../api/admin-drafts";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
+import { SyncItemEditModal } from "./SyncItemEditModal";
 
 interface SyncModalProps {
   isOpen: boolean;
@@ -16,10 +17,38 @@ interface SyncModalProps {
   onSuccess: () => void;
 }
 
+function toDraft(item: SyncReportItem, authorId: string, authorName: string): AdminDraft {
+  const pd = item.parsedData || {};
+  return {
+    id: item.id,
+    patternId: null,
+    pattern: null,
+    authorId,
+    title: item.title,
+    url: item.url,
+    imageUrl: pd.imageUrl || "",
+    isNew: pd.isNew ?? true,
+    isFree: pd.isFree || false,
+    densityStitches: pd.densityStitches || null,
+    densityRows: pd.densityRows || null,
+    status: "PENDING",
+    author: { id: authorId, name: authorName },
+    categories: pd.categories || [],
+    tags: pd.tags || [],
+    instruments: pd.instruments || [],
+    yarnRanges: pd.yarnRanges || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    closedAt: null,
+    moderationComment: null,
+  };
+}
+
 export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: SyncModalProps) {
   const [report, setReport] = useState<SyncReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [editingDraft, setEditingDraft] = useState<AdminDraft | null>(null);
 
   useEffect(() => {
     if (isOpen && reportId) {
@@ -76,6 +105,13 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
     }
   };
 
+  const handleSaved = (updated: SyncReportItem) => {
+    setReport(prev => prev
+      ? { ...prev, items: prev.items?.map(i => i.id === updated.id ? { ...i, ...updated } : i) }
+      : null);
+    setEditingDraft(null);
+  };
+
   const handleClear = async () => {
     setConfirmClearOpen(false);
     try {
@@ -112,37 +148,15 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: "16px" }}>
             {report.items.map(item => {
-              const pd = item.parsedData || {};
-              const draft: AdminDraft = {
-                id: item.id,
-                patternId: null,
-                pattern: null,
-                authorId: report.authorId,
-                title: item.title,
-                url: item.url,
-                imageUrl: pd.imageUrl || "",
-                isNew: true,
-                isFree: pd.isFree || false,
-                densityStitches: pd.densityStitches || null,
-                densityRows: pd.densityRows || null,
-                status: "PENDING",
-                author: { id: report.authorId, name: authorName },
-                categories: pd.categories || [],
-                tags: pd.tags || [],
-                instruments: pd.instruments || [],
-                yarnRanges: pd.yarnRanges || [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                closedAt: null,
-                moderationComment: null,
-              };
+              const draft = toDraft(item, report.authorId, authorName);
 
               return (
-                <ModerationCard 
-                  key={item.id} 
-                  draft={draft} 
-                  onApprove={handleApprove} 
+                <ModerationCard
+                  key={item.id}
+                  draft={draft}
+                  onApprove={handleApprove}
                   onReject={handleReject}
+                  onEdit={setEditingDraft}
                   approveLabel="В архив"
                 />
               );
@@ -161,6 +175,13 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
         variant="danger"
         onConfirm={handleClear}
         onCancel={() => setConfirmClearOpen(false)}
+      />
+
+      <SyncItemEditModal
+        isOpen={!!editingDraft}
+        item={editingDraft}
+        onClose={() => setEditingDraft(null)}
+        onSaved={handleSaved}
       />
     </Modal>
   );

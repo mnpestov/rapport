@@ -100,3 +100,37 @@
   background: #d8520f;
   color: #fff;
 }
+
+.viewToggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.viewToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #9b9a9a;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.viewToggleBtn:hover {
+  background: #f3f3f3;
+}
+
+.viewToggleBtnActive {
+  background: #bec1f4;
+  color: #1d1c1c;
+}
+
+.viewToggleBtnActive:hover {
+  background: #bec1f4;
+}

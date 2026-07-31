@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { useNavigate } from "react-router-dom";
 import { Plus, X, Shield, Pen, ShieldX, Check } from "lucide-react";
 import { ModerationCard } from "./ModerationCard";
-import { ControlPanel, ControlPanelBtn } from "../../components/ControlPanel/ControlPanel";
+import { PatternGridCard } from "./PatternGridCard";
+import { ControlPanel, ControlPanelBtn, ViewToggle, ViewMode } from "../../components/ControlPanel/ControlPanel";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
@@ -27,60 +28,7 @@ import CreatableSelect from "react-select/creatable";
 import { ImageCropper } from "../../components/ImageCropper/ImageCropper";
 import toast from "react-hot-toast";
 import styles from "./Patterns.module.css";
-
-// ── Modal helpers ────────────────────────────────────────────────────────────
-
-const MAX_CATEGORIES = 2;
-const MAX_TAGS = 4;
-
-const labelStyle: React.CSSProperties = { fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" };
-const optionalStyle: React.CSSProperties = { color: "#9B9A9A", fontSize: 13 };
-const inputStyle: React.CSSProperties = {
-  width: "100%", height: 45, padding: "12px 16px",
-  background: "#F3F3F3", border: "none", borderRadius: 2,
-  fontFamily: "Mulish", fontSize: 15, color: "#1D1C1C", boxSizing: "border-box",
-};
-const selectStyles = {
-  control: (base: any) => ({ ...base, minHeight: 45, background: "#F3F3F3", border: "none", borderRadius: 2, boxShadow: "none", fontFamily: "Mulish", fontSize: 15, cursor: "pointer" }),
-  valueContainer: (base: any) => ({ ...base, padding: "0 15px" }),
-  placeholder: (base: any) => ({ ...base, color: "#9B9A9A" }),
-  menu: (base: any) => ({ ...base, fontFamily: "Mulish", fontSize: 15 }),
-};
-const btnStyle = (bg: string, color: string): React.CSSProperties => ({
-  height: 32, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "center",
-  background: bg, color, border: "none", borderRadius: 2, fontFamily: "Mulish", fontSize: 12,
-  cursor: "pointer", whiteSpace: "nowrap",
-});
-
-function ModalCheckbox({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, flexShrink: 0 }}
-      >
-        {checked ? (
-          <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 16L14.6667 18.6667L20 13.3333M6.66667 4H25.3333C26.8061 4 28 5.19391 28 6.66667V25.3333C28 26.8061 26.8061 28 25.3333 28H6.66667C5.19391 28 4 26.8061 4 25.3333V6.66667C4 5.19391 5.19391 4 6.66667 4Z" stroke="#1D1C1C" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        ) : (
-          <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25.3333 4H6.66667C5.19391 4 4 5.19391 4 6.66667V25.3333C4 26.8061 5.19391 28 6.66667 28H25.3333C26.8061 28 28 26.8061 28 25.3333V6.66667C28 5.19391 26.8061 4 25.3333 4Z" stroke="#1D1C1C" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </button>
-      <span
-        onClick={() => onChange(!checked)}
-        style={{ fontFamily: "Mulish", fontSize: 15, color: "#1D1C1C", cursor: "pointer", userSelect: "none" }}
-      >
-        {label}
-      </span>
-    </>
-  );
-}
+import { MAX_CATEGORIES, MAX_TAGS, labelStyle, optionalStyle, inputStyle, selectStyles, btnStyle, ModalCheckbox, mapNamesToIds } from "./formShared";
 
 // ── Cabinet (author) helpers ─────────────────────────────────────────────────
 
@@ -120,12 +68,6 @@ function statusOf(item: CabinetItem): PatternStatus {
   return status;
 }
 
-function mapNamesToIds(names: string[], list: DictionaryItem[]): string[] {
-  return names
-    .map((name) => list.find((x) => x.name === name)?.id)
-    .filter((id): id is string => !!id);
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface PatternsProps {
@@ -155,6 +97,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   const [status, setStatus] = useState(isAuthor ? "all" : "active");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Moderation tab (admin only)
   const [drafts, setDrafts] = useState<AdminDraft[]>([]);
@@ -338,7 +281,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
 
     return () => observer.disconnect();
-  }, [isAuthor, isFetchingMore, page, totalPages, status, debouncedSearchQuery]);
+  }, [isAuthor, isFetchingMore, page, totalPages, status, debouncedSearchQuery, viewMode]);
 
   const cabinetAll: CabinetItem[] = useMemo(() => [
     ...cabinetPatterns.map((p) => p as CabinetItem),
@@ -621,6 +564,31 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
   };
 
+  // Per-card actions for the grid view (mirrors the bulk "Удалить"/"Опубликовать"
+  // actions, but for a single item with no selection/confirm step — same
+  // immediate-action UX as the moderation tab's approve/reject buttons).
+  const handleArchiveOne = async (id: string) => {
+    try {
+      await deletePattern(id);
+      setData(prev => prev.filter(item => item.id !== id));
+      loadStatusCounts();
+      toast.success("Описание перемещено в архив");
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось переместить в архив");
+    }
+  };
+
+  const handlePublishOne = async (id: string) => {
+    try {
+      await updatePatternById(id, { isVisible: true });
+      setData(prev => prev.filter(item => item.id !== id));
+      loadStatusCounts();
+      toast.success("Описание опубликовано");
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось опубликовать");
+    }
+  };
+
   const confirmResetAllIsNew = async () => {
     setResetNewConfirmOpen(false);
     try {
@@ -823,7 +791,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               <ControlPanelBtn variant="neutral" onClick={() => setResetNewConfirmOpen(true)}>
                 Убрать статус «Новинка»
               </ControlPanelBtn>
-              {status === "archive" && (
+              {viewMode === "list" && status === "archive" && (
                 <ControlPanelBtn
                   variant="neutral"
                   disabled={selectedIds.size === 0}
@@ -832,13 +800,18 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   Опубликовать
                 </ControlPanelBtn>
               )}
-              <ControlPanelBtn
-                variant="danger"
-                disabled={selectedIds.size === 0}
-                onClick={handleDeleteSelected}
-              >
-                Удалить
-              </ControlPanelBtn>
+              {viewMode === "list" && (
+                <ControlPanelBtn
+                  variant="danger"
+                  disabled={selectedIds.size === 0}
+                  onClick={handleDeleteSelected}
+                >
+                  Удалить
+                </ControlPanelBtn>
+              )}
+              {status !== "moderation" && (
+                <ViewToggle value={viewMode} onChange={setViewMode} />
+              )}
             </>
           )
         }
@@ -865,74 +838,104 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
       {(isAuthor || status !== "moderation") && (
         <>
-          <div className={styles.tableWrapper}>
-            <PatternCardHeader
-              allSelected={
-                isAuthor
-                  ? filteredCabinetItems.length > 0 && filteredCabinetItems.every((item) => selectedIds.has(item.id))
-                  : data.length > 0 && selectedIds.size === data.length
-              }
-              onSelectAll={handleSelectAll}
-            />
+          {!isAuthor && viewMode === "grid" ? (
+            <div className={styles.moderationGrid}>
+              {isLoading && <div className={styles.centerState}>Загрузка...</div>}
 
-            {isAuthor ? (
-              <>
-                {cabinetLoading && (
-                  <div className={styles.centerState}>Загрузка...</div>
-                )}
+              {!isLoading && error && (
+                <div className={styles.centerState} style={{ color: "#ef4444" }}>{error}</div>
+              )}
 
-                {!cabinetLoading && filteredCabinetItems.length === 0 && (
-                  <div className={styles.centerState}>Описаний пока нет</div>
-                )}
+              {!isLoading && !error && data.length === 0 && (
+                <div className={styles.centerState}>Описаний пока нет</div>
+              )}
 
-                {!cabinetLoading && filteredCabinetItems.map((item) => (
-                  <PatternCard
-                    key={`${item._type}-${item.id}`}
-                    item={toRowItem(item, currentAuthorName)}
-                    status={statusOf(item)}
-                    isSelected={selectedIds.has(item.id)}
-                    onSelect={handleSelectRow}
-                    editDisabled={(item._type === "draft" && item.status === "PENDING") || creatingEditFor === item.id}
-                    onEdit={() =>
-                      item._type === "pattern"
-                        ? handleAuthorEditPattern(item.id)
-                        : handleAuthorEditDraft(item)
-                    }
-                  />
-                ))}
-              </>
-            ) : (
-              <>
-                {isLoading && (
-                  <div className={styles.centerState}>Загрузка...</div>
-                )}
+              {!isLoading && !error && data.map((item) => (
+                <PatternGridCard
+                  key={item.id}
+                  item={item}
+                  onEdit={handleOpenEdit}
+                  actionLabel={status === "archive" ? "Опубликовать" : "В архив"}
+                  onAction={status === "archive" ? handlePublishOne : handleArchiveOne}
+                />
+              ))}
 
-                {!isLoading && error && (
-                  <div className={styles.centerState} style={{ color: "#ef4444" }}>{error}</div>
-                )}
+              {page < totalPages && (
+                <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "#6b7280", gridColumn: "1 / -1" }}>
+                  Загрузка...
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={styles.tableWrapper}>
+              <PatternCardHeader
+                allSelected={
+                  isAuthor
+                    ? filteredCabinetItems.length > 0 && filteredCabinetItems.every((item) => selectedIds.has(item.id))
+                    : data.length > 0 && selectedIds.size === data.length
+                }
+                onSelectAll={handleSelectAll}
+              />
 
-                {!isLoading && !error && data.length === 0 && (
-                  <div className={styles.centerState}>Описаний пока нет</div>
-                )}
+              {isAuthor ? (
+                <>
+                  {cabinetLoading && (
+                    <div className={styles.centerState}>Загрузка...</div>
+                  )}
 
-                {!isLoading && !error && data.map((item) => (
-                  <PatternCard
-                    key={item.id}
-                    item={item}
-                    isSelected={selectedIds.has(item.id)}
-                    onSelect={handleSelectRow}
-                    onEdit={handleOpenEdit}
-                  />
-                ))}
+                  {!cabinetLoading && filteredCabinetItems.length === 0 && (
+                    <div className={styles.centerState}>Описаний пока нет</div>
+                  )}
 
-                {page < totalPages && (
-                  <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>
-                    Загрузка...
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  {!cabinetLoading && filteredCabinetItems.map((item) => (
+                    <PatternCard
+                      key={`${item._type}-${item.id}`}
+                      item={toRowItem(item, currentAuthorName)}
+                      status={statusOf(item)}
+                      isSelected={selectedIds.has(item.id)}
+                      onSelect={handleSelectRow}
+                      editDisabled={(item._type === "draft" && item.status === "PENDING") || creatingEditFor === item.id}
+                      onEdit={() =>
+                        item._type === "pattern"
+                          ? handleAuthorEditPattern(item.id)
+                          : handleAuthorEditDraft(item)
+                      }
+                    />
+                  ))}
+                </>
+              ) : (
+                <>
+                  {isLoading && (
+                    <div className={styles.centerState}>Загрузка...</div>
+                  )}
+
+                  {!isLoading && error && (
+                    <div className={styles.centerState} style={{ color: "#ef4444" }}>{error}</div>
+                  )}
+
+                  {!isLoading && !error && data.length === 0 && (
+                    <div className={styles.centerState}>Описаний пока нет</div>
+                  )}
+
+                  {!isLoading && !error && data.map((item) => (
+                    <PatternCard
+                      key={item.id}
+                      item={item}
+                      isSelected={selectedIds.has(item.id)}
+                      onSelect={handleSelectRow}
+                      onEdit={handleOpenEdit}
+                    />
+                  ))}
+
+                  {page < totalPages && (
+                    <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>
+                      Загрузка...
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle} maxWidth={760}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 30 }}>
