@@ -11,11 +11,27 @@ import concurrent.futures
 def get_base_url(u):
     return u[:-2] if u.endswith('-1') else u
 
+_TPRODUCT_ID_RE = re.compile(r'^(.*/tproduct/)\d+-\d+-(.+)$')
+
 def normalize_url(url):
     try:
         parsed = urllib.parse.urlparse(url.strip().lower())
         path = parsed.path.rstrip('/')
         if not path: path = '/'
+        # Tilda "tproduct" URLs are shaped "<recid>-<productid>-<slug>" — recid
+        # identifies the store section, slug is title-derived, but <productid>
+        # is an internal Tilda id that churns whenever the site owner
+        # re-creates/duplicates a product in their Store admin (confirmed on
+        # lavkabulavka.com: same recid + slug, brand-new productid every
+        # republish). Without stripping it, every republish normalizes to a
+        # never-seen-before URL and dedup wrongly treats the exact same
+        # product as a new "novelty". Sites whose tproduct URLs have no slug
+        # at all (bysergeeva.ru, loonymax.tilda.ws: "<recid>-<productid>"
+        # with nothing after) don't match this pattern and are untouched —
+        # there's no stable identifier to fall back to for those.
+        m = _TPRODUCT_ID_RE.match(path)
+        if m:
+            path = m.group(1) + m.group(2)
         result = f"{parsed.netloc}{path}"
         # Hash-routed SPA sites (e.g. bysergeeva.ru: "/#!/tproduct/<lid>") put the
         # only distinguishing info in the fragment — urlparse splits it off from
@@ -96,6 +112,29 @@ def parse_yarn(text):
         results.append(m_per_100)
     return results
 
+def _in_parens(text, pos):
+    # True if `pos` sits inside an unclosed "(...)" span — a comma there is
+    # listing multiple qualifiers for the SAME value ("Плотность (гладь,
+    # узор): 28 п...", found on kitirrr.ru), not separating two different
+    # clauses, so it must not be treated as a clause boundary.
+    before = text[max(0, pos - 80):pos]
+    after = text[pos:pos + 80]
+    return (before.count('(') - before.count(')')) > 0 and (after.count(')') - after.count('(')) > 0
+
+def _nearest_clause_boundary(text, region_start, region_end, from_right):
+    # Nearest ,;. in text[region_start:region_end] that ISN'T inside parens
+    # — from_right=True searches from the end backward (closest to
+    # region_end, i.e. closest to a match that follows this region),
+    # from_right=False searches from the start forward (closest to
+    # region_start, i.e. closest to a match that precedes this region).
+    positions = [i for i in range(region_start, region_end) if text[i] in ',;.']
+    if from_right:
+        positions.reverse()
+    for p in positions:
+        if not _in_parens(text, p):
+            return p
+    return -1
+
 def parse_density(text):
     # \b after the bare abbreviations (п, ст, р) — without it, "п" alone matches
     # the first letter of ANY п-starting word (плотности, пряжа...), e.g. "На
@@ -119,8 +158,26 @@ def parse_density(text):
             
         start = max(0, m.start() - 60)
         end = min(len(text), m.end() + 30)
+
+        # Clip the ignore/allow-word search to the CURRENT clause — stop at
+        # the nearest sentence/clause boundary (, ; .) in each direction,
+        # skipping any that sit inside parentheses (see _in_parens), and
+        # never a colon (which connects a qualifier label to ITS OWN value,
+        # e.g. "в узоре: 42 п." — a colon there must stay visible). Without
+        # this, a page stating two densities back-to-back ("Плотность в
+        # узоре: 42 п. ..., в лицевой глади: 31 п. ...") leaks the SECOND
+        # clause's "в лицевой глади" into the FIRST (узор) match's forward
+        # window, wrongly un-excluding it (found on alenabarteneva.ru).
+        backward_boundary = _nearest_clause_boundary(text, start, m.start(), from_right=True)
+        if backward_boundary != -1:
+            start = backward_boundary + 1
+
+        forward_boundary = _nearest_clause_boundary(text, m.end(), end, from_right=False)
+        if forward_boundary != -1:
+            end = forward_boundary
+
         context = text[start:end].lower()
-        
+
         ignore_roots = ['узор', 'резин', 'ажур', 'платоч', 'аран', 'кос', 'рельеф']
         has_ignore = any(r in context for r in ignore_roots)
         has_allow = 'лицев' in context or 'глад' in context
