@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
+import { buildPatternWhere } from "../utils/patternFilters";
 
 export const getPatterns = async (req: Request, res: Response) => {
   try {
     const { search, isFree, isNew, limit, offset } = req.query;
 
-    const where: any = {
-      isVisible: true,
-    };
+    const where: any = buildPatternWhere(req.query);
 
     if (search && typeof search === 'string') {
       where.OR = [
@@ -25,58 +24,6 @@ export const getPatterns = async (req: Request, res: Response) => {
 
     if (isNew === 'true') {
       where.isNew = true;
-    }
-
-    const parseArrayParam = (param: any): string[] => {
-      if (!param) return [];
-      if (Array.isArray(param)) return param as string[];
-      if (typeof param === 'string') return param.split(',');
-      return [];
-    };
-
-    const categoriesParam = parseArrayParam(req.query.categories);
-    const tagsParam = parseArrayParam(req.query.tags);
-    const instrumentsParam = parseArrayParam(req.query.instruments);
-    const authorsParam = parseArrayParam(req.query.authors);
-    const yarnRangesParam = parseArrayParam(req.query.yarnRanges);
-    const densityParam = parseArrayParam(req.query.density);
-
-    if (categoriesParam.length > 0) {
-      where.categories = { some: { id: { in: categoriesParam } } };
-    }
-
-    if (tagsParam.length > 0) {
-      where.tags = { some: { id: { in: tagsParam } } };
-    }
-
-    if (instrumentsParam.length > 0) {
-      where.instruments = { some: { id: { in: instrumentsParam } } };
-    }
-
-    if (authorsParam.length > 0) {
-      where.authorId = { in: authorsParam };
-    }
-
-    if (yarnRangesParam.length > 0) {
-      where.yarnRanges = { some: { id: { in: yarnRangesParam } } };
-    }
-
-    if (densityParam.length > 0) {
-      // Density has no id-based lookup table (unlike authors/yarnRanges), so
-      // each selected option is an exact "stitchesxrows" pair reconstructed
-      // here into an OR of exact-match conditions. Wrapped in where.AND
-      // (rather than reusing where.OR) so it composes correctly alongside
-      // the search OR-clause above instead of overwriting it.
-      const densityOr = densityParam
-        .map(key => {
-          const [stitches, rows] = key.split('x').map(Number);
-          return { densityStitches: stitches, densityRows: rows };
-        })
-        .filter(pair => !Number.isNaN(pair.densityStitches) && !Number.isNaN(pair.densityRows));
-
-      if (densityOr.length > 0) {
-        where.AND = [...(where.AND || []), { OR: densityOr }];
-      }
     }
 
     const take = limit ? parseInt(limit as string, 10) : 10;

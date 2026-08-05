@@ -124,8 +124,40 @@ export const fetchPatternById = async (id: string): Promise<Pattern> => {
   };
 };
 
-export const fetchFilters = async (): Promise<FiltersResponse> => {
-  const response = await fetchWithTimeout(`${API_URL}/filters`, { headers: getAuthHeaders() }, 10000);
+export interface FetchFiltersOptions {
+  categories?: string[];
+  tags?: string[];
+  instruments?: string[];
+  authors?: string[];
+  yarnRanges?: string[];
+  density?: string[];
+  signal?: AbortSignal;
+}
+
+export const fetchFilters = async (options: FetchFiltersOptions = {}): Promise<FiltersResponse> => {
+  const params = new URLSearchParams();
+
+  if (options.categories && options.categories.length > 0) {
+    options.categories.forEach(c => params.append("categories", c));
+  }
+  if (options.tags && options.tags.length > 0) {
+    options.tags.forEach(t => params.append("tags", t));
+  }
+  if (options.instruments && options.instruments.length > 0) {
+    options.instruments.forEach(i => params.append("instruments", i));
+  }
+  if (options.authors && options.authors.length > 0) {
+    options.authors.forEach(a => params.append("authors", a));
+  }
+  if (options.yarnRanges && options.yarnRanges.length > 0) {
+    options.yarnRanges.forEach(y => params.append("yarnRanges", y));
+  }
+  if (options.density && options.density.length > 0) {
+    options.density.forEach(d => params.append("density", d));
+  }
+
+  const queryString = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetchWithTimeout(`${API_URL}/filters${queryString}`, { signal: options.signal, headers: getAuthHeaders() }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch filters: ${response.status}`);
   }

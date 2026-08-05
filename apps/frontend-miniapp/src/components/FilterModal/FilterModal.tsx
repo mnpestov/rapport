@@ -31,6 +31,12 @@ interface FilterModalProps {
 
 export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading }) => {
   const [selected, setSelected] = useState<SelectedFilters>(initialFilters);
+  // Live, narrowed option lists — recomputed server-side (see the effect
+  // below) as `selected` changes, so e.g. picking a category prunes density
+  // options down to what actually occurs on patterns in that category.
+  // `filtersData` (the unfiltered universe, fetched once by Catalog) is used
+  // as the seed/fallback and as the name lookup for "stale" options below.
+  const [facetData, setFacetData] = useState<FiltersResponse | null>(filtersData);
   const [expandedSections, setExpandedSections] = useState<Array<keyof FiltersResponse>>([]);
   const [filterSearches, setFilterSearches] = useState<Record<keyof FiltersResponse, string>>({
     categories: '',
@@ -49,6 +55,39 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
       setSelected(initialFilters);
     }
   }, [isOpen, initialFilters]);
+
+  // Debounced faceted refetch: whenever the draft selection changes while the
+  // modal is open, ask the backend for option lists narrowed to everything
+  // *except* each section's own picks (self-exclusion happens server-side).
+  // Skipped (cheap, no network) when nothing is selected — that's exactly
+  // the unfiltered `filtersData` Catalog already fetched once.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const isEmpty = selected.categories.length === 0 && selected.tags.length === 0 &&
+      selected.instruments.length === 0 && selected.authors.length === 0 &&
+      selected.yarnRanges.length === 0 && selected.density.length === 0;
+
+    if (isEmpty) {
+      setFacetData(filtersData);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchFilters({ ...selected, signal: controller.signal })
+        .then(setFacetData)
+        .catch(err => {
+          if (err instanceof Error && err.name === 'AbortError') return;
+          console.error(err);
+        });
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [selected, isOpen, filtersData]);
 
   if (!isOpen) return null;
 
@@ -75,8 +114,28 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
 
   const renderSection = (title: string, sectionKey: keyof FiltersResponse) => {
     const isExpanded = expandedSections.includes(sectionKey);
-    const hasData = filtersData && filtersData[sectionKey];
-    let options = hasData ? [...filtersData[sectionKey]] : [];
+    // `facetData` is the live, narrowed list (falls back to the unfiltered
+    // `filtersData` until the first facet response arrives). An already-
+    // checked value that fell out of the narrowed list is merged back in
+    // (looked up by id in the unfiltered universe) and flagged as "stale" —
+    // it stays visible/checked so the user can see and deselect it, instead
+    // of silently vanishing or silently being unchecked.
+    const activeData = facetData || filtersData;
+    const hasData = activeData && activeData[sectionKey];
+    let options = hasData ? [...activeData[sectionKey]] : [];
+
+    const staleIds = new Set<string>();
+    const liveIds = new Set(options.map(o => o.id));
+    const universalOptions = filtersData?.[sectionKey] || [];
+    for (const id of selected[sectionKey]) {
+      if (!liveIds.has(id)) {
+        const found = universalOptions.find(o => o.id === id);
+        if (found) {
+          options.push(found);
+          staleIds.add(id);
+        }
+      }
+    }
 
     // Alphabetical sort — except yarnRanges (fixed bucket order via backend
     // sortOrder) and density (backend already returns it numerically sorted
@@ -176,10 +235,11 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
             {!loading && options.length === 0 && <p className="filter-empty">Ничего не найдено</p>}
             {!loading && options.map((opt: FilterOption) => {
               const isChecked = selected[sectionKey].includes(opt.id);
+              const isStale = staleIds.has(opt.id);
               return (
                 <div
                   key={opt.id}
-                  className="filter-checkbox-label"
+                  className={`filter-checkbox-label${isStale ? ' filter-checkbox-label--stale' : ''}`}
                   onClick={() => handleToggle(sectionKey, opt.id)}
                 >
                   <div className="filter-checkbox-custom">

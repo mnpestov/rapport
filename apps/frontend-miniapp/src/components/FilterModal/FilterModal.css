@@ -253,3 +253,10 @@
   align-items: center;
   justify-content: center;
 }
+
+/* A checked option that fell out of the live-narrowed list (e.g. a density
+   value that doesn't occur in the category picked afterwards) — kept visible
+   and checked so the user can see and deselect it, just visually muted. */
+.filter-checkbox-label--stale {
+  opacity: 0.45;
+}
