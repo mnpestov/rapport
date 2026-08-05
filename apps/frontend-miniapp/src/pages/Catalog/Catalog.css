@@ -129,6 +129,11 @@
   gap: 12px;
   height: 46px;
   margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  z-index: 10;
 }
 
 /* Figma: lucide/sliders-horizontal — 32x32, no background */
