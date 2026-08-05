@@ -25,7 +25,7 @@ import {
   archiveCabinetPattern,
 } from "../../api/cabinet";
 import CreatableSelect from "react-select/creatable";
-import { ImageCropper } from "../../components/ImageCropper/ImageCropper";
+import { ImageGalleryManager } from "../../components/ImageGalleryManager/ImageGalleryManager";
 import toast from "react-hot-toast";
 import styles from "./Patterns.module.css";
 import { MAX_CATEGORIES, MAX_TAGS, labelStyle, optionalStyle, inputStyle, selectStyles, btnStyle, ModalCheckbox, mapNamesToIds } from "./formShared";
@@ -128,7 +128,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     title: "",
     authorName: "",
     url: "",
-    imageUrl: "",
+    images: [] as string[],
     isFree: false,
     isNew: false,
     categories: [] as string[],
@@ -349,7 +349,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       title: "",
       authorName: isAuthor ? currentAuthorName : "",
       url: "",
-      imageUrl: "",
+      images: [],
       isFree: false,
       isNew: false,
       categories: [],
@@ -369,7 +369,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         title: res.title || "",
         authorName: res.author?.name || "",
         url: res.url || "",
-        imageUrl: res.imageUrl || "",
+        images: res.images || [],
         isFree: res.isFree || false,
         isNew: res.isNew || false,
         categories: (res.categories || []).map(c => c?.name || ""),
@@ -380,7 +380,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         densityRows: res.densityRows != null ? String(res.densityRows) : "",
       };
       setFormData(loaded);
-      originalFormDataRef.current = { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments] };
+      originalFormDataRef.current = { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] };
       setEditingId(id);
       setIsModalOpen(true);
     } catch (err: any) {
@@ -393,7 +393,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       title: draft.title,
       authorName: currentAuthorName,
       url: draft.url,
-      imageUrl: draft.imageUrl,
+      images: draft.images,
       isFree: draft.isFree,
       isNew: draft.isNew,
       categories: draft.categories.map((c) => c.name),
@@ -422,7 +422,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   };
 
   const handleAuthorSubmit = async (submitToModeration: boolean) => {
-    if (!formData.title || !formData.url || !formData.imageUrl) {
+    if (!formData.title || !formData.url || formData.images.length === 0) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -437,7 +437,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       const payload = {
         title: formData.title.trim(),
         url: formData.url.trim(),
-        imageUrl: formData.imageUrl.trim(),
+        images: formData.images,
         isFree: formData.isFree,
         isNew: formData.isNew,
         categories: mapNamesToIds(formData.categories, categoriesList),
@@ -483,7 +483,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       return;
     }
 
-    if (!formData.title || !formData.url || !formData.imageUrl || !formData.authorName) {
+    if (!formData.title || !formData.url || formData.images.length === 0 || !formData.authorName) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -502,7 +502,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         const payload: Record<string, any> = {};
         if (!orig || formData.title !== orig.title) payload.title = formData.title;
         if (!orig || formData.url !== orig.url) payload.url = formData.url;
-        if (!orig || formData.imageUrl !== orig.imageUrl) payload.imageUrl = formData.imageUrl;
+        if (!orig || JSON.stringify(formData.images) !== JSON.stringify(orig.images)) payload.images = formData.images;
         if (!orig || formData.authorName !== orig.authorName) payload.authorName = formData.authorName;
         if (!orig || formData.isFree !== orig.isFree) payload.isFree = formData.isFree;
         if (!orig || formData.isNew !== orig.isNew) payload.isNew = formData.isNew;
@@ -1115,22 +1115,13 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   </div>
                 </div>
 
-                {/* Загрузить фото */}
+                {/* Фото (до 5, первое — обложка) */}
                 {!formReadonly && (
-                  <div>
-                    <ImageCropper
-                      onImageUploaded={(url) => setFormData({ ...formData, imageUrl: url })}
-                      currentUrl={formData.imageUrl}
-                      customButtonText={formData.imageUrl ? (editingId ? "Изменить фото" : "Фото загружено") : "Загрузить  фото"}
-                      customButtonProps={{
-                        style: {
-                          width: "100%", height: 45, padding: "8px 16px",
-                          background: "#a9ae36", borderRadius: 2, color: "#FFF",
-                          fontFamily: "Mulish", fontSize: 15, border: "none",
-                          cursor: "pointer", display: "flex", alignItems: "center",
-                          boxSizing: "border-box",
-                        }
-                      }}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <label style={labelStyle}>Фото <span style={{ color: "#ef4444" }}>*</span></label>
+                    <ImageGalleryManager
+                      images={formData.images}
+                      onChange={(images) => setFormData({ ...formData, images })}
                     />
                   </div>
                 )}

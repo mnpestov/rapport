@@ -7,6 +7,7 @@ import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import { spawn } from "child_process";
 import { syncCategories, syncTags, syncInstruments } from "./adminController";
+import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, MAX_PATTERN_IMAGES } from "../utils/patternImages";
 
 let isSyncing = false;
 // Author.id currently being synced, or null when a full (all-authors) sync
@@ -50,14 +51,36 @@ export const getReportById = async (req: Request, res: Response) => {
 // fresh from the DB row, so edits saved here take effect on the next approve).
 export const updateSyncItem = async (req: Request, res: Response) => {
   const { itemId } = req.params;
-  const { title, url, imageUrl, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds } = req.body;
+  const { title, url, images, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds } = req.body;
 
   const existing = await prisma.authorSyncItem.findUnique({ where: { id: itemId } });
   if (!existing) {
     return res.status(404).json({ error: "Item not found" });
   }
 
-  const prevParsedData = (existing.parsedData as any) || {};
+  const { imageUrl: _legacyImageUrl, ...prevParsedData } = (existing.parsedData as any) || {};
+  // Legacy fallback: items scraped before this field existed only have
+  // imageUrl (see pattern_images_plan.md риски №1/2).
+  const prevImages: string[] = Array.isArray(prevParsedData.images) && prevParsedData.images.length > 0
+    ? prevParsedData.images
+    : (_legacyImageUrl ? [_legacyImageUrl] : []);
+
+  let newImages = prevImages;
+  if (images !== undefined) {
+    const validation = validateImages(images);
+    if (!validation.ok) {
+      return res.status(400).json({ error: validation.error });
+    }
+    // Only newly-added entries must be our own uploads — unedited images
+    // still pointing at the author's own site (never downloaded yet) are
+    // legitimate and must pass through untouched.
+    const { added } = diffImages(prevImages, validation.images);
+    const originCheck = validateNewImageOrigins(added);
+    if (!originCheck.ok) {
+      return res.status(400).json({ error: originCheck.error });
+    }
+    newImages = validation.images;
+  }
 
   const [catIds, tagIds, instIds] = await Promise.all([
     syncCategories(Array.isArray(categories) ? categories : []),
@@ -74,7 +97,7 @@ export const updateSyncItem = async (req: Request, res: Response) => {
 
   const parsedData = {
     ...prevParsedData,
-    imageUrl: imageUrl !== undefined ? imageUrl : prevParsedData.imageUrl,
+    images: newImages,
     isFree: !!isFree,
     isNew: !!isNew,
     densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
@@ -94,13 +117,28 @@ export const updateSyncItem = async (req: Request, res: Response) => {
   res.json({ id: updated.id, title: updated.title, url: updated.url, parsedData: updated.parsedData });
 };
 
+async function downloadImage(url: string, filepath: string): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+  const contentType = response.headers.get('content-type');
+  if (!contentType?.startsWith('image/')) {
+    throw new Error("Invalid format");
+  }
+
+  if (!response.body) throw new Error("No response body");
+  const writer = fs.createWriteStream(filepath);
+  // @ts-ignore (Node 18+ types for Readable.fromWeb)
+  await pipeline(Readable.fromWeb(response.body), writer);
+}
+
 export const processSyncBatch = async (req: Request, res: Response) => {
   const { reportId } = req.params;
-  const { items } = req.body; 
+  const { items } = req.body;
   let successCount = 0;
-  
+
   for (const payload of items) {
-    let filepath = "";
+    const writtenFilepaths: string[] = [];
     try {
       // 1. Защита от SSRF (доверенные данные из БД)
       const dbItem = await prisma.authorSyncItem.findUnique({
@@ -110,33 +148,41 @@ export const processSyncBatch = async (req: Request, res: Response) => {
       if (!dbItem || dbItem.reportId !== reportId) throw new Error("Invalid item");
 
       const parsedData = dbItem.parsedData as any;
-      const imageUrl = parsedData?.imageUrl;
-      if (!imageUrl) throw new Error("No image URL");
+      // Legacy fallback: items scraped before the images[] field existed
+      // (and everything from the generic crawler, which still only ever
+      // produces one imageUrl) only have imageUrl — see
+      // pattern_images_plan.md риски №1/2.
+      const sourceUrls: string[] = Array.isArray(parsedData?.images) && parsedData.images.length > 0
+        ? parsedData.images
+        : (parsedData?.imageUrl ? [parsedData.imageUrl] : []);
+      if (sourceUrls.length === 0) throw new Error("No image URL");
+      // Defensive clamp, not a hard rejection — this is scraped content the
+      // admin already reviewed/could have trimmed via "Редактировать" before
+      // approving, not a fresh request to validate (риск №7).
+      const clampedUrls = sourceUrls.slice(0, MAX_PATTERN_IMAGES);
 
-      // 2. Дедупликация слага ДО сохранения файла
+      // 2. Дедупликация слага ДО сохранения файлов
       let finalPatternSlug = generateSlug(dbItem.title);
       while (await prisma.pattern.findUnique({ where: { slug: finalPatternSlug } })) {
         finalPatternSlug = `${generateSlug(dbItem.title)}-${Date.now()}`;
       }
 
       const authorSlug = generateSlug(dbItem.report.author.name);
-      const ext = path.extname(new URL(imageUrl).pathname) || ".jpg";
-      const filename = `${authorSlug}-${finalPatternSlug}${ext}`;
-      filepath = path.join(__dirname, "../../public/images/patterns", filename);
-      
-      // 3. Сетевой I/O через нативный fetch
-      const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType?.startsWith('image/')) {
-        throw new Error("Invalid format");
+
+      // 3. Сетевой I/O через нативный fetch — все файлы галереи
+      const images: string[] = [];
+      for (let i = 0; i < clampedUrls.length; i++) {
+        const sourceUrl = clampedUrls[i];
+        const ext = path.extname(new URL(sourceUrl).pathname) || ".jpg";
+        const filename = i === 0
+          ? `${authorSlug}-${finalPatternSlug}${ext}`
+          : `${authorSlug}-${finalPatternSlug}-${i + 1}${ext}`;
+        const filepath = path.join(__dirname, "../../public/images/patterns", filename);
+
+        await downloadImage(sourceUrl, filepath);
+        writtenFilepaths.push(filepath);
+        images.push(`/images/patterns/${filename}`);
       }
-      
-      if (!response.body) throw new Error("No response body");
-      const writer = fs.createWriteStream(filepath);
-      // @ts-ignore (Node 18+ types for Readable.fromWeb)
-      await pipeline(Readable.fromWeb(response.body), writer);
 
       // 4. Короткая БД-транзакция
       await prisma.$transaction(async (tx) => {
@@ -148,7 +194,8 @@ export const processSyncBatch = async (req: Request, res: Response) => {
             title: dbItem.title,
             slug: finalPatternSlug,
             url: dbItem.url,
-            imageUrl: `/images/patterns/${filename}`,
+            images,
+            imageUrl: deriveImageUrl(images),
             authorId: dbItem.report.authorId,
             isVisible: false, // В АРХИВ
             isFree: parsedData.isFree ?? false,
@@ -170,7 +217,9 @@ export const processSyncBatch = async (req: Request, res: Response) => {
       successCount++;
     } catch (e: any) {
       console.error(`Failed to process item ${payload.itemId}:`, e);
-      if (filepath && fs.existsSync(filepath)) fs.unlinkSync(filepath);
+      for (const filepath of writtenFilepaths) {
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+      }
       return res.status(400).json({ error: e.message || "Ошибка обработки" });
     }
   }

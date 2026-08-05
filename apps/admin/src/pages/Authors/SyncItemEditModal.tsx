@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import CreatableSelect from "react-select/creatable";
 import toast from "react-hot-toast";
 import { Modal } from "../../components/Modal/Modal";
-import { ImageCropper } from "../../components/ImageCropper/ImageCropper";
+import { ImageGalleryManager } from "../../components/ImageGalleryManager/ImageGalleryManager";
 import { getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange } from "../../api/patterns";
 import { SyncReportItem, updateSyncItem, SyncItemUpdateDTO } from "../../api/authors";
 import { AdminDraft } from "../../api/admin-drafts";
@@ -18,7 +18,7 @@ interface SyncItemEditModalProps {
 interface FormState {
   title: string;
   url: string;
-  imageUrl: string;
+  images: string[];
   isFree: boolean;
   isNew: boolean;
   categories: string[];
@@ -33,7 +33,7 @@ function toFormState(item: AdminDraft): FormState {
   return {
     title: item.title || "",
     url: item.url || "",
-    imageUrl: item.imageUrl || "",
+    images: item.images,
     isFree: item.isFree ?? false,
     isNew: item.isNew ?? true,
     categories: item.categories.map((c) => c.name),
@@ -75,7 +75,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.url || !formData.imageUrl) {
+    if (!formData.title || !formData.url || formData.images.length === 0) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -85,7 +85,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
       const payload: SyncItemUpdateDTO = {
         title: formData.title.trim(),
         url: formData.url.trim(),
-        imageUrl: formData.imageUrl.trim(),
+        images: formData.images,
         isFree: formData.isFree,
         isNew: formData.isNew,
         categories: formData.categories,
@@ -243,21 +243,12 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
             </div>
           </div>
 
-          {/* Загрузить фото */}
-          <div>
-            <ImageCropper
-              onImageUploaded={(url) => setFormData({ ...formData, imageUrl: url })}
-              currentUrl={formData.imageUrl}
-              customButtonText={formData.imageUrl ? "Изменить фото" : "Загрузить  фото"}
-              customButtonProps={{
-                style: {
-                  width: "100%", height: 45, padding: "8px 16px",
-                  background: "#a9ae36", borderRadius: 2, color: "#FFF",
-                  fontFamily: "Mulish", fontSize: 15, border: "none",
-                  cursor: "pointer", display: "flex", alignItems: "center",
-                  boxSizing: "border-box",
-                }
-              }}
+          {/* Фото (до 5, первое — обложка) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Фото <span style={{ color: "#ef4444" }}>*</span></label>
+            <ImageGalleryManager
+              images={formData.images}
+              onChange={(images) => setFormData({ ...formData, images })}
             />
           </div>
 

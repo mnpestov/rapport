@@ -46,16 +46,21 @@ export const Catalog: React.FC = () => {
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
 
   const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>(() => {
-    const saved = sessionStorage.getItem('catalog_advanced_filters');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return {
+    const empty: SelectedFilters = {
       categories: [],
       tags: [],
       instruments: [],
-      authors: []
+      authors: [],
+      yarnRanges: [],
+      density: []
     };
+    const saved = sessionStorage.getItem('catalog_advanced_filters');
+    if (saved) {
+      // Merge over `empty` so a session saved before the `density` filter
+      // existed still gets a valid density: [] instead of undefined.
+      try { return { ...empty, ...JSON.parse(saved) }; } catch (e) { }
+    }
+    return empty;
   });
 
   const [offset, setOffset] = useState(() => {
@@ -147,6 +152,8 @@ export const Catalog: React.FC = () => {
           tags: advancedFilters.tags.length > 0 ? advancedFilters.tags : undefined,
           instruments: advancedFilters.instruments.length > 0 ? advancedFilters.instruments : undefined,
           authors: advancedFilters.authors.length > 0 ? advancedFilters.authors : undefined,
+          yarnRanges: advancedFilters.yarnRanges.length > 0 ? advancedFilters.yarnRanges : undefined,
+          density: advancedFilters.density.length > 0 ? advancedFilters.density : undefined,
           signal: controller.signal,
         };
 
@@ -233,11 +240,13 @@ export const Catalog: React.FC = () => {
   const totalFiltersCount = advancedFilters.categories.length +
     advancedFilters.tags.length +
     advancedFilters.instruments.length +
-    advancedFilters.authors.length;
+    advancedFilters.authors.length +
+    advancedFilters.yarnRanges.length +
+    advancedFilters.density.length;
 
   const clearFilters = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [] });
+    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [] });
   };
 
   return (

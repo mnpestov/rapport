@@ -16,6 +16,8 @@ export interface SelectedFilters {
   tags: string[];
   instruments: string[];
   authors: string[];
+  yarnRanges: string[];
+  density: string[];
 }
 
 interface FilterModalProps {
@@ -34,8 +36,13 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     categories: '',
     tags: '',
     instruments: '',
-    authors: ''
+    authors: '',
+    yarnRanges: '',
+    density: '' // unused — density has its own two-input search below, kept only to satisfy the Record type
   });
+  // Density's search is two independent numeric fields ("п." / "р."), unlike
+  // every other section's single free-text box — needs its own state shape.
+  const [densitySearch, setDensitySearch] = useState({ stitches: '', rows: '' });
 
   useEffect(() => {
     if (isOpen) {
@@ -57,7 +64,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   };
 
   const handleReset = () => {
-    setSelected({ categories: [], tags: [], instruments: [], authors: [] });
+    setSelected({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [] });
+    setDensitySearch({ stitches: '', rows: '' });
   };
 
   const handleApply = () => {
@@ -69,21 +77,41 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     const isExpanded = expandedSections.includes(sectionKey);
     const hasData = filtersData && filtersData[sectionKey];
     let options = hasData ? [...filtersData[sectionKey]] : [];
-    
-    // Alphabetical sort
-    options.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
-    // Apply search
-    const q = filterSearches[sectionKey]?.trim().toLowerCase();
-    if (q) {
-      options = options.filter(o => o.name.toLowerCase().includes(q));
+    // Alphabetical sort — except yarnRanges (fixed bucket order via backend
+    // sortOrder) and density (backend already returns it numerically sorted
+    // by stitches then rows; alphabetical would scatter "20 п. × 32 р." vs
+    // "9 п. × 12 р." lexicographically instead of numerically).
+    if (sectionKey !== 'yarnRanges' && sectionKey !== 'density') {
+      options.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    }
+
+    // Apply search — density uses two independent numeric prefix matches
+    // (stitches, rows) against its "stitchesxrows" id instead of the shared
+    // single free-text search everyone else uses.
+    if (sectionKey === 'density') {
+      const stitchesQuery = densitySearch.stitches.trim();
+      const rowsQuery = densitySearch.rows.trim();
+      if (stitchesQuery || rowsQuery) {
+        options = options.filter(o => {
+          const [idStitches, idRows] = o.id.split('x');
+          const matchesStitches = !stitchesQuery || idStitches.startsWith(stitchesQuery);
+          const matchesRows = !rowsQuery || idRows.startsWith(rowsQuery);
+          return matchesStitches && matchesRows;
+        });
+      }
+    } else {
+      const q = filterSearches[sectionKey]?.trim().toLowerCase();
+      if (q) {
+        options = options.filter(o => o.name.toLowerCase().includes(q));
+      }
     }
 
     return (
       <div className="filter-section">
-        <button 
-          className="filter-section-header" 
-          onClick={() => setExpandedSections(prev => 
+        <button
+          className="filter-section-header"
+          onClick={() => setExpandedSections(prev =>
             prev.includes(sectionKey) ? prev.filter(k => k !== sectionKey) : [...prev, sectionKey]
           )}
         >
@@ -92,7 +120,38 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
         </button>
         {isExpanded && (
           <div className="filter-section-body">
-            {sectionKey !== 'instruments' && (
+            {sectionKey === 'density' ? (
+              <div className="filter-density-search-row">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  // placeholder="20"
+                  className="filter-search-input filter-density-input"
+                  value={densitySearch.stitches}
+                  onChange={(e) => setDensitySearch(prev => ({ ...prev, stitches: e.target.value }))}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="filter-density-search-label">п. ×</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  // placeholder="32"
+                  className="filter-search-input filter-density-input"
+                  value={densitySearch.rows}
+                  onChange={(e) => setDensitySearch(prev => ({ ...prev, rows: e.target.value }))}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="filter-density-search-label">р.</span>
+                {(densitySearch.stitches || densitySearch.rows) && (
+                  <button
+                    className="filter-search-clear"
+                    onClick={(e) => { e.stopPropagation(); setDensitySearch({ stitches: '', rows: '' }); }}
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+            ) : sectionKey !== 'instruments' && sectionKey !== 'yarnRanges' && (
               <div className="filter-search-input-wrapper filter-search-inline">
                 <Search size={20} className="filter-search-icon" />
                 <input
@@ -104,8 +163,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
                   onClick={(e) => e.stopPropagation()}
                 />
                 {filterSearches[sectionKey] && (
-                  <button 
-                    className="filter-search-clear" 
+                  <button
+                    className="filter-search-clear"
                     onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
                   >
                     <X size={20} />
@@ -118,8 +177,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
             {!loading && options.map((opt: FilterOption) => {
               const isChecked = selected[sectionKey].includes(opt.id);
               return (
-                <div 
-                  key={opt.id} 
+                <div
+                  key={opt.id}
                   className="filter-checkbox-label"
                   onClick={() => handleToggle(sectionKey, opt.id)}
                 >
@@ -144,7 +203,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
             <X size={24} />
           </button>
           <h2 className="filter-modal-title">Фильтр</h2>
-          <div style={{width: 24}}></div> {/* Spacer for centering */}
+          <div style={{ width: 24 }}></div> {/* Spacer for centering */}
         </div>
 
         <div className="filter-modal-body">
@@ -155,14 +214,18 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           {renderSection("Инструмент", "instruments")}
           <div className="filter-divider" />
           {renderSection("Автор", "authors")}
+          <div className="filter-divider" />
+          {renderSection("Толщина пряжи (м/100г)", "yarnRanges")}
+          <div className="filter-divider" />
+          {renderSection("Плотность", "density")}
         </div>
 
         <div className="filter-modal-footer">
           <button className="filter-reset-btn" onClick={handleReset}>Сбросить все</button>
-          <button 
-            className="filter-apply-btn" 
+          <button
+            className="filter-apply-btn"
             onClick={handleApply}
-            disabled={selected.categories.length === 0 && selected.tags.length === 0 && selected.instruments.length === 0 && selected.authors.length === 0}
+            disabled={selected.categories.length === 0 && selected.tags.length === 0 && selected.instruments.length === 0 && selected.authors.length === 0 && selected.yarnRanges.length === 0 && selected.density.length === 0}
           >
             Применить
           </button>

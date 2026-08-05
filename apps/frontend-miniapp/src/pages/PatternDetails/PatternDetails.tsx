@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { fetchPatternById, Pattern } from '../../api/patternsApi';
@@ -6,6 +6,57 @@ import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi'
 import { useFavorites } from '../../context/FavoritesContext';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
+
+// Density comes from the backend as a Decimal-serialized string (e.g. "20.00")
+// — strip the trailing zeros for display ("20.00" -> "20", "25.50" -> "25.5").
+const formatDecimal = (value: string): string => {
+  const num = parseFloat(value);
+  return Number.isNaN(num) ? value : num.toString();
+};
+
+// Swipeable gallery — plain CSS scroll-snap, no carousel library. Single
+// image falls back to a static <img> (no track/dots overhead).
+const ImageCarousel: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  if (images.length <= 1) {
+    return <img src={images[0]} alt={alt} className="details-image" />;
+  }
+
+  const handleScroll = () => {
+    const track = trackRef.current;
+    if (!track || track.clientWidth === 0) return;
+    setActiveIndex(Math.round(track.scrollLeft / track.clientWidth));
+  };
+
+  const scrollToIndex = (index: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollTo({ left: index * track.clientWidth, behavior: 'smooth' });
+  };
+
+  return (
+    <>
+      <div className="details-image-track" ref={trackRef} onScroll={handleScroll}>
+        {images.map((src, index) => (
+          <img key={index} src={src} alt={`${alt} ${index + 1}`} className="details-image-slide" />
+        ))}
+      </div>
+      <div className="details-image-dots">
+        {images.map((_, index) => (
+          <button
+            key={index}
+            type="button"
+            className={`details-image-dot${index === activeIndex ? ' details-image-dot--active' : ''}`}
+            onClick={() => scrollToIndex(index)}
+            aria-label={`Фото ${index + 1}`}
+          />
+        ))}
+      </div>
+    </>
+  );
+};
 
 export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -98,11 +149,7 @@ export const PatternDetails: React.FC = () => {
       <div className="details-body">
         <div className="details-image-wrapper">
           <div className="details-image-container">
-            <img
-              src={pattern.imageUrl}
-              alt={pattern.title}
-              className="details-image"
-            />
+            <ImageCarousel images={pattern.images && pattern.images.length > 0 ? pattern.images : [pattern.imageUrl]} alt={pattern.title} />
             <button
               className="favorite-button"
               onClick={() => id && toggleFavorite(id)}
@@ -141,6 +188,26 @@ export const PatternDetails: React.FC = () => {
                     <li key={index}>{tag}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {pattern.yarnRanges && pattern.yarnRanges.length > 0 && (
+              <div className="details-col">
+                <span className="details-label">Толщина пряжи <span className="details-label-unit">(м/100 г):</span></span>
+                <ul className="details-value-list">
+                  {pattern.yarnRanges.map((range, index) => (
+                    <li key={index}>{range}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {pattern.densityStitches != null && pattern.densityRows != null && (
+              <div className="details-row-spaced">
+                <span className="details-label">Плотность <span className="details-label-unit">(лицевая гладь):</span></span>
+                <span className="details-value details-value-nowrap">
+                  {formatDecimal(pattern.densityStitches)} п. × {formatDecimal(pattern.densityRows)} р.
+                </span>
               </div>
             )}
           </div>

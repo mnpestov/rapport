@@ -19,6 +19,12 @@ interface SyncModalProps {
 
 function toDraft(item: SyncReportItem, authorId: string, authorName: string): AdminDraft {
   const pd = item.parsedData || {};
+  // Legacy fallback: items scraped before images[] existed (and everything
+  // from the generic crawler, which still only ever produces one imageUrl)
+  // only have imageUrl — see pattern_images_plan.md риски №1/2.
+  const images: string[] = Array.isArray(pd.images) && pd.images.length > 0
+    ? pd.images
+    : (pd.imageUrl ? [pd.imageUrl] : []);
   return {
     id: item.id,
     patternId: null,
@@ -26,7 +32,8 @@ function toDraft(item: SyncReportItem, authorId: string, authorName: string): Ad
     authorId,
     title: item.title,
     url: item.url,
-    imageUrl: pd.imageUrl || "",
+    imageUrl: images[0] || "",
+    images,
     isNew: pd.isNew ?? true,
     isFree: pd.isFree || false,
     densityStitches: pd.densityStitches || null,

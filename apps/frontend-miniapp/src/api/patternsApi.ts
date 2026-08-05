@@ -10,6 +10,14 @@ export interface Pattern {
   instruments: string[];
   tags: string[];
   externalLink: string;
+  // Only populated by fetchPatternById — the list/by-ids endpoints don't
+  // include yarnRanges (not shown on catalog cards), hence optional here.
+  densityStitches?: string | null;
+  densityRows?: string | null;
+  yarnRanges?: string[];
+  // Gallery — only populated by fetchPatternById, same reasoning as above.
+  // Always has at least one entry (the cover, same value as imageUrl).
+  images?: string[];
 }
 
 export interface FetchPatternsOptions {
@@ -22,6 +30,8 @@ export interface FetchPatternsOptions {
   tags?: string[];
   instruments?: string[];
   authors?: string[];
+  yarnRanges?: string[];
+  density?: string[];
   signal?: AbortSignal;
 }
 
@@ -35,6 +45,8 @@ export interface FiltersResponse {
   tags: FilterOption[];
   instruments: FilterOption[];
   authors: FilterOption[];
+  yarnRanges: FilterOption[];
+  density: FilterOption[];
 }
 
 import { API_URL } from "./config";
@@ -72,6 +84,12 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   if (options?.authors && options.authors.length > 0) {
     options.authors.forEach(a => params.append("authors", a));
   }
+  if (options?.yarnRanges && options.yarnRanges.length > 0) {
+    options.yarnRanges.forEach(y => params.append("yarnRanges", y));
+  }
+  if (options?.density && options.density.length > 0) {
+    options.density.forEach(d => params.append("density", d));
+  }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
   const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, { signal: options.signal, headers: getAuthHeaders() }, 10000);
@@ -100,7 +118,9 @@ export const fetchPatternById = async (id: string): Promise<Pattern> => {
     ...pattern,
     primaryProductType: capitalize(pattern.primaryProductType),
     productTypes: pattern.productTypes?.map(capitalize) || [],
-    imageUrl: pattern.imageUrl.startsWith('/') ? `${API_URL}${pattern.imageUrl}` : pattern.imageUrl
+    imageUrl: pattern.imageUrl.startsWith('/') ? `${API_URL}${pattern.imageUrl}` : pattern.imageUrl,
+    images: (pattern.images && pattern.images.length > 0 ? pattern.images : [pattern.imageUrl])
+      .map(url => url.startsWith('/') ? `${API_URL}${url}` : url)
   };
 };
 

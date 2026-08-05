@@ -15,6 +15,7 @@ export interface CabinetDraft {
   title: string;
   url: string;
   imageUrl: string;
+  images: string[];
   isFree: boolean;
   isNew: boolean;
   densityStitches: number | string | null;
@@ -33,6 +34,7 @@ export interface CabinetPattern {
   title: string;
   url: string;
   imageUrl: string;
+  images: string[];
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
@@ -64,7 +66,7 @@ export const getCabinetItems = async (): Promise<{ drafts: CabinetDraft[]; patte
 export const createCabinetDraft = async (data: {
   title: string;
   url: string;
-  imageUrl: string;
+  images: string[];
   isFree?: boolean;
   isNew?: boolean;
   categories?: string[];
@@ -91,7 +93,7 @@ export const updateCabinetDraft = async (
   data: {
     title?: string;
     url?: string;
-    imageUrl?: string;
+    images?: string[];
     isFree?: boolean;
     isNew?: boolean;
     categories?: string[];

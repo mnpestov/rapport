@@ -4,6 +4,7 @@ import { prisma } from "../prismaClient";
 import fs from "fs";
 import path from "path";
 import { generateSlug } from "../utils/slug";
+import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, isOwnUpload } from "../utils/patternImages";
 
 // Helpers
 function normalizeUrl(urlStr: string): string {
@@ -460,6 +461,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       title: pattern.title,
       url: pattern.url,
       imageUrl: pattern.imageUrl,
+      images: pattern.images,
       isFree: pattern.isFree,
       isNew: pattern.isNew,
       isVisible: pattern.isVisible,
@@ -488,12 +490,27 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
 export const updatePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, url, imageUrl, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const existing = await prisma.pattern.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ error: "Pattern not found" });
       return;
+    }
+
+    let imagesDiff: { added: string[]; removed: string[] } | null = null;
+    if (images !== undefined) {
+      const validation = validateImages(images);
+      if (!validation.ok) {
+        res.status(400).json({ error: validation.error });
+        return;
+      }
+      imagesDiff = diffImages(existing.images, validation.images);
+      const originCheck = validateNewImageOrigins(imagesDiff.added);
+      if (!originCheck.ok) {
+        res.status(400).json({ error: originCheck.error });
+        return;
+      }
     }
 
     // Block admin edits while an author's draft is under review — the draft
@@ -518,11 +535,12 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (Array.isArray(yarnRangeIds)) data.yarnRanges = { set: yarnRangeIds.map((id: string) => ({ id })) };
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
-    if (imageUrl !== undefined && imageUrl !== existing.imageUrl) {
-      data.imageUrl = imageUrl;
-      // Old image file is deleted only after the DB update succeeds (see below).
+    if (images !== undefined) {
+      data.images = images;
+      data.imageUrl = deriveImageUrl(images);
+      // Removed files are deleted only after the DB update succeeds (see below).
     }
-    
+
     if (url !== undefined) {
       const normUrl = normalizeUrl(url);
       const dup = await prisma.pattern.findFirst({ where: { url: normUrl, id: { not: id } } });
@@ -560,11 +578,14 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
       data,
     });
 
-    // Delete old image if it was replaced
-    if (data.imageUrl && existing.imageUrl && data.imageUrl !== existing.imageUrl) {
-      if (existing.imageUrl.startsWith("/uploads/")) {
+    // Delete files removed from the gallery (only ones we host ourselves —
+    // scraper-origin /images/patterns/ files are never touched, matching
+    // pre-existing behavior for the single-imageUrl case).
+    if (imagesDiff) {
+      for (const removedUrl of imagesDiff.removed) {
+        if (!isOwnUpload(removedUrl)) continue;
         try {
-          const oldFile = path.join(__dirname, "../../", existing.imageUrl);
+          const oldFile = path.join(__dirname, "../../", removedUrl);
           if (fs.existsSync(oldFile)) {
             fs.unlinkSync(oldFile);
           }
@@ -584,10 +605,21 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 // POST /admin/patterns
 export const createPattern = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, url, imageUrl, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
-    if (!title || !url || !imageUrl || (!authorId && !authorName)) {
+    if (!title || !url || (!authorId && !authorName)) {
       res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    const imagesValidation = validateImages(images);
+    if (!imagesValidation.ok) {
+      res.status(400).json({ error: imagesValidation.error });
+      return;
+    }
+    const originCheck = validateNewImageOrigins(imagesValidation.images);
+    if (!originCheck.ok) {
+      res.status(400).json({ error: originCheck.error });
       return;
     }
 
@@ -609,7 +641,8 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
     const data: any = {
       title,
       url: normUrl,
-      imageUrl,
+      images: imagesValidation.images,
+      imageUrl: deriveImageUrl(imagesValidation.images),
       isFree: isFree ?? false,
       isNew: isNew ?? false,
       authorId: finalAuthorId,
@@ -676,9 +709,10 @@ export const deletePattern = async (req: Request, res: Response): Promise<void> 
       // Hard delete if it's already in the archive
       await prisma.pattern.delete({ where: { id } });
 
-      if (existing.imageUrl && existing.imageUrl.startsWith("/uploads/")) {
+      for (const imageUrl of existing.images) {
+        if (!isOwnUpload(imageUrl)) continue;
         try {
-          const filename = path.basename(existing.imageUrl);
+          const filename = path.basename(imageUrl);
           const fullPath = path.join(__dirname, "../../uploads/patterns", filename);
           if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
@@ -1036,7 +1070,8 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             slug,
             title: draft.title,
             url: normUrl,
-            imageUrl: draft.imageUrl,
+            images: draft.images,
+            imageUrl: deriveImageUrl(draft.images),
             isFree: draft.isFree,
             isNew: draft.isNew,
             isVisible: true,
@@ -1056,7 +1091,8 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
           data: {
             title: draft.title,
             url: normalizeUrl(draft.url),
-            imageUrl: draft.imageUrl,
+            images: draft.images,
+            imageUrl: deriveImageUrl(draft.images),
             isFree: draft.isFree,
             isNew: draft.isNew,
             densityStitches: draft.densityStitches,

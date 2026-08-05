@@ -114,7 +114,7 @@ export const clearSyncReport = async (reportId: string): Promise<{ success: bool
 export interface SyncItemUpdateDTO {
   title: string;
   url: string;
-  imageUrl: string;
+  images: string[];
   isFree: boolean;
   isNew: boolean;
   categories: string[];

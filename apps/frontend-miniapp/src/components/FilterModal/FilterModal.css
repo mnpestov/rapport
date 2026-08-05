@@ -203,6 +203,46 @@
   padding: 0;
 }
 
+/* Density's "{input} п. × {input} р." search row — each input is its own
+   grey box (like .filter-search-input-wrapper), with the "п. ×"/"р." labels
+   sitting transparently between them, rather than one shared grey bar. */
+.filter-density-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-density-input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 2px;
+  background: #F3F3F3;
+  outline: none;
+  font-family: 'Mulish', sans-serif;
+  /* 16px min prevents iOS WebView auto-zoom on focus. */
+  font-size: 16px;
+  color: #1D1C1C;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.filter-density-input::-webkit-outer-spin-button,
+.filter-density-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.filter-density-search-label {
+  font-family: 'Mulish', sans-serif;
+  font-size: 16px;
+  color: #8e8e93;
+  white-space: nowrap;
+  background: transparent;
+}
+
 .filter-apply-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { DraftStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
+import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl } from "../utils/patternImages";
 
 // ---------------------------------------------------------------------------
 // Rate limiter — in-memory, per userId.
@@ -128,10 +129,21 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
 
     const authorId = await resolveAuthorId(userId);
 
-    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
-    if (!title || !url || !imageUrl) {
-      res.status(400).json({ error: "title, url, and imageUrl are required" });
+    if (!title || !url) {
+      res.status(400).json({ error: "title, url, and images are required" });
+      return;
+    }
+
+    const imagesValidation = validateImages(images);
+    if (!imagesValidation.ok) {
+      res.status(400).json({ error: imagesValidation.error });
+      return;
+    }
+    const originCheck = validateNewImageOrigins(imagesValidation.images);
+    if (!originCheck.ok) {
+      res.status(400).json({ error: originCheck.error });
       return;
     }
 
@@ -140,7 +152,8 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
         authorId,
         title,
         url,
-        imageUrl,
+        images: imagesValidation.images,
+        imageUrl: deriveImageUrl(imagesValidation.images),
         isFree: isFree ?? false,
         isNew: isNew ?? false,
         densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
@@ -228,6 +241,7 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         authorId,
         title: pattern.title,
         url: pattern.url,
+        images: pattern.images,
         imageUrl: pattern.imageUrl,
         isFree: pattern.isFree,
         isNew: pattern.isNew,
@@ -292,12 +306,29 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { title, url, imageUrl, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const data: any = {};
     if (title !== undefined) data.title = title;
     if (url !== undefined) data.url = url;
-    if (imageUrl !== undefined) data.imageUrl = imageUrl;
+
+    let imagesDiff: { added: string[]; removed: string[] } | null = null;
+    if (images !== undefined) {
+      const imagesValidation = validateImages(images);
+      if (!imagesValidation.ok) {
+        res.status(400).json({ error: imagesValidation.error });
+        return;
+      }
+      imagesDiff = diffImages(draft.images, imagesValidation.images);
+      const originCheck = validateNewImageOrigins(imagesDiff.added);
+      if (!originCheck.ok) {
+        res.status(400).json({ error: originCheck.error });
+        return;
+      }
+      data.images = imagesValidation.images;
+      data.imageUrl = deriveImageUrl(imagesValidation.images);
+    }
+
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);

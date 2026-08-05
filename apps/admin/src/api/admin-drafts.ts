@@ -12,6 +12,7 @@ export interface AdminDraft {
   title: string;
   url: string;
   imageUrl: string;
+  images: string[];
   isFree: boolean;
   isNew: boolean;
   closedAt: string | null;

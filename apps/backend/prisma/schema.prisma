@@ -11,7 +11,12 @@ model Pattern {
   slug            String   @unique
   title           String
   url             String
+  // Derived — always kept equal to images[0] by the backend on every write.
+  // Never edited directly; exists because every "just the cover" read site
+  // (catalog card, admin list/grid views, novelty cards) needs a plain
+  // required string, not an array.
   imageUrl        String
+  images          String[] @default([])
   isFree          Boolean  @default(false)
   isNew           Boolean  @default(false)
   isVisible       Boolean  @default(true)
@@ -327,6 +332,7 @@ model Draft {
   title             String
   url               String
   imageUrl          String
+  images            String[]    @default([])
   isFree            Boolean     @default(false)
   isNew             Boolean     @default(false)
   densityStitches   Decimal?    @db.Decimal(5, 2)

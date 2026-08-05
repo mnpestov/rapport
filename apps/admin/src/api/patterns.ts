@@ -56,6 +56,7 @@ export interface AdminPatternDetailDTO {
   title: string;
   url: string;
   imageUrl: string;
+  images: string[];
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
@@ -85,7 +86,7 @@ export interface AdminPatternUpdateDTO {
   title?: string;
   slug?: string;
   url?: string;
-  imageUrl?: string;
+  images?: string[];
   isFree?: boolean;
   isNew?: boolean;
   authorName?: string;
@@ -119,7 +120,7 @@ export const updatePatternById = async (
 export interface AdminPatternCreateDTO {
   title: string;
   url: string;
-  imageUrl: string;
+  images: string[];
   isFree?: boolean;
   isNew?: boolean;
   isVisible?: boolean;
