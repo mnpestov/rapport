@@ -291,7 +291,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
         # for every other author — see pattern_images_plan.md for why a fully
         # universal approach can't be exact and why this stays best-effort.
         gallery_hook = hooks.get('extract_gallery') if hooks else None
-        gallery = (gallery_hook(detail_soup) if gallery_hook else None) or _generic_extract_gallery(detail_soup)
+        gallery = (gallery_hook(detail_soup, detail_resp.text, p['url']) if gallery_hook else None) or _generic_extract_gallery(detail_soup)
         if gallery:
             resolved = []
             for src in gallery:
@@ -871,7 +871,7 @@ def _hollywool_exclude_product(href):
     facet_roots = {'izdelie', 'brend_pryazhi'}
     return len(segments) != 1 or segments[0] in facet_roots
 
-def _hollywool_extract_gallery(soup):
+def _hollywool_extract_gallery(soup, raw_html=None, url=None):
     # Product detail pages carry their own gallery block
     # ("hw-lab-gallery" — a Bitrix-based custom theme), one <figure> per
     # photo with a data-hw-gallery-src on its <button>. The site's own
@@ -894,6 +894,54 @@ def _hollywool_extract_gallery(soup):
             rest.append(src)
     return ([primary] if primary else []) + rest
 
+_EIWI_PRODUCT_ID_RE = re.compile(r'/(\d+)-[^/]+\.html')
+_EIWI_STRING_TOKEN_RE = re.compile(r"^'([^']*)'$")
+
+def _eiwi_extract_gallery(soup, raw_html, url):
+    # eiwi.ru (a DLE/DataLife Engine site) only renders the FIRST gallery
+    # photo server-side, as a <div>'s inline background-image style — the
+    # rest exist only inside a page-embedded `var images = [...]` JS array
+    # inside an `initShortGallery<productId>()` IIFE, populated client-side.
+    # No DOM attribute/selector reaches it, so this regexes the raw HTML
+    # (soup has already had <script> tags decomposed by the caller by the
+    # time extract_gallery hooks run).
+    #
+    # Confirmed on a real product page that this SAME `var images = [...]`
+    # pattern also appears for OTHER, unrelated products elsewhere on the
+    # page (a "related items" widget reuses the identical gallery script) —
+    # so this must anchor on the current product's own numeric id (parsed
+    # from its URL, e.g. "13116" from ".../13116-romantika_top.html") via
+    # `initShortGallery13116`, not just grab the first match on the page.
+    id_match = _EIWI_PRODUCT_ID_RE.search(url or '')
+    if not id_match:
+        return []
+    product_id = id_match.group(1)
+
+    block_match = re.search(
+        r'initShortGallery' + re.escape(product_id) + r'\s*\(\s*\)\s*\{.*?var\s+images\s*=\s*\[(.*?)\]',
+        raw_html or '',
+        re.S,
+    )
+    if not block_match:
+        return []
+
+    # Split on commas first (the array is always a flat list of string
+    # literals, never nested) rather than a blind quote-to-quote regex —
+    # with several adjacent empty '' entries (common: the JS pads the array
+    # to a fixed size), a naive `'([^']+)'` findall bridges one empty pair's
+    # closing quote to the next pair's opening quote and captures the
+    # comma/whitespace between them as a phantom "URL".
+    urls = []
+    for token in block_match.group(1).split(','):
+        token_match = _EIWI_STRING_TOKEN_RE.match(token.strip())
+        if token_match and token_match.group(1).strip():
+            urls.append(token_match.group(1))
+    # The embedded array is thumbnail-sized ("/thumbs/<file>") — the same
+    # filename one path segment up is the full-resolution original (verified
+    # via HTTP: thumbs ~20-25KB, full ~150-225KB, both 200; og:image on the
+    # page itself already points at the non-thumbs path).
+    return [u.replace('/thumbs/', '/', 1) for u in urls]
+
 # Per-domain tweaks to the generic crawler's per-anchor product/pagination
 # detection, keyed by a domain substring matched against site_url. Every hook
 # is optional:
@@ -903,8 +951,11 @@ def _hollywool_extract_gallery(soup):
 #   extra_pagination_match(href)   -> bool     additional signal a link is a category/listing page to crawl
 #   extra_valid_href_match(href)   -> bool     additional signal a link is itself a product page
 #   extract_image(a)               -> str|None additional image lookup when the anchor itself has none
-#   extract_gallery(detail_soup)   -> list[str] full product gallery from the detail page (fetch_and_parse_detail
-#                                                already fetches this page for density/yarn — no extra request)
+#   extract_gallery(detail_soup, raw_html, url) -> list[str] full product gallery from the detail page
+#                                                (fetch_and_parse_detail already fetches this page for
+#                                                density/yarn — no extra request; raw_html/url are the
+#                                                pre-decompose page text and the product's own URL, for
+#                                                hooks that need to regex embedded JS or disambiguate by id)
 DOMAIN_CRAWL_HOOKS = {
     # elzestores.ru's product URLs ("/sweaters/<slug>", "/cardigans/<slug>",
     # "/skirts/<slug>") don't match any of the generic product-URL keywords
@@ -941,6 +992,9 @@ DOMAIN_CRAWL_HOOKS = {
     'hollywool.ru': {
         'exclude_product': _hollywool_exclude_product,
         'extract_gallery': _hollywool_extract_gallery,
+    },
+    'eiwi.ru': {
+        'extract_gallery': _eiwi_extract_gallery,
     },
     'mustardyarn.ru': {
         'exclude_product': lambda href: 'opisanie' not in href,
