@@ -233,7 +233,7 @@ def is_machine_knitting(text):
     # sites that only ever say "для машин"/"машинное вязание" without "фонтур".
     return bool(re.search(r'фонтур|вязальн[а-я]*\s*машин|машинн[а-я]*\s*вязан|для\s+машин[а-я]*\b', text.lower()))
 
-def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
+def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -242,7 +242,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
     try:
         detail_resp = requests.get(p['url'], headers=headers, timeout=10)
         detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
-        
+
         # Extract h1/<title> before the cleanup below (harmless either way — these
         # live outside the decomposed tags anyway, but keep it up front so the
         # title fix is visually grouped with where it's read from below).
@@ -279,6 +279,28 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db):
         # and contaminates keyword-based detection with unrelated products' content.
         for tag in detail_soup.find_all(class_=re.compile(r'\brelated\b')):
             tag.decompose()
+
+        # Full product gallery — generic crawler sites only ever get one image
+        # from the listing-page card (product_links_dict), this reuses the SAME
+        # detail-page fetch already happening here for density/yarn parsing, no
+        # extra request. Runs AFTER the noise/related-widget decompose above so
+        # a misc "related products" carousel elsewhere on the page can't be
+        # picked up as this product's own gallery. Site-specific hook (see
+        # DOMAIN_CRAWL_HOOKS extract_gallery, e.g. hollywool.ru) takes priority
+        # when configured; _generic_extract_gallery is the cross-site fallback
+        # for every other author — see pattern_images_plan.md for why a fully
+        # universal approach can't be exact and why this stays best-effort.
+        gallery_hook = hooks.get('extract_gallery') if hooks else None
+        gallery = (gallery_hook(detail_soup) if gallery_hook else None) or _generic_extract_gallery(detail_soup)
+        if gallery:
+            resolved = []
+            for src in gallery:
+                if src and not src.startswith('http'):
+                    src = urllib.parse.urljoin(p['url'], src)
+                if src:
+                    resolved.append(src)
+            if resolved:
+                p['images'] = resolved
 
         # Listing-page alt text / link text (p['title']) is used here to isolate
         # the right container on multi-product pages (Tilda popups etc.) — keep
@@ -470,14 +492,17 @@ def _fetch_tilda_store_products(storepartuid, recid, label, headers):
         print(f"Error fetching {label} store API: {e}")
         return []
 
-def _tilda_store_image(p):
+def _tilda_store_images(p):
+    # Tilda Store's API returns the FULL product gallery in one call — no
+    # per-product page fetch needed to get more than the cover. Backend
+    # write paths (processSyncBatch) fall back to a single imageUrl for
+    # sites that don't go through this handler (see pattern_images_plan.md
+    # риски №1/2), so this always returns a list, never a bare string.
     try:
         gallery = json.loads(p.get('gallery') or '[]')
-        if gallery:
-            return gallery[0].get('img', '')
+        return [g['img'] for g in gallery if g.get('img')]
     except Exception:
-        pass
-    return ''
+        return []
 
 def _parse_tilda_store_product(p, yarn_ranges_db, instruments_db):
     title = p.get('title', '')
@@ -500,7 +525,7 @@ def _parse_tilda_store_product(p, yarn_ranges_db, instruments_db):
     return {
         'url': p['url'],
         'title': title,
-        'imageUrl': _tilda_store_image(p),
+        'images': _tilda_store_images(p),
         'densityStitches': density_s,
         'densityRows': density_r,
         'yarnRanges': unique_yarns,
@@ -565,7 +590,7 @@ def _make_tilda_store_discovery_handler(storepartuid, recid, label):
     def handler(headers):
         products = _fetch_tilda_store_products(storepartuid, recid, label, headers)
         items = [
-            {'url': p['url'], 'title': p.get('title', ''), 'imageUrl': _tilda_store_image(p)}
+            {'url': p['url'], 'title': p.get('title', ''), 'images': _tilda_store_images(p)}
             for p in products if p.get('url')
         ]
         print(f"{label} store API: {len(items)} product(s) discovered.")
@@ -749,6 +774,90 @@ def _lenakotikova_extract_image(a):
     m = re.search(r"url\(['\"]?(.*?)['\"]?\)", style)
     return m.group(1) if m else None
 
+_GALLERY_NOISE_RE = re.compile(r'related|similar|recommend|also-?bought|upsell|cross-?sell|you-?may|you-?might', re.I)
+_GALLERY_IMG_EXT_RE = re.compile(r'\.(jpe?g|png|webp|gif)(\?|$)', re.I)
+
+def _generic_extract_gallery(soup):
+    # Best-effort, cross-site fallback for authors with no dedicated
+    # extract_gallery hook (see DOMAIN_CRAWL_HOOKS) — there is no universal
+    # markup for "the product gallery" across arbitrary CMSs/themes, so this
+    # only trusts a handful of widely-adopted, fairly specific conventions
+    # and returns nothing (falls back to the single listing-page cover)
+    # rather than risk pulling in unrelated images from a misdetected
+    # container. Runs on the ALREADY-cleaned soup (nav/header/footer/aside
+    # and "related" sections already decomposed by the caller), which is
+    # itself a big chunk of the false-positive protection.
+    seen = set()
+    urls = []
+
+    def add(src):
+        if src and src not in seen and _GALLERY_IMG_EXT_RE.search(src):
+            seen.add(src)
+            urls.append(src)
+
+    # 1. Lightbox plugin markers (Fancybox, Magnific Popup, lightGallery,
+    #    PhotoSwipe, Venobox, old-style rel="lightbox") — these specifically
+    #    mark "click for full-size photo of THIS thing", rarely reused for
+    #    unrelated widgets the way generic slider classes sometimes are.
+    for el in soup.select('[data-fancybox], [data-lightbox], [rel="lightbox"], [data-pswp-src]'):
+        add(el.get('href') or el.get('data-fancybox-src') or el.get('data-pswp-src') or el.get('data-lightbox'))
+
+    # 2. Vigbo (cdn-sh*.vigbo.com — a hosted shop platform used by several
+    #    authors here, e.g. efgesha.ru, knitprofi.ru) lazy-loads gallery
+    #    images as a placeholder <img> whose real src is split across
+    #    data-base-path (shop+product-scoped folder, protocol-relative) and
+    #    data-file-name — confirmed on live product pages. The bare
+    #    "<base><filename>" concatenation 404s: the CDN requires a size-key
+    #    prefix ("<key>-<filename>") taken from the sibling data-sizes JSON
+    #    (e.g. {"2":{...},"3":{...},"500":{...}}) — confirmed via the page's
+    #    own og:image, which uses the largest key ("3-<filename>" in that
+    #    case). Picks the largest-area size available per image rather than
+    #    hardcoding "3" since the set of keys isn't guaranteed across shops.
+    if not urls:
+        for img in soup.select('[class*="product-gallery"] img[data-base-path][data-file-name]'):
+            base = img.get('data-base-path') or ''
+            name = img.get('data-file-name') or ''
+            if not base or not name:
+                continue
+            size_key = None
+            sizes_raw = img.get('data-sizes')
+            if sizes_raw:
+                try:
+                    sizes = json.loads(sizes_raw)
+                    size_key = max(
+                        sizes,
+                        key=lambda k: sizes[k].get('width', 0) * sizes[k].get('height', 0)
+                    )
+                except Exception:
+                    size_key = None
+            add(base + (f'{size_key}-{name}' if size_key else name))
+
+    # 3. WooCommerce's own product-gallery block — one per product page,
+    #    structurally distinct from its "related products" widget.
+    if not urls:
+        for img in soup.select('.woocommerce-product-gallery__image img, .woocommerce-product-gallery img'):
+            add(img.get('data-src') or img.get('src'))
+
+    # 4. Generic slider/carousel libraries (Swiper, Slick, OwlCarousel) under
+    #    an explicitly product/gallery-named container only — these same
+    #    libraries are just as often used for "related products" carousels,
+    #    so an unqualified `.swiper`/`.slick-slider` match isn't trusted here.
+    #    Substring match on the container's own class (`[class*=...]`), not
+    #    an exact `.product-gallery` selector — BEM-style themes (Vigbo
+    #    included) name the real container "product-gallery__slider-item"
+    #    etc., never the bare token an exact class selector requires.
+    if not urls:
+        for container in soup.select(
+            '[class*="product-gallery"], [class*="product-images"], [class*="product-photos"]'
+        ):
+            container_signature = ' '.join([container.get('id', '')] + (container.get('class') or []))
+            if _GALLERY_NOISE_RE.search(container_signature):
+                continue
+            for img in container.select('img'):
+                add(img.get('data-src') or img.get('src'))
+
+    return urls[:12]
+
 def _hollywool_exclude_product(href):
     # Real pattern pages are exactly one slug deep under
     # /besplatnye-opisaniya/<slug>/ — facet/filter pages (by yarn
@@ -762,6 +871,29 @@ def _hollywool_exclude_product(href):
     facet_roots = {'izdelie', 'brend_pryazhi'}
     return len(segments) != 1 or segments[0] in facet_roots
 
+def _hollywool_extract_gallery(soup):
+    # Product detail pages carry their own gallery block
+    # ("hw-lab-gallery" — a Bitrix-based custom theme), one <figure> per
+    # photo with a data-hw-gallery-src on its <button>. The site's own
+    # "is-primary" marker (fetchpriority="high"/current-photo-open) doesn't
+    # always sit first in DOM order — confirmed on a real product page where
+    # index 0 was primary but on others the primary can be elsewhere —
+    # promote it to the front explicitly rather than trusting position.
+    primary = None
+    rest = []
+    for fig in soup.select('.hw-lab-gallery__item'):
+        btn = fig.find('button', class_='hw-lab-gallery__button')
+        if not btn:
+            continue
+        src = btn.get('data-hw-gallery-src')
+        if not src:
+            continue
+        if 'is-primary' in (fig.get('class') or []) and primary is None:
+            primary = src
+        else:
+            rest.append(src)
+    return ([primary] if primary else []) + rest
+
 # Per-domain tweaks to the generic crawler's per-anchor product/pagination
 # detection, keyed by a domain substring matched against site_url. Every hook
 # is optional:
@@ -771,6 +903,8 @@ def _hollywool_exclude_product(href):
 #   extra_pagination_match(href)   -> bool     additional signal a link is a category/listing page to crawl
 #   extra_valid_href_match(href)   -> bool     additional signal a link is itself a product page
 #   extract_image(a)               -> str|None additional image lookup when the anchor itself has none
+#   extract_gallery(detail_soup)   -> list[str] full product gallery from the detail page (fetch_and_parse_detail
+#                                                already fetches this page for density/yarn — no extra request)
 DOMAIN_CRAWL_HOOKS = {
     # elzestores.ru's product URLs ("/sweaters/<slug>", "/cardigans/<slug>",
     # "/skirts/<slug>") don't match any of the generic product-URL keywords
@@ -806,6 +940,7 @@ DOMAIN_CRAWL_HOOKS = {
     },
     'hollywool.ru': {
         'exclude_product': _hollywool_exclude_product,
+        'extract_gallery': _hollywool_extract_gallery,
     },
     'mustardyarn.ru': {
         'exclude_product': lambda href: 'opisanie' not in href,
@@ -1025,7 +1160,7 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
 
         # ASYNCHRONOUS DEEP PARSE
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db, instruments_db) for p in new_product_links]
+            futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db, instruments_db, hooks) for p in new_product_links]
             for future in concurrent.futures.as_completed(futures):
                 parsed_p = future.result()
                 items.append(parsed_p)
