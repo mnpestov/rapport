@@ -531,7 +531,14 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (title !== undefined) data.title = title;
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
-    if (isVisible !== undefined) data.isVisible = isVisible;
+    if (isVisible !== undefined) {
+      data.isVisible = isVisible;
+      // First-ever "went live" moment — set once, never touched again by
+      // later edits/re-hides (see the field comment in schema.prisma).
+      if (isVisible && !existing.publishedAt) {
+        data.publishedAt = new Date();
+      }
+    }
     if (Array.isArray(yarnRangeIds)) data.yarnRanges = { set: yarnRangeIds.map((id: string) => ({ id })) };
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
@@ -648,6 +655,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       authorId: finalAuthorId,
       slug,
       isVisible: isVisible ?? true,
+      publishedAt: (isVisible ?? true) ? new Date() : null,
       densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
       densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
     };
@@ -1075,6 +1083,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             isFree: draft.isFree,
             isNew: draft.isNew,
             isVisible: true,
+            publishedAt: new Date(),
             authorId: draft.authorId,
             densityStitches: draft.densityStitches,
             densityRows: draft.densityRows,

@@ -33,6 +33,7 @@ import adminRouter from "./routes/admin";
 import authorRouter from "./routes/author";
 import internalRouter from "./routes/internal";
 import diagRouter from "./routes/diag";
+import { startExpireNewPatternsJob } from "./jobs/expireNewPatterns";
 
 const uploadsDir = path.join(__dirname, "../uploads/patterns");
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -81,6 +82,8 @@ app.use("/admin", adminRouter);
 app.use("/author", authorRouter);
 app.use("/internal", internalRouter);
 app.use("/diag", diagRouter);
+
+startExpireNewPatternsJob();
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

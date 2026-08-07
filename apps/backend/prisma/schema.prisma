@@ -20,6 +20,12 @@ model Pattern {
   isFree          Boolean  @default(false)
   isNew           Boolean  @default(false)
   isVisible       Boolean  @default(true)
+  // Set once, the first time isVisible ever transitions to true — the actual
+  // "went live" moment. Never touched again by later edits/re-hides, unlike
+  // createdAt which for archive-queued sync items (isVisible: false at
+  // creation) can predate real publication by however long it sits in
+  // review. Anchor for the isNew auto-expiry job (see src/jobs).
+  publishedAt     DateTime?
   densityStitches Decimal? @db.Decimal(5, 2)
   densityRows     Decimal? @db.Decimal(5, 2)
   createdAt       DateTime @default(now())
