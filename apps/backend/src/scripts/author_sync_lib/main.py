@@ -448,12 +448,17 @@ def backfill_details(target_author_name=None):
 
         print(f"--- {author_name}: {len(patterns)} pattern(s) to backfill ---")
 
-        # Checks SUPPLEMENTAL_STORE_HANDLERS too (not just SITE_HANDLERS) —
-        # likavyazhi.ru only lives in the former (its patterns still get
-        # discovered via the generic crawler too, unlike a true SITE_HANDLERS
-        # bypass), but for re-deriving details/price on ALREADY-known
-        # patterns the isolated per-product handler is strictly more
-        # accurate than a plain page fetch would be.
+        # A handler batch miss doesn't necessarily mean the page is
+        # unparseable — some SITE_HANDLERS/SUPPLEMENTAL_STORE_HANDLERS
+        # domains are Tilda "hashroute" stores (e.g. bysergeeva.ru,
+        # likavyazhi.ru) that server-render every product on one page, so a
+        # plain fetch_and_parse_detail on the individual Pattern.url ALSO
+        # works — confirmed live for both. For the JSON-API-only domains
+        # (kitirrr.ru, tsinbal.ru, etc.) a plain GET genuinely renders
+        # nothing, but trying the fallback there is harmless — the chain
+        # just returns (None, None) same as today, one extra wasted request,
+        # no risk of wrong data. So: always fall back on a miss, don't try
+        # to pre-classify which domains "deserve" it.
         site_handler = None
         if site:
             for domain, handler in {**SITE_HANDLERS, **SUPPLEMENTAL_STORE_HANDLERS}.items():
@@ -473,18 +478,19 @@ def backfill_details(target_author_name=None):
 
         for pattern_id, url, title, db_is_free in patterns:
             try:
+                match = None
                 if handler_items is not None:
                     target_base = get_base_url(normalize_url(url))
                     match = next(
                         (it for it in handler_items if get_base_url(normalize_url(it['url'])) == target_base),
                         None
                     )
-                    if not match:
-                        print(f"  skip (not in current store API response): {url}")
-                        total_skipped += 1
-                        continue
+
+                if match:
                     details, price, old_price = match.get('details'), match.get('price'), match.get('oldPrice')
                 else:
+                    if handler_items is not None:
+                        print(f"  not in current store API response, falling back to direct fetch: {url}")
                     result = fetch_and_parse_detail({'url': url, 'title': title}, yarn_ranges_db, instruments_db, hooks)
                     details, price, old_price = result.get('details'), result.get('price'), result.get('oldPrice')
 
