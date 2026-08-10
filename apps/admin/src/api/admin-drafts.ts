@@ -13,6 +13,9 @@ export interface AdminDraft {
   url: string;
   imageUrl: string;
   images: string[];
+  details: string | null;
+  price: number | string | null;
+  oldPrice: number | string | null;
   isFree: boolean;
   isNew: boolean;
   closedAt: string | null;

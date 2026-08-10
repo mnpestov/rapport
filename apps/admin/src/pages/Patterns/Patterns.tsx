@@ -129,6 +129,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     authorName: "",
     url: "",
     images: [] as string[],
+    details: "",
+    price: "",
+    oldPrice: "",
     isFree: false,
     isNew: false,
     categories: [] as string[],
@@ -350,6 +353,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       authorName: isAuthor ? currentAuthorName : "",
       url: "",
       images: [],
+      details: "",
+      price: "",
+      oldPrice: "",
       isFree: false,
       isNew: false,
       categories: [],
@@ -370,6 +376,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         authorName: res.author?.name || "",
         url: res.url || "",
         images: res.images || [],
+        details: res.details || "",
+        price: res.price != null ? String(res.price) : "",
+        oldPrice: res.oldPrice != null ? String(res.oldPrice) : "",
         isFree: res.isFree || false,
         isNew: res.isNew || false,
         categories: (res.categories || []).map(c => c?.name || ""),
@@ -394,6 +403,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       authorName: currentAuthorName,
       url: draft.url,
       images: draft.images,
+      details: draft.details || "",
+      price: draft.price != null ? String(draft.price) : "",
+      oldPrice: draft.oldPrice != null ? String(draft.oldPrice) : "",
       isFree: draft.isFree,
       isNew: draft.isNew,
       categories: draft.categories.map((c) => c.name),
@@ -438,6 +450,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         title: formData.title.trim(),
         url: formData.url.trim(),
         images: formData.images,
+        details: formData.details.trim() || null,
+        price: formData.price.trim() || null,
+        oldPrice: formData.oldPrice.trim() || null,
         isFree: formData.isFree,
         isNew: formData.isNew,
         categories: mapNamesToIds(formData.categories, categoriesList),
@@ -503,6 +518,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         if (!orig || formData.title !== orig.title) payload.title = formData.title;
         if (!orig || formData.url !== orig.url) payload.url = formData.url;
         if (!orig || JSON.stringify(formData.images) !== JSON.stringify(orig.images)) payload.images = formData.images;
+        if (!orig || formData.details !== orig.details) payload.details = formData.details.trim() || null;
+        if (!orig || formData.price !== orig.price) payload.price = formData.price.trim() || null;
+        if (!orig || formData.oldPrice !== orig.oldPrice) payload.oldPrice = formData.oldPrice.trim() || null;
         if (!orig || formData.authorName !== orig.authorName) payload.authorName = formData.authorName;
         if (!orig || formData.isFree !== orig.isFree) payload.isFree = formData.isFree;
         if (!orig || formData.isNew !== orig.isNew) payload.isNew = formData.isNew;
@@ -535,7 +553,13 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         }));
         toast.success("Описание успешно обновлено");
       } else {
-        await createPattern({ ...formData, isVisible });
+        await createPattern({
+          ...formData,
+          details: formData.details.trim() || null,
+          price: formData.price.trim() || null,
+          oldPrice: formData.oldPrice.trim() || null,
+          isVisible,
+        });
         toast.success(isVisible ? "Описание опубликовано" : "Описание сохранено как черновик");
         setPage(1);
         await loadPatterns(1);
@@ -1115,6 +1139,37 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   </div>
                 </div>
 
+                {/* Цена / старая цена — oldPrice заполнена только когда реально есть скидка */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={labelStyle}>Цена, ₽ <span style={optionalStyle}>(необязательно)</span></label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="number"
+                      value={formData.price}
+                      onChange={e => setFormData({ ...formData, price: e.target.value })}
+                      style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                      placeholder=""
+                      min={0}
+                      disabled={formReadonly}
+                    />
+                    <span style={{ width: 8, flexShrink: 0 }} />
+                    <input
+                      type="number"
+                      value={formData.oldPrice}
+                      onChange={e => setFormData({ ...formData, oldPrice: e.target.value })}
+                      style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                      placeholder=""
+                      min={0}
+                      disabled={formReadonly}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Текущая</span>
+                    <span style={{ width: 16 }} />
+                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Старая (если скидка)</span>
+                  </div>
+                </div>
+
                 {/* Фото (до 5, первое — обложка) */}
                 {!formReadonly && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1126,8 +1181,17 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   </div>
                 )}
 
-                {/* пустая правая ячейка */}
-                <div />
+                {/* Подробности — длинный текст, во всю ширину формы */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Подробности <span style={optionalStyle}>(необязательно)</span></label>
+                  <textarea
+                    value={formData.details}
+                    onChange={e => setFormData({ ...formData, details: e.target.value })}
+                    style={{ ...inputStyle, height: 160, resize: "vertical", paddingTop: 12, paddingBottom: 12 }}
+                    placeholder="Подробное описание — материалы, техника, размеры и т.п."
+                    disabled={formReadonly}
+                  />
+                </div>
 
               </div>
 

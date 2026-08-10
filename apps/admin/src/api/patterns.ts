@@ -57,6 +57,9 @@ export interface AdminPatternDetailDTO {
   url: string;
   imageUrl: string;
   images: string[];
+  details: string | null;
+  price: number | string | null;
+  oldPrice: number | string | null;
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
@@ -87,6 +90,9 @@ export interface AdminPatternUpdateDTO {
   slug?: string;
   url?: string;
   images?: string[];
+  details?: string | null;
+  price?: number | string | null;
+  oldPrice?: number | string | null;
   isFree?: boolean;
   isNew?: boolean;
   authorName?: string;
@@ -121,6 +127,9 @@ export interface AdminPatternCreateDTO {
   title: string;
   url: string;
   images: string[];
+  details?: string | null;
+  price?: number | string | null;
+  oldPrice?: number | string | null;
   isFree?: boolean;
   isNew?: boolean;
   isVisible?: boolean;

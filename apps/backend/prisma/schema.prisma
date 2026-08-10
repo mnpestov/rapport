@@ -17,6 +17,17 @@ model Pattern {
   // required string, not an array.
   imageUrl        String
   images          String[] @default([])
+  // Long-form free text ("Подробности"), shown collapsed by default on the
+  // detail page. Nullable (not "") so an empty/never-set block can be
+  // omitted from the UI entirely via a plain truthy check. Will eventually
+  // be populated by author_sync.py — see processSyncBatch's parsedData
+  // fallback, already written to tolerate the key being absent today.
+  details         String?
+  // Absolute rubles, not a stored discount %/flag — oldPrice > price IS the
+  // "discount active" signal, computed on display. Avoids the two numbers
+  // going out of sync if only one gets edited later.
+  price           Decimal? @db.Decimal(10, 2)
+  oldPrice        Decimal? @db.Decimal(10, 2)
   isFree          Boolean  @default(false)
   isNew           Boolean  @default(false)
   isVisible       Boolean  @default(true)
@@ -339,6 +350,9 @@ model Draft {
   url               String
   imageUrl          String
   images            String[]    @default([])
+  details           String?
+  price             Decimal?    @db.Decimal(10, 2)
+  oldPrice          Decimal?    @db.Decimal(10, 2)
   isFree            Boolean     @default(false)
   isNew             Boolean     @default(false)
   densityStitches   Decimal?    @db.Decimal(5, 2)

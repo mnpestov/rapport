@@ -129,7 +129,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
 
     const authorId = await resolveAuthorId(userId);
 
-    const { title, url, images, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     if (!title || !url) {
       res.status(400).json({ error: "title, url, and images are required" });
@@ -154,6 +154,9 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
         url,
         images: imagesValidation.images,
         imageUrl: deriveImageUrl(imagesValidation.images),
+        details: details ?? null,
+        price: price === "" || price === undefined || price === null ? null : Number(price),
+        oldPrice: oldPrice === "" || oldPrice === undefined || oldPrice === null ? null : Number(oldPrice),
         isFree: isFree ?? false,
         isNew: isNew ?? false,
         densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
@@ -243,6 +246,9 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         url: pattern.url,
         images: pattern.images,
         imageUrl: pattern.imageUrl,
+        details: pattern.details,
+        price: pattern.price,
+        oldPrice: pattern.oldPrice,
         isFree: pattern.isFree,
         isNew: pattern.isNew,
         densityStitches: pattern.densityStitches,
@@ -306,11 +312,12 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { title, url, images, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const data: any = {};
     if (title !== undefined) data.title = title;
     if (url !== undefined) data.url = url;
+    if (details !== undefined) data.details = details;
 
     let imagesDiff: { added: string[]; removed: string[] } | null = null;
     if (images !== undefined) {
@@ -333,6 +340,8 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
     if (isNew !== undefined) data.isNew = isNew;
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
+    if (price !== undefined) data.price = price === "" || price === null ? null : Number(price);
+    if (oldPrice !== undefined) data.oldPrice = oldPrice === "" || oldPrice === null ? null : Number(oldPrice);
 
     if (Array.isArray(tags)) {
       data.tags = { set: [], connect: tags.map((id: string) => ({ id })) };

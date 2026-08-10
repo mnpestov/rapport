@@ -462,6 +462,9 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       url: pattern.url,
       imageUrl: pattern.imageUrl,
       images: pattern.images,
+      details: pattern.details,
+      price: pattern.price,
+      oldPrice: pattern.oldPrice,
       isFree: pattern.isFree,
       isNew: pattern.isNew,
       isVisible: pattern.isVisible,
@@ -490,7 +493,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
 export const updatePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, url, images, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, details, price, oldPrice, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const existing = await prisma.pattern.findUnique({ where: { id } });
     if (!existing) {
@@ -529,6 +532,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 
     const data: any = {};
     if (title !== undefined) data.title = title;
+    if (details !== undefined) data.details = details;
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
     if (isVisible !== undefined) {
@@ -542,6 +546,8 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (Array.isArray(yarnRangeIds)) data.yarnRanges = { set: yarnRangeIds.map((id: string) => ({ id })) };
     if (densityStitches !== undefined) data.densityStitches = densityStitches === "" || densityStitches === null ? null : Number(densityStitches);
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
+    if (price !== undefined) data.price = price === "" || price === null ? null : Number(price);
+    if (oldPrice !== undefined) data.oldPrice = oldPrice === "" || oldPrice === null ? null : Number(oldPrice);
     if (images !== undefined) {
       data.images = images;
       data.imageUrl = deriveImageUrl(images);
@@ -612,7 +618,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
 // POST /admin/patterns
 export const createPattern = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, url, images, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, details, price, oldPrice, isFree, isNew, isVisible, authorId, authorName, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     if (!title || !url || (!authorId && !authorName)) {
       res.status(400).json({ error: "Missing required fields" });
@@ -650,6 +656,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       url: normUrl,
       images: imagesValidation.images,
       imageUrl: deriveImageUrl(imagesValidation.images),
+      details: details ?? null,
       isFree: isFree ?? false,
       isNew: isNew ?? false,
       authorId: finalAuthorId,
@@ -658,6 +665,8 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       publishedAt: (isVisible ?? true) ? new Date() : null,
       densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
       densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
+      price: price === "" || price === undefined || price === null ? null : Number(price),
+      oldPrice: oldPrice === "" || oldPrice === undefined || oldPrice === null ? null : Number(oldPrice),
     };
 
     if (Array.isArray(yarnRangeIds) && yarnRangeIds.length > 0) {
@@ -1080,6 +1089,9 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             url: normUrl,
             images: draft.images,
             imageUrl: deriveImageUrl(draft.images),
+            details: draft.details,
+            price: draft.price,
+            oldPrice: draft.oldPrice,
             isFree: draft.isFree,
             isNew: draft.isNew,
             isVisible: true,
@@ -1102,6 +1114,9 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             url: normalizeUrl(draft.url),
             images: draft.images,
             imageUrl: deriveImageUrl(draft.images),
+            details: draft.details,
+            price: draft.price,
+            oldPrice: draft.oldPrice,
             isFree: draft.isFree,
             isNew: draft.isNew,
             densityStitches: draft.densityStitches,

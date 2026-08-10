@@ -19,6 +19,9 @@ interface FormState {
   title: string;
   url: string;
   images: string[];
+  details: string;
+  price: string;
+  oldPrice: string;
   isFree: boolean;
   isNew: boolean;
   categories: string[];
@@ -34,6 +37,9 @@ function toFormState(item: AdminDraft): FormState {
     title: item.title || "",
     url: item.url || "",
     images: item.images,
+    details: item.details || "",
+    price: item.price != null ? String(item.price) : "",
+    oldPrice: item.oldPrice != null ? String(item.oldPrice) : "",
     isFree: item.isFree ?? false,
     isNew: item.isNew ?? true,
     categories: item.categories.map((c) => c.name),
@@ -86,6 +92,9 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
         title: formData.title.trim(),
         url: formData.url.trim(),
         images: formData.images,
+        details: formData.details.trim() || null,
+        price: formData.price.trim() || null,
+        oldPrice: formData.oldPrice.trim() || null,
         isFree: formData.isFree,
         isNew: formData.isNew,
         categories: formData.categories,
@@ -243,6 +252,33 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
             </div>
           </div>
 
+          {/* Цена / старая цена — oldPrice заполнена только когда реально есть скидка */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Цена, ₽ <span style={optionalStyle}>(необязательно)</span></label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="number"
+                value={formData.price}
+                onChange={e => setFormData({ ...formData, price: e.target.value })}
+                style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                min={0}
+              />
+              <span style={{ width: 8, flexShrink: 0 }} />
+              <input
+                type="number"
+                value={formData.oldPrice}
+                onChange={e => setFormData({ ...formData, oldPrice: e.target.value })}
+                style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                min={0}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Текущая</span>
+              <span style={{ width: 16 }} />
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Старая (если скидка)</span>
+            </div>
+          </div>
+
           {/* Фото (до 5, первое — обложка) */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <label style={labelStyle}>Фото <span style={{ color: "#ef4444" }}>*</span></label>
@@ -252,7 +288,16 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
             />
           </div>
 
-          <div />
+          {/* Подробности — длинный текст, во всю ширину формы */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, gridColumn: "1 / -1" }}>
+            <label style={labelStyle}>Подробности <span style={optionalStyle}>(необязательно)</span></label>
+            <textarea
+              value={formData.details}
+              onChange={e => setFormData({ ...formData, details: e.target.value })}
+              style={{ ...inputStyle, height: 160, resize: "vertical", paddingTop: 12, paddingBottom: 12 }}
+              placeholder="Подробное описание — материалы, техника, размеры и т.п."
+            />
+          </div>
 
         </div>
 

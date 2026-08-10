@@ -16,6 +16,9 @@ export interface CabinetDraft {
   url: string;
   imageUrl: string;
   images: string[];
+  details: string | null;
+  price: number | string | null;
+  oldPrice: number | string | null;
   isFree: boolean;
   isNew: boolean;
   densityStitches: number | string | null;
@@ -35,6 +38,9 @@ export interface CabinetPattern {
   url: string;
   imageUrl: string;
   images: string[];
+  details: string | null;
+  price: number | string | null;
+  oldPrice: number | string | null;
   isFree: boolean;
   isNew: boolean;
   isVisible: boolean;
@@ -67,6 +73,9 @@ export const createCabinetDraft = async (data: {
   title: string;
   url: string;
   images: string[];
+  details?: string | null;
+  price?: number | string | null;
+  oldPrice?: number | string | null;
   isFree?: boolean;
   isNew?: boolean;
   categories?: string[];
@@ -94,6 +103,9 @@ export const updateCabinetDraft = async (
     title?: string;
     url?: string;
     images?: string[];
+    details?: string | null;
+    price?: number | string | null;
+    oldPrice?: number | string | null;
     isFree?: boolean;
     isNew?: boolean;
     categories?: string[];

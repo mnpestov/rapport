@@ -115,6 +115,9 @@ export interface SyncItemUpdateDTO {
   title: string;
   url: string;
   images: string[];
+  details: string | null;
+  price: number | string | null;
+  oldPrice: number | string | null;
   isFree: boolean;
   isNew: boolean;
   categories: string[];

@@ -51,7 +51,7 @@ export const getReportById = async (req: Request, res: Response) => {
 // fresh from the DB row, so edits saved here take effect on the next approve).
 export const updateSyncItem = async (req: Request, res: Response) => {
   const { itemId } = req.params;
-  const { title, url, images, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds } = req.body;
+  const { title, url, images, details, price, oldPrice, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds } = req.body;
 
   const existing = await prisma.authorSyncItem.findUnique({ where: { id: itemId } });
   if (!existing) {
@@ -98,6 +98,9 @@ export const updateSyncItem = async (req: Request, res: Response) => {
   const parsedData = {
     ...prevParsedData,
     images: newImages,
+    details: details ?? null,
+    price: price === "" || price === undefined || price === null ? null : Number(price),
+    oldPrice: oldPrice === "" || oldPrice === undefined || oldPrice === null ? null : Number(oldPrice),
     isFree: !!isFree,
     isNew: !!isNew,
     densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
@@ -196,6 +199,12 @@ export const processSyncBatch = async (req: Request, res: Response) => {
             url: dbItem.url,
             images,
             imageUrl: deriveImageUrl(images),
+            // Not scraped yet (author_sync.py doesn't populate this key today)
+            // — tolerates absence the same way the images[] legacy fallback
+            // did before every site produced a gallery.
+            details: parsedData.details ?? null,
+            price: parsedData.price ?? null,
+            oldPrice: parsedData.oldPrice ?? null,
             authorId: dbItem.report.authorId,
             isVisible: false, // В АРХИВ
             isFree: parsedData.isFree ?? false,
