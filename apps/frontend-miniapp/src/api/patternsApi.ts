@@ -2,6 +2,7 @@ export interface Pattern {
   id: string;
   title: string;
   author: string;
+  authorId: string;
   primaryProductType: string;
   imageUrl: string;
   isFree: boolean;
@@ -18,6 +19,15 @@ export interface Pattern {
   // Gallery — only populated by fetchPatternById, same reasoning as above.
   // Always has at least one entry (the cover, same value as imageUrl).
   images?: string[];
+  // Long-form "Подробности" text — only populated by fetchPatternById
+  // (omitted from list/by-ids responses, same reasoning as images).
+  details?: string | null;
+  // Present everywhere (list, by-ids, detail) — unlike images/details these
+  // are two small numbers, no payload-size reason to omit from lists, and
+  // catalog cards show price too. oldPrice set only when a discount is
+  // actually active (oldPrice > price); no separate boolean/percent field.
+  price?: string | null;
+  oldPrice?: string | null;
 }
 
 export interface FetchPatternsOptions {
@@ -179,6 +189,23 @@ export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
 
   if (!response.ok) {
     throw new Error(`Failed to fetch patterns batch: ${response.status}`);
+  }
+
+  const { data }: { data: Pattern[] } = await response.json();
+  return data.map(p => ({
+    ...p,
+    primaryProductType: capitalize(p.primaryProductType),
+    productTypes: p.productTypes?.map(capitalize) || [],
+    imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl
+  }));
+};
+
+// "Похожие описания" on the detail page — server-side tiered matching by
+// category + characteristics (see patternsController.getSimilarPatterns).
+export const fetchSimilarPatterns = async (id: string): Promise<Pattern[]> => {
+  const response = await fetchWithTimeout(`${API_URL}/patterns/${id}/similar`, { headers: getAuthHeaders() }, 10000);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch similar patterns: ${response.status}`);
   }
 
   const { data }: { data: Pattern[] } = await response.json();

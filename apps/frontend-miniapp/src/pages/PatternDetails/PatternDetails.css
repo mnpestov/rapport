@@ -115,6 +115,8 @@
 .details-row {
   display: flex;
   flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .details-row-spaced {
@@ -136,6 +138,40 @@
   font-weight: 700;
   color: #1D1C1C;
   line-height: normal;
+}
+
+.details-price-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.details-price-current {
+  overflow: hidden;
+  color: var(--black, #1D1C1C);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Mulish;
+  font-size: 17px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+  /* 18.7px */
+}
+
+.details-price-old {
+  overflow: hidden;
+  color: var(--dark_grey, #9B9A9A);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Mulish;
+  font-size: 17px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+  /* 18.7px */
+  text-decoration-line: line-through;
 }
 
 .details-title {
@@ -171,6 +207,16 @@
   flex-shrink: 0;
 }
 
+.details-author-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  border-bottom: 1px solid #A9AE36;
+  cursor: pointer;
+}
+
 .details-value-list {
   margin: 0;
   padding-left: 24px;
@@ -183,6 +229,61 @@
 
 .details-value-list li {
   margin-bottom: 2px;
+}
+
+.details-expandable {
+  gap: 0;
+}
+
+.details-expandable-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #1D1C1C;
+}
+
+.details-expandable-body {
+  margin: 8px 0 0;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #1D1C1C;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.details-similar-title {
+  overflow: hidden;
+  color: var(--black, #1D1C1C);
+  text-overflow: ellipsis;
+  font-family: Mulish;
+  font-size: 17px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 110%;
+  /* 18.7px */
+}
+
+.details-similar-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.details-similar-row::-webkit-scrollbar {
+  display: none;
+}
+
+.details-similar-item {
+  flex: 0 0 150px;
+  min-width: 0;
 }
 
 .details-footer {

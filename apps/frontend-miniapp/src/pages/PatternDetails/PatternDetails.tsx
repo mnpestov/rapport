@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Heart } from 'lucide-react';
-import { fetchPatternById, Pattern } from '../../api/patternsApi';
+import { fetchPatternById, fetchSimilarPatterns, Pattern } from '../../api/patternsApi';
 import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
 import { useFavorites } from '../../context/FavoritesContext';
+import { useIsAdmin } from '../../hooks/useIsAdmin';
+import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
+import { PatternCard } from '../../components/PatternCard/PatternCard';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
 
@@ -58,19 +61,55 @@ const ImageCarousel: React.FC<{ images: string[]; alt: string }> = ({ images, al
   );
 };
 
+// A price of exactly 0 means the item is free (see the scraper's
+// normalize_free_price) — isFree/the "Бесплатно" badge already covers
+// that, so the price row itself should stay empty rather than show "0 ₽".
+// Also suppressed whenever isFree is true regardless of the stored price
+// value — isFree can be a manual admin decision independent of price, and
+// showing both the badge and a price would read as contradictory.
+const hasPrice = (price?: string | null, isFree?: boolean): boolean =>
+  !isFree && price != null && parseFloat(price) > 0;
+
+// oldPrice only renders as a discount when it's genuinely higher than the
+// current price — same guard as PatternCard, avoids a data-entry mistake
+// reading as a price increase instead of a markdown.
+const hasDiscount = (price?: string | null, oldPrice?: string | null, isFree?: boolean): boolean =>
+  hasPrice(price, isFree) && oldPrice != null && parseFloat(oldPrice) > parseFloat(price as string);
+
 export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
+  // authorId/author name are already public regardless of role (unlike
+  // price/details/similar, which the backend itself omits for non-admins) —
+  // this is the one place that needs an explicit frontend gate, see
+  // PAID_TIER_ROLLOUT_PLAN.md §2.5.
+  const isAdmin = useIsAdmin();
 
   const [pattern, setPattern] = useState<Pattern | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [similarPatterns, setSimilarPatterns] = useState<Pattern[]>([]);
 
   useEffect(() => {
     let isMounted = true;
     if (!id) return;
+
+    // Unlike every other way this page was reachable before, a click inside
+    // "Похожие описания" navigates /pattern/:id -> /pattern/:otherId on the
+    // SAME route — React Router doesn't remount the component for that, so
+    // none of this state (or scroll position) resets itself the way it
+    // would on a fresh mount. Reset explicitly, otherwise the old pattern's
+    // content/scroll/expanded state briefly (or on error, permanently)
+    // leaks into the new one.
+    window.scrollTo(0, 0);
+    setPattern(null);
+    setLoading(true);
+    setError(null);
+    setIsDetailsExpanded(false);
+    setSimilarPatterns([]);
 
     const loadPattern = async () => {
       try {
@@ -94,12 +133,32 @@ export const PatternDetails: React.FC = () => {
     };
   }, [id]);
 
+  useEffect(() => {
+    let isMounted = true;
+    if (!id) return;
+
+    fetchSimilarPatterns(id)
+      .then(data => {
+        if (isMounted) setSimilarPatterns(data);
+      })
+      .catch(err => console.error(err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
   const handleBack = () => {
     if (location.key !== 'default') {
       navigate(-1);
     } else {
       navigate('/');
     }
+  };
+
+  const handleAuthorClick = () => {
+    if (!pattern?.authorId) return;
+    navigate('/', { state: { filterAuthorId: pattern.authorId } });
   };
 
   const handleOpenLink = () => {
@@ -165,6 +224,14 @@ export const PatternDetails: React.FC = () => {
           <div className="details-content">
             <div className="details-row">
               <span className="details-product-type">{pattern.primaryProductType}</span>
+              {hasPrice(pattern.price, pattern.isFree) && (
+                <div className="details-price-row">
+                  <span className="details-price-current">{formatDecimal(pattern.price as string)} ₽</span>
+                  {hasDiscount(pattern.price, pattern.oldPrice, pattern.isFree) && (
+                    <span className="details-price-old">{formatDecimal(pattern.oldPrice as string)} ₽</span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="details-row">
               <h1 className="details-title">{pattern.title}</h1>
@@ -177,7 +244,13 @@ export const PatternDetails: React.FC = () => {
 
             <div className="details-row-spaced">
               <span className="details-label">Автор:</span>
-              <span className="details-value">{pattern.author}</span>
+              {pattern.authorId && isAdmin ? (
+                <button type="button" className="details-value details-author-link" onClick={handleAuthorClick}>
+                  {pattern.author}
+                </button>
+              ) : (
+                <span className="details-value">{pattern.author}</span>
+              )}
             </div>
 
             {pattern.tags && pattern.tags.length > 0 && (
@@ -208,6 +281,36 @@ export const PatternDetails: React.FC = () => {
                 <span className="details-value details-value-nowrap">
                   {formatDecimal(pattern.densityStitches)} п. × {formatDecimal(pattern.densityRows)} р.
                 </span>
+              </div>
+            )}
+
+            {pattern.details && (
+              <div className="details-col details-expandable">
+                <button
+                  type="button"
+                  className="details-expandable-header"
+                  onClick={() => setIsDetailsExpanded(v => !v)}
+                  aria-expanded={isDetailsExpanded}
+                >
+                  <span className="details-label">Подробности</span>
+                  {isDetailsExpanded ? <CustomChevronUp size={24} /> : <CustomChevronDown size={24} />}
+                </button>
+                {isDetailsExpanded && (
+                  <p className="details-expandable-body">{pattern.details}</p>
+                )}
+              </div>
+            )}
+
+            {similarPatterns.length > 0 && (
+              <div className="details-col">
+                <span className="details-similar-title">Похожие описания</span>
+                <div className="details-similar-row">
+                  {similarPatterns.map(similar => (
+                    <div className="details-similar-item" key={similar.id}>
+                      <PatternCard {...similar} preserveCatalogScroll={false} />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

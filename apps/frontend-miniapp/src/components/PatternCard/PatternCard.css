@@ -176,3 +176,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Price row: fixed height, always rendered (even empty) so every card in
+   the grid reserves identical content height regardless of whether this
+   particular pattern has a price. */
+.pattern-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 14px;
+  padding: 0 4px;
+  overflow: hidden;
+}
+
+.pattern-price-current {
+  overflow: hidden;
+  color: var(--black, #1D1C1C);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Mulish;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%; /* 13.2px */
+}
+
+.pattern-price-old {
+  overflow: hidden;
+  color: var(--dark_grey, #9B9A9A);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Mulish;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%; /* 13.2px */
+  text-decoration-line: line-through;
+}

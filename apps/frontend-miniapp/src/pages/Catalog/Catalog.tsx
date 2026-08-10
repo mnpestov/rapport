@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Heart, SlidersHorizontal } from 'lucide-react';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResponse } from '../../api/patternsApi';
@@ -31,16 +31,23 @@ function markSearchLogged(query: string): void {
 
 export const Catalog: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Set by PatternDetails' author link (navigate('/', { state: {...} })) —
+  // a request to show ONLY this author's catalog, replacing whatever search/
+  // filters were active before (see the initializers below, all of which
+  // branch on this same value).
+  const filterAuthorId = (location.state as { filterAuthorId?: string } | null)?.filterAuthorId;
+
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [totalPatterns, setTotalPatterns] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [searchInput, setSearchInput] = useState(() => sessionStorage.getItem('catalog_search') || '');
+  const [searchInput, setSearchInput] = useState(() => filterAuthorId ? '' : (sessionStorage.getItem('catalog_search') || ''));
   const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
-  const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => sessionStorage.getItem('catalog_free_filter') === 'true');
-  const [isNewFilterActive, setIsNewFilterActive] = useState(() => sessionStorage.getItem('catalog_new_filter') === 'true');
+  const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_free_filter') === 'true');
+  const [isNewFilterActive, setIsNewFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_new_filter') === 'true');
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
@@ -54,6 +61,16 @@ export const Catalog: React.FC = () => {
       yarnRanges: [],
       density: []
     };
+
+    if (filterAuthorId) {
+      // A stale scroll-restore flag from an earlier catalog visit (set by
+      // PatternCard before navigating to details) would otherwise try to
+      // restore scroll/pagination for the OLD, differently-filtered list —
+      // see offset/isRestoringRef below, which both also branch on filterAuthorId.
+      sessionStorage.removeItem('catalog_scroll');
+      return { ...empty, authors: [filterAuthorId] };
+    }
+
     const saved = sessionStorage.getItem('catalog_advanced_filters');
     if (saved) {
       // Merge over `empty` so a session saved before the `density` filter
@@ -63,7 +80,17 @@ export const Catalog: React.FC = () => {
     return empty;
   });
 
+  // Clear filterAuthorId from history state immediately after consumption
+  useEffect(() => {
+    if (filterAuthorId) {
+      const state = { ...(location.state as Record<string, unknown>) };
+      delete state.filterAuthorId;
+      navigate(location.pathname, { replace: true, state });
+    }
+  }, [filterAuthorId, location.pathname, location.state, navigate]);
+
   const [offset, setOffset] = useState(() => {
+    if (filterAuthorId) return 0;
     const savedScroll = sessionStorage.getItem('catalog_scroll');
     if (savedScroll) {
       const savedOffset = sessionStorage.getItem('catalog_offset');
@@ -71,7 +98,7 @@ export const Catalog: React.FC = () => {
     }
     return 0;
   });
-  const isRestoringRef = useRef(!!sessionStorage.getItem('catalog_scroll'));
+  const isRestoringRef = useRef(!filterAuthorId && !!sessionStorage.getItem('catalog_scroll'));
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 10;
 
