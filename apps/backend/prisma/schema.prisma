@@ -115,6 +115,8 @@ enum Permission {
   MINI_APP
   AUTHOR_CABINET
   ADMIN
+  PREMIUM_CORE
+  PREMIUM_EXTRA
 }
 
 model User {
