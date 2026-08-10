@@ -82,3 +82,33 @@ export const getUserSubscription = async (telegramId: string): Promise<boolean |
   const data = await res.json();
   return typeof data.isSubscribed === "boolean" ? data.isSubscribed : null;
 };
+
+// Thin wrapper over the existing grant/revoke endpoints — no new backend
+// needed, see PAID_TIER_PERMISSIONS_PLAN.md §1/§6.
+export const syncPermission = async (
+  userId: string,
+  permission: string,
+  wanted: boolean,
+  had: boolean
+): Promise<void> => {
+  if (wanted === had) return;
+  if (wanted) {
+    const res = await fetchWithAuth(`${API_URL}/admin/permissions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, permission }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error || `Failed to grant ${permission}: ${res.statusText}`);
+    }
+  } else {
+    const res = await fetchWithAuth(`${API_URL}/admin/permissions/${userId}/${permission}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error || `Failed to revoke ${permission}: ${res.statusText}`);
+    }
+  }
+};

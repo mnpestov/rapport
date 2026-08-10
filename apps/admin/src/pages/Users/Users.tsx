@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { X } from "lucide-react";
 import { UserRow, UserRowHeader } from "./UserRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
-import { getUsers, getUserSubscription, updateUser, AdminUser, AdminUserDetail, UserRole, SortField, SortOrder } from "../../api/users";
+import { getUsers, getUserSubscription, updateUser, syncPermission, AdminUser, AdminUserDetail, UserRole, SortField, SortOrder } from "../../api/users";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import toast from "react-hot-toast";
 import styles from "./Users.module.css";
@@ -38,6 +38,8 @@ function PermissionsSection({
   onSaved: (role: UserRole, authorId: string | null, authorName: string | null) => void;
 }) {
   const [role, setRole] = useState<UserRole>(user.role);
+  const [premiumCore, setPremiumCore] = useState(user.permissions.includes("PREMIUM_CORE"));
+  const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
   const [authorId, setAuthorId] = useState<string | null>(user.authorId);
   const [authorName, setAuthorName] = useState<string>(user.author?.name ?? "");
   const [authorSearch, setAuthorSearch] = useState(user.author?.name ?? "");
@@ -82,6 +84,8 @@ function PermissionsSection({
         role,
         authorId: role === "AUTHOR" ? authorId : null,
       });
+      await syncPermission(user.id, "PREMIUM_CORE", premiumCore, user.permissions.includes("PREMIUM_CORE"));
+      await syncPermission(user.id, "PREMIUM_EXTRA", premiumExtra, user.permissions.includes("PREMIUM_EXTRA"));
       toast.success("Разрешения обновлены");
       onSaved(role, role === "AUTHOR" ? authorId : null, role === "AUTHOR" ? authorName : null);
     } catch (err: any) {
@@ -91,7 +95,9 @@ function PermissionsSection({
     }
   };
 
-  const isDirty = role !== user.role || authorId !== user.authorId;
+  const isDirty = role !== user.role || authorId !== user.authorId
+    || premiumCore !== user.permissions.includes("PREMIUM_CORE")
+    || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA");
 
   return (
     <div className={styles.permissionsSection}>
@@ -108,6 +114,27 @@ function PermissionsSection({
           <option value="AUTHOR">Author</option>
           <option value="ADMIN">Admin</option>
         </select>
+      </div>
+
+      <div className={styles.permRow}>
+        <label>
+          <input
+            type="checkbox"
+            checked={premiumCore}
+            onChange={(e) => setPremiumCore(e.target.checked)}
+          />{" "}
+          Платно: плотность/толщина пряжи
+        </label>
+      </div>
+      <div className={styles.permRow}>
+        <label>
+          <input
+            type="checkbox"
+            checked={premiumExtra}
+            onChange={(e) => setPremiumExtra(e.target.checked)}
+          />{" "}
+          Платно: полный доступ
+        </label>
       </div>
 
       {role === "AUTHOR" && (
