@@ -4,7 +4,7 @@ import { Heart } from 'lucide-react';
 import { fetchPatternById, fetchSimilarPatterns, Pattern } from '../../api/patternsApi';
 import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
 import { useFavorites } from '../../context/FavoritesContext';
-import { useIsAdmin } from '../../hooks/useIsAdmin';
+import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
@@ -81,11 +81,12 @@ export const PatternDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
-  // authorId/author name are already public regardless of role (unlike
-  // price/details/similar, which the backend itself omits for non-admins) —
-  // this is the one place that needs an explicit frontend gate, see
-  // PAID_TIER_ROLLOUT_PLAN.md §2.5.
-  const isAdmin = useIsAdmin();
+  // authorId/author name are already public regardless of access level
+  // (unlike price/details/similar, which the backend itself omits) — this
+  // is the one place that needs an explicit frontend gate, and it must
+  // check PREMIUM_EXTRA specifically, not isAdmin — a non-admin explicitly
+  // granted the flag must see this too. See PAID_TIER_PERMISSIONS_PLAN.md §3.4.
+  const { extra } = usePremiumAccess();
 
   const [pattern, setPattern] = useState<Pattern | null>(null);
   const [loading, setLoading] = useState(true);
@@ -244,7 +245,7 @@ export const PatternDetails: React.FC = () => {
 
             <div className="details-row-spaced">
               <span className="details-label">Автор:</span>
-              {pattern.authorId && isAdmin ? (
+              {pattern.authorId && extra ? (
                 <button type="button" className="details-value details-author-link" onClick={handleAuthorClick}>
                   {pattern.author}
                 </button>

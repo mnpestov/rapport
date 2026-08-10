@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
 import { CustomSquareUncheck, CustomSquareCheck, CustomChevronDown, CustomChevronUp } from '../Icons/Icons';
 import { fetchFilters, FiltersResponse, FilterOption } from '../../api/patternsApi';
+import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import './FilterModal.css';
 
 interface FilterModalProps {
@@ -30,6 +31,11 @@ interface FilterModalProps {
 }
 
 export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading }) => {
+  // Density/yarn-thickness sections require PREMIUM_CORE — renderSection
+  // always renders its header regardless of whether options is empty, so
+  // gating has to happen at the call site, not inside it. See
+  // PAID_TIER_PERMISSIONS_PLAN.md §3.4.
+  const { core } = usePremiumAccess();
   const [selected, setSelected] = useState<SelectedFilters>(initialFilters);
   // Live, narrowed option lists — recomputed server-side (see the effect
   // below) as `selected` changes, so e.g. picking a category prunes density
@@ -274,10 +280,14 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           {renderSection("Инструмент", "instruments")}
           <div className="filter-divider" />
           {renderSection("Автор", "authors")}
-          <div className="filter-divider" />
-          {renderSection("Толщина пряжи (м/100г)", "yarnRanges")}
-          <div className="filter-divider" />
-          {renderSection("Плотность", "density")}
+          {core && (
+            <>
+              <div className="filter-divider" />
+              {renderSection("Толщина пряжи (м/100г)", "yarnRanges")}
+              <div className="filter-divider" />
+              {renderSection("Плотность", "density")}
+            </>
+          )}
         </div>
 
         <div className="filter-modal-footer">

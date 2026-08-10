@@ -5,10 +5,12 @@ export interface AuthResponse {
     id: string;
     telegramId: string;
     firstName: string;
-    // Drives premium-only UI (see useIsAdmin) — not a permission boundary by
-    // itself, the backend already omits premium data for non-admins
+    // Drives premium-only UI (see usePremiumAccess) — not a permission
+    // boundary by itself, the backend already omits premium data for
+    // anyone without the matching PREMIUM_CORE/PREMIUM_EXTRA permission
     // regardless of what the frontend renders.
     role?: "USER" | "AUTHOR" | "ADMIN";
+    permissions?: string[];
   };
 }
 
