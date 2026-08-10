@@ -26,14 +26,32 @@
 # идемпотентен (безопасно выполнять повторно).
 
 import os
+import sys
 import psycopg2
 
-from author_sync_lib.confirmed_authors import CONFIRMED_AUTHORS as AUTHORS_DONE
+from author_sync_lib.confirmed_authors import CONFIRMED_AUTHORS
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "prod_details_price_backfill.sql")
 
 
 def main():
+    # Optional author-name args restrict the run to a subset — for the
+    # chunked prod rollout (1 автор → 5 → все, каждый кусок со своим
+    # бэкапом). Без аргументов — прежнее поведение, все CONFIRMED_AUTHORS,
+    # тот же OUTPUT_PATH (уже закоммиченный полный файл). С аргументами —
+    # пишет в /tmp, отдельный проходной артефакт, в git не попадает.
+    requested = sys.argv[1:]
+    if requested:
+        unknown = [n for n in requested if n not in CONFIRMED_AUTHORS]
+        if unknown:
+            print(f"ОШИБКА: не найдены в CONFIRMED_AUTHORS: {unknown!r}")
+            sys.exit(1)
+        authors_done = requested
+        output_path = "/private/tmp/claude-501/-Users-mihailpestov-Desktop-dev-ai-dev/1d758576-c160-4174-95c9-9c09406a7be2/scratchpad/prod_backfill_chunk.sql"
+    else:
+        authors_done = CONFIRMED_AUTHORS
+        output_path = OUTPUT_PATH
+
     db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5434/knitting_catalog')
     if '?' in db_url:
         db_url = db_url.split('?')[0]
@@ -57,7 +75,7 @@ def main():
     ]
 
     total_rows = 0
-    for author_name in AUTHORS_DONE:
+    for author_name in authors_done:
         cursor.execute('SELECT id FROM "Author" WHERE name = %s', (author_name,))
         row = cursor.fetchone()
         if not row:
@@ -88,10 +106,10 @@ def main():
 
     lines.append("COMMIT;")
 
-    with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
 
-    print(f"Записано {total_rows} UPDATE-выражений для {len(AUTHORS_DONE)} автор(ов) в {OUTPUT_PATH}")
+    print(f"Записано {total_rows} UPDATE-выражений для {len(authors_done)} автор(ов) в {output_path}")
     conn.close()
 
 
