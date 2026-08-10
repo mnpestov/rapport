@@ -1,5 +1,20 @@
 export type PatternFacet = "categories" | "tags" | "instruments" | "authors" | "yarnRanges" | "density";
 
+// Single interception point for the PREMIUM_CORE gate (yarnRanges/density
+// are the two facets it covers) — called once at the top of getPatterns/
+// getFilters, before query ever reaches buildPatternWhere (which stays a
+// pure function with no access to req/role). Keeps the gate to 2 call sites
+// instead of threading a role param through all 6 buildPatternWhere calls.
+// See PAID_TIER_PERMISSIONS_PLAN.md §3.3.
+export const stripPremiumFacetParams = (
+  query: Record<string, unknown>,
+  hasCore: boolean
+): Record<string, unknown> => {
+  if (hasCore) return query;
+  const { yarnRanges, density, ...rest } = query;
+  return rest;
+};
+
 export const parseArrayParam = (param: unknown): string[] => {
   if (!param) return [];
   if (Array.isArray(param)) return param as string[];

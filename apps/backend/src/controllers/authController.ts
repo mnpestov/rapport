@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { Request, Response } from "express";
+import { Permission } from "@prisma/client";
 import { validateTelegramWebAppData } from "../utils/telegramAuth";
 import { generateToken } from "../utils/jwt";
 import { prisma } from "../prismaClient";
@@ -101,13 +102,48 @@ export const telegramAuth = async (req: Request, res: Response) => {
 
   try {
     // ── Database ──────────────────────────────────────────────────────────────
+    // upsert() doesn't report create-vs-update, and this whole handler runs
+    // on every login, not just the first — checking existence first is what
+    // lets the auto-grant below run exactly once, on real account creation,
+    // instead of re-firing (and silently undoing an admin's revocation) on
+    // every subsequent open of the mini app. See PAID_TIER_PERMISSIONS_PLAN.md §5.
+    const existingUser = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+      select: { id: true },
+    });
+
     const userRecord = await prisma.user.upsert({
       where: { telegramId: BigInt(telegramId) },
       update: { firstName, lastName, username, languageCode },
       create: { telegramId: BigInt(telegramId), firstName, lastName, username, languageCode },
+      include: { permissions: { select: { permission: true } } },
     });
 
     console.log(`[AUTH] [${requestId}] User upsert completed dbUserId=${userRecord.id}`);
+
+    // TEMPORARY: pre-payment period only — PREMIUM_CORE (density/yarn-
+    // thickness filters, already free in prod before the permissions system
+    // existed) is auto-granted to every newly created user so nothing changes
+    // for them. Gated on `!existingUser`, not the upsert branch, for exactly
+    // the reason above. Removing this is part of the "launch day" runbook —
+    // together with the `permissions.push` below, not on its own (removing
+    // one without the other leaves the auth response lying about what a new
+    // user actually has). See PAID_TIER_PERMISSIONS_PLAN.md §8.
+    if (!existingUser) {
+      await prisma.userPermission.upsert({
+        where: { userId_permission: { userId: userRecord.id, permission: Permission.PREMIUM_CORE } },
+        create: { userId: userRecord.id, permission: Permission.PREMIUM_CORE },
+        update: {},
+      });
+    }
+
+    // userRecord.permissions reflects DB state as of the upsert above, i.e.
+    // BEFORE the grant just issued for a brand new user — append it manually
+    // rather than re-querying (see PAID_TIER_PERMISSIONS_PLAN.md §3.4).
+    const permissions = userRecord.permissions.map((p) => p.permission as string);
+    if (!existingUser) {
+      permissions.push(Permission.PREMIUM_CORE);
+    }
 
     // ── Whitelist ─────────────────────────────────────────────────────────────
     const whitelistResult = await checkWhitelistAccess({ telegramId, username, firstName, lastName, subResult });
@@ -198,6 +234,8 @@ export const telegramAuth = async (req: Request, res: Response) => {
         // This is only how the frontend knows whether to render the
         // premium-only UI (author link etc.) it already got real data for.
         role: userRecord.role,
+        // Same non-boundary caveat as role — see usePremiumAccess.ts.
+        permissions,
       },
     };
 

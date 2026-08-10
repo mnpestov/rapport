@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
-import { buildPatternWhere } from "../utils/patternFilters";
-import { PATTERN_PREMIUM_OMIT, PATTERN_PRICE_OMIT, isAdminRole } from "../utils/patternVisibility";
+import { buildPatternWhere, stripPremiumFacetParams } from "../utils/patternFilters";
+import { PATTERN_PREMIUM_OMIT, PATTERN_PRICE_OMIT, PATTERN_CORE_OMIT, hasExtra, hasCore } from "../utils/patternVisibility";
 
 // Shared by every endpoint that returns a list of patterns (catalog, batch-
 // by-ids, similar) — maps the Prisma relations down to the flat shape the
@@ -20,7 +20,7 @@ export const getPatterns = async (req: Request, res: Response) => {
   try {
     const { search, isFree, isNew, limit, offset } = req.query;
 
-    const where: any = buildPatternWhere(req.query);
+    const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, hasCore(req)));
 
     if (search && typeof search === 'string') {
       where.OR = [
@@ -42,7 +42,7 @@ export const getPatterns = async (req: Request, res: Response) => {
 
     const take = limit ? parseInt(limit as string, 10) : 10;
     const skip = offset ? parseInt(offset as string, 10) : 0;
-    const admin = isAdminRole(req.userRole);
+    const extra = hasExtra(req);
 
     const [patterns, total] = await Promise.all([
       prisma.pattern.findMany({
@@ -58,9 +58,9 @@ export const getPatterns = async (req: Request, res: Response) => {
         // extra URLs per pattern; see pattern_images_plan.md риск №8). Same
         // reasoning for details — long free text, only ever shown on the
         // detail page — omitted here for EVERYONE regardless of role, purely
-        // for payload size. price/oldPrice are additionally premium — omitted
-        // on top of that for anyone who isn't ADMIN, see PAID_TIER_ROLLOUT_PLAN.md.
-        omit: { images: true, details: true, ...(admin ? {} : PATTERN_PRICE_OMIT) },
+        // for payload size. price/oldPrice require PREMIUM_EXTRA, omitted on
+        // top of that otherwise — see PAID_TIER_PERMISSIONS_PLAN.md §3.2.
+        omit: { images: true, details: true, ...(extra ? {} : PATTERN_PRICE_OMIT) },
         include: {
           author: true,
           instruments: true,
@@ -83,19 +83,22 @@ export const getPatterns = async (req: Request, res: Response) => {
 export const getPatternById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const admin = isAdminRole(req.userRole);
+    const extra = hasExtra(req);
+    const core = hasCore(req);
     const pattern = await prisma.pattern.findFirst({
       where: { id, isVisible: true },
       // The only endpoint that reads a Pattern with no omit at all before
-      // this — price/oldPrice/details are premium-only, see
-      // PAID_TIER_ROLLOUT_PLAN.md.
-      omit: admin ? {} : PATTERN_PREMIUM_OMIT,
+      // this — price/oldPrice/details require PREMIUM_EXTRA, densityStitches/
+      // densityRows require PREMIUM_CORE — see PAID_TIER_PERMISSIONS_PLAN.md §3.2/§3.3.
+      omit: { ...(extra ? {} : PATTERN_PREMIUM_OMIT), ...(core ? {} : PATTERN_CORE_OMIT) },
       include: {
         author: true,
         instruments: true,
         categories: true,
         tags: true,
-        yarnRanges: { select: { label: true } },
+        // yarnRanges is a relation, not omit-able — only include it at all
+        // when PREMIUM_CORE is present (mirrors densityStitches/densityRows).
+        ...(core ? { yarnRanges: { select: { label: true } } } : {}),
       }
     });
 
@@ -105,15 +108,15 @@ export const getPatternById = async (req: Request, res: Response) => {
 
     const mappedPattern = {
       ...pattern,
-      // Full gallery is premium too — non-admins get just the cover.
-      // ImageCarousel already collapses to a single <img> when images.length
-      // <= 1, so the frontend needs no change for this.
-      images: admin ? pattern.images : [],
+      // Full gallery requires PREMIUM_EXTRA too — everyone else gets just the
+      // cover. ImageCarousel already collapses to a single <img> when
+      // images.length <= 1, so the frontend needs no change for this.
+      images: extra ? pattern.images : [],
       author: pattern.author?.name || 'Неизвестно',
       instruments: pattern.instruments.map(i => i.name),
       productTypes: pattern.categories.map(pt => pt.name),
       tags: pattern.tags.map(t => t.name),
-      yarnRanges: pattern.yarnRanges.map(y => y.label),
+      yarnRanges: core ? (pattern as any).yarnRanges.map((y: any) => y.label) : [],
       primaryProductType: pattern.categories[0]?.name || '',
       externalLink: pattern.url || ''
     };
@@ -134,7 +137,7 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
     }
 
     const validIds = ids.filter((id): id is string => typeof id === "string").slice(0, 500);
-    const admin = isAdminRole(req.userRole);
+    const extra = hasExtra(req);
 
     const patterns = await prisma.pattern.findMany({
       where: {
@@ -144,7 +147,7 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
       // Same reasoning as getPatterns — this feeds list/thumbnail views
       // (e.g. favorites), never the detail page's gallery or details block.
       // price/oldPrice premium-gated the same way too.
-      omit: { images: true, details: true, ...(admin ? {} : PATTERN_PRICE_OMIT) },
+      omit: { images: true, details: true, ...(extra ? {} : PATTERN_PRICE_OMIT) },
       include: {
         author: true,
         instruments: true,
@@ -180,10 +183,11 @@ const SIMILAR_MIN_RESULTS = 4;
 export const getSimilarPatterns = async (req: Request, res: Response) => {
   try {
     // "Похожие описания" is a premium feature in its own right (not just a
-    // premium-field omission within it) — non-admins get an empty list,
-    // indistinguishable on the frontend from "genuinely nothing similar
-    // found", without running the query at all. See PAID_TIER_ROLLOUT_PLAN.md.
-    if (!isAdminRole(req.userRole)) {
+    // premium-field omission within it) — anyone without PREMIUM_EXTRA gets
+    // an empty list, indistinguishable on the frontend from "genuinely
+    // nothing similar found", without running the query at all.
+    // See PAID_TIER_PERMISSIONS_PLAN.md §3.2.
+    if (!hasExtra(req)) {
       return res.json({ data: [] });
     }
 
