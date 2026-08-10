@@ -193,6 +193,11 @@ export const telegramAuth = async (req: Request, res: Response) => {
         id: userRecord.id,
         telegramId: telegramId.toString(),
         firstName: userRecord.firstName,
+        // NOT a JWT claim — see resolveRole.ts / PAID_TIER_ROLLOUT_PLAN.md
+        // §2.3 for why role-gated reads always re-check the DB instead.
+        // This is only how the frontend knows whether to render the
+        // premium-only UI (author link etc.) it already got real data for.
+        role: userRecord.role,
       },
     };
 
