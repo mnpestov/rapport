@@ -7,18 +7,19 @@ import { useEffect, useState } from "react";
 // without the matching permission regardless of what this returns — see
 // PAID_TIER_PERMISSIONS_PLAN.md §3.4.
 //
-// Checks the actual PREMIUM_CORE/PREMIUM_EXTRA flags, not just role — an
-// ADMIN implicitly has both (mirrors the backend's resolveRole semantics),
-// but a regular user who was explicitly granted one flag must see exactly
-// that flag's UI, not neither (the whole point of separating permission
-// from role).
+// Checks the actual PREMIUM_CORE/PREMIUM_EXTRA/PREMIUM_DETAILS flags, not
+// just role — an ADMIN implicitly has all three (mirrors the backend's
+// resolveRole semantics), but a regular user who was explicitly granted one
+// flag must see exactly that flag's UI, not neither (the whole point of
+// separating permission from role).
 export interface PremiumAccess {
   isAdmin: boolean;
   core: boolean;
   extra: boolean;
+  details: boolean;
 }
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false };
 
 const readAccess = (): PremiumAccess => {
   const raw = localStorage.getItem("user_data");
@@ -31,6 +32,7 @@ const readAccess = (): PremiumAccess => {
       isAdmin,
       core: isAdmin || permissions.includes("PREMIUM_CORE"),
       extra: isAdmin || permissions.includes("PREMIUM_EXTRA"),
+      details: isAdmin || permissions.includes("PREMIUM_DETAILS"),
     };
   } catch {
     return NO_ACCESS;

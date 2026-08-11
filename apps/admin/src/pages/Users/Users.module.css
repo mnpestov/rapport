@@ -237,6 +237,55 @@
   border-color: var(--c-title);
 }
 
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: clamp(30px, 2.42vw, 44px);
+  height: clamp(17px, 1.36vw, 24px);
+  cursor: pointer;
+}
+
+.toggleSwitch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  inset: 0;
+  background: var(--c-muted);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.toggleSlider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  height: calc(100% - 4px);
+  aspect-ratio: 1;
+  background: var(--c-white);
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.toggleSwitch input:checked + .toggleSlider {
+  background: #a9ae36;
+}
+
+.toggleSwitch input:checked + .toggleSlider::before {
+  transform: translateX(calc(clamp(30px, 2.42vw, 44px) - clamp(17px, 1.36vw, 24px)));
+}
+
+.toggleSwitch input:focus-visible + .toggleSlider {
+  outline: 2px solid var(--c-title);
+  outline-offset: 2px;
+}
+
 .authorSearchWrap {
   position: relative;
   flex: 1;

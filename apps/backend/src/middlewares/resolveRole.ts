@@ -6,6 +6,7 @@ export interface PremiumAccess {
   isAdmin: boolean;
   core: boolean;
   extra: boolean;
+  details: boolean;
 }
 
 declare global {
@@ -22,10 +23,10 @@ declare global {
  * 401/403 gate for /admin/*), this never rejects a request: req.premium is
  * just all-false for guests, and handlers decide what to omit.
  *
- * ADMIN is a superset of both flags (matches requirePermissionOrAdmin's
+ * ADMIN is a superset of all three flags (matches requirePermissionOrAdmin's
  * existing semantics for AUTHOR_CABINET) — an admin never needs an explicit
- * UserPermission row. PREMIUM_CORE/PREMIUM_EXTRA are resolved from
- * UserPermission rather than trusted from the JWT: the mini-app access token
+ * UserPermission row. PREMIUM_CORE/PREMIUM_EXTRA/PREMIUM_DETAILS are resolved
+ * from UserPermission rather than trusted from the JWT: the mini-app access token
  * lives up to 24h (refresh up to 30d), so a claim baked into the token would
  * reflect a grant/revoke only after re-authentication. A cache-backed DB
  * read gives near-instant effect for testing (see
@@ -37,7 +38,7 @@ declare global {
 const ROLE_CACHE_TTL_MS = 30_000;
 const roleCache = new Map<string, { premium: PremiumAccess; expiresAt: number }>();
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false };
 
 export const resolveRole = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   if (!req.user) {
@@ -59,7 +60,7 @@ export const resolveRole = async (req: Request, _res: Response, next: NextFuncti
       select: {
         role: true,
         permissions: {
-          where: { permission: { in: [Permission.PREMIUM_CORE, Permission.PREMIUM_EXTRA] } },
+          where: { permission: { in: [Permission.PREMIUM_CORE, Permission.PREMIUM_EXTRA, Permission.PREMIUM_DETAILS] } },
           select: { permission: true },
         },
       },
@@ -70,6 +71,7 @@ export const resolveRole = async (req: Request, _res: Response, next: NextFuncti
       isAdmin,
       core: isAdmin || perms.has(Permission.PREMIUM_CORE),
       extra: isAdmin || perms.has(Permission.PREMIUM_EXTRA),
+      details: isAdmin || perms.has(Permission.PREMIUM_DETAILS),
     };
   } catch (error) {
     console.error("[resolveRole] Failed to resolve access:", error);

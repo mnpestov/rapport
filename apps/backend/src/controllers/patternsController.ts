@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
 import { buildPatternWhere, stripPremiumFacetParams } from "../utils/patternFilters";
-import { PATTERN_PREMIUM_OMIT, PATTERN_PRICE_OMIT, PATTERN_CORE_OMIT, hasExtra, hasCore } from "../utils/patternVisibility";
+import { PATTERN_PRICE_OMIT, PATTERN_CORE_OMIT, PATTERN_DETAILS_OMIT, hasExtra, hasCore, hasDetails } from "../utils/patternVisibility";
 
 // Shared by every endpoint that returns a list of patterns (catalog, batch-
 // by-ids, similar) — maps the Prisma relations down to the flat shape the
@@ -85,12 +85,15 @@ export const getPatternById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const extra = hasExtra(req);
     const core = hasCore(req);
+    const details = hasDetails(req);
     const pattern = await prisma.pattern.findFirst({
       where: { id, isVisible: true },
       // The only endpoint that reads a Pattern with no omit at all before
-      // this — price/oldPrice/details require PREMIUM_EXTRA, densityStitches/
-      // densityRows require PREMIUM_CORE — see PAID_TIER_PERMISSIONS_PLAN.md §3.2/§3.3.
-      omit: { ...(extra ? {} : PATTERN_PREMIUM_OMIT), ...(core ? {} : PATTERN_CORE_OMIT) },
+      // this — price/oldPrice require PREMIUM_EXTRA, densityStitches/
+      // densityRows require PREMIUM_CORE, details requires its own
+      // PREMIUM_DETAILS (split out from PREMIUM_EXTRA — worse parse quality,
+      // rolled out independently) — see PAID_TIER_PERMISSIONS_PLAN.md §3.2/§3.3.
+      omit: { ...(extra ? {} : PATTERN_PRICE_OMIT), ...(core ? {} : PATTERN_CORE_OMIT), ...(details ? {} : PATTERN_DETAILS_OMIT) },
       include: {
         author: true,
         instruments: true,

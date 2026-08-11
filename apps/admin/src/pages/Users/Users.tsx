@@ -28,6 +28,27 @@ function platformLabel(platform: string | null): string {
   return map[platform.toLowerCase()] ?? platform;
 }
 
+// ── Toggle switch — off=grey, on=accent, used for premium permission rows ──────
+
+function ToggleSwitch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className={styles.toggleSwitch}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className={styles.toggleSlider} />
+    </label>
+  );
+}
+
 // ── Permission section — editable role + author link ──────────────────────────
 
 function PermissionsSection({
@@ -39,6 +60,7 @@ function PermissionsSection({
 }) {
   const [role, setRole] = useState<UserRole>(user.role);
   const [premiumCore, setPremiumCore] = useState(user.permissions.includes("PREMIUM_CORE"));
+  const [premiumDetails, setPremiumDetails] = useState(user.permissions.includes("PREMIUM_DETAILS"));
   const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
   const [authorId, setAuthorId] = useState<string | null>(user.authorId);
   const [authorName, setAuthorName] = useState<string>(user.author?.name ?? "");
@@ -85,6 +107,7 @@ function PermissionsSection({
         authorId: role === "AUTHOR" ? authorId : null,
       });
       await syncPermission(user.id, "PREMIUM_CORE", premiumCore, user.permissions.includes("PREMIUM_CORE"));
+      await syncPermission(user.id, "PREMIUM_DETAILS", premiumDetails, user.permissions.includes("PREMIUM_DETAILS"));
       await syncPermission(user.id, "PREMIUM_EXTRA", premiumExtra, user.permissions.includes("PREMIUM_EXTRA"));
       toast.success("Разрешения обновлены");
       onSaved(role, role === "AUTHOR" ? authorId : null, role === "AUTHOR" ? authorName : null);
@@ -97,6 +120,7 @@ function PermissionsSection({
 
   const isDirty = role !== user.role || authorId !== user.authorId
     || premiumCore !== user.permissions.includes("PREMIUM_CORE")
+    || premiumDetails !== user.permissions.includes("PREMIUM_DETAILS")
     || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA");
 
   return (
@@ -117,24 +141,16 @@ function PermissionsSection({
       </div>
 
       <div className={styles.permRow}>
-        <label>
-          <input
-            type="checkbox"
-            checked={premiumCore}
-            onChange={(e) => setPremiumCore(e.target.checked)}
-          />{" "}
-          Платно: плотность/толщина пряжи
-        </label>
+        <span className={styles.rowLabel}>Плотность и толщина пряжи</span>
+        <ToggleSwitch checked={premiumCore} onChange={setPremiumCore} />
       </div>
       <div className={styles.permRow}>
-        <label>
-          <input
-            type="checkbox"
-            checked={premiumExtra}
-            onChange={(e) => setPremiumExtra(e.target.checked)}
-          />{" "}
-          Платно: полный доступ
-        </label>
+        <span className={styles.rowLabel}>Подробности</span>
+        <ToggleSwitch checked={premiumDetails} onChange={setPremiumDetails} />
+      </div>
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Максимальный</span>
+        <ToggleSwitch checked={premiumExtra} onChange={setPremiumExtra} />
       </div>
 
       {role === "AUTHOR" && (

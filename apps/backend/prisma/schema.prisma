@@ -117,6 +117,7 @@ enum Permission {
   ADMIN
   PREMIUM_CORE
   PREMIUM_EXTRA
+  PREMIUM_DETAILS
 }
 
 model User {
