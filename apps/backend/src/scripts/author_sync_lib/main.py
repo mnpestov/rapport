@@ -183,6 +183,13 @@ def main():
                     seen_cat.add(c['id'])
                     
             item['categories'] = unique_cats
+            # Admin/author-cabinet forms cap the gallery at 5 photos (see
+            # MAX_PATTERN_IMAGES in patternImages.ts) — clamp here too so a
+            # freshly scraped draft never arrives with more than what can
+            # actually be saved, rather than silently dropping the tail on
+            # first edit.
+            if isinstance(item.get('images'), list) and len(item['images']) > 5:
+                item['images'] = item['images'][:5]
             # Remove defaults, let the parser output dictate
             if 'densityStitches' not in item or item['densityStitches'] is None:
                 item['densityStitches'] = None

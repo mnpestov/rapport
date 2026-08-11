@@ -9,6 +9,13 @@ export type ImagesValidationResult =
 // (Pattern create/update, Draft create/update, sync-item edit). Does NOT
 // check URL origin; see validateNewImageOrigins for that (origin rules
 // differ between create and update, see pattern_images_plan.md риск №10).
+//
+// An oversized array is silently clamped to the first `max` entries rather
+// than rejected — scraped drafts routinely carry more than 5 source photos
+// (the site's own gallery), and there is no useful action for an admin to
+// take on a hard "too many images" error other than manually deleting the
+// extras one by one. Every caller MUST use the returned `images`, not the
+// original input, or the clamp has no effect (see pattern_images_plan.md).
 export function validateImages(input: unknown, opts: { max?: number } = {}): ImagesValidationResult {
   const max = opts.max ?? MAX_PATTERN_IMAGES;
 
@@ -18,10 +25,7 @@ export function validateImages(input: unknown, opts: { max?: number } = {}): Ima
   if (input.length === 0) {
     return { ok: false, error: "At least one image is required" };
   }
-  if (input.length > max) {
-    return { ok: false, error: `No more than ${max} images allowed` };
-  }
-  return { ok: true, images: input };
+  return { ok: true, images: input.length > max ? input.slice(0, max) : input };
 }
 
 // images[0] is always the cover — the only value ever written to the

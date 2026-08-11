@@ -502,13 +502,15 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     }
 
     let imagesDiff: { added: string[]; removed: string[] } | null = null;
+    let validatedImages: string[] | undefined;
     if (images !== undefined) {
       const validation = validateImages(images);
       if (!validation.ok) {
         res.status(400).json({ error: validation.error });
         return;
       }
-      imagesDiff = diffImages(existing.images, validation.images);
+      validatedImages = validation.images;
+      imagesDiff = diffImages(existing.images, validatedImages);
       const originCheck = validateNewImageOrigins(imagesDiff.added);
       if (!originCheck.ok) {
         res.status(400).json({ error: originCheck.error });
@@ -548,9 +550,9 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (densityRows !== undefined) data.densityRows = densityRows === "" || densityRows === null ? null : Number(densityRows);
     if (price !== undefined) data.price = price === "" || price === null ? null : Number(price);
     if (oldPrice !== undefined) data.oldPrice = oldPrice === "" || oldPrice === null ? null : Number(oldPrice);
-    if (images !== undefined) {
-      data.images = images;
-      data.imageUrl = deriveImageUrl(images);
+    if (validatedImages !== undefined) {
+      data.images = validatedImages;
+      data.imageUrl = deriveImageUrl(validatedImages);
       // Removed files are deleted only after the DB update succeeds (see below).
     }
 

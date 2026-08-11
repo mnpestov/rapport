@@ -36,7 +36,9 @@ function toFormState(item: AdminDraft): FormState {
   return {
     title: item.title || "",
     url: item.url || "",
-    images: item.images,
+    // Freshly scraped drafts can carry more than the 5-photo save limit —
+    // trim on load so what's shown matches what a save will persist.
+    images: item.images.slice(0, 5),
     details: item.details || "",
     price: item.price != null ? String(item.price) : "",
     oldPrice: item.oldPrice != null ? String(item.oldPrice) : "",
@@ -235,6 +237,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
                 onChange={e => setFormData({ ...formData, densityStitches: e.target.value })}
                 style={{ ...inputStyle, width: "calc(50% - 16px)" }}
                 min={0}
+                step="any"
               />
               <span style={{ fontFamily: "Mulish", fontSize: 14, color: "#1d1c1c", flexShrink: 0 }}>×</span>
               <input
@@ -243,6 +246,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
                 onChange={e => setFormData({ ...formData, densityRows: e.target.value })}
                 style={{ ...inputStyle, width: "calc(50% - 16px)" }}
                 min={0}
+                step="any"
               />
             </div>
             <div style={{ display: "flex", gap: 8 }}>

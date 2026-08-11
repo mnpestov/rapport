@@ -375,7 +375,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         title: res.title || "",
         authorName: res.author?.name || "",
         url: res.url || "",
-        images: res.images || [],
+        // Loaded galleries can carry more than the 5-photo save limit
+        // (scraped drafts, legacy data) — trim on load so what's shown
+        // always matches what a save will actually persist.
+        images: (res.images || []).slice(0, 5),
         details: res.details || "",
         price: res.price != null ? String(res.price) : "",
         oldPrice: res.oldPrice != null ? String(res.oldPrice) : "",
@@ -402,7 +405,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       title: draft.title,
       authorName: currentAuthorName,
       url: draft.url,
-      images: draft.images,
+      images: draft.images.slice(0, 5),
       details: draft.details || "",
       price: draft.price != null ? String(draft.price) : "",
       oldPrice: draft.oldPrice != null ? String(draft.oldPrice) : "",
@@ -1119,6 +1122,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       style={{ ...inputStyle, width: "calc(50% - 16px)" }}
                       placeholder=""
                       min={0}
+                      step="any"
                       disabled={formReadonly}
                     />
                     <span style={{ fontFamily: "Mulish", fontSize: 14, color: "#1d1c1c", flexShrink: 0 }}>×</span>
@@ -1129,6 +1133,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       style={{ ...inputStyle, width: "calc(50% - 16px)" }}
                       placeholder=""
                       min={0}
+                      step="any"
                       disabled={formReadonly}
                     />
                   </div>
