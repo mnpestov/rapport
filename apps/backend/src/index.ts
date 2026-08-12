@@ -57,11 +57,22 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(softAuth);
 
-// Раздача статических файлов из папки public
-app.use(express.static(path.join(__dirname, "../public")));
+// Раздача статических файлов из папки public (сейчас там только
+// public/images/patterns — скрапнутые фото паттернов). Файл под данным
+// именем никогда не перезаписывается новым содержимым в штатной работе
+// (см. PATTERN_IMAGES_BACKFILL_PROCESS.md — новая фотогалерея всегда
+// получает новые имена файлов, индекс/хэш считается заново от текущего
+// состояния; единственное исключение — явная ручная процедура отката,
+// которая перед перезаписью удаляет старый файл) — поэтому долгий
+// immutable-кэш безопасен уже сейчас, не только после будущей миграции на
+// контент-адресуемые имена.
+const STATIC_CACHE_OPTIONS = { maxAge: "30d", immutable: true };
+app.use(express.static(path.join(__dirname, "../public"), STATIC_CACHE_OPTIONS));
 
-// Раздача загруженных изображений
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Раздача загруженных изображений (ручная загрузка через админку,
+// uuidv4()-имена — коллизий/перезаписи по имени не бывает в принципе, см.
+// apps/backend/src/routes/admin.ts).
+app.use("/uploads", express.static(path.join(__dirname, "../uploads"), STATIC_CACHE_OPTIONS));
 
 // Глобальное логирование входящих запросов
 app.use((req, res, next) => {
