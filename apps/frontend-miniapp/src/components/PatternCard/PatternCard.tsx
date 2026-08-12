@@ -73,6 +73,8 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
           src={imageUrl}
           alt={title}
           className="pattern-card-image"
+          loading="lazy"
+          decoding="async"
         />
         {(isNew || isFree) && (
           <div className="badge-stack">
