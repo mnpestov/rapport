@@ -1,6 +1,8 @@
 import re
 import json
 
+from bs4 import BeautifulSoup
+
 
 def _extract_details_text(container, exclude_paragraph=None):
     # Build from direct <p> children when present, so a per-domain
@@ -274,15 +276,47 @@ def _generic_extract_gallery(soup):
     #    an exact `.product-gallery` selector — BEM-style themes (Vigbo
     #    included) name the real container "product-gallery__slider-item"
     #    etc., never the bare token an exact class selector requires.
+    #    product__img(-col) — confirmed live on romnastena.com: a plain,
+    #    non-slider BEM container ("product__img-col") holding several
+    #    server-rendered <img src> siblings directly, no lightbox/slider
+    #    library at all — just more <img> tags than the single-cover
+    #    listing-card scrape sees.
     if not urls:
         for container in soup.select(
-            '[class*="product-gallery"], [class*="product-images"], [class*="product-photos"]'
+            '[class*="product-gallery"], [class*="product-images"], [class*="product-photos"], [class*="product__img"]'
         ):
             container_signature = ' '.join([container.get('id', '')] + (container.get('class') or []))
             if _GALLERY_NOISE_RE.search(container_signature):
                 continue
             for img in container.select('img'):
                 add(img.get('data-src') or img.get('src'))
+
+    # 5. Tilda's own native slider widget (class "t-slds") — a plain photo
+    #    carousel, not the JSON-API-driven "Store" block already covered by
+    #    handlers.py's dedicated Tilda Store extraction (different feature,
+    #    different markup). Seen on ordinary product pages built with
+    #    Tilda's ready-made blocks (e.g. helenyakovleva.com's "Cards" t774
+    #    block) that have nothing to do with a Store — confirmed live.
+    #    Scoped to the FIRST `.t-slds` found on the page only, not every
+    #    slider site-wide — a page can carry an unrelated second slider
+    #    (e.g. a "recommended products" carousel) elsewhere. Looping
+    #    sliders pad the DOM with cloned slides at the start/end for
+    #    seamless infinite scroll (verified live: last 1-2 slides repeat
+    #    the first 1-2, byte-identical URLs) — `add()`'s own dedup already
+    #    handles that, no special-casing needed.
+    #    meta[itemprop="image"] (schema.org ImageObject) is the cleanest
+    #    signal Tilda puts on every slide; data-original on the slide's own
+    #    .t-bgimg is the fallback when that meta tag is missing.
+    if not urls:
+        slider = soup.select_one('.t-slds')
+        if slider:
+            for item in slider.select('.t-slds__item'):
+                meta_img = item.select_one('meta[itemprop="image"]')
+                src = meta_img.get('content') if meta_img else None
+                if not src:
+                    bgimg = item.select_one('.t-bgimg[data-original]')
+                    src = bgimg.get('data-original') if bgimg else None
+                add(src)
 
     return urls[:12]
 
@@ -595,6 +629,26 @@ def _eiwi_extract_gallery(soup, raw_html, url):
     # page itself already points at the non-thumbs path).
     return [u.replace('/thumbs/', '/', 1) for u in urls]
 
+def _juliavyazget_extract_gallery(soup, raw_html, url):
+    # juliavyazget.com's product photo slider (.t-slds, meta[itemprop=image]
+    # per slide — the exact markup _generic_extract_gallery's rule 5 already
+    # handles) sits inside a literal <footer class="t-records"> on this
+    # site's Tilda export — confirmed live (its LAST page block happens to
+    # be exported with a <footer> tag, not the usual plain <div>; every
+    # OTHER Tilda author checked here uses <div> throughout, zero <footer>
+    # tags at all — this is this one site's export quirk, not a general
+    # Tilda pattern, so it's not safe to stop decomposing <footer> globally).
+    # fetch_and_parse_detail() already decomposed nav/header/footer/aside/
+    # script/style/title on `soup` BEFORE calling this hook, which silently
+    # deletes the gallery along with genuine boilerplate — re-parse from the
+    # untouched raw_html instead and redo the same cleanup minus <footer>.
+    fresh_soup = BeautifulSoup(raw_html or '', 'html.parser')
+    for tag in fresh_soup(['nav', 'header', 'aside', 'script', 'style', 'title']):
+        tag.decompose()
+    for tag in fresh_soup.find_all(class_=re.compile(r'\brelated\b')):
+        tag.decompose()
+    return _generic_extract_gallery(fresh_soup)
+
 def _elena_ianson_exclude_details_paragraph(text):
     # Standard boilerplate repeated verbatim at the end of every product
     # page (download-link delivery notice + "check your spam folder"
@@ -691,6 +745,19 @@ DOMAIN_CRAWL_HOOKS = {
     'mustardyarn.ru': {
         'exclude_product': lambda href: 'opisanie' not in href,
         'exclude_pagination': lambda next_url, is_category: is_category and 'vse-opisanija' not in next_url,
+    },
+    # juliavyazget.com: "avtorskie_mk"/"free_mk" have no literal "/mk"
+    # substring (has_valid_href/is_category require a slash right before
+    # "mk") — the crawler never visits /avtorskie_mk at all, so it never
+    # sees the 25 product links sitting there (confirmed live). free_mk's
+    # own items all link out to t.me (Telegram posts, not real pages on
+    # this domain) — the crawler's off-domain guard drops those before any
+    # href-pattern check runs, so adding free_mk here wouldn't find
+    # anything yet; deliberately left out until that's solved separately.
+    'juliavyazget.com': {
+        'extra_pagination_match': lambda href: bool(re.search(r'/avtorskie_mk/?$', href)),
+        'extra_valid_href_match': lambda href: bool(re.search(r'/avtorskie_mk/[\w-]+', href)),
+        'extract_gallery': _juliavyazget_extract_gallery,
     },
 }
 

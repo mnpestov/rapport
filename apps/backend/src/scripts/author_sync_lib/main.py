@@ -26,8 +26,18 @@ def main():
     print("Loading global URL database for deduplication...")
     cursor.execute('SELECT url FROM "Pattern" WHERE url IS NOT NULL')
     db_urls = {normalize_url(row[0]) for row in cursor.fetchall() if row[0]}
-    
-    cursor.execute('SELECT url FROM "AuthorSyncItem" WHERE url IS NOT NULL')
+
+    # Only PENDING (already queued for review — don't re-add a duplicate
+    # item while one is still sitting in the moderation queue) and REJECTED
+    # (admin explicitly said no — must never resurface on its own) block
+    # rediscovery. APPROVED is deliberately excluded here: an approved item
+    # already has a live Pattern row, which db_urls above already covers —
+    # but if that Pattern is later deleted directly (not via "Отклонить"),
+    # the APPROVED AuthorSyncItem row would otherwise keep blocking it
+    # forever even though it's gone from the catalog and still on the
+    # author's site. Deleted-but-not-rejected must be re-offered as a
+    # novelty until the admin actually rejects it.
+    cursor.execute("SELECT url FROM \"AuthorSyncItem\" WHERE url IS NOT NULL AND status IN ('PENDING', 'REJECTED')")
     sync_urls = {normalize_url(row[0]) for row in cursor.fetchall() if row[0]}
 
     base_db_urls = {get_base_url(u) for u in db_urls}

@@ -1,4 +1,5 @@
 import json
+import re
 import requests
 from bs4 import BeautifulSoup
 
@@ -228,12 +229,34 @@ def _make_tilda_hashroute_store_handler(storepartuid, site_url, label, extra_dec
             title_el = soup.find(attrs={'field': f'li_title__{lid}'})
             title = title_el.get_text(strip=True) if title_el else ''
 
-            image_url = ''
-            for card in soup.find_all(attrs={'data-product-lid': lid}):
-                bgimg = card.find(class_='js-product-img')
-                if bgimg and bgimg.get('data-original'):
-                    image_url = bgimg['data-original']
-                    break
+            # Full gallery, not just the listing-card cover — each product's
+            # own t754__default-gallery (desktop t-slds slider, several
+            # slides confirmed live e.g. on viktoria-morozova.ru) already
+            # sits in this static HTML alongside the details text below, no
+            # extra request needed. Ignores the parallel
+            # t754__mobile-custom-gallery-list block entirely — same photos,
+            # responsive duplicate, not a second source. Falls back to the
+            # single listing-card js-product-img cover when a product has no
+            # gallery block at all (single-photo product).
+            images = []
+            gallery_block = c.find(class_='t754__default-gallery')
+            if gallery_block:
+                for bgimg in gallery_block.select('.t-slds__main .t-slds__item .t-slds__bgimg'):
+                    src = bgimg.get('data-original')
+                    if not src:
+                        style_match = re.search(r"url\(['\"]?(.*?)['\"]?\)", bgimg.get('style', ''))
+                        src = style_match.group(1) if style_match else None
+                    if src and src not in images:
+                        images.append(src)
+
+            if not images:
+                for card in soup.find_all(attrs={'data-product-lid': lid}):
+                    bgimg = card.find(class_='js-product-img')
+                    if bgimg and bgimg.get('data-original'):
+                        images.append(bgimg['data-original'])
+                        break
+
+            image_url = images[0] if images else ''
 
             # Standard Tilda "t754" Store-block price markup, same family as
             # the store.tildaapi.com JSON price/priceold above but exposed
@@ -284,6 +307,7 @@ def _make_tilda_hashroute_store_handler(storepartuid, site_url, label, extra_dec
                 'url': product_url,
                 'title': title,
                 'imageUrl': image_url,
+                'images': images,
                 'details': details,
                 'price': price,
                 'oldPrice': old_price,
