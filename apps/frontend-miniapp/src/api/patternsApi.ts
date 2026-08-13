@@ -5,6 +5,12 @@ export interface Pattern {
   authorId: string;
   primaryProductType: string;
   imageUrl: string;
+  // Card-sized (≤800px) derivative of imageUrl — falls back to imageUrl
+  // server-side while not yet backfilled, so always present. Use this for
+  // card/list contexts (catalog, favorites, "Похожие описания"); imageUrl
+  // itself stays full quality — it's what the detail page falls back to
+  // when `images` is empty (non-premium users), see PatternDetails.tsx.
+  thumbnailUrl: string;
   isFree: boolean;
   isNew: boolean;
   productTypes: string[];
@@ -113,7 +119,8 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
       ...p,
       primaryProductType: capitalize(p.primaryProductType),
       productTypes: p.productTypes?.map(capitalize) || [],
-      imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl
+      imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl,
+      thumbnailUrl: p.thumbnailUrl.startsWith('/') ? `${API_URL}${p.thumbnailUrl}` : p.thumbnailUrl
     }))
   };
 };
@@ -129,6 +136,7 @@ export const fetchPatternById = async (id: string): Promise<Pattern> => {
     primaryProductType: capitalize(pattern.primaryProductType),
     productTypes: pattern.productTypes?.map(capitalize) || [],
     imageUrl: pattern.imageUrl.startsWith('/') ? `${API_URL}${pattern.imageUrl}` : pattern.imageUrl,
+    thumbnailUrl: pattern.thumbnailUrl.startsWith('/') ? `${API_URL}${pattern.thumbnailUrl}` : pattern.thumbnailUrl,
     images: (pattern.images && pattern.images.length > 0 ? pattern.images : [pattern.imageUrl])
       .map(url => url.startsWith('/') ? `${API_URL}${url}` : url)
   };
@@ -196,7 +204,8 @@ export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
     ...p,
     primaryProductType: capitalize(p.primaryProductType),
     productTypes: p.productTypes?.map(capitalize) || [],
-    imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl
+    imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl,
+    thumbnailUrl: p.thumbnailUrl.startsWith('/') ? `${API_URL}${p.thumbnailUrl}` : p.thumbnailUrl
   }));
 };
 
@@ -213,6 +222,7 @@ export const fetchSimilarPatterns = async (id: string): Promise<Pattern[]> => {
     ...p,
     primaryProductType: capitalize(p.primaryProductType),
     productTypes: p.productTypes?.map(capitalize) || [],
-    imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl
+    imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl,
+    thumbnailUrl: p.thumbnailUrl.startsWith('/') ? `${API_URL}${p.thumbnailUrl}` : p.thumbnailUrl
   }));
 };

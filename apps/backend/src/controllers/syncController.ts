@@ -8,6 +8,7 @@ import { Readable } from "stream";
 import { spawn } from "child_process";
 import { syncCategories, syncTags, syncInstruments } from "./adminController";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, MAX_PATTERN_IMAGES } from "../utils/patternImages";
+import { generateThumbnailUrl } from "../utils/imagePipeline";
 
 let isSyncing = false;
 // Author.id currently being synced, or null when a full (all-authors) sync
@@ -187,6 +188,12 @@ export const processSyncBatch = async (req: Request, res: Response) => {
         images.push(`/images/patterns/${filename}`);
       }
 
+      // Thumbnail of the cover only (images[0]) — generated here, before the
+      // DB transaction, since it's file I/O + CPU work that shouldn't hold a
+      // transaction open. Best-effort: generateThumbnailUrl never throws,
+      // returns null on failure, and the read side falls back to imageUrl.
+      const thumbnailUrl = await generateThumbnailUrl(images[0]);
+
       // 4. Короткая БД-транзакция
       await prisma.$transaction(async (tx) => {
         const raceExists = await tx.pattern.findUnique({ where: { slug: finalPatternSlug } });
@@ -199,6 +206,7 @@ export const processSyncBatch = async (req: Request, res: Response) => {
             url: dbItem.url,
             images,
             imageUrl: deriveImageUrl(images),
+            thumbnailUrl,
             // Not scraped yet (author_sync.py doesn't populate this key today)
             // — tolerates absence the same way the images[] legacy fallback
             // did before every site produced a gallery.

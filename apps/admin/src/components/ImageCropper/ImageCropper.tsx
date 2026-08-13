@@ -72,8 +72,17 @@ export function ImageCropper({ onImageUploaded, currentUrl, customButtonProps, c
       const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
       const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
 
-      canvas.width = 800;
-      canvas.height = 1000;
+      // 4:5 crop at the "detail" tier's long side (1600px, see
+      // image-pipeline.config.json) — this upload becomes the SOURCE that
+      // Pattern/Draft writes later derive thumbnailUrl (and eventually a
+      // resized detail variant) from server-side, so it needs to be at
+      // least that large or those derivations would be capped below their
+      // target by generateThumbnailUrl's never-upscale rule. Previously
+      // 800×1000, which silently capped every admin-uploaded cover below
+      // the detail target.
+      const DETAIL_LONG_SIDE = 1600;
+      canvas.width = DETAIL_LONG_SIDE * ASPECT;
+      canvas.height = DETAIL_LONG_SIDE;
 
       ctx.drawImage(
         imgRef.current,
@@ -81,7 +90,7 @@ export function ImageCropper({ onImageUploaded, currentUrl, customButtonProps, c
         completedCrop.y * scaleY,
         completedCrop.width * scaleX,
         completedCrop.height * scaleY,
-        0, 0, 800, 1000
+        0, 0, canvas.width, canvas.height
       );
 
       const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, "image/webp", 0.9));

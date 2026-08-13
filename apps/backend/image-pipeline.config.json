@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "thumb": { "maxDimension": 800, "quality": 80 },
+  "detail": { "maxDimension": 1600, "quality": 85 },
+  "format": "webp"
+}

@@ -17,7 +17,11 @@ interface PatternCardProps {
   title: string;
   primaryProductType?: string;
   instruments?: string[];
-  imageUrl: string;
+  // Card-sized derivative — always the right field for a card context, see
+  // Pattern.thumbnailUrl's own comment (patternsApi.ts). Every call site
+  // passes a full Pattern via {...pattern} spread, so this just needs to
+  // match that field's name to pick it up automatically.
+  thumbnailUrl: string;
   isFree: boolean;
   isNew?: boolean;
   price?: string | null;
@@ -34,7 +38,7 @@ interface PatternCardProps {
   preserveCatalogScroll?: boolean;
 }
 
-export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, imageUrl, isFree, isNew, price, oldPrice, onBeforeNavigate, preserveCatalogScroll = true }) => {
+export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProductType, instruments, thumbnailUrl, isFree, isNew, price, oldPrice, onBeforeNavigate, preserveCatalogScroll = true }) => {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
 
@@ -70,7 +74,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
     <div className="pattern-card" onClick={handleCardClick}>
       <div className="pattern-card-image-container">
         <img
-          src={imageUrl}
+          src={thumbnailUrl}
           alt={title}
           className="pattern-card-image"
           loading="lazy"

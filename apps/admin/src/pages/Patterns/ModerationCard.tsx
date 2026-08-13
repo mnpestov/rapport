@@ -51,7 +51,7 @@ function Stack({ items }: { items: { id: string; name: string }[] }) {
 }
 
 export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabel = "Опубликовать", rejectLabel = "Отклонить" }: ModerationCardProps) {
-  const imgSrc = getImageUrl(draft.imageUrl);
+  const imgSrc = getImageUrl(draft.thumbnailUrl);
 
   return (
     <div className={styles.card}>

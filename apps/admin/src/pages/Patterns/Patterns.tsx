@@ -49,7 +49,7 @@ function toRowItem(item: CabinetItem, authorName: string): AdminPatternItem {
     url: item.url,
     author: authorName,
     instrument: item.instruments.map((i) => i.name).join(", "),
-    preview: item.imageUrl,
+    preview: item.thumbnailUrl,
     isVisible: true,
     isNew: item.isNew,
     thickness: item.yarnRanges.map((y) => y.label).join(", ") || undefined,

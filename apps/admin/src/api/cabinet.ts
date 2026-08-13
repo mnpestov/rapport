@@ -15,6 +15,7 @@ export interface CabinetDraft {
   title: string;
   url: string;
   imageUrl: string;
+  thumbnailUrl: string;
   images: string[];
   details: string | null;
   price: number | string | null;
@@ -37,6 +38,7 @@ export interface CabinetPattern {
   title: string;
   url: string;
   imageUrl: string;
+  thumbnailUrl: string;
   images: string[];
   details: string | null;
   price: number | string | null;

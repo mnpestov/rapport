@@ -16,6 +16,14 @@ model Pattern {
   // (catalog card, admin list/grid views, novelty cards) needs a plain
   // required string, not an array.
   imageUrl        String
+  // Small (≤800px) derivative of images[0], for card/list contexts only
+  // (catalog card, admin list/grid). Nullable — old rows are backfilled
+  // gradually by the image-gallery backfill process, not in one migration;
+  // every read site must fall back to imageUrl when this is null. NEVER
+  // read on the pattern detail page — imageUrl (not this field) is what
+  // non-premium users see there when `images` is empty, so imageUrl must
+  // stay full quality, not this one.
+  thumbnailUrl    String?
   images          String[] @default([])
   // Long-form free text ("Подробности"), shown collapsed by default on the
   // detail page. Nullable (not "") so an empty/never-set block can be
@@ -352,6 +360,8 @@ model Draft {
   title             String
   url               String
   imageUrl          String
+  // Same role/derivation as Pattern.thumbnailUrl — see the comment there.
+  thumbnailUrl      String?
   images            String[]    @default([])
   details           String?
   price             Decimal?    @db.Decimal(10, 2)

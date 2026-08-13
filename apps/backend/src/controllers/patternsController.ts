@@ -8,6 +8,10 @@ import { PATTERN_PRICE_OMIT, PATTERN_CORE_OMIT, PATTERN_DETAILS_OMIT, hasExtra, 
 // frontend list/card views expect.
 const mapPatternListItem = (p: any) => ({
   ...p,
+  // Falls back to full-quality imageUrl while thumbnailUrl is still null
+  // (not yet backfilled for this row) — never omit the field outright, see
+  // image_pipeline_plan.md.
+  thumbnailUrl: p.thumbnailUrl || p.imageUrl,
   author: p.author?.name || 'Неизвестно',
   instruments: p.instruments.map((i: any) => i.name),
   productTypes: p.categories.map((pt: any) => pt.name),
@@ -111,6 +115,11 @@ export const getPatternById = async (req: Request, res: Response) => {
 
     const mappedPattern = {
       ...pattern,
+      // Card-sized derivative, for potential card-style reuse of this
+      // response — NOT what the detail page's own gallery/fallback should
+      // read (that's imageUrl/images, kept full quality on purpose, see
+      // image_pipeline_plan.md and thumbnailUrl's schema comment).
+      thumbnailUrl: pattern.thumbnailUrl || pattern.imageUrl,
       // Full gallery requires PREMIUM_EXTRA too — everyone else gets just the
       // cover. ImageCarousel already collapses to a single <img> when
       // images.length <= 1, so the frontend needs no change for this.

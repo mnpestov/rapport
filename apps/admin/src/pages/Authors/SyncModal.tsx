@@ -33,6 +33,10 @@ function toDraft(item: SyncReportItem, authorId: string, authorName: string): Ad
     title: item.title,
     url: item.url,
     imageUrl: images[0] || "",
+    // AuthorSyncItem (raw "новинки" scrape data) has no real thumbnail
+    // pipeline of its own — same value as imageUrl until this item is
+    // approved into a real Draft/Pattern (see image_pipeline_plan.md).
+    thumbnailUrl: images[0] || "",
     images,
     details: pd.details ?? null,
     price: pd.price ?? null,

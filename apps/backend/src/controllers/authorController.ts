@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { DraftStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl } from "../utils/patternImages";
+import { generateThumbnailUrl } from "../utils/imagePipeline";
 
 // ---------------------------------------------------------------------------
 // Rate limiter — in-memory, per userId.
@@ -106,8 +107,8 @@ export const getAuthorPatterns = async (req: Request, res: Response): Promise<vo
     ]);
 
     // Mark items by type so the frontend can apply different actions
-    const draftItems = drafts.map((d) => ({ ...d, _type: "draft" as const }));
-    const patternItems = patterns.map((p) => ({ ...p, _type: "pattern" as const }));
+    const draftItems = drafts.map((d) => ({ ...d, thumbnailUrl: d.thumbnailUrl || d.imageUrl, _type: "draft" as const }));
+    const patternItems = patterns.map((p) => ({ ...p, thumbnailUrl: p.thumbnailUrl || p.imageUrl, _type: "pattern" as const }));
 
     res.json({ drafts: draftItems, patterns: patternItems });
   } catch (error: any) {
@@ -154,6 +155,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
         url,
         images: imagesValidation.images,
         imageUrl: deriveImageUrl(imagesValidation.images),
+        thumbnailUrl: await generateThumbnailUrl(imagesValidation.images[0]),
         details: details ?? null,
         price: price === "" || price === undefined || price === null ? null : Number(price),
         oldPrice: oldPrice === "" || oldPrice === undefined || oldPrice === null ? null : Number(oldPrice),
@@ -246,6 +248,10 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         url: pattern.url,
         images: pattern.images,
         imageUrl: pattern.imageUrl,
+        // Cover unchanged at draft-creation time (just a snapshot of the
+        // existing pattern) — copy as-is, no regeneration needed, unlike
+        // the other write points where images[0] can actually change.
+        thumbnailUrl: pattern.thumbnailUrl,
         details: pattern.details,
         price: pattern.price,
         oldPrice: pattern.oldPrice,
@@ -334,6 +340,7 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       }
       data.images = imagesValidation.images;
       data.imageUrl = deriveImageUrl(imagesValidation.images);
+      data.thumbnailUrl = await generateThumbnailUrl(imagesValidation.images[0]);
     }
 
     if (isFree !== undefined) data.isFree = isFree;
@@ -478,7 +485,7 @@ export const getDraft = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json(draft);
+    res.json({ ...draft, thumbnailUrl: draft.thumbnailUrl || draft.imageUrl });
   } catch (error: any) {
     handleAuthorError(error, res, "getDraft");
   }

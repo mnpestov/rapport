@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { generateSlug } from "../utils/slug";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, isOwnUpload } from "../utils/patternImages";
+import { generateThumbnailUrl } from "../utils/imagePipeline";
 
 // Helpers
 function normalizeUrl(urlStr: string): string {
@@ -410,7 +411,10 @@ export const getPatternsList = async (req: Request, res: Response): Promise<void
       url: pattern.url,
       author: pattern.author.name,
       instrument: pattern.instruments.map((i) => i.name).join(", "),
-      preview: pattern.imageUrl,
+      // 41×51px table row preview — small enough that thumbnailUrl belongs
+      // here, not imageUrl (that stays full quality for the detail page's
+      // non-premium fallback, see image_pipeline_plan.md).
+      preview: pattern.thumbnailUrl || pattern.imageUrl,
       isVisible: pattern.isVisible,
       isNew: pattern.isNew,
       thickness: pattern.yarnRanges.map((y) => y.label).join(", ") || undefined,
@@ -461,6 +465,7 @@ export const getPatternById = async (req: Request, res: Response): Promise<void>
       title: pattern.title,
       url: pattern.url,
       imageUrl: pattern.imageUrl,
+      thumbnailUrl: pattern.thumbnailUrl || pattern.imageUrl,
       images: pattern.images,
       details: pattern.details,
       price: pattern.price,
@@ -553,6 +558,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     if (validatedImages !== undefined) {
       data.images = validatedImages;
       data.imageUrl = deriveImageUrl(validatedImages);
+      data.thumbnailUrl = await generateThumbnailUrl(validatedImages[0]);
       // Removed files are deleted only after the DB update succeeds (see below).
     }
 
@@ -658,6 +664,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
       url: normUrl,
       images: imagesValidation.images,
       imageUrl: deriveImageUrl(imagesValidation.images),
+      thumbnailUrl: await generateThumbnailUrl(imagesValidation.images[0]),
       details: details ?? null,
       isFree: isFree ?? false,
       isNew: isNew ?? false,
@@ -1007,7 +1014,7 @@ export const getDraftsList = async (req: Request, res: Response): Promise<void> 
       },
     });
 
-    res.json(drafts);
+    res.json(drafts.map((d) => ({ ...d, thumbnailUrl: d.thumbnailUrl || d.imageUrl })));
   } catch (error) {
     console.error("[Admin] getDraftsList failed:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -1040,7 +1047,7 @@ export const getDraftById = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    res.json(draft);
+    res.json({ ...draft, thumbnailUrl: draft.thumbnailUrl || draft.imageUrl });
   } catch (error) {
     console.error("[Admin] getDraftById failed:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -1073,6 +1080,13 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
       const catConnect = draft.categories.map((c) => ({ id: c.id }));
       const instConnect = draft.instruments.map((i) => ({ id: i.id }));
       const yarnRangeConnect = draft.yarnRanges.map((y) => ({ id: y.id }));
+      // Same source (draft.images[0]) for both branches below — computed
+      // once. File I/O + resize inside the transaction is not ideal, but
+      // draft.images isn't known before it (the draft itself is fetched
+      // inside, guarded by the PENDING/closedAt checks above) — acceptable
+      // here since approveDraft is a low-frequency, one-at-a-time admin
+      // action, not a hot path.
+      const thumbnailUrl = await generateThumbnailUrl(draft.images[0]);
 
       if (draft.patternId === null) {
         // New pattern — generate slug + check URL uniqueness
@@ -1091,6 +1105,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             url: normUrl,
             images: draft.images,
             imageUrl: deriveImageUrl(draft.images),
+            thumbnailUrl,
             details: draft.details,
             price: draft.price,
             oldPrice: draft.oldPrice,
@@ -1116,6 +1131,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             url: normalizeUrl(draft.url),
             images: draft.images,
             imageUrl: deriveImageUrl(draft.images),
+            thumbnailUrl,
             details: draft.details,
             price: draft.price,
             oldPrice: draft.oldPrice,
