@@ -1,21 +1,38 @@
-# Price check report — 2026-08-14T14:29:02.846649+00:00
+# Price check report — 2026-08-14T16:36:54.906855+00:00
 
-Проверено паттернов: 2788. Изменений: 14. Ошибок: 0.
+Проверено паттернов: 31. Изменений: 31. Ошибок: 0.
 
 ## Изменения цены
 | Автор | Товар | Ссылка | Было (цена/старая) | Стало (цена/старая) |
 |---|---|---|---|---|
-| Анна Сутурина | Лейс | https://annasuturina.ru/shop/lace/ | 700.0/5000.0 | 700.0/None |
-| Бабушка Каро / Каролина | «Сумка-карман» | https://eiwi.ru/10492-mk-sumka-karman-filejnoe-vjazanie.html | 690.0/80000.0 | 690.0/None |
-| Елена Янсон | Бактус «Sweet Berry» | https://elena-ianson.ru/shop/shapkagnom-5 | 400.0/None | 200.0/400.0 |
-| Катрин Ралли / Katrin Ralli | Брелок из рафии РАКУШКА | https://katrinralli.com/shop/brelok-iz-rafii-rakushka | 400.0/500.0 | 400.0/None |
-| Ксения Маликова |  «Детская двухслойная шапка» | https://kseniyamalikova.ru/shop/master-klass-detskaja-dvuhslojnaja-shapka | 780.0/None | 640.0/None |
-| Ксения Маликова | Шапка-шлем «Милый эльф» | https://kseniyamalikova.ru/shop/shapka-shlem-milyj-elf | 660.0/1000.0 | 660.0/None |
-| Лика Королькова @likavyazhi | #polo_line_jacket | https://likavyazhi.ru/shop#!/tproduct/1251845301-5278546813532 | 1100.0/None | 890.0/1100.0 |
-| Лика Королькова @likavyazhi | #алмазный_карди | https://likavyazhi.ru/shop#!/tproduct/1251845301-5278546813531 | 864.0/None | 690.0/890.0 |
-| Лика Королькова @likavyazhi | #балерина_лонг | https://likavyazhi.ru/bal_long_about | 1100.0/None | 890.0/1100.0 |
-| Лика Королькова @likavyazhi | #блуза_зефир | https://likavyazhi.ru/zephir_blouse_about | 1100.0/None | 890.0/1100.0 |
-| Лика Королькова @likavyazhi | #lovely_cardi | https://likavyazhi.ru/lovely_cardi_about | 1100.0/None | 890.0/1100.0 |
-| Лика Королькова @likavyazhi | #cozy_zipper | https://likavyazhi.ru/cozy_zipper_about | 1100.0/None | 890.0/1100.0 |
-| Люба Цветное вязание | Космическая лопапейса  | https://tsvetnoeviazanie.ru/shop/cosmiclopikids | 900.0/90000.0 | 900.0/None |
-| Юлия Устинова |  #landysh_jumper_iiaks | https://iiaks.ru/shop/landysh_jumper_iiaks | 9900.0/None | 990.0/None |
+| Бабушка Каро / Каролина | Подушка «Радуга» + «Радуга Бабл» | https://eiwi.ru/4686-kombo-mk-po-vjazaniju-krjuchkom-podushek-raduga-raduga-babl.html | 490.0/None | 343/490.0 |
+| Бабушка Каро / Каролина | «Снеговичок» + «Пряничный домик» | https://eiwi.ru/4685-kombo-mk-po-vjazaniju-krjuchkom-snegovichok-prjanichnyj-domik.html | 490.0/None | 343/490.0 |
+| Бабушка Каро / Каролина | «Ангелочки» | https://eiwi.ru/4684-mk-po-vjazaniju-krjuchkom-angelochki.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Малыш Дино» | https://eiwi.ru/4687-mk-po-vjazaniju-krjuchkom-malysh-dino.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Дракон» | https://eiwi.ru/4688-mk-po-vjazaniju-krjuchkom-drakon.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | Тыква | https://eiwi.ru/4691-mk-po-vjazaniju-krjuchkom-tykvy.html | 790.0/None | 553/790.0 |
+| Бабушка Каро / Каролина | «Мышонок» | https://eiwi.ru/4683-mk-po-vjazaniju-krjuchkom-myshonok.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Единорожка» | https://eiwi.ru/4689-mk-po-vjazaniju-krjuchkom-edinorozhka.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Банни» | https://eiwi.ru/4680-mk-po-vjazaniju-krjuchkom-banni.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Музыкальная куколка» | https://eiwi.ru/4703-mk-po-vjazaniju-krjuchkom-muzykalnaja-kukolka.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Елочные игрушки» | https://eiwi.ru/6353-mk-po-vjazaniju-krjuchkom-elochnye-igrushki.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Елочки» | https://eiwi.ru/4695-mk-po-vjazaniju-krjuchkom-elochki.html | 790.0/None | 553/790.0 |
+| Бабушка Каро / Каролина | «Котейка» | https://eiwi.ru/4702-mk-po-vjazaniju-krjuchkom-kotejka.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Рождественские венки» | https://eiwi.ru/4696-mk-po-vjazaniju-krjuchkom-rozhdestvenskie-venki.html | 790.0/None | 553/790.0 |
+| Бабушка Каро / Каролина | Подушка подсолнух | https://eiwi.ru/4700-mk-po-vjazaniju-krjuchkom-podushka-podsolnuh.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Суккулент» | https://eiwi.ru/4694-mk-po-vjazaniju-krjuchkom-sukkulent.html | 790.0/None | 553/790.0 |
+| Бабушка Каро / Каролина | «Ёлочные шары» | https://eiwi.ru/5046-mk-po-vjazaniju-krjuchkom-elochnye-shary.html | 790.0/None | 553/790.0 |
+| Бабушка Каро / Каролина | «Шарф-капюшон» | https://eiwi.ru/9749-mk-sharf-kapjushon-spicy-i-krjuchok.html | 890.0/None | 623/890.0 |
+| Бабушка Каро / Каролина | «Обложки из бабушкиных квадратов» | https://eiwi.ru/11930-mk-oblozhki-iz-babushkinyh-kvadratov.html | 790.0/None | 553/790.0 |
+| Бабушка Каро / Каролина | «Сумка-карман» | https://eiwi.ru/10492-mk-sumka-karman-filejnoe-vjazanie.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Кукла Вуду» | https://eiwi.ru/6008-mk-po-vjazaniju-krjuchkom-kukla-vudu.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Русалочка» | https://eiwi.ru/4679-mk-po-vjazaniju-krjuchkom-rusalochka.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Грибочки-обнимашки» | https://eiwi.ru/4693-mk-po-vjazaniju-krjuchkom-gribochki-obnimashki.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Новогодние корзины» | https://eiwi.ru/6714-mk-po-vjazaniju-krjuchkom-novogodnie-korziny.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Бегемотик» | https://eiwi.ru/4678-mk-po-vjazaniju-krjuchkom-begemotik.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Крячик» + «Крячик-обнимашка» | https://eiwi.ru/4692-kombo-mk-po-vjazaniju-krjuchkom-krjachik-krjachik-obnimashka.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Сумка Бохо» | https://eiwi.ru/14524-mk-po-vjazaniju-krjuchkom-sumka-boho.html | 890.0/None | 623/890.0 |
+| Бабушка Каро / Каролина | Сумка Мешок | https://eiwi.ru/12721-mk-po-vjazaniju-krjuchkom-sumka-meshok.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Букет» | https://eiwi.ru/4699-mk-po-vjazaniju-krjuchkom-buket.html | 690.0/None | 483/690.0 |
+| Бабушка Каро / Каролина | «Бегемот» | https://eiwi.ru/4676-mk-po-vjazaniju-krjuchkom-begemot.html | 590.0/None | 413/590.0 |
+| Бабушка Каро / Каролина | «Кенгуру (мама + малыш)» | https://eiwi.ru/4701-mk-po-vjazaniju-krjuchkom-kenguru-mama-malysh.html | 690.0/None | 483/690.0 |
