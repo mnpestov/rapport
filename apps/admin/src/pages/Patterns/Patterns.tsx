@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, X, Shield, Pen, ShieldX, Check } from "lucide-react";
 import { ModerationCard } from "./ModerationCard";
 import { PatternGridCard } from "./PatternGridCard";
@@ -82,6 +82,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Pagination (admin only)
   const [page, setPage] = useState(1);
@@ -93,8 +94,12 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
   // Local UI state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  // Пришли сюда по ссылке "Название" из отчёта проверки цен
+  // (Dictionaries.tsx) — ?search=... задаёт начальный запрос, дальше
+  // ведёт себя как обычный ручной поиск (тот же debounced-эффект ниже).
+  const initialSearch = searchParams.get("search") || "";
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearch);
 
   const [status, setStatus] = useState(isAuthor ? "all" : "active");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -120,6 +125,12 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [authors, setAuthors] = useState<AuthorItem[]>([]);
   const originalFormDataRef = useRef<typeof formData | null>(null);
+  // The pattern's own isVisible at load time — NOT the same as the "status"
+  // tab filter (that's just whichever tab happens to be open, doesn't
+  // necessarily match this specific pattern, e.g. the "Все" tab). Needed so
+  // "Сохранить" while editing can tell whether it's preserving a published
+  // or archived pattern, without silently flipping it either way.
+  const editingIsVisibleRef = useRef<boolean>(true);
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -151,6 +162,16 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     if (isAuthor) return;
     fixArchiveQuotes().catch(() => { });
   }, [isAuthor]);
+
+  // Once the ?search= param has seeded the initial query above, drop it
+  // from the URL — otherwise it lingers and looks like the search box is
+  // still tied to that value even after the user changes it by hand.
+  useEffect(() => {
+    if (searchParams.has("search")) {
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -393,6 +414,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       };
       setFormData(loaded);
       originalFormDataRef.current = { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] };
+      editingIsVisibleRef.current = res.isVisible;
       setEditingId(id);
       setIsModalOpen(true);
     } catch (err: any) {
@@ -442,7 +464,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       return;
     }
 
-    if (submitToModeration && formData.categories.length === 0) {
+    if (submitToModeration && (formData.categories.length === 0 || formData.instruments.length === 0)) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -506,8 +528,13 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       return;
     }
 
-    const willBePublished = editingId ? status !== "archive" : isVisible;
-    if (willBePublished && formData.categories.length === 0) {
+    // "status" is just whichever tab is currently open, not necessarily this
+    // pattern's own state (e.g. the "Все" tab) — use the pattern's actual
+    // loaded isVisible instead. "Опубликовать" (isVisible=true) always
+    // counts as publishing; "Сохранить" (isVisible=false) preserves
+    // whatever the pattern currently is, published or archived.
+    const willBePublished = editingId ? (isVisible || editingIsVisibleRef.current) : isVisible;
+    if (willBePublished && (formData.categories.length === 0 || formData.instruments.length === 0)) {
       toast.error("Пожалуйста, заполните все обязательные поля");
       return;
     }
@@ -518,6 +545,11 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         // Only send changed fields to avoid false duplicate errors
         const orig = originalFormDataRef.current;
         const payload: Record<string, any> = {};
+        // Only ever force isVisible TRUE (explicit "Опубликовать" click) —
+        // never send false here. "Сохранить" must not silently archive an
+        // already-published pattern; unpublishing has its own dedicated
+        // action (the archive button on the grid card).
+        if (isVisible) payload.isVisible = true;
         if (!orig || formData.title !== orig.title) payload.title = formData.title;
         if (!orig || formData.url !== orig.url) payload.url = formData.url;
         if (!orig || JSON.stringify(formData.images) !== JSON.stringify(orig.images)) payload.images = formData.images;
@@ -535,26 +567,35 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         if (!orig || formData.densityRows !== orig.densityRows) payload.densityRows = formData.densityRows.trim();
 
         await updatePatternById(editingId, payload);
-        // Update the item locally instead of reloading the whole list
-        setData(prev => prev.map(item => {
-          if (item.id !== editingId) return item;
-          return {
-            ...item,
-            title: formData.title,
-            url: formData.url,
-            author: formData.authorName,
-            category: formData.categories.join(", "),
-            instrument: formData.instruments.join(", "),
-            thickness: yarnRangesList
-              .filter((y) => formData.yarnRangeIds.includes(y.id))
-              .map((y) => y.label)
-              .join(", ") || undefined,
-            density: formData.densityStitches.trim() && formData.densityRows.trim()
-              ? `${formData.densityStitches.trim()} х ${formData.densityRows.trim()}`
-              : undefined,
-          };
-        }));
-        toast.success("Описание успешно обновлено");
+        // Update the item locally instead of reloading the whole list — but
+        // if this save just published (or would-be-archived, were that
+        // possible here) the pattern out of the currently viewed tab, drop
+        // it from the list instead, same as handlePublishOne/handleArchiveOne.
+        const newIsVisible = isVisible || editingIsVisibleRef.current;
+        const stillMatchesView = status === "archive" ? !newIsVisible : newIsVisible;
+        setData(prev => !stillMatchesView
+          ? prev.filter(item => item.id !== editingId)
+          : prev.map(item => {
+            if (item.id !== editingId) return item;
+            return {
+              ...item,
+              title: formData.title,
+              url: formData.url,
+              author: formData.authorName,
+              category: formData.categories.join(", "),
+              instrument: formData.instruments.join(", "),
+              isVisible: newIsVisible,
+              thickness: yarnRangesList
+                .filter((y) => formData.yarnRangeIds.includes(y.id))
+                .map((y) => y.label)
+                .join(", ") || undefined,
+              density: formData.densityStitches.trim() && formData.densityRows.trim()
+                ? `${formData.densityStitches.trim()} х ${formData.densityRows.trim()}`
+                : undefined,
+            };
+          }));
+        if (!stillMatchesView) loadStatusCounts();
+        toast.success(isVisible && !editingIsVisibleRef.current ? "Описание опубликовано" : "Описание успешно обновлено");
       } else {
         await createPattern({
           ...formData,
@@ -1081,7 +1122,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Инструмент */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Инструмент <span style={optionalStyle}></span></label>
+                  <label style={labelStyle}>Инструмент <span style={{ color: "#ef4444" }}>*</span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}

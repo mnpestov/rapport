@@ -500,7 +500,10 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params;
     const { title, url, images, details, price, oldPrice, isFree, isNew, authorId, authorName, isVisible, categories, tags, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
-    const existing = await prisma.pattern.findUnique({ where: { id } });
+    const existing = await prisma.pattern.findUnique({
+      where: { id },
+      include: { instruments: { select: { id: true } } },
+    });
     if (!existing) {
       res.status(404).json({ error: "Pattern not found" });
       return;
@@ -534,6 +537,19 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
         draftId: activeDraft.id,
         draftStatus: activeDraft.status,
       });
+      return;
+    }
+
+    // Can't publish (or stay published) with no instrument set — check
+    // against the incoming instruments array when this request touches it,
+    // else fall back to what's already attached (see `existing`'s include
+    // above) — a bare { isVisible: true } call (single/bulk "Опубликовать"
+    // buttons, no instruments in the body) must still be gated on the
+    // pattern's CURRENT instruments, not skip the check entirely.
+    const willBeVisible = isVisible !== undefined ? isVisible : existing.isVisible;
+    const finalInstrumentsCount = Array.isArray(instruments) ? instruments.length : existing.instruments.length;
+    if (willBeVisible && finalInstrumentsCount === 0) {
+      res.status(400).json({ error: "Cannot publish a pattern with no instruments" });
       return;
     }
 
@@ -630,6 +646,11 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
 
     if (!title || !url || (!authorId && !authorName)) {
       res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    if ((isVisible ?? true) && (!Array.isArray(instruments) || instruments.length === 0)) {
+      res.status(400).json({ error: "Cannot publish a pattern with no instruments" });
       return;
     }
 
@@ -1075,6 +1096,11 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
       if (draft.closedAt) throw Object.assign(new Error("ALREADY_CLOSED"), { status: 409 });
       if (draft.status !== DraftStatus.PENDING)
         throw Object.assign(new Error("NOT_PENDING"), { status: 409 });
+      // Approval always publishes (isVisible: true below, both branches) —
+      // an empty instrument list here would otherwise sail straight through
+      // with no gate at all, unlike every other publish path.
+      if (draft.instruments.length === 0)
+        throw Object.assign(new Error("NO_INSTRUMENTS"), { status: 400 });
 
       const tagConnect = draft.tags.map((t) => ({ id: t.id }));
       const catConnect = draft.categories.map((c) => ({ id: c.id }));
@@ -1163,6 +1189,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
     if (error.status === 404) { res.status(404).json({ error: "Draft not found" }); return; }
     if (error.message === "ALREADY_CLOSED") { res.status(409).json({ error: "Draft is already closed" }); return; }
     if (error.message === "NOT_PENDING") { res.status(409).json({ error: "Only PENDING drafts can be approved" }); return; }
+    if (error.message === "NO_INSTRUMENTS") { res.status(400).json({ error: "Cannot publish a pattern with no instruments" }); return; }
     if (error.message === "URL_DUPLICATE") { res.status(409).json({ error: "URL already exists in published patterns" }); return; }
     console.error("[Admin] approveDraft failed:", error);
     res.status(500).json({ error: "Internal server error" });
