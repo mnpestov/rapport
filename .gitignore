@@ -84,3 +84,23 @@ walkthrough.md
 apps/backend/public/images/patterns/*
 !apps/backend/public/images/patterns/.gitkeep
 
+# ==========================================
+# Scratch / one-off working files (not source)
+# ==========================================
+apps/backend/images_archive/
+apps/backend/src/scratch/
+apps/backend/src/scripts/scratch/
+apps/backend/src/scripts/Настя Петли и сплетни/
+apps/backend/src/scripts/price_check_report_*.md
+apps/backend/src/scripts/price_check_state.json
+apps/backend/src/scripts/price_snapshots/
+apps/backend/find_duplicates.ts
+apps/backend/src/scripts/check_authors.py
+apps/backend/src/scripts/find_remaining_authors.py
+apps/backend/src/scripts/update_process_doc.py
+apps/backend/src/scripts/combine_batch_4.py
+apps/backend/src/scripts/run_batch_4.sh
+apps/backend/src/scripts/run_batch_5.sh
+apps/backend/src/scripts/run_batch_6.sh
+apps/backend/src/scripts/run_batch_6_fix.py
+
