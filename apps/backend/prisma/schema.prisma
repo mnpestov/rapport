@@ -419,9 +419,34 @@ model AuthorSyncItem {
   report          AuthorSyncReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
   status          AuthorSyncItemStatus @default(PENDING)
   url             String
-  title           String               
-  parsedData      Json                 
-  
-  @@unique([reportId, url])            
+  title           String
+  parsedData      Json
+
+  @@unique([reportId, url])
   @@index([reportId])
+}
+
+// One row per check_price_updates.py run (cron, twice daily — see
+// DETAILS_PRICE_PARSING_PROCESS.md). Written directly by the Python script
+// via psycopg2 (same pattern as the rest of that pipeline — raw SQL, not
+// through this Node app), read by the admin "Справочник" page. Telegram
+// only fires when errorsCount > 0; a clean run is visible ONLY here.
+model PriceCheckRun {
+  id          String   @id @default(uuid())
+  startedAt   DateTime
+  finishedAt  DateTime
+  checked     Int
+  changed     Int
+  errorsCount Int
+  // Arrays of {author, title, url, oldPrice, oldOldPrice, newPrice, newOldPrice}
+  // and {author, url, error} — same shape as check_price_updates.py's
+  // in-memory `changes`/`errors` lists, just serialized.
+  changes     Json
+  errors      Json
+  // {author, url, nights}[] — patterns that hit ESCALATION_THRESHOLD this
+  // run (see price_check_state.json). Empty most runs.
+  escalations Json
+  createdAt   DateTime @default(now())
+
+  @@index([startedAt])
 }

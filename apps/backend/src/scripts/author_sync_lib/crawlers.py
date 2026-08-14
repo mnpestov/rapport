@@ -214,7 +214,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
         # extracting the price first, then stripping its own markup out,
         # rather than the other way round which would leave nothing to
         # extract from.
-        p['price'], p['oldPrice'] = extract_price_any_known_platform(detail_soup)
+        p['price'], p['oldPrice'] = extract_price_any_known_platform(detail_soup, p['url'], headers)
 
         # Tilda's native price widgets (any block number — .js-store-price-
         # wrapper on the "t744" family, .t784__price-wrapper on the "Cards"

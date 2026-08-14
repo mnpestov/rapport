@@ -1,6 +1,9 @@
 import re
 import json
+import time
+from urllib.parse import urlparse
 
+import requests
 from bs4 import BeautifulSoup
 
 
@@ -455,7 +458,45 @@ def _parse_tilda_native_price(text):
     except ValueError:
         return None
 
-def _extract_tilda_store_popup_price(soup):
+_TILDA_DONATE_NAME_RE = re.compile(r'^спасиб', re.IGNORECASE)
+
+def _extract_tilda_gen_uid_price(soup, url, headers):
+    # Some Tilda "t744"-family product pages (confirmed live on 3
+    # elzestores.ru products — Emily_Sweater/Claire_Pulover/Noel_Sweater)
+    # ship the .js-product-price element completely EMPTY in the static
+    # HTML — no text, no data-product-price-def* attributes — unlike the
+    # rest of that same site's products, which have the price baked in
+    # server-side. tilda-catalog-1.1.min.js populates it client-side after
+    # load via a POST to store.tildaapi.com/api/getproductsbyuid/, keyed by
+    # the product's own data-product-gen-uid attribute (found via
+    # get_screenshot/network trace, then confirmed by reading that script's
+    # source directly). No storepartuid/recid needed here (unlike
+    # handlers.py's _fetch_tilda_store_products) — this is a per-product
+    # lookup, not a listing call. Origin/Referer must match the requesting
+    # page's own domain or the API 404s with "Unknown domain" (verified
+    # live) — it doesn't require a real session/cookie, just those headers.
+    if url is None or headers is None:
+        return None, None
+    uid_el = soup.select_one('[data-product-gen-uid]')
+    if not uid_el:
+        return None, None
+    uid = uid_el['data-product-gen-uid']
+    origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+    try:
+        resp = requests.post(
+            'https://store.tildaapi.com/api/getproductsbyuid/',
+            data=json.dumps({'productsuid': [uid], 'c': int(time.time() * 1000)}),
+            headers={**headers, 'Origin': origin, 'Referer': url, 'Content-Type': 'text/plain;charset=UTF-8'},
+            timeout=10,
+        )
+        product = resp.json()['products'][0]
+        current = _parse_tilda_native_price(product.get('price'))
+        old = _parse_tilda_native_price(product.get('priceold'))
+    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
+        return None, None
+    return current, old
+
+def _extract_tilda_store_popup_price(soup, url=None, headers=None):
     # A THIRD way Tilda Store markup gets exposed — in addition to the JSON
     # API (handlers.py's _parse_tilda_store_api_price, kitirrr.ru etc.) and
     # the old-style t754 hashroute layout (handlers.py's
@@ -473,22 +514,79 @@ def _extract_tilda_store_popup_price(soup):
     # yet. Occasionally duplicated (helenyakovleva.com: 2 matches, one
     # per responsive breakpoint) but always with the SAME value in every
     # case checked — select_one's first match is safe.
-    cur_el = soup.select_one('.js-product-price')
+    #
+    # lenakotikova.ru reuses this same "t776" Store block/markers for an
+    # unrelated tip-jar widget at the bottom of every pattern page — three
+    # fixed "products" named "Спасибо!"/"СПАСИБО!"/"СПАСИБИЩЕ!" (100/300/
+    # 500 руб "thank you" tiers), rendered before any real price element
+    # would appear (there is none — these pages are genuinely free). A
+    # blind select_one picked up the first donate tier (100) as if it were
+    # the pattern's price. Skip any candidate whose sibling product-name
+    # marker (.js-product-name, same Tilda-internal convention) starts
+    # with "Спасиб" — text-based, not domain-gated, consistent with this
+    # chain's design.
+    cur_el = None
+    for candidate in soup.select('.js-product-price'):
+        card = candidate.find_parent(class_='js-product')
+        name_el = card.select_one('.js-product-name') if card else None
+        if name_el and _TILDA_DONATE_NAME_RE.match(name_el.get_text(strip=True)):
+            continue
+        cur_el = candidate
+        break
     if not cur_el:
         return None, None
     current = _parse_tilda_native_price(cur_el.get_text(strip=True))
     # Old-price class names differ per block ("t744__price-value
     # js-store-prod-price-old-val" etc.) but this suffix is stable across
-    # all of them — and, unlike the current-price marker, hasn't been
-    # confirmed on the Cards (t780) block at all (no live discount example
-    # found there), so it's fine for this to just come back empty there.
-    old_el = soup.select_one('[class*="price-old-val"]')
+    # most of them. A FOURTH variant confirmed live on likavyazhi.ru's
+    # standalone alias pages (block "t762", e.g. /bal_long_about) — no
+    # "-old-val" class at all, just a plain field="price_old" attribute
+    # (same stable-field-id convention already trusted in
+    # _extract_julia_vyazget_price above) alongside field="price" on the
+    # current-price element. Tried as a fallback, not primary, since the
+    # class-based selector is more specific where it does apply.
+    old_el = soup.select_one('[class*="price-old-val"]') or soup.select_one('[field="price_old"]')
     old = _parse_tilda_native_price(old_el.get_text(strip=True)) if old_el else None
+    if current is None:
+        # cur_el exists (a real, non-donate price element) but has no text —
+        # the client-side-hydrated case, see _extract_tilda_gen_uid_price.
+        current, old = _extract_tilda_gen_uid_price(soup, url, headers)
     if old == current:
         old = None
     return current, old
 
-def extract_price_any_known_platform(soup):
+def _extract_vigbo_price(soup):
+    # Vigbo (vigbo.com CDN) — a shared shop platform for handmade sellers,
+    # confirmed live on nadin-shop.com, alyonashe.com, nastasiay.ru. Paid
+    # items already match earlier in the chain via the rendered
+    # product-price-discount/product-price-min DOM classes, but that
+    # markup is OMITTED ENTIRELY for genuinely free (0 руб) items — the
+    # theme simply doesn't render a price block when there's nothing to
+    # charge, so every DOM-based mechanism correctly finds nothing even
+    # though the item really is free, not broken ("не удалось извлечь
+    # цену" was misclassifying confirmed-free items as extraction
+    # failures). This reads the same data straight from the page's own
+    # React hydration payload instead — <script id="shop-type"
+    # data-type="products"> — which is present and correctly zeroed for
+    # free items too. priceOrigin/priceWithDiscount already are exactly
+    # "list price"/"price after any discount" (verified against a known
+    # paid+discounted product: 850.00/550.00, matching what was already
+    # correctly in the DB from a different mechanism) — same convention
+    # every other hook in this chain returns.
+    script = soup.find('script', id='shop-type', attrs={'data-type': 'products'})
+    if not script or not script.string:
+        return None, None
+    try:
+        product = json.loads(script.string)[0][0]
+        current = float(product['priceWithDiscount'])
+        original = float(product['priceOrigin'])
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None, None
+    if original == current:
+        original = None
+    return current, original
+
+def extract_price_any_known_platform(soup, url=None, headers=None):
     # Single shared chain of every markup-shape-based (not domain-gated)
     # price mechanism implemented so far — WooCommerce, the js-description
     # platform, hollywool.ru's Bitrix widget, eiwi.ru, romnastena.com,
@@ -503,6 +601,13 @@ def extract_price_any_known_platform(soup):
     # DOMAIN_CRAWL_HOOKS growing, instead of two copies of this chain
     # drifting apart. No public function should reimplement this chain
     # directly.
+    #
+    # url/headers are optional and used by exactly one hook so far
+    # (_extract_tilda_store_popup_price's client-side-hydrated-price
+    # fallback, _extract_tilda_gen_uid_price) — every other hook in this
+    # chain is still pure soup-in/price-out with no network I/O of its own.
+    # Callers that don't have url/headers handy (none currently) simply
+    # don't get that one fallback; every other mechanism is unaffected.
     price, old_price = _extract_woocommerce_price(soup)
     if price is not None:
         return price, old_price
@@ -527,7 +632,10 @@ def extract_price_any_known_platform(soup):
     price, old_price = _extract_julia_vyazget_price(soup)
     if price is not None:
         return price, old_price
-    return _extract_tilda_store_popup_price(soup)
+    price, old_price = _extract_tilda_store_popup_price(soup, url, headers)
+    if price is not None:
+        return price, old_price
+    return _extract_vigbo_price(soup)
 
 def _hollywool_exclude_details_paragraph(text):
     # Three boilerplate blocks repeated on every free-description product

@@ -61,6 +61,7 @@ import {
 } from "../controllers/whitelistController";
 import { getChatHistory, sendChatMessage, getChatFile, getUnreadMessages, markChatAsRead, getRequests } from "../controllers/chatController";
 import { getUsers, getUserById, updateUser, getUserSubscription } from "../controllers/usersController";
+import { getPriceCheckRuns, getPriceCheckStatus, triggerPriceCheck, getConfirmedAuthors } from "../controllers/priceCheckController";
 
 const router = Router();
 
@@ -144,6 +145,10 @@ router.get("/users/stats", getUsersStats);
 router.get("/patterns/stats", getPatternsStats);
 router.get("/dashboard", getDashboard);
 router.get("/dashboard/stats", getDashboardStats);
+router.get("/price-check-runs", getPriceCheckRuns);
+router.get("/price-check-runs/status", getPriceCheckStatus);
+router.get("/price-check-runs/confirmed-authors", getConfirmedAuthors);
+router.post("/price-check-runs/trigger", triggerPriceCheck);
 
 router.get("/patterns", getPatternsList);
 router.get("/patterns/:id", getPatternById);

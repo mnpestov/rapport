@@ -12,6 +12,7 @@ import { Authors } from './pages/Authors/Authors';
 import { Whitelist } from './pages/Whitelist/Whitelist';
 import { Requests } from './pages/Requests/Requests';
 import { Users } from './pages/Users/Users';
+import { Dictionaries } from './pages/Dictionaries/Dictionaries';
 
 function BootstrapSpinner() {
   return (
@@ -65,6 +66,7 @@ function AppRoutes() {
           <Route path="requests" element={<Requests />} />
           <Route path="whitelist" element={<Whitelist />} />
           <Route path="users" element={<Users />} />
+          <Route path="dictionaries" element={<Dictionaries />} />
         </Route>
       </Route>
 
