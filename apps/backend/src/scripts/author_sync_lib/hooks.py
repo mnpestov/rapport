@@ -1,5 +1,6 @@
 import re
 import json
+import math
 import time
 from urllib.parse import urlparse
 
@@ -350,6 +351,8 @@ def _extract_hollywool_price(soup):
         return current, None
     return current, old
 
+_EIWI_SALE_P_RE = re.compile(r"var\s+saleP\s*=\s*'([^']*)'")
+
 def _extract_eiwi_price(soup):
     # eiwi.ru (DLE, same subdomain-per-author platform as _eiwi_extract_gallery
     # above): current price is #priceFull (a bare number, no currency symbol
@@ -369,6 +372,46 @@ def _extract_eiwi_price(soup):
 
     old_el = soup.find(id='oldpriceFull')
     old = _parse_woo_price(old_el) if old_el else None
+
+    # A SECOND, platform-wide discount mechanism, independent of the
+    # per-product #oldpriceFull above (that one is set by the seller's own
+    # "create a sale" admin action and already baked server-side into the
+    # static HTML — nothing more to do for it). This one is a site-wide
+    # promo the eiwi.ru template itself runs: a plain-text JS variable
+    # `var saleP = '0.7';` sits in the page's own inline <script> (visible
+    # to a plain fetch, confirmed live — no headless browser needed), and
+    # client-side JS multiplies the displayed price by it on every product
+    # page when active (saleP present, numeric, and != 1). Verified live
+    # against a real active promo on Бабушка Каро/Каролина's eiwi.ru pages:
+    # base price 590, saleP '0.7' -> browser shows 413/590 — the exact
+    # int(590*0.7) truncation the site's own JS does
+    # (`Math.trunc(normPric*(100-perc)/100)`, perc derived from saleP the
+    # same way). Only applies when there's no ALREADY-active per-product
+    # discount (old is still None here) — the two aren't meant to stack.
+    if old is None and current is not None:
+        sale_p_match = None
+        for script in soup.find_all('script'):
+            if script.string and 'saleP' in script.string:
+                sale_p_match = _EIWI_SALE_P_RE.search(script.string)
+                if sale_p_match:
+                    break
+        if sale_p_match:
+            try:
+                sale_p = float(sale_p_match.group(1))
+            except ValueError:
+                sale_p = None
+            if sale_p is not None and sale_p != 1:
+                # Deliberately NOT trunc(old * sale_p) — mathematically the
+                # same real number, but a different float-rounding path than
+                # the site's own two-step percentage math, and the two
+                # disagree often enough to matter (690 * 0.7 = 482.99999999999994
+                # -> trunc 482, one ruble off live vs the site, which computes
+                # via an intermediate integer percent instead — verified live,
+                # see comment above). Replicate the site's exact two steps.
+                old = current
+                perc = math.trunc(100 - math.trunc(sale_p * 100))
+                current = math.trunc(old * (100 - perc) / 100)
+
     if old == current:
         old = None
     return current, old
