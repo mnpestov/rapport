@@ -91,6 +91,7 @@ apps/backend/images_archive/
 apps/backend/src/scratch/
 apps/backend/src/scripts/scratch/
 apps/backend/src/scripts/Настя Петли и сплетни/
+apps/backend/src/scripts/price_check_report.md
 apps/backend/src/scripts/price_check_report_*.md
 apps/backend/src/scripts/price_check_state.json
 apps/backend/src/scripts/price_snapshots/
