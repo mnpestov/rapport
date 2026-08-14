@@ -17,12 +17,19 @@ const mapPatternListItem = (p: any) => ({
   productTypes: p.categories.map((pt: any) => pt.name),
   tags: p.tags.map((t: any) => t.name),
   primaryProductType: p.categories[0]?.name || '',
-  externalLink: p.url || ''
+  externalLink: p.url || '',
+  // Id counterparts of the name arrays above — needed anywhere filtering
+  // has to match FilterModal's id-based SelectedFilters against an
+  // already-fetched pattern list client-side (currently: favorites page).
+  // Purely additive, same names/values regardless of caller.
+  categoryIds: p.categories.map((pt: any) => pt.id),
+  tagIds: p.tags.map((t: any) => t.id),
+  instrumentIds: p.instruments.map((i: any) => i.id),
 });
 
 export const getPatterns = async (req: Request, res: Response) => {
   try {
-    const { search, isFree, isNew, limit, offset } = req.query;
+    const { search, isFree, isNew, isDiscount, limit, offset } = req.query;
 
     const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, hasCore(req)));
 
@@ -44,9 +51,20 @@ export const getPatterns = async (req: Request, res: Response) => {
       where.isNew = true;
     }
 
+    const extra = hasExtra(req);
+    const core = hasCore(req);
+
+    // Discount is derived (oldPrice > price), not a stored flag — see
+    // Pattern's schema comment. Non-extra requests never receive price/
+    // oldPrice at all (PATTERN_PRICE_OMIT below), so silently ignore the
+    // param rather than filtering against fields that don't exist for them.
+    if (isDiscount === 'true' && extra) {
+      where.oldPrice = { not: null };
+      where.price = { gt: 0 };
+    }
+
     const take = limit ? parseInt(limit as string, 10) : 10;
     const skip = offset ? parseInt(offset as string, 10) : 0;
-    const extra = hasExtra(req);
 
     const [patterns, total] = await Promise.all([
       prisma.pattern.findMany({
@@ -62,9 +80,16 @@ export const getPatterns = async (req: Request, res: Response) => {
         // extra URLs per pattern; see pattern_images_plan.md риск №8). Same
         // reasoning for details — long free text, only ever shown on the
         // detail page — omitted here for EVERYONE regardless of role, purely
-        // for payload size. price/oldPrice require PREMIUM_EXTRA, omitted on
-        // top of that otherwise — see PAID_TIER_PERMISSIONS_PLAN.md §3.2.
-        omit: { images: true, details: true, ...(extra ? {} : PATTERN_PRICE_OMIT) },
+        // for payload size. price/oldPrice require PREMIUM_EXTRA, densityStitches/
+        // densityRows require PREMIUM_CORE — omitted on top of that otherwise,
+        // same gate getPatternById already applies (this list endpoint didn't
+        // until now — densityStitches/densityRows were plain scalar columns
+        // with no omit, so Prisma returned them unconditionally even though
+        // nothing here rendered them; closing that gap since favorites'
+        // client-side density filter is about to make real use of the field
+        // on another endpoint reusing this same premium-gate pattern).
+        // See PAID_TIER_PERMISSIONS_PLAN.md §3.2/§3.3.
+        omit: { images: true, details: true, ...(extra ? {} : PATTERN_PRICE_OMIT), ...(core ? {} : PATTERN_CORE_OMIT) },
         include: {
           author: true,
           instruments: true,
@@ -148,8 +173,14 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
       return res.json({ data: [] });
     }
 
+    // 500/request is a defensive cap, not tied to any body-size limit
+    // (express.json()'s default 100kb comfortably fits far more than 500
+    // UUIDs) — callers with more favorites than this are expected to chunk
+    // into multiple parallel requests and merge client-side, not raise this
+    // number.
     const validIds = ids.filter((id): id is string => typeof id === "string").slice(0, 500);
     const extra = hasExtra(req);
+    const core = hasCore(req);
 
     const patterns = await prisma.pattern.findMany({
       where: {
@@ -158,20 +189,36 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
       },
       // Same reasoning as getPatterns — this feeds list/thumbnail views
       // (e.g. favorites), never the detail page's gallery or details block.
-      // price/oldPrice premium-gated the same way too.
-      omit: { images: true, details: true, ...(extra ? {} : PATTERN_PRICE_OMIT) },
+      // price/oldPrice and densityStitches/densityRows premium-gated the
+      // same way getPatternById already does.
+      omit: { images: true, details: true, ...(extra ? {} : PATTERN_PRICE_OMIT), ...(core ? {} : PATTERN_CORE_OMIT) },
       include: {
         author: true,
         instruments: true,
         categories: true,
         tags: true,
+        // Only for PREMIUM_CORE — needed by the favorites page's client-side
+        // "Толщина пряжи" filter, which has to match FilterModal's
+        // SelectedFilters.yarnRanges (ids) against each already-fetched
+        // pattern without a server round-trip. Id only, not label — the
+        // label list itself comes from /filters, same as Catalog.
+        ...(core ? { yarnRanges: { select: { id: true } } } : {}),
       }
     });
 
     const patternsMap = new Map(patterns.map(p => [p.id, p]));
     const orderedPatterns = validIds.map(id => patternsMap.get(id)).filter(p => p !== undefined) as typeof patterns;
 
-    const mappedPatterns = orderedPatterns.map(mapPatternListItem);
+    const mappedPatterns = orderedPatterns.map((p: any) => {
+      // Strip the raw yarnRanges relation array before the shared mapper
+      // spreads `...p` — replaced with the flat yarnRangeIds below so the
+      // response shape stays consistent (never a stray {id}[] object array).
+      const { yarnRanges, ...rest } = p;
+      return {
+        ...mapPatternListItem(rest),
+        ...(core ? { yarnRangeIds: (yarnRanges || []).map((y: any) => y.id) } : {}),
+      };
+    });
 
     res.json({ data: mappedPatterns });
   } catch (error) {
@@ -219,12 +266,18 @@ export const getSimilarPatterns = async (req: Request, res: Response) => {
 
     const categoryIds = source.categories.map(c => c.id);
     const tagIds = source.tags.map(t => t.id);
+    // PREMIUM_EXTRA and PREMIUM_CORE are independent flags — the early
+    // return above only guards EXTRA (so price never needs gating past this
+    // point), but an EXTRA-without-CORE user reaching here would otherwise
+    // get densityStitches/densityRows back ungated. Same fix as
+    // getPatterns/getPatternsByIds above.
+    const core = hasCore(req);
 
     const fetchSimilar = (where: any) => prisma.pattern.findMany({
       where,
       take: SIMILAR_LIMIT,
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-      omit: { images: true, details: true },
+      omit: { images: true, details: true, ...(core ? {} : PATTERN_CORE_OMIT) },
       include: { author: true, instruments: true, categories: true, tags: true },
     });
 

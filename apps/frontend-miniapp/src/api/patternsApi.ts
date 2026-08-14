@@ -34,12 +34,29 @@ export interface Pattern {
   // actually active (oldPrice > price); no separate boolean/percent field.
   price?: string | null;
   oldPrice?: string | null;
+  // Id counterparts of productTypes/tags/instruments — only present on
+  // fetchPatternsByIds' response, for client-side filter matching against
+  // FilterModal's id-based SelectedFilters (favorites page). Absent
+  // elsewhere (fetchPatterns/fetchSimilarPatterns don't need it — those
+  // filter server-side).
+  categoryIds?: string[];
+  tagIds?: string[];
+  instrumentIds?: string[];
+  // Only present when the requester has PREMIUM_CORE (mirrors
+  // densityStitches/densityRows' own gating) — the yarnRange ids attached to
+  // this pattern, for the same client-side filter-matching reason as above.
+  // Distinct from `yarnRanges` (labels, fetchPatternById only).
+  yarnRangeIds?: string[];
 }
 
 export interface FetchPatternsOptions {
   search?: string;
   isFree?: boolean;
   isNew?: boolean;
+  // Server ignores this for non-PREMIUM_EXTRA requests (see getPatterns) —
+  // matches price/oldPrice's own gating, so there's nothing to filter by
+  // for a tier that never receives those fields in the first place.
+  isDiscount?: boolean;
   limit?: number;
   offset?: number;
   categories?: string[];
@@ -85,6 +102,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   if (options?.search) params.append("search", options.search);
   if (options?.isFree) params.append("isFree", "true");
   if (options?.isNew) params.append("isNew", "true");
+  if (options?.isDiscount) params.append("isDiscount", "true");
   if (options?.limit !== undefined) params.append("limit", options.limit.toString());
   if (options?.offset !== undefined) params.append("offset", options.offset.toString());
   
@@ -186,7 +204,13 @@ export const fetchFilters = async (options: FetchFiltersOptions = {}): Promise<F
   };
 };
 
-export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
+// Backend caps a single /patterns/batch request at 500 ids (defensive, not
+// tied to any body-size limit — see patternsController.ts comment). Callers
+// with more ids than this (confirmed on prod: one user has 522 favorites)
+// are expected to chunk, not raise that number.
+const BATCH_CHUNK_SIZE = 500;
+
+const fetchPatternsByIdsSingleBatch = async (ids: string[]): Promise<Pattern[]> => {
   if (ids.length === 0) return [];
 
   const response = await fetchWithTimeout(`${API_URL}/patterns/batch`, {
@@ -207,6 +231,23 @@ export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
     imageUrl: p.imageUrl.startsWith('/') ? `${API_URL}${p.imageUrl}` : p.imageUrl,
     thumbnailUrl: p.thumbnailUrl.startsWith('/') ? `${API_URL}${p.thumbnailUrl}` : p.thumbnailUrl
   }));
+};
+
+export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
+  if (ids.length === 0) return [];
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += BATCH_CHUNK_SIZE) {
+    chunks.push(ids.slice(i, i + BATCH_CHUNK_SIZE));
+  }
+
+  // Independent reads — fire in parallel rather than awaiting one chunk
+  // before starting the next.
+  const results = await Promise.all(chunks.map(fetchPatternsByIdsSingleBatch));
+  const byId = new Map(results.flat().map(p => [p.id, p]));
+  // Reassemble in the caller's original id order, not chunk-arrival order —
+  // matches how the backend already orders a single chunk's own response.
+  return ids.map(id => byId.get(id)).filter((p): p is Pattern => p !== undefined);
 };
 
 // "Похожие описания" on the detail page — server-side tiered matching by

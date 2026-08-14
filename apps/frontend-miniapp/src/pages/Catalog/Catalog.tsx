@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Heart, SlidersHorizontal } from 'lucide-react';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResponse } from '../../api/patternsApi';
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
-import { CustomX } from '../../components/Icons/Icons';
+import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
 import { trackSearchQuery } from '../../api/analyticsApi';
 import './Catalog.css';
 
@@ -48,6 +47,7 @@ export const Catalog: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
   const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_free_filter') === 'true');
   const [isNewFilterActive, setIsNewFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_new_filter') === 'true');
+  const [isDiscountFilterActive, setIsDiscountFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_discount_filter') === 'true');
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
@@ -131,8 +131,9 @@ export const Catalog: React.FC = () => {
     sessionStorage.setItem('catalog_search', searchInput);
     sessionStorage.setItem('catalog_free_filter', String(isFreeFilterActive));
     sessionStorage.setItem('catalog_new_filter', String(isNewFilterActive));
+    sessionStorage.setItem('catalog_discount_filter', String(isDiscountFilterActive));
     sessionStorage.setItem('catalog_advanced_filters', JSON.stringify(advancedFilters));
-  }, [searchInput, isFreeFilterActive, isNewFilterActive, advancedFilters]);
+  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
 
   useEffect(() => {
     sessionStorage.setItem('catalog_offset', offset.toString());
@@ -152,7 +153,7 @@ export const Catalog: React.FC = () => {
     setOffset(0);
     setHasMore(true);
     setPatterns([]);
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -173,6 +174,7 @@ export const Catalog: React.FC = () => {
           search: debouncedSearch || undefined,
           isFree: isFreeFilterActive ? true : undefined,
           isNew: isNewFilterActive ? true : undefined,
+          isDiscount: isDiscountFilterActive ? true : undefined,
           limit: fetchLimit,
           offset: fetchOffset,
           categories: advancedFilters.categories.length > 0 ? advancedFilters.categories : undefined,
@@ -232,7 +234,7 @@ export const Catalog: React.FC = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, offset, advancedFilters, logSearchOnce]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, offset, advancedFilters, logSearchOnce]);
 
   // Trigger: 5s pause with no further typing/scrolling/click-through — kept
   // in a ref (not state) so the timer's closure always reads the latest
@@ -285,80 +287,26 @@ export const Catalog: React.FC = () => {
         }
       }}
     >
-      <div className="search-row">
-        <div className="search-input-wrapper">
-          <Search size={20} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Найти описание"
-            className="search-input"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-          />
-          {searchInput && (
-            <button className="search-clear-btn" onClick={() => setSearchInput('')} aria-label="Clear search">
-              <X size={24} className="clear-icon" />
-            </button>
-          )}
-        </div>
-        <button className="search-favorite-btn" onClick={() => {
+      <SearchFilterBar
+        searchInput={searchInput}
+        onSearchChange={setSearchInput}
+        showFavoritesButton
+        onFavoritesClick={() => {
           sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
           navigate('/favorites');
-        }} aria-label="Favorites">
-          <Heart size={24} color="#D8540F" fill="#D8540F" />
-        </button>
-      </div>
-
-      <div className="filters-row">
-        <button
-          className={`filter-settings-btn ${totalFiltersCount > 0 ? 'has-filters' : ''}`}
-          aria-label="Настройки фильтров"
-          onClick={() => setIsFilterModalOpen(true)}
-        >
-          <SlidersHorizontal size={24} />
-          {totalFiltersCount > 0 && (
-            <>
-              <span className="filter-count">({totalFiltersCount})</span>
-              <div className="filter-clear-icon" onClick={clearFilters}>
-                <CustomX size={24} />
-              </div>
-            </>
-          )}
-        </button>
-        <div className="filter-separator" />
-        <div className="catalog-filters">
-          <button
-            className={`filter-btn ${isNewFilterActive ? 'active' : ''}`}
-            onClick={() => setIsNewFilterActive(v => !v)}
-          >
-            Новинки
-          </button>
-          <button
-            className={`filter-btn ${isFreeFilterActive ? 'active' : ''}`}
-            onClick={() => setIsFreeFilterActive(v => !v)}
-          >
-            Бесплатные
-          </button>
-        </div>
-      </div>
-
-      {/* {(isFreeFilterActive || isNewFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '') && (
-        <div className="catalog-found-count">
-          найдено описаний: {totalPatterns}
-        </div>
-      )} */}
-
-      <div className="catalog-found-count">
-        {(isFreeFilterActive || isNewFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '')
-          ? 'найдено описаний:'
-          : 'всего описаний:'}{' '}
-        {totalPatterns}
-      </div>
+        }}
+        isFreeActive={isFreeFilterActive}
+        onToggleFree={() => setIsFreeFilterActive(v => !v)}
+        isNewActive={isNewFilterActive}
+        onToggleNew={() => setIsNewFilterActive(v => !v)}
+        isDiscountActive={isDiscountFilterActive}
+        onToggleDiscount={() => setIsDiscountFilterActive(v => !v)}
+        totalFiltersCount={totalFiltersCount}
+        onOpenFilterModal={() => setIsFilterModalOpen(true)}
+        onClearFilters={clearFilters}
+        foundCount={totalPatterns}
+        hasActiveQuery={isFreeFilterActive || isNewFilterActive || isDiscountFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== ''}
+      />
 
       {loading && <p className="loading-message">Загрузка каталога...</p>}
       {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}

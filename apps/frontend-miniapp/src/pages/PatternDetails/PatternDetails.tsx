@@ -7,6 +7,7 @@ import { useFavorites } from '../../context/FavoritesContext';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
+import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
 
@@ -60,21 +61,6 @@ const ImageCarousel: React.FC<{ images: string[]; alt: string }> = ({ images, al
     </>
   );
 };
-
-// A price of exactly 0 means the item is free (see the scraper's
-// normalize_free_price) — isFree/the "Бесплатно" badge already covers
-// that, so the price row itself should stay empty rather than show "0 ₽".
-// Also suppressed whenever isFree is true regardless of the stored price
-// value — isFree can be a manual admin decision independent of price, and
-// showing both the badge and a price would read as contradictory.
-const hasPrice = (price?: string | null, isFree?: boolean): boolean =>
-  !isFree && price != null && parseFloat(price) > 0;
-
-// oldPrice only renders as a discount when it's genuinely higher than the
-// current price — same guard as PatternCard, avoids a data-entry mistake
-// reading as a price increase instead of a markdown.
-const hasDiscount = (price?: string | null, oldPrice?: string | null, isFree?: boolean): boolean =>
-  hasPrice(price, isFree) && oldPrice != null && parseFloat(oldPrice) > parseFloat(price as string);
 
 export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -218,6 +204,7 @@ export const PatternDetails: React.FC = () => {
               <Heart size={32} strokeWidth={1} fill={id && isFavorite(id) ? "white" : "none"} color={id && isFavorite(id) ? "white" : "currentColor"} />
             </button>
             {pattern.isFree && <span className="badge-free badge-free--details">Бесплатно</span>}
+            {hasActiveDiscount(pattern) && <span className="badge-discount badge-discount--details">Скидка</span>}
           </div>
         </div>
 
@@ -225,10 +212,10 @@ export const PatternDetails: React.FC = () => {
           <div className="details-content">
             <div className="details-row">
               <span className="details-product-type">{pattern.primaryProductType}</span>
-              {hasPrice(pattern.price, pattern.isFree) && (
+              {hasVisiblePrice(pattern) && (
                 <div className="details-price-row">
                   <span className="details-price-current">{formatDecimal(pattern.price as string)} ₽</span>
-                  {hasDiscount(pattern.price, pattern.oldPrice, pattern.isFree) && (
+                  {hasActiveDiscount(pattern) && (
                     <span className="details-price-old">{formatDecimal(pattern.oldPrice as string)} ₽</span>
                   )}
                 </div>

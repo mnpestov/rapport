@@ -28,9 +28,20 @@ interface FilterModalProps {
   initialFilters: SelectedFilters;
   filtersData: FiltersResponse | null;
   loading: boolean;
+  // How to re-fetch each section's narrowed option list as the draft
+  // selection changes. Defaults to the real network fetchFilters (catalog,
+  // faceted against the whole DB). Favorites passes a synchronous
+  // client-side computation over its already-loaded pattern list instead —
+  // see clientPatternFilters.ts's computeFacetsFromPatterns — wrapped in a
+  // resolved Promise so this component's debounce/abort plumbing doesn't
+  // need to know which case it's in.
+  fetchFacets?: (selected: SelectedFilters, signal: AbortSignal) => Promise<FiltersResponse>;
 }
 
-export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading }) => {
+const defaultFetchFacets = (selected: SelectedFilters, signal: AbortSignal) =>
+  fetchFilters({ ...selected, signal });
+
+export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading, fetchFacets = defaultFetchFacets }) => {
   // Density/yarn-thickness sections require PREMIUM_CORE — renderSection
   // always renders its header regardless of whether options is empty, so
   // gating has to happen at the call site, not inside it. See
@@ -81,7 +92,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      fetchFilters({ ...selected, signal: controller.signal })
+      fetchFacets(selected, controller.signal)
         .then(setFacetData)
         .catch(err => {
           if (err instanceof Error && err.name === 'AbortError') return;
@@ -93,7 +104,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
       clearTimeout(timer);
       controller.abort();
     };
-  }, [selected, isOpen, filtersData]);
+  }, [selected, isOpen, filtersData, fetchFacets]);
 
   if (!isOpen) return null;
 

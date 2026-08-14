@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { useFavorites } from '../../context/FavoritesContext';
+import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
 import './PatternCard.css';
 
 // Price comes from the backend as a Decimal-serialized string (e.g. "590.00")
@@ -43,19 +44,8 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const favorite = isFavorite(id);
-  // A price of exactly 0 means the item is free (see the scraper's
-  // normalize_free_price) — isFree/the "Бесплатно" badge already covers
-  // that, so the price row itself should stay empty rather than show
-  // "0 ₽". Also suppressed whenever isFree is true regardless of the
-  // stored price value — isFree can be a manual admin decision independent
-  // of price (e.g. a listing that shows a price on-site but is offered free
-  // here), and showing both the badge and a price would read as
-  // contradictory.
-  const hasPrice = !isFree && price != null && parseFloat(price) > 0;
-  // oldPrice only renders as a discount when it's genuinely higher than the
-  // current price — guards against a data-entry mistake reading as a price
-  // INCREASE instead of a markdown.
-  const hasDiscount = hasPrice && oldPrice != null && parseFloat(oldPrice) > parseFloat(price as string);
+  const hasPrice = hasVisiblePrice({ isFree, price, oldPrice });
+  const hasDiscount = hasActiveDiscount({ isFree, price, oldPrice });
 
   const handleCardClick = () => {
     onBeforeNavigate?.();
@@ -80,8 +70,9 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
           loading="lazy"
           decoding="async"
         />
-        {(isNew || isFree) && (
+        {(isNew || isFree || hasDiscount) && (
           <div className="badge-stack">
+            {hasDiscount && <span className="badge-discount">Скидка</span>}
             {isNew && <span className="badge-new">Новинка</span>}
             {isFree && <span className="badge-free">Бесплатно</span>}
           </div>

@@ -75,7 +75,36 @@
   text-align: center;
 }
 
+.badge-discount {
+  min-width: 34px;
+  padding: 4px 8px;
+  background: var(--orange, #D8520F);
+  color: #FFFFFF;
+  border: 1px solid var(--orange, #D8520F);
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 110%;
+  font-family: Mulish, sans-serif;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .badge-free--details {
+  /* Only ever used standalone on PatternDetails (never inside
+     .badge-stack, unlike plain .badge-free) — needs its own position,
+     since the shared base class deliberately doesn't set one (that would
+     break its flex-stacked use inside .badge-stack on the card). Was
+     missing before — bottom/left had no effect without a positioned
+     element, so this badge likely rendered in normal flow instead of
+     overlaying the image. */
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+}
+
+.badge-discount--details {
+  position: absolute;
   bottom: 10px;
   left: 10px;
 }

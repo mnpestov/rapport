@@ -1,0 +1,183 @@
+/* === SEARCH ROW === */
+/* Figma: Input Field / Android — HORIZONTAL, gap:12, pt:16 pr:20 pb:16 pl:20, alignCounter:CENTER */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+/* Figma: Input Field — fill:#F3F3F3, cornerRadius:2, h:48, p:16 on all sides */
+.search-input-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px;
+  background-color: #F3F3F3;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+/* Input: transparent, no border */
+.search-input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  /* 16px min prevents iOS WebView auto-zoom on focus (which caused
+     the viewport to enlarge and a horizontal scrollbar to appear). */
+  font-size: 16px;
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  color: #9B9A9A;
+  outline: none;
+}
+
+.search-input::placeholder {
+  /* Figma: Title — Mulish 400 15px, color: #A2AC95 approx */
+  color: #A2AC95;
+}
+
+/* Search icon: 20x20 from Figma */
+.search-icon {
+  flex-shrink: 0;
+  color: #A2AC95;
+  width: 20px;
+  height: 20px;
+}
+
+/* Clear button: transparent, inline */
+.search-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #A2AC95;
+}
+
+/* Figma: Frame 318 — w:48, h:48, fill:#F3F3F3, cornerRadius:2 */
+.search-favorite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 2px;
+  border: none;
+  background-color: #F3F3F3;
+  color: #1D1C1C;
+  cursor: pointer;
+}
+
+/* === FILTERS ROW === */
+/* Figma: Menu — HORIZONTAL, gap:12, pt:10 pr:16 pb:0 pl:16, h:46, alignCounter:CENTER */
+.filters-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+/* Figma: lucide/sliders-horizontal — 32x32, no background */
+.filter-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: #1D1C1C;
+  cursor: pointer;
+  padding: 0;
+}
+
+.filter-settings-btn.has-filters {
+  width: auto;
+}
+
+/* Figma: Line 1 — h:30, stroke:#F3F3F3, width: 1px border */
+.filter-separator {
+  flex-shrink: 0;
+  width: 1px;
+  height: 30px;
+  background-color: #F3F3F3;
+}
+
+.catalog-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.catalog-filters::-webkit-scrollbar {
+  display: none;
+}
+
+/* Figma: Label — h:36, pt:8 pr:15 pb:8 pl:15, fill:none, stroke:#F3F3F3, cornerRadius:2, Mulish 400 15px, color:#1D1C1C */
+.filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 8px 15px;
+  border-radius: 2px;
+  border: 1px solid #F3F3F3;
+  background: transparent;
+  color: #1D1C1C;
+  font-size: 15px;
+  font-weight: 400;
+  font-family: Mulish, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-btn.active {
+  background: var(--purple, #ABC6BA);
+  color: white;
+  border-color: var(--purple, #ABC6BA);
+}
+
+.filter-count {
+  color: var(--black, #1D1C1C);
+  text-align: center;
+  font-family: Mulish;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+  /* 13.2px */
+}
+
+.filter-clear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.catalog-found-count {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #8e8e93;
+  margin-bottom: 4px;
+}
