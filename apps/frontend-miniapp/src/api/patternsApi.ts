@@ -47,6 +47,13 @@ export interface Pattern {
   // this pattern, for the same client-side filter-matching reason as above.
   // Distinct from `yarnRanges` (labels, fetchPatternById only).
   yarnRangeIds?: string[];
+  // The "actually went live" moment — see the field comment in
+  // schema.prisma. Always present for a visible pattern (verified on prod:
+  // 0 of 3068 NULL), never omitted by any list endpoint even though no
+  // Pattern field above declared it before — used by clientPatternFilters'
+  // sortPatterns for the favorites page's client-side "Последние
+  // добавленные", mirroring what the server now defaults to.
+  publishedAt: string;
 }
 
 export interface FetchPatternsOptions {
@@ -57,6 +64,16 @@ export interface FetchPatternsOptions {
   // matches price/oldPrice's own gating, so there's nothing to filter by
   // for a tier that never receives those fields in the first place.
   isDiscount?: boolean;
+  // 'newest' (publishedAt desc) is the server's own default when omitted —
+  // only sent when non-default. price_asc/price_desc silently fall back to
+  // 'newest' server-side for non-PREMIUM_EXTRA requests, same reasoning as
+  // isDiscount above.
+  sort?: 'newest' | 'price_asc' | 'price_desc';
+  // Server ignores both for non-PREMIUM_EXTRA requests, same as isDiscount —
+  // doesn't narrow any other facet's option list (see getFilters), only the
+  // main pattern list.
+  priceMin?: string;
+  priceMax?: string;
   limit?: number;
   offset?: number;
   categories?: string[];
@@ -103,6 +120,9 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   if (options?.isFree) params.append("isFree", "true");
   if (options?.isNew) params.append("isNew", "true");
   if (options?.isDiscount) params.append("isDiscount", "true");
+  if (options?.sort && options.sort !== "newest") params.append("sort", options.sort);
+  if (options?.priceMin) params.append("priceMin", options.priceMin);
+  if (options?.priceMax) params.append("priceMax", options.priceMax);
   if (options?.limit !== undefined) params.append("limit", options.limit.toString());
   if (options?.offset !== undefined) params.append("offset", options.offset.toString());
   

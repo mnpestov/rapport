@@ -183,6 +183,9 @@
 
 .filter-search-input {
   flex: 1;
+  /* Same fix as .search-input in SearchFilterBar.css — without it, typed
+     text grows the box past its flex share instead of staying fixed-width. */
+  min-width: 0;
   border: none;
   background: transparent;
   outline: none;
@@ -190,6 +193,10 @@
   /* 16px min prevents iOS WebView auto-zoom on focus. */
   font-size: 16px;
   color: #1D1C1C;
+}
+
+.filter-search-input:focus::placeholder {
+  color: transparent;
 }
 
 .filter-search-clear {
@@ -227,6 +234,10 @@
   color: #1D1C1C;
   text-align: center;
   -moz-appearance: textfield;
+}
+
+.filter-density-input:focus::placeholder {
+  color: transparent;
 }
 
 .filter-density-input::-webkit-outer-spin-button,

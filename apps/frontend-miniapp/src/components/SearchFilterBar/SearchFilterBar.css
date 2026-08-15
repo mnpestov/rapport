@@ -24,6 +24,10 @@
 /* Input: transparent, no border */
 .search-input {
   flex: 1;
+  /* Without this, a flex child's default min-width:auto lets typed content
+     grow the input past its flex-basis share instead of scrolling inside a
+     fixed box — the box itself was visibly resizing as text got longer. */
+  min-width: 0;
   height: 100%;
   padding: 0;
   border: none;
@@ -40,6 +44,12 @@
 .search-input::placeholder {
   /* Figma: Title — Mulish 400 15px, color: #A2AC95 approx */
   color: #A2AC95;
+}
+
+/* Hidden (not just naturally covered by typed text) as soon as the field is
+   focused, not only once something's been typed into it. */
+.search-input:focus::placeholder {
+  color: transparent;
 }
 
 /* Search icon: 20x20 from Figma */
@@ -119,6 +129,24 @@
   width: 1px;
   height: 30px;
   background-color: #F3F3F3;
+}
+
+/* Same footprint as .filter-settings-btn (32x32, transparent, no border) —
+   sits right after the separator, gap handled by .filters-row's own
+   gap:12px, same as every other direct child here. */
+.sort-settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: #1D1C1C;
+  cursor: pointer;
+  padding: 0;
 }
 
 .catalog-filters {

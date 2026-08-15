@@ -19,6 +19,12 @@ export interface SelectedFilters {
   authors: string[];
   yarnRanges: string[];
   density: string[];
+  // Not a facet like the six above (no discrete option list to pick from —
+  // it's a continuous range), so it deliberately isn't a key of
+  // FiltersResponse and doesn't go through renderSection/handleToggle.
+  // '' means unset, matching how the two inputs themselves are controlled.
+  priceMin: string;
+  priceMax: string;
 }
 
 interface FilterModalProps {
@@ -46,8 +52,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   // always renders its header regardless of whether options is empty, so
   // gating has to happen at the call site, not inside it. See
   // PAID_TIER_PERMISSIONS_PLAN.md §3.4.
-  const { core } = usePremiumAccess();
+  const { core, extra } = usePremiumAccess();
   const [selected, setSelected] = useState<SelectedFilters>(initialFilters);
+  const [isPriceExpanded, setIsPriceExpanded] = useState(false);
   // Live, narrowed option lists — recomputed server-side (see the effect
   // below) as `selected` changes, so e.g. picking a category prunes density
   // options down to what actually occurs on patterns in that category.
@@ -120,7 +127,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   };
 
   const handleReset = () => {
-    setSelected({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [] });
+    setSelected({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], priceMin: '', priceMax: '' });
     setDensitySearch({ stitches: '', rows: '' });
   };
 
@@ -128,6 +135,62 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     onApply(selected);
     onClose();
   };
+
+  // Bespoke, not routed through renderSection — price is a continuous range,
+  // not a facet with a discrete option list (handleToggle/staleIds/
+  // facetData narrowing don't apply). Gated on `extra`, not `core` like
+  // yarnRanges/density below — price/oldPrice are PREMIUM_EXTRA-only
+  // (patternVisibility.ts's PATTERN_PRICE_OMIT), a completely independent
+  // permission from PREMIUM_CORE. Same visual chrome (filter-section-header
+  // with the chevron) as every other section, for consistency.
+  const renderPriceSection = () => (
+    <div className="filter-section">
+      <button
+        className="filter-section-header"
+        onClick={() => setIsPriceExpanded(v => !v)}
+      >
+        <span className="filter-section-title">Цена</span>
+        {isPriceExpanded ? <CustomChevronDown size={32} /> : <CustomChevronUp size={32} />}
+      </button>
+      {isPriceExpanded && (
+        <div className="filter-section-body">
+          <div className="filter-density-search-row">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="от"
+              className="filter-search-input filter-density-input"
+              value={selected.priceMin}
+              onChange={(e) => setSelected(prev => ({ ...prev, priceMin: e.target.value }))}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <span className="filter-density-search-label">—</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="до"
+              className="filter-search-input filter-density-input"
+              value={selected.priceMax}
+              onChange={(e) => setSelected(prev => ({ ...prev, priceMax: e.target.value }))}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <span className="filter-density-search-label">р.</span>
+            {/* Same reasoning as density's clear button — always rendered,
+                visibility-toggled, so the two flex:1 inputs above don't
+                shrink/grow (14px each, measured live) when this appears. */}
+            <button
+              className="filter-search-clear"
+              onClick={(e) => { e.stopPropagation(); setSelected(prev => ({ ...prev, priceMin: '', priceMax: '' })); }}
+              style={{ visibility: (selected.priceMin || selected.priceMax) ? 'visible' : 'hidden' }}
+              tabIndex={(selected.priceMin || selected.priceMax) ? 0 : -1}
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   const renderSection = (title: string, sectionKey: keyof FiltersResponse) => {
     const isExpanded = expandedSections.includes(sectionKey);
@@ -218,14 +281,17 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
                   onClick={(e) => e.stopPropagation()}
                 />
                 <span className="filter-density-search-label">р.</span>
-                {(densitySearch.stitches || densitySearch.rows) && (
-                  <button
-                    className="filter-search-clear"
-                    onClick={(e) => { e.stopPropagation(); setDensitySearch({ stitches: '', rows: '' }); }}
-                  >
-                    <X size={20} />
-                  </button>
-                )}
+                {/* Always rendered — reserves its space in the flex row at
+                    all times so the two flex:1 inputs don't lose/regain
+                    width (split evenly between them) as this shows up. */}
+                <button
+                  className="filter-search-clear"
+                  onClick={(e) => { e.stopPropagation(); setDensitySearch({ stitches: '', rows: '' }); }}
+                  style={{ visibility: (densitySearch.stitches || densitySearch.rows) ? 'visible' : 'hidden' }}
+                  tabIndex={(densitySearch.stitches || densitySearch.rows) ? 0 : -1}
+                >
+                  <X size={20} />
+                </button>
               </div>
             ) : sectionKey !== 'instruments' && sectionKey !== 'yarnRanges' && (
               <div className="filter-search-input-wrapper filter-search-inline">
@@ -238,14 +304,15 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
                   onChange={(e) => setFilterSearches(prev => ({ ...prev, [sectionKey]: e.target.value }))}
                   onClick={(e) => e.stopPropagation()}
                 />
-                {filterSearches[sectionKey] && (
-                  <button
-                    className="filter-search-clear"
-                    onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
-                  >
-                    <X size={20} />
-                  </button>
-                )}
+                {/* Same reasoning as density's clear button above. */}
+                <button
+                  className="filter-search-clear"
+                  onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
+                  style={{ visibility: filterSearches[sectionKey] ? 'visible' : 'hidden' }}
+                  tabIndex={filterSearches[sectionKey] ? 0 : -1}
+                >
+                  <X size={20} />
+                </button>
               </div>
             )}
             {loading && <p className="filter-loading">Загрузка...</p>}
@@ -284,6 +351,12 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
         </div>
 
         <div className="filter-modal-body">
+          {extra && (
+            <>
+              {renderPriceSection()}
+              <div className="filter-divider" />
+            </>
+          )}
           {renderSection("Тип изделия", "categories")}
           <div className="filter-divider" />
           {renderSection("Характеристики", "tags")}
@@ -306,7 +379,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           <button
             className="filter-apply-btn"
             onClick={handleApply}
-            disabled={selected.categories.length === 0 && selected.tags.length === 0 && selected.instruments.length === 0 && selected.authors.length === 0 && selected.yarnRanges.length === 0 && selected.density.length === 0}
+            disabled={selected.categories.length === 0 && selected.tags.length === 0 && selected.instruments.length === 0 && selected.authors.length === 0 && selected.yarnRanges.length === 0 && selected.density.length === 0 && !selected.priceMin && !selected.priceMax}
           >
             Применить
           </button>

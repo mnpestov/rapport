@@ -34,3 +34,17 @@ export const CustomX: React.FC<IconProps> = ({ size = 24, color = '#1D1C1C', ...
     <path d="M16 8L8 16M8 8L16 16" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+
+export const CustomRadioUnchecked: React.FC<IconProps> = ({ size = 24, color = '#D9D9D9', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5"/>
+  </svg>
+);
+
+// Fallback #A9AE36 matches var(--matcha) — see SortModal.css.
+export const CustomRadioChecked: React.FC<IconProps> = ({ size = 24, color = '#A9AE36', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5"/>
+    <circle cx="12" cy="12" r="5" fill={color}/>
+  </svg>
+);

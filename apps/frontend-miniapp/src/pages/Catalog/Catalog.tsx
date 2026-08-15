@@ -4,6 +4,7 @@ import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResponse } from '../../api/patternsApi';
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
 import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
+import { SortModal, SortOption } from '../../components/SortModal/SortModal';
 import { trackSearchQuery } from '../../api/analyticsApi';
 import './Catalog.css';
 
@@ -48,6 +49,11 @@ export const Catalog: React.FC = () => {
   const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_free_filter') === 'true');
   const [isNewFilterActive, setIsNewFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_new_filter') === 'true');
   const [isDiscountFilterActive, setIsDiscountFilterActive] = useState(() => !filterAuthorId && sessionStorage.getItem('catalog_discount_filter') === 'true');
+  // Not gated on filterAuthorId like the boolean toggles above — sort order
+  // is orthogonal to which subset of the catalog is showing, no reason to
+  // reset it when jumping to an author's page.
+  const [sortValue, setSortValue] = useState<SortOption>(() => (sessionStorage.getItem('catalog_sort') as SortOption) || 'newest');
+  const [isSortModalOpen, setIsSortModalOpen] = useState(false);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
@@ -59,7 +65,9 @@ export const Catalog: React.FC = () => {
       instruments: [],
       authors: [],
       yarnRanges: [],
-      density: []
+      density: [],
+      priceMin: '',
+      priceMax: ''
     };
 
     if (filterAuthorId) {
@@ -132,8 +140,9 @@ export const Catalog: React.FC = () => {
     sessionStorage.setItem('catalog_free_filter', String(isFreeFilterActive));
     sessionStorage.setItem('catalog_new_filter', String(isNewFilterActive));
     sessionStorage.setItem('catalog_discount_filter', String(isDiscountFilterActive));
+    sessionStorage.setItem('catalog_sort', sortValue);
     sessionStorage.setItem('catalog_advanced_filters', JSON.stringify(advancedFilters));
-  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
+  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
 
   useEffect(() => {
     sessionStorage.setItem('catalog_offset', offset.toString());
@@ -153,7 +162,7 @@ export const Catalog: React.FC = () => {
     setOffset(0);
     setHasMore(true);
     setPatterns([]);
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -175,6 +184,9 @@ export const Catalog: React.FC = () => {
           isFree: isFreeFilterActive ? true : undefined,
           isNew: isNewFilterActive ? true : undefined,
           isDiscount: isDiscountFilterActive ? true : undefined,
+          sort: sortValue,
+          priceMin: advancedFilters.priceMin || undefined,
+          priceMax: advancedFilters.priceMax || undefined,
           limit: fetchLimit,
           offset: fetchOffset,
           categories: advancedFilters.categories.length > 0 ? advancedFilters.categories : undefined,
@@ -234,7 +246,7 @@ export const Catalog: React.FC = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, offset, advancedFilters, logSearchOnce]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, offset, advancedFilters, logSearchOnce]);
 
   // Trigger: 5s pause with no further typing/scrolling/click-through — kept
   // in a ref (not state) so the timer's closure always reads the latest
@@ -271,11 +283,14 @@ export const Catalog: React.FC = () => {
     advancedFilters.instruments.length +
     advancedFilters.authors.length +
     advancedFilters.yarnRanges.length +
-    advancedFilters.density.length;
+    advancedFilters.density.length +
+    // One combined range, not two — setting both "от" and "до" is still a
+    // single "Цена" filter, same as how one selected density bucket is +1.
+    (advancedFilters.priceMin || advancedFilters.priceMax ? 1 : 0);
 
   const clearFilters = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [] });
+    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], priceMin: '', priceMax: '' });
   };
 
   return (
@@ -301,6 +316,7 @@ export const Catalog: React.FC = () => {
         onToggleNew={() => setIsNewFilterActive(v => !v)}
         isDiscountActive={isDiscountFilterActive}
         onToggleDiscount={() => setIsDiscountFilterActive(v => !v)}
+        onOpenSortModal={() => setIsSortModalOpen(true)}
         totalFiltersCount={totalFiltersCount}
         onOpenFilterModal={() => setIsFilterModalOpen(true)}
         onClearFilters={clearFilters}
@@ -344,6 +360,13 @@ export const Catalog: React.FC = () => {
         filtersData={filtersData}
         loading={!filtersData}
         onApply={(selected) => setAdvancedFilters(selected)}
+      />
+
+      <SortModal
+        isOpen={isSortModalOpen}
+        onClose={() => setIsSortModalOpen(false)}
+        value={sortValue}
+        onApply={setSortValue}
       />
     </div>
   );

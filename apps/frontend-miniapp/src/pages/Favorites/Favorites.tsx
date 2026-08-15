@@ -5,14 +5,15 @@ import { fetchPatternsByIds, fetchFilters, Pattern, FiltersResponse } from '../.
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
-import { filterPatterns, computeFacetsFromPatterns } from '../../utils/clientPatternFilters';
+import { SortModal, SortOption } from '../../components/SortModal/SortModal';
+import { filterPatterns, sortPatterns, computeFacetsFromPatterns } from '../../utils/clientPatternFilters';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './Favorites.css';
 
 const PAGE_SIZE = 20;
 
 const EMPTY_FILTERS: SelectedFilters = {
-  categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: []
+  categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], priceMin: '', priceMax: ''
 };
 
 export const Favorites: React.FC = () => {
@@ -42,6 +43,7 @@ export const Favorites: React.FC = () => {
   const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => sessionStorage.getItem('favorites_free_filter') === 'true');
   const [isNewFilterActive, setIsNewFilterActive] = useState(() => sessionStorage.getItem('favorites_new_filter') === 'true');
   const [isDiscountFilterActive, setIsDiscountFilterActive] = useState(() => sessionStorage.getItem('favorites_discount_filter') === 'true');
+  const [sortValue, setSortValue] = useState<SortOption>(() => (sessionStorage.getItem('favorites_sort') as SortOption) || 'newest');
   const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>(() => {
     const saved = sessionStorage.getItem('favorites_advanced_filters');
     if (saved) {
@@ -50,6 +52,7 @@ export const Favorites: React.FC = () => {
     return EMPTY_FILTERS;
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isSortModalOpen, setIsSortModalOpen] = useState(false);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -58,8 +61,9 @@ export const Favorites: React.FC = () => {
     sessionStorage.setItem('favorites_free_filter', String(isFreeFilterActive));
     sessionStorage.setItem('favorites_new_filter', String(isNewFilterActive));
     sessionStorage.setItem('favorites_discount_filter', String(isDiscountFilterActive));
+    sessionStorage.setItem('favorites_sort', sortValue);
     sessionStorage.setItem('favorites_advanced_filters', JSON.stringify(advancedFilters));
-  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
+  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput), 300);
@@ -117,13 +121,13 @@ export const Favorites: React.FC = () => {
     return () => { isMounted = false; };
   }, [favorites]);
 
-  const filteredPatterns = useMemo(() => filterPatterns(allPatterns, {
+  const filteredPatterns = useMemo(() => sortPatterns(filterPatterns(allPatterns, {
     search: debouncedSearch,
     isFree: isFreeFilterActive,
     isNew: isNewFilterActive,
     isDiscount: isDiscountFilterActive,
     selected: advancedFilters,
-  }), [allPatterns, debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
+  }), sortValue), [allPatterns, debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
 
   // Reset client-side pagination whenever the effective filter changes —
   // same trigger set Catalog resets its (server-side) offset on.
@@ -131,7 +135,7 @@ export const Favorites: React.FC = () => {
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     setVisibleCount(PAGE_SIZE);
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
 
   const visiblePatterns = filteredPatterns.slice(0, visibleCount);
   const hasMore = visibleCount < filteredPatterns.length;
@@ -173,7 +177,8 @@ export const Favorites: React.FC = () => {
     advancedFilters.instruments.length +
     advancedFilters.authors.length +
     advancedFilters.yarnRanges.length +
-    advancedFilters.density.length;
+    advancedFilters.density.length +
+    (advancedFilters.priceMin || advancedFilters.priceMax ? 1 : 0);
 
   const clearFilters = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -218,6 +223,7 @@ export const Favorites: React.FC = () => {
             onToggleNew={() => setIsNewFilterActive(v => !v)}
             isDiscountActive={isDiscountFilterActive}
             onToggleDiscount={() => setIsDiscountFilterActive(v => !v)}
+            onOpenSortModal={() => setIsSortModalOpen(true)}
             totalFiltersCount={totalFiltersCount}
             onOpenFilterModal={() => setIsFilterModalOpen(true)}
             onClearFilters={clearFilters}
@@ -255,6 +261,13 @@ export const Favorites: React.FC = () => {
         loading={false}
         onApply={setAdvancedFilters}
         fetchFacets={fetchFacets}
+      />
+
+      <SortModal
+        isOpen={isSortModalOpen}
+        onClose={() => setIsSortModalOpen(false)}
+        value={sortValue}
+        onApply={setSortValue}
       />
     </div>
   );

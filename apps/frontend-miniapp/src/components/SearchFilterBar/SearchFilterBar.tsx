@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Heart, SlidersHorizontal } from 'lucide-react';
+import { Search, X, Heart, SlidersHorizontal, ArrowDownUp } from 'lucide-react';
 import { CustomX } from '../Icons/Icons';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import './SearchFilterBar.css';
@@ -22,6 +22,13 @@ interface SearchFilterBarProps {
   // always pass these two props; gating is purely a render decision here.
   isDiscountActive: boolean;
   onToggleDiscount: () => void;
+  // Opens the sort bottom sheet — the sort VALUE itself lives with the
+  // caller (Catalog/Favorites), same division of ownership as
+  // totalFiltersCount/onOpenFilterModal below. Button itself always
+  // renders (unlike the "Скидка" chip) — "Последние добавленные" stays
+  // available with no PREMIUM_EXTRA, only the two price options inside
+  // the sheet are gated (see SortModal).
+  onOpenSortModal: () => void;
   totalFiltersCount: number;
   onOpenFilterModal: () => void;
   onClearFilters: (e: React.MouseEvent) => void;
@@ -53,6 +60,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   onToggleNew,
   isDiscountActive,
   onToggleDiscount,
+  onOpenSortModal,
   totalFiltersCount,
   onOpenFilterModal,
   onClearFilters,
@@ -78,11 +86,19 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
               }
             }}
           />
-          {searchInput && (
-            <button className="search-clear-btn" onClick={() => onSearchChange('')} aria-label="Clear search">
-              <X size={24} className="clear-icon" />
-            </button>
-          )}
+          {/* Always rendered (not conditional) — its box stays in the flex
+              row's layout at all times, so .search-input (flex:1) doesn't
+              gain/lose width when this shows up as text is typed. Hidden via
+              visibility, which still reserves space, unlike display:none. */}
+          <button
+            className="search-clear-btn"
+            onClick={() => onSearchChange('')}
+            aria-label="Clear search"
+            style={{ visibility: searchInput ? 'visible' : 'hidden' }}
+            tabIndex={searchInput ? 0 : -1}
+          >
+            <X size={24} className="clear-icon" />
+          </button>
         </div>
         {showFavoritesButton && (
           <button className="search-favorite-btn" onClick={onFavoritesClick} aria-label="Favorites">
@@ -108,6 +124,13 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           )}
         </button>
         <div className="filter-separator" />
+        <button
+          className="sort-settings-btn"
+          aria-label="Сортировка"
+          onClick={onOpenSortModal}
+        >
+          <ArrowDownUp size={24} />
+        </button>
         <div className="catalog-filters">
           <button
             className={`filter-btn ${isNewActive ? 'active' : ''}`}

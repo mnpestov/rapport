@@ -1,5 +1,6 @@
 import { Pattern, FilterOption, FiltersResponse } from '../api/patternsApi';
 import { SelectedFilters } from '../components/FilterModal/FilterModal';
+import { SortOption } from '../components/SortModal/SortModal';
 import { hasActiveDiscount } from './priceHelpers';
 
 // Client-side equivalent of the backend's buildPatternWhere/getFilters
@@ -73,13 +74,58 @@ export interface ClientFilterOptions {
   selected: SelectedFilters;
 }
 
+// priceMin/priceMax live on `selected` itself (SelectedFilters), not a
+// top-level ClientFilterOptions field like isDiscount — they're plain
+// strings straight off the two range inputs, not a facet id-list, so there's
+// nothing for matchesFacetsExcept to do with them; checked directly here
+// instead, mirroring how getPatterns merges them into `where.price`
+// server-side. Patterns with no price at all (non-extra — never reached
+// here, since FilterModal hides the "Цена" section for them — or genuinely
+// priceless) fail a bound that's actually set, same as the server's
+// `where.price` would exclude a NULL row from a `gte`/`lte` comparison.
+const matchesPriceRange = (p: Pattern, priceMin: string, priceMax: string): boolean => {
+  if (!priceMin && !priceMax) return true;
+  const price = p.price != null ? parseFloat(p.price) : null;
+  if (price == null) return false;
+  if (priceMin && price < parseFloat(priceMin)) return false;
+  if (priceMax && price > parseFloat(priceMax)) return false;
+  return true;
+};
+
 export const filterPatterns = (patterns: Pattern[], opts: ClientFilterOptions): Pattern[] => {
   return patterns.filter(p => {
     if (opts.isFree && !p.isFree) return false;
     if (opts.isNew && !p.isNew) return false;
     if (opts.isDiscount && !hasActiveDiscount(p)) return false;
+    if (!matchesPriceRange(p, opts.selected.priceMin, opts.selected.priceMax)) return false;
     if (!matchesSearch(p, opts.search)) return false;
     return matchesFacetsExcept(p, opts.selected);
+  });
+};
+
+// Mirrors getPatterns' own orderBy (patternsController.ts) — 'newest' by
+// publishedAt desc, price_asc/price_desc with NULLs (free items — always
+// NULL, never 0, verified live) pushed to the end regardless of direction,
+// same as the server's `nulls: 'last'`. id is the tie-breaker everywhere,
+// matching the server's own `{ id: 'asc' }` secondary sort, even though a
+// client-side full-array sort has no pagination-duplicate risk to guard
+// against — kept for behavioral consistency between catalog and favorites.
+// Favorites' SortModal already hides price_asc/price_desc for non-extra
+// users (see SortModal.tsx), so this never needs its own extra check.
+export const sortPatterns = (patterns: Pattern[], sort: SortOption): Pattern[] => {
+  if (sort === 'newest') {
+    return [...patterns].sort((a, b) =>
+      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime() || a.id.localeCompare(b.id)
+    );
+  }
+  const dir = sort === 'price_asc' ? 1 : -1;
+  return [...patterns].sort((a, b) => {
+    const pa = a.price != null ? parseFloat(a.price) : null;
+    const pb = b.price != null ? parseFloat(b.price) : null;
+    if (pa == null && pb == null) return a.id.localeCompare(b.id);
+    if (pa == null) return 1;
+    if (pb == null) return -1;
+    return (pa - pb) * dir || a.id.localeCompare(b.id);
   });
 };
 

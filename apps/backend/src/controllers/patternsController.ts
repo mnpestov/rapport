@@ -29,7 +29,7 @@ const mapPatternListItem = (p: any) => ({
 
 export const getPatterns = async (req: Request, res: Response) => {
   try {
-    const { search, isFree, isNew, isDiscount, limit, offset } = req.query;
+    const { search, isFree, isNew, isDiscount, sort, priceMin, priceMax, limit, offset } = req.query;
 
     const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, hasCore(req)));
 
@@ -54,13 +54,44 @@ export const getPatterns = async (req: Request, res: Response) => {
     const extra = hasExtra(req);
     const core = hasCore(req);
 
-    // Discount is derived (oldPrice > price), not a stored flag — see
-    // Pattern's schema comment. Non-extra requests never receive price/
-    // oldPrice at all (PATTERN_PRICE_OMIT below), so silently ignore the
-    // param rather than filtering against fields that don't exist for them.
-    if (isDiscount === 'true' && extra) {
-      where.oldPrice = { not: null };
-      where.price = { gt: 0 };
+    // Both isDiscount and priceMin/priceMax constrain the same `price`
+    // column — built into ONE object (not two separate assignments) so a
+    // combination like "Скидка" + "от 500" doesn't have the second silently
+    // clobber the first via plain overwrite. Non-extra requests never
+    // receive price/oldPrice at all (PATTERN_PRICE_OMIT below), so all three
+    // params are silently ignored rather than filtering against fields that
+    // don't exist for them — same precedent as isDiscount already had.
+    if (extra) {
+      const priceConstraint: { gt?: number; gte?: number; lte?: number } = {};
+      if (isDiscount === 'true') {
+        where.oldPrice = { not: null };
+        priceConstraint.gt = 0;
+      }
+      const min = typeof priceMin === 'string' ? parseFloat(priceMin) : NaN;
+      const max = typeof priceMax === 'string' ? parseFloat(priceMax) : NaN;
+      if (!isNaN(min)) priceConstraint.gte = min;
+      if (!isNaN(max)) priceConstraint.lte = max;
+      if (Object.keys(priceConstraint).length > 0) {
+        where.price = priceConstraint;
+      }
+    }
+
+    // publishedAt (not createdAt) is the "actual went live" moment — see the
+    // field comment in schema.prisma and expireNewPatternsJob, which already
+    // anchors on it for the same reason (sync-imported patterns sit
+    // invisible in review before publication, so createdAt can predate what
+    // users actually see by however long that takes). price_asc/price_desc
+    // silently fall back to the default (rather than erroring) for
+    // non-PREMIUM_EXTRA requests — same precedent as isDiscount above, since
+    // those requests never receive price/oldPrice to make sense of the
+    // ordering anyway. price is nullable (free items, always NULL not 0 —
+    // verified live) so both directions push NULLs to the end rather than
+    // clustering free items at the top of "Дороже".
+    let orderBy: any = [{ publishedAt: 'desc' }, { id: 'asc' }];
+    if (sort === 'price_asc' && extra) {
+      orderBy = [{ price: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }];
+    } else if (sort === 'price_desc' && extra) {
+      orderBy = [{ price: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }];
     }
 
     const take = limit ? parseInt(limit as string, 10) : 10;
@@ -71,10 +102,7 @@ export const getPatterns = async (req: Request, res: Response) => {
         where,
         take,
         skip,
-        orderBy: [
-          { createdAt: 'desc' },
-          { id: 'asc' }
-        ],
+        orderBy,
         // Listing only ever renders the cover (imageUrl) — omit the gallery
         // array so it doesn't bloat every catalog page response (up to 5
         // extra URLs per pattern; see pattern_images_plan.md риск №8). Same
@@ -276,7 +304,8 @@ export const getSimilarPatterns = async (req: Request, res: Response) => {
     const fetchSimilar = (where: any) => prisma.pattern.findMany({
       where,
       take: SIMILAR_LIMIT,
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      // publishedAt, not createdAt — see getPatterns' own comment.
+      orderBy: [{ publishedAt: 'desc' }, { id: 'asc' }],
       omit: { images: true, details: true, ...(core ? {} : PATTERN_CORE_OMIT) },
       include: { author: true, instruments: true, categories: true, tags: true },
     });

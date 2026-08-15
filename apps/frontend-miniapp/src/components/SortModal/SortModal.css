@@ -1,0 +1,105 @@
+/* Same bottom-sheet mechanics as FilterModal.css's .filter-modal-overlay/
+   .filter-modal-content, just auto-height instead of 90vh — this sheet is
+   three rows tall, not a scrollable list. */
+.sort-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sort-modal-content {
+  background-color: #ffffff;
+  width: 100%;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sort-modal-grabber {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: #1D1C1C;
+  margin: 12px auto 0;
+}
+
+.sort-modal-title {
+  font-family: Mulish, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1D1C1C;
+  text-align: center;
+  margin: 16px 0 0;
+}
+
+.sort-modal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 16px;
+}
+
+.sort-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.sort-radio-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-radio-text {
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #1D1C1C;
+}
+
+/* Same visual language as FilterModal's footer (.filter-reset-btn/
+   .filter-apply-btn) — kept as separate classes rather than shared ones
+   since the two modals don't otherwise share a base component. */
+.sort-modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 16px 34px 16px;
+}
+
+.sort-reset-btn {
+  width: 100%;
+  height: 50px;
+  background-color: #F3F3F3;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1D1C1C;
+  cursor: pointer;
+}
+
+.sort-apply-btn {
+  width: 100%;
+  height: 50px;
+  background-color: var(--matcha, #A9AE36);
+  border: none;
+  border-radius: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
