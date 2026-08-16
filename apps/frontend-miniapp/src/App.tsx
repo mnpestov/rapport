@@ -10,6 +10,8 @@ import { authenticate } from './api/authApi';
 import { TelegramOnly } from './pages/TelegramOnly/TelegramOnly';
 import { UpdateTelegram } from './pages/UpdateTelegram/UpdateTelegram';
 import { LoadError } from './pages/LoadError/LoadError';
+import { PaymentSuccess } from './pages/PaymentSuccess/PaymentSuccess';
+import { PaymentFail } from './pages/PaymentFail/PaymentFail';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -31,6 +33,15 @@ function App() {
   const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
 
   useEffect(() => {
+    // Result-страницы после оплаты (Robokassa Success/Fail URL) открываются в
+    // обычном браузере, не в Telegram — им не нужны ни Telegram-гейт, ни
+    // авторизация. Выходим до всей остальной логики, чтобы не делать лишних
+    // сетевых вызовов и не инициализировать Telegram WebApp на странице, где
+    // это не имеет смысла.
+    if (window.location.pathname === '/success' || window.location.pathname === '/fail') {
+      return;
+    }
+
     let isMounted = true;
 
     // Clear saved catalog filters on fresh app start
@@ -175,6 +186,14 @@ function App() {
       window.removeEventListener("auth:recheck", checkAccess);
     };
   }, []);
+
+  if (window.location.pathname === '/success') {
+    return <PaymentSuccess />;
+  }
+
+  if (window.location.pathname === '/fail') {
+    return <PaymentFail />;
+  }
 
   if (MAINTENANCE_MODE) {
     return <Maintenance />;
