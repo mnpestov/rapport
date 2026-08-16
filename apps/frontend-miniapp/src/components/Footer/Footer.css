@@ -1,0 +1,74 @@
+/* Figma node 953:4345 ("Footer" component, file aoLMlIOmSFLpR3RXMJMukx) */
+.app-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 20px;
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 8px;
+  line-height: 1.1;
+  color: #1D1C1C;
+}
+
+.footer-source {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer-link {
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Built but not wired to a real destination yet (Сообщить ошибке, Для
+   авторов) — reserves nothing, unlike the clear-button fix elsewhere,
+   since this never toggles at runtime; just a static flag to flip later. */
+.footer-link--hidden {
+  display: none;
+}
+
+.footer-info {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  white-space: nowrap;
+}
+
+/* Fixed width (matches the design exactly) — the right column hugs its own
+   content instead, so the gap between them is whatever space is left. */
+.footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 210px;
+}
+
+.footer-left-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.footer-info a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.footer-copyright {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #9B9A9A;
+}

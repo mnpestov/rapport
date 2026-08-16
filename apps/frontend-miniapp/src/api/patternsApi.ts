@@ -3,6 +3,9 @@ export interface Pattern {
   title: string;
   author: string;
   authorId: string;
+  // Only populated by fetchPatternById — used by the detail page's Footer
+  // ("Источник информации: ..."), nowhere else needs it.
+  authorSite?: string | null;
   primaryProductType: string;
   imageUrl: string;
   // Card-sized (≤800px) derivative of imageUrl — falls back to imageUrl

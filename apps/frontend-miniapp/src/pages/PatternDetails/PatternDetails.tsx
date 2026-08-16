@@ -8,6 +8,8 @@ import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
+import { openExternalLink } from '../../utils/telegram';
+import { Footer } from '../../components/Footer/Footer';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
 
@@ -155,12 +157,7 @@ export const PatternDetails: React.FC = () => {
       trackPatternLinkClick(id);
     }
 
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.openLink) {
-      tg.openLink(pattern.externalLink);
-    } else {
-      window.open(pattern.externalLink, '_blank');
-    }
+    openExternalLink(pattern.externalLink);
   };
 
   if (loading) {
@@ -313,6 +310,12 @@ export const PatternDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Full-width, below both columns — distinct from .details-footer
+          above (that's just the CTA button's own wrapper, pre-existing,
+          not this page-wide component). Only page where sourceUrl is ever
+          passed — the "Источник информации" line. */}
+      <Footer sourceUrl={pattern.authorSite} />
     </div>
   );
 };

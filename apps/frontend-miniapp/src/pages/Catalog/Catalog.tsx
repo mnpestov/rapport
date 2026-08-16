@@ -5,6 +5,7 @@ import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResp
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
 import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
 import { SortModal, SortOption } from '../../components/SortModal/SortModal';
+import { Footer } from '../../components/Footer/Footer';
 import { trackSearchQuery } from '../../api/analyticsApi';
 import './Catalog.css';
 
@@ -350,6 +351,10 @@ export const Catalog: React.FC = () => {
               {isFetchingMore && <p className="loading-message" style={{ marginTop: 0 }}>Загрузка...</p>}
             </div>
           )}
+          {/* Only once pagination is genuinely exhausted — sits after the
+              last card in normal document flow, so it's naturally reached
+              (and only then) by scrolling to the true end of the list. */}
+          {!hasMore && <Footer />}
         </>
       )}
 

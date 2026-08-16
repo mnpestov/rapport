@@ -4,7 +4,16 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   min-height: 100vh;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  /* Must clear the fixed .details-footer CTA's full footprint — 50px
+     button + 16px top padding + 16px bottom padding + 10px margin-bottom
+     = 92px (env(safe-area-inset-bottom) cancels out, present on both this
+     padding and the fixed element's own bottom padding). Was 80px, 12px
+     short — the new page-wide Footer below "Похожие описания" sits right
+     at that boundary, so the shortfall (previously masked by the similar
+     cards grid's own visual weight) became a visible overlap with the CTA
+     button. +20px on top of the exact clearance for an actual visible gap,
+     not just zero-overlap. */
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 
 /* Mobile: wrappers are invisible — layout unchanged */

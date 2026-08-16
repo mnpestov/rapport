@@ -6,6 +6,7 @@ import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
 import { SortModal, SortOption } from '../../components/SortModal/SortModal';
+import { Footer } from '../../components/Footer/Footer';
 import { filterPatterns, sortPatterns, computeFacetsFromPatterns } from '../../utils/clientPatternFilters';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './Favorites.css';
@@ -248,6 +249,9 @@ export const Favorites: React.FC = () => {
               {hasMore && (
                 <div ref={sentinelRef} style={{ height: '20px' }} />
               )}
+              {/* Same reasoning as Catalog.tsx — only once this client-side
+                  page of the already-loaded set is fully exhausted. */}
+              {!hasMore && <Footer />}
             </>
           )}
         </>

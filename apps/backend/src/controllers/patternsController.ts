@@ -178,6 +178,13 @@ export const getPatternById = async (req: Request, res: Response) => {
       // images.length <= 1, so the frontend needs no change for this.
       images: extra ? pattern.images : [],
       author: pattern.author?.name || 'Неизвестно',
+      // Only mapped here, not in mapPatternListItem — only the detail
+      // page's Footer ("Источник информации: ...") ever reads it, same
+      // "only where it's actually rendered" reasoning as images/details
+      // being list-endpoint-only in the opposite direction. Not
+      // premium-gated: Author.site is public info about the seller, not
+      // pattern content.
+      authorSite: pattern.author?.site || null,
       instruments: pattern.instruments.map(i => i.name),
       productTypes: pattern.categories.map(pt => pt.name),
       tags: pattern.tags.map(t => t.name),
