@@ -18,8 +18,20 @@
 }
 
 .footer-link {
-  color: inherit;
-  text-decoration: underline;
+  overflow: hidden;
+  color: var(--black, #1D1C1C);
+  text-overflow: ellipsis;
+  font-family: Mulish, sans-serif;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
+  text-underline-position: from-font;
   cursor: pointer;
 }
 
@@ -61,8 +73,6 @@
 }
 
 .footer-info a {
-  overflow: hidden;
-  text-overflow: ellipsis;
   max-width: 100%;
 }
 
