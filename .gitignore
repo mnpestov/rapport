@@ -105,3 +105,13 @@ apps/backend/src/scripts/run_batch_5.sh
 apps/backend/src/scripts/run_batch_6.sh
 apps/backend/src/scripts/run_batch_6_fix.py
 
+# Cron-owned on prod — local edits are always stale, same reasoning as
+# price_check_report.md above.
+apps/backend/src/scripts/DETAILS_PRICE_PARSING_PROCESS.md
+apps/backend/src/scripts/prod_details_price_backfill.sql
+
+# Raw source docs for oferta.html/privacy.html — content already
+# transcribed, not meant to be tracked (see public/oferta.html, privacy.html).
+oferta_410116038191.docx
+privacy_policy_410116038191.docx
+
