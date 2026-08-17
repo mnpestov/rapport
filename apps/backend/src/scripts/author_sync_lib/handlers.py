@@ -338,6 +338,103 @@ scrape_viktoria_morozova_store = _make_tilda_hashroute_store_handler(
     '355898097', 'https://viktoria-morozova.ru/', 'viktoria-morozova.ru'
 )
 
+def _fetch_taplink_page_data(site_url, headers):
+    # Taplink ("link-in-bio" shop builder, taplink.st) embeds its whole
+    # product catalog inline in the page's own <script> as two separate
+    # JSON blobs, window.account and window.data — no separate API call
+    # needed, confirmed on obnimi-mamu.ru. Extracted with raw_decode rather
+    # than a regex (safer against nested braces than a hand-rolled pattern).
+    try:
+        resp = requests.get(site_url, headers=headers, timeout=15)
+    except Exception as e:
+        print(f"Error fetching Taplink page {site_url}: {e}")
+        return None, None
+
+    def extract(marker):
+        idx = resp.text.find(marker)
+        if idx == -1:
+            return None
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(resp.text[idx + len(marker):])
+            return obj
+        except Exception:
+            return None
+
+    return extract('window.account = '), extract('window.data = ')
+
+def _make_taplink_store_handler(site_url, label):
+    # Unlike every Tilda-based site above, there is NO real per-product
+    # page or API at all on this platform (verified live on obnimi-mamu.ru:
+    # /m/<id>/ and /m/product/<id> either 403 or silently re-serve the same
+    # generic page shell with an EMPTY products array) — the whole catalog
+    # only ever exists as the one inline JSON blob fetched above, which
+    # carries title/price/photo/sku only, no description text anywhere.
+    # details/densityStitches/densityRows/yarnRanges are therefore always
+    # empty — an honest gap in the source data, not a scraper bug.
+    # instruments/isMachineKnitting are detected from the title alone.
+    #
+    # Per-product Pattern.url: no confirmed server-side per-product route
+    # exists, so "#product=<id>" (a FRAGMENT, not a query string — see
+    # utils.py's normalize_url, which drops the query entirely and keeps
+    # only the fragment, exactly like the Tilda hashroute "#!/tproduct/..."
+    # sites above; a "?product=" query was tried first and silently
+    # collapsed all 12 products into one during dedup, caught by testing,
+    # not by inspection) is used purely to keep each url unique for
+    # storage/dedup. Whether Taplink's own client JS actually opens that
+    # specific item on load is UNVERIFIED — couldn't get a working headless
+    # render of this specific site to confirm (crashed repeatedly), and the
+    # relevant click-handler component isn't in the main frontend.js bundle
+    # (likely lazy-loaded separately). Worst case it silently falls back to
+    # the plain storefront, not a broken link — spot-check one link after
+    # deploying.
+    def handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+        account, page_data = _fetch_taplink_page_data(site_url, headers)
+        if not page_data:
+            print(f"{label}: failed to fetch/parse Taplink page data.")
+            return [], 0
+
+        products = page_data.get('data', {}).get('products', [])
+        # Mirrors frontend.js's own prepareAccount(): storage_domain is
+        # i.taplink.st for "ru" accounts, p.taplink.st otherwise.
+        language_code = (account or {}).get('language_code', '')
+        storage_domain = 'i.taplink.st' if language_code == 'ru' else 'p.taplink.st'
+
+        items = []
+        for p in products:
+            product_id = p.get('product_id')
+            title = p.get('title') or ''
+            if not product_id or not title:
+                continue
+
+            product_url = f"{site_url}#product={product_id}"
+            base_norm = get_base_url(normalize_url(product_url))
+            if base_norm in all_existing_base_urls:
+                continue
+            all_existing_base_urls.add(base_norm)
+
+            picture = p.get('picture')
+            image_url = f"https://{storage_domain}/p/{picture}" if picture else ''
+
+            items.append({
+                'url': product_url,
+                'title': title,
+                'imageUrl': image_url,
+                'images': [image_url] if image_url else [],
+                'details': None,
+                'price': p.get('price'),
+                'oldPrice': p.get('price_compare'),
+                'densityStitches': None,
+                'densityRows': None,
+                'yarnRanges': [],
+                'instruments': detect_instruments(title, instruments_db),
+                'isMachineKnitting': is_machine_knitting(title),
+            })
+        print(f"{label}: {len(products)} products total, {len(items)} completely new.")
+        return items, len(products)
+    return handler
+
+scrape_obnimi_mamu_store = _make_taplink_store_handler('https://obnimi-mamu.ru/m/', 'obnimi-mamu.ru')
+
 # Full-site handlers that bypass the generic crawler entirely (JS-hydrated
 # stores where the generic per-anchor loop finds nothing on the page itself,
 # AND the API response carries each product's complete description so no
@@ -351,6 +448,7 @@ SITE_HANDLERS = {
     'knithappens.ru': scrape_knithappens_store,
     'foxknit.ru': scrape_foxknit_store,
     'bayuma.ru': scrape_bayuma_store,
+    'obnimi-mamu.ru': scrape_obnimi_mamu_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
