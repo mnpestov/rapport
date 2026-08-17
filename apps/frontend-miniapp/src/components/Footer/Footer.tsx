@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { openExternalLink } from '../../utils/telegram';
+import { ReportErrorModal } from '../ReportErrorModal/ReportErrorModal';
 import './Footer.css';
 
 const SUPPORT_URL = 'https://tbank.ru/cf/AMWtsUJl0nA';
@@ -35,6 +36,8 @@ const handleLinkClick = (url: string) => (e: React.MouseEvent) => {
 };
 
 export const Footer: React.FC<FooterProps> = ({ sourceUrl }) => {
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
   return (
     <footer className="app-footer">
       {sourceUrl && (
@@ -51,9 +54,9 @@ export const Footer: React.FC<FooterProps> = ({ sourceUrl }) => {
             <a href={SUPPORT_URL} className="footer-link" onClick={handleLinkClick(SUPPORT_URL)}>
               Поддержать проект
             </a>
-            {/* Built but not live — no destination page exists yet. Hidden
-                via CSS, not removed, so it's a one-line flip once it does. */}
-            <span className="footer-link footer-link--hidden">Сообщить ошибке</span>
+            <button type="button" className="footer-link footer-link--button" onClick={() => setIsReportModalOpen(true)}>
+              Сообщить об ошибке
+            </button>
           </div>
           <p className="footer-copyright">© {new Date().getFullYear()} Раппорт</p>
         </div>
@@ -64,10 +67,12 @@ export const Footer: React.FC<FooterProps> = ({ sourceUrl }) => {
           <a href={OFERTA_URL} className="footer-link" onClick={handleLinkClick(OFERTA_URL)}>
             Договор оферты
           </a>
-          {/* Same as "Сообщить ошибке" above — styled, hidden, no destination yet. */}
+          {/* Same as "Сообщить об ошибке" was — styled, hidden, no destination yet. */}
           <span className="footer-link footer-link--hidden">Для авторов</span>
         </div>
       </div>
+
+      <ReportErrorModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
     </footer>
   );
 };

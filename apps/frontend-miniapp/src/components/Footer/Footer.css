@@ -35,11 +35,22 @@
   cursor: pointer;
 }
 
-/* Built but not wired to a real destination yet (Сообщить ошибке, Для
-   авторов) — reserves nothing, unlike the clear-button fix elsewhere,
-   since this never toggles at runtime; just a static flag to flip later. */
+/* Built but not wired to a real destination yet (Для авторов) — reserves
+   nothing, unlike the clear-button fix elsewhere, since this never toggles
+   at runtime; just a static flag to flip later. */
 .footer-link--hidden {
   display: none;
+}
+
+/* "Сообщить об ошибке" is a <button> (opens ReportErrorModal), not an <a> —
+   reset the native button chrome so it matches .footer-link's <a> styling
+   exactly instead of inheriting browser button defaults. */
+.footer-link--button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
 }
 
 .footer-info {
