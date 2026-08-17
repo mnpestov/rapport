@@ -17,6 +17,16 @@ export const TelegramOnly: React.FC = () => {
         >
           Открыть в Telegram
         </a>
+        <div className="telegram-only-legal">
+          <p className="telegram-only-legal-reqs">
+            Самозанятый Пестова Юлия Юрьевна · ИНН 410116038191 · г. Москва
+          </p>
+          <p className="telegram-only-legal-links">
+            <a href="/oferta">Публичная оферта</a>
+            {' · '}
+            <a href="/privacy">Политика обработки персональных данных</a>
+          </p>
+        </div>
       </div>
     </div>
   );

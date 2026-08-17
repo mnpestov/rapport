@@ -53,3 +53,29 @@
   border-radius: 12px;
   text-decoration: none;
 }
+
+.telegram-only-legal {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  width: 100%;
+}
+
+.telegram-only-legal-reqs,
+.telegram-only-legal-links {
+  color: #F3F3F3;
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 140%;
+  margin: 0 0 6px;
+}
+
+.telegram-only-legal-links {
+  margin-bottom: 0;
+}
+
+.telegram-only-legal-links a {
+  color: #FFFFFF;
+  text-decoration: underline;
+}
