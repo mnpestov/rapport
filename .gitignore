@@ -115,3 +115,6 @@ apps/backend/src/scripts/prod_details_price_backfill.sql
 oferta_410116038191.docx
 privacy_policy_410116038191.docx
 
+# Working plan draft, not meant to be tracked.
+PAYWALL_BANNER_PLAN.md
+
