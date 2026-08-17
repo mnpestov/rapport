@@ -167,6 +167,11 @@ scrape_kitirrr_store = _make_tilda_store_full_handler('225031935381', '351959523
 # full product description (verified: yarn thickness mentioned inline).
 scrape_foxknit_store = _make_tilda_store_full_handler('903544897722', '927359896', 'foxknit.ru')
 discover_knitmode_products = _make_tilda_store_discovery_handler('779903633633', '188641560', 'knitmode.ru')
+# storepart/recid found inline in the page's own t_store_init('846427699', options)
+# call (options.storepart='523878719412') — same discovery method as foxknit.ru
+# above. API's "text" field carries the full product description (verified:
+# construction/size/yarn all present, 800+ chars per product, not a teaser).
+scrape_bayuma_store = _make_tilda_store_full_handler('523878719412', '846427699', 'bayuma.ru')
 scrape_tsinbal_store = _make_tilda_store_full_handler('827480422531', '503488787', 'tsinbal.ru')
 scrape_knithappens_store = _make_tilda_store_full_handler('233633767262', '1366229501', 'knithappens.ru')
 scrape_lavkabulavka_store = _make_tilda_multi_store_full_handler(
@@ -345,6 +350,7 @@ SITE_HANDLERS = {
     'tsinbal.ru': scrape_tsinbal_store,
     'knithappens.ru': scrape_knithappens_store,
     'foxknit.ru': scrape_foxknit_store,
+    'bayuma.ru': scrape_bayuma_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
