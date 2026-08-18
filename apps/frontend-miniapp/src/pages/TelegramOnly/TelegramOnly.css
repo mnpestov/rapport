@@ -1,81 +1,317 @@
-.telegram-only-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: 24px;
-  background-color: #A9AE36;
-  font-family: 'Mulish', sans-serif;
+/* Figma node 999:7406 ("Desktop _landing") — макет только десктопный
+   (1440px, абсолютное позиционирование), адаптив под мобильные и планшет
+   сделан вручную (мобильный вариант в макете отсутствует). */
+
+.landing {
+  background-color: #ffffff;
+  font-family: Mulish, sans-serif;
+  color: #1d1c1c;
+  overflow-x: hidden;
 }
 
-.telegram-only-content {
+.landing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+}
+
+.landing-header-logo {
+  width: 100px;
+  height: auto;
+}
+
+.landing-header-bot {
+  color: #1d1c1c;
+  font-size: 15px;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+/* ---------- Hero ---------- */
+
+.landing-hero {
+  background-color: #f3f3f3;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 32px;
+  padding: 24px 24px 48px;
+}
+
+.landing-hero-text {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
+  text-align: center;
+  max-width: 480px;
+}
+
+.landing-hero-logo {
+  width: 220px;
+  height: auto;
+}
+
+.landing-hero-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.landing-hero-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.landing-hero-desc p {
+  margin: 0;
+}
+
+.landing-hero-visual {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.landing-hero-screenshot {
+  display: block;
+  width: 100%;
+  border-radius: 28px;
+  border: 6px solid #1d1c1c;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
+  transform: rotate(-4deg);
+}
+
+/* ---------- Buttons (shared) ---------- */
+
+.landing-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   max-width: 300px;
+  height: 54px;
+  box-sizing: border-box;
+  padding: 0 24px;
+  border-radius: 2px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-decoration: none;
   text-align: center;
 }
 
-.telegram-only-logo {
-  margin-bottom: 8px;
+.landing-btn-primary {
+  background-color: #a9ae36;
+  color: #ffffff;
 }
 
-.telegram-only-title {
-  color: #FFFFFF;
-  font-family: Mulish, sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 110%;
+.landing-btn-secondary {
+  background-color: #ffffff;
+  color: #a9ae36;
+  border: 1px solid #a9ae36;
+}
+
+/* ---------- Tiers (Базовый / Расширенный доступ) ---------- */
+
+.landing-tiers {
+  padding: 56px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.landing-section-title {
   margin: 0;
-}
-
-.telegram-only-text {
-  color: #F3F3F3;
-  font-family: Mulish, sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 140%;
-  margin: 0;
-}
-
-.telegram-only-button {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 12px 24px;
-  background-color: #FFFFFF;
-  color: #A9AE36;
-  font-family: Mulish, sans-serif;
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 700;
-  border-radius: 12px;
-  text-decoration: none;
+  text-align: center;
 }
 
-.telegram-only-legal {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
+.landing-tiers-grid {
   width: 100%;
+  max-width: 1241px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.telegram-only-legal-reqs,
-.telegram-only-legal-links {
-  color: #F3F3F3;
-  font-family: Mulish, sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 140%;
-  margin: 0 0 6px;
+.landing-tier {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 30px 20px 40px;
+  border-radius: 4px;
 }
 
-.telegram-only-legal-links {
-  margin-bottom: 0;
+.landing-tier-free {
+  background-color: #f3f3f3;
 }
 
-.telegram-only-legal-links a {
-  color: #FFFFFF;
+.landing-tier-paid {
+  background-color: #abc6ba;
+}
+
+.landing-tier-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.landing-tier-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.landing-tier-price {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.landing-tier-callout {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  background-color: #f3f3f3;
+  color: #1d1c1c;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 2px;
+}
+
+.landing-advantages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.landing-advantage {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(29, 28, 28, 0.1);
+}
+
+.landing-advantage-image {
+  flex-shrink: 0;
+  width: 48px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.landing-advantage-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-advantage-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.landing-advantage-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.landing-advantage-description {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* ---------- Footer ---------- */
+
+.landing-footer {
+  padding: 32px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-top: 1px solid #f3f3f3;
+}
+
+.landing-footer-reqs p {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.landing-footer-copy {
+  margin-top: 12px !important;
+  color: #9b9a9a;
+}
+
+.landing-footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.landing-footer-links a {
+  color: #1d1c1c;
   text-decoration: underline;
+}
+
+/* ---------- Tablet / desktop ---------- */
+
+@media (min-width: 720px) {
+  .landing-hero {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 64px;
+    padding: 56px 40px;
+  }
+
+  .landing-hero-text {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .landing-hero-visual {
+    width: 280px;
+  }
+
+  .landing-tiers-grid {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .landing-footer {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 40px;
+  }
+
+  .landing-footer-links {
+    align-items: flex-end;
+    text-align: right;
+  }
 }
