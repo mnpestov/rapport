@@ -77,13 +77,36 @@
   flex-shrink: 0;
 }
 
-.landing-hero-screenshot {
-  display: block;
+/* Рамка iPhone (phone-frame.png) — реальный мокап из макета с прозрачным
+   вырезом под экран (55,57)-(681,1328) на холсте 735x1388. Скриншот
+   позиционируется под неё в вырез по тем же координатам в процентах,
+   вместе они повёрнуты как единое целое — в макете это два независимо
+   замаскированных повёрнутых слоя, здесь — эквивалентный по виду, но
+   гораздо более простой в поддержке композит. */
+.landing-phone-mockup {
+  position: relative;
   width: 100%;
-  border-radius: 28px;
-  border: 6px solid #1d1c1c;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
-  transform: rotate(-4deg);
+  aspect-ratio: 735 / 1388;
+  transform: rotate(-6deg);
+  filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.2));
+}
+
+.landing-phone-screenshot {
+  position: absolute;
+  left: 12%;
+  top: 10%;
+  width: 76%;
+  height: 83.6%;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 14% / 6%;
+}
+
+.landing-phone-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* ---------- Buttons (shared) ---------- */
@@ -208,20 +231,6 @@
   gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(29, 28, 28, 0.1);
-}
-
-.landing-advantage-image {
-  flex-shrink: 0;
-  width: 48px;
-  height: 64px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.landing-advantage-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .landing-advantage-text {

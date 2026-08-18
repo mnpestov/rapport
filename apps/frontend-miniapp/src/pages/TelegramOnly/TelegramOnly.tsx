@@ -1,23 +1,13 @@
 import React from 'react';
 import heroLogo from '../../assets/paywall/rapport-logo.svg';
 import heroScreenshot from '../../assets/landing/hero-screenshot.png';
-import discountTag from '../../assets/paywall/advantage-discount-tag.png';
-import priceVisibility from '../../assets/paywall/advantage-price-visibility.png';
-import authorLink from '../../assets/paywall/advantage-author-link.png';
-import priceSort from '../../assets/paywall/advantage-price-sort.png';
-import similarPatterns from '../../assets/paywall/advantage-similar-patterns.png';
-import multiPhoto from '../../assets/paywall/advantage-multi-photo.png';
-import priceFilter from '../../assets/paywall/advantage-price-filter.png';
-import favoritesFilters from '../../assets/paywall/advantage-favorites-filters.png';
-import yarnThicknessFilter from '../../assets/paywall/advantage-yarn-thickness-filter.png';
-import densityFilter from '../../assets/paywall/advantage-density-filter.png';
+import phoneFrame from '../../assets/landing/phone-frame.png';
 import './TelegramOnly.css';
 
 const BOT_APP_LINK = 'https://t.me/rapportapp_bot/rapport';
 const BOT_CHAT_LINK = 'https://t.me/rapportapp_bot';
 
 interface Advantage {
-  image?: string;
   title: string;
   text: string;
 }
@@ -42,21 +32,20 @@ const FREE_ADVANTAGES: Advantage[] = [
   { title: 'Постоянное обновление', text: 'Уже 3100+ описаний, и каждую неделю база пополняется. Всегда есть что выбрать.' },
 ];
 
-// PREMIUM_EXTRA — идентичный список ADVANTAGES из PaywallModal.tsx (Figma
-// 970:12151, уже сверен с PAID_TIER_PERMISSIONS_PLAN.md §0). Не вынесен в
-// общий файл намеренно — не хотелось трогать чужой рабочий компонент ради
-// этой задачи; если список там изменится, сверить и здесь тоже.
+// PREMIUM_EXTRA — тот же список и порядок, что ADVANTAGES в PaywallModal.tsx
+// (Figma 970:12151, уже сверен с PAID_TIER_PERMISSIONS_PLAN.md §0), но без
+// картинок — в текущей версии макета (999:7406) у платного списка их убрали.
 const PAID_ADVANTAGES: Advantage[] = [
-  { image: discountTag, title: 'Тег «Скидка»', text: 'Фильтруйте описания с акциями. Экономьте на том, что и так планировали купить.' },
-  { image: priceVisibility, title: 'Цена', text: 'Стоимость описания теперь сразу на карточке. Без лишних действий.' },
-  { image: authorLink, title: 'Гиперссылка на автора', text: 'Переходите к другим работам мастера в один клик прямо со страницы описания.' },
-  { image: priceSort, title: 'Сортировка по цене', text: 'Упорядочивайте модели — от дешёвых к дорогим или наоборот.' },
-  { image: similarPatterns, title: 'Похожие модели', text: 'Рекомендации описаний со схожими характеристиками. Легко выбрать альтернативу.' },
-  { image: multiPhoto, title: 'Множественность фото', text: '5 фотографий вместо одной. Рассмотрите модель со всех сторон.' },
-  { image: priceFilter, title: 'Фильтр по цене', text: 'Отбирайте описания в нужном ценовом диапазоне.' },
-  { image: favoritesFilters, title: 'Фильтры в Избранном', text: 'Находите нужное среди сохранёнок: по плотности, пряже, типу изделия.' },
-  { image: yarnThicknessFilter, title: 'Фильтр по толщине пряжи', text: 'Подборка моделей под метраж вашей пряжи. Используйте то, что уже есть.' },
-  { image: densityFilter, title: 'Фильтр по плотности', text: 'Находите описания, идеально подходящие под вашу плотность вязания. Никаких пересчётов.' },
+  { title: 'Тег «Скидка»', text: 'Фильтруйте описания с акциями. Экономьте на том, что и так планировали купить.' },
+  { title: 'Цена', text: 'Стоимость описания теперь сразу на карточке. Без лишних действий.' },
+  { title: 'Гиперссылка на автора', text: 'Переходите к другим работам мастера в один клик прямо со страницы описания.' },
+  { title: 'Сортировка по цене', text: 'Упорядочивайте модели — от дешёвых к дорогим или наоборот.' },
+  { title: 'Похожие модели', text: 'Рекомендации описаний со схожими характеристиками. Легко выбрать альтернативу.' },
+  { title: 'Множественность фото', text: '5 фотографий вместо одной. Рассмотрите модель со всех сторон.' },
+  { title: 'Фильтр по цене', text: 'Отбирайте описания в нужном ценовом диапазоне.' },
+  { title: 'Фильтры в Избранном', text: 'Находите нужное среди сохранёнок: по плотности, пряже, типу изделия.' },
+  { title: 'Фильтр по толщине пряжи', text: 'Подборка моделей под метраж вашей пряжи. Используйте то, что уже есть.' },
+  { title: 'Фильтр по плотности', text: 'Находите описания, идеально подходящие под вашу плотность вязания. Никаких пересчётов.' },
 ];
 
 export const TelegramOnly: React.FC = () => {
@@ -78,7 +67,10 @@ export const TelegramOnly: React.FC = () => {
           <a className="landing-btn landing-btn-primary" href={BOT_APP_LINK}>Найти описание</a>
         </div>
         <div className="landing-hero-visual">
-          <img src={heroScreenshot} alt="Скриншот каталога описаний в приложении Rapport" className="landing-hero-screenshot" />
+          <div className="landing-phone-mockup">
+            <img src={heroScreenshot} alt="Скриншот каталога описаний в приложении Rapport" className="landing-phone-screenshot" />
+            <img src={phoneFrame} alt="" className="landing-phone-frame" />
+          </div>
         </div>
       </section>
 
@@ -116,11 +108,6 @@ export const TelegramOnly: React.FC = () => {
             <ul className="landing-advantages">
               {PAID_ADVANTAGES.map((advantage) => (
                 <li className="landing-advantage" key={advantage.title}>
-                  {advantage.image && (
-                    <div className="landing-advantage-image">
-                      <img src={advantage.image} alt="" />
-                    </div>
-                  )}
                   <div className="landing-advantage-text">
                     <p className="landing-advantage-title">{advantage.title}</p>
                     <p className="landing-advantage-description">{advantage.text}</p>
