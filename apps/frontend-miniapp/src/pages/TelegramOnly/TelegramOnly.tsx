@@ -1,5 +1,5 @@
 import React from 'react';
-import heroLogo from '../../assets/paywall/rapport-logo.svg';
+import heroLogo from '../../assets/paywall/rapport-logo-black.svg';
 import heroImage from '../../assets/landing/hero.png';
 import './TelegramOnly.css';
 
