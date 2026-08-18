@@ -1,7 +1,6 @@
 import React from 'react';
 import heroLogo from '../../assets/paywall/rapport-logo.svg';
-import heroScreenshot from '../../assets/landing/hero-screenshot.png';
-import phoneFrame from '../../assets/landing/phone-frame.png';
+import heroImage from '../../assets/landing/hero.png';
 import './TelegramOnly.css';
 
 const BOT_APP_LINK = 'https://t.me/rapportapp_bot/rapport';
@@ -67,10 +66,7 @@ export const TelegramOnly: React.FC = () => {
           <a className="landing-btn landing-btn-primary" href={BOT_APP_LINK}>Найти описание</a>
         </div>
         <div className="landing-hero-visual">
-          <div className="landing-phone-mockup">
-            <img src={heroScreenshot} alt="Скриншот каталога описаний в приложении Rapport" className="landing-phone-screenshot" />
-            <img src={phoneFrame} alt="" className="landing-phone-frame" />
-          </div>
+          <img src={heroImage} alt="Скриншот каталога описаний в приложении Rapport" className="landing-hero-image" />
         </div>
       </section>
 

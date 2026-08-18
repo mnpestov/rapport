@@ -77,36 +77,13 @@
   flex-shrink: 0;
 }
 
-/* Рамка iPhone (phone-frame.png) — реальный мокап из макета с прозрачным
-   вырезом под экран (55,57)-(681,1328) на холсте 735x1388. Скриншот
-   позиционируется под неё в вырез по тем же координатам в процентах,
-   вместе они повёрнуты как единое целое — в макете это два независимо
-   замаскированных повёрнутых слоя, здесь — эквивалентный по виду, но
-   гораздо более простой в поддержке композит. */
-.landing-phone-mockup {
-  position: relative;
+/* Готовый композит из Designe/hero.png (рамка + скриншот + наклон уже
+   встроены дизайнером в файл, прозрачный фон) — просто выводим как есть. */
+.landing-hero-image {
+  display: block;
   width: 100%;
-  aspect-ratio: 735 / 1388;
-  transform: rotate(-6deg);
+  height: auto;
   filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.2));
-}
-
-.landing-phone-screenshot {
-  position: absolute;
-  left: 12%;
-  top: 10%;
-  width: 76%;
-  height: 83.6%;
-  object-fit: cover;
-  object-position: top;
-  border-radius: 14% / 6%;
-}
-
-.landing-phone-frame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
 }
 
 /* ---------- Buttons (shared) ---------- */
