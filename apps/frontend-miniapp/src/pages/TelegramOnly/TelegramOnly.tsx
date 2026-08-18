@@ -1,4 +1,5 @@
 import React from 'react';
+import headerLogo from '../../assets/paywall/logo-small-red.svg';
 import heroLogo from '../../assets/paywall/rapport-logo-black.svg';
 import heroImage from '../../assets/landing/hero.png';
 import './TelegramOnly.css';
@@ -51,28 +52,32 @@ export const TelegramOnly: React.FC = () => {
   return (
     <div className="landing">
       <header className="landing-header">
-        <img src={heroLogo} alt="Rapport" className="landing-header-logo" />
-        <a className="landing-header-bot" href={BOT_CHAT_LINK}>@rapportapp_bot</a>
+        <div className="landing-container landing-header-row">
+          <img src={headerLogo} alt="Rapport" className="landing-header-logo" />
+          <a className="landing-header-bot" href={BOT_CHAT_LINK}>@rapportapp_bot</a>
+        </div>
       </header>
 
       <section className="landing-hero">
-        <div className="landing-hero-text">
-          <img src={heroLogo} alt="Rapport" className="landing-hero-logo" />
-          <h1 className="landing-hero-title">Агрегатор вязальных описаний</h1>
-          <div className="landing-hero-desc">
-            <p>Все описания в одном месте!</p>
-            <p>Раппорт — это Mini App. Он работает только внутри мессенджера — откройте приложение через Telegram, чтобы продолжить.</p>
+        <div className="landing-container landing-hero-row">
+          <div className="landing-hero-text">
+            <img src={heroLogo} alt="Rapport" className="landing-hero-logo" />
+            <h1 className="landing-hero-title">Агрегатор вязальных описаний</h1>
+            <div className="landing-hero-desc">
+              <p>Все описания в одном месте!</p>
+              <p>Раппорт — это Mini App. Он работает только внутри мессенджера — откройте приложение через Telegram, чтобы продолжить.</p>
+            </div>
+            <a className="landing-btn landing-btn-primary" href={BOT_APP_LINK}>Найти описание</a>
           </div>
-          <a className="landing-btn landing-btn-primary" href={BOT_APP_LINK}>Найти описание</a>
-        </div>
-        <div className="landing-hero-visual">
-          <img src={heroImage} alt="Скриншот каталога описаний в приложении Rapport" className="landing-hero-image" />
+          <div className="landing-hero-visual">
+            <img src={heroImage} alt="Скриншот каталога описаний в приложении Rapport" className="landing-hero-image" />
+          </div>
         </div>
       </section>
 
       <section className="landing-tiers">
         <h2 className="landing-section-title">Навигация по возможностям</h2>
-        <div className="landing-tiers-grid">
+        <div className="landing-container landing-tiers-grid">
           <div className="landing-tier landing-tier-free">
             <div className="landing-tier-header">
               <p className="landing-tier-name">Базовый доступ</p>
@@ -117,15 +122,17 @@ export const TelegramOnly: React.FC = () => {
       </section>
 
       <footer className="landing-footer">
-        <div className="landing-footer-reqs">
-          <p>Самозанятый Пестова Юлия Юрьевна</p>
-          <p>ИНН 410116038191</p>
-          <p>г. Москва</p>
-          <p className="landing-footer-copy">© 2026 Раппорт</p>
-        </div>
-        <div className="landing-footer-links">
-          <a href="/oferta">Публичная оферта</a>
-          <a href="/privacy">Политика обработки персональных данных</a>
+        <div className="landing-container landing-footer-row">
+          <div className="landing-footer-reqs">
+            <p>Самозанятый Пестова Юлия Юрьевна</p>
+            <p>ИНН 410116038191</p>
+            <p>г. Москва</p>
+            <p className="landing-footer-copy">© 2026 Раппорт</p>
+          </div>
+          <div className="landing-footer-links">
+            <a href="/oferta">Публичная оферта</a>
+            <a href="/privacy">Политика обработки персональных данных</a>
+          </div>
         </div>
       </footer>
     </div>

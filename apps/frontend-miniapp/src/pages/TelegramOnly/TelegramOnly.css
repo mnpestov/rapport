@@ -9,16 +9,29 @@
   overflow-x: hidden;
 }
 
+/* Единая область контента — 1240px на экранах от 1440px и шире (в макете
+   это отступы по 100px от каждого края при ширине холста 1440px), с
+   отступами по бокам как запасной вариант на промежуточных ширинах. */
+.landing-container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 .landing-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 20px 24px;
 }
 
+.landing-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .landing-header-logo {
-  width: 100px;
-  height: auto;
+  width: 63px;
+  height: 50px;
 }
 
 .landing-header-bot {
@@ -32,11 +45,14 @@
 
 .landing-hero {
   background-color: #f3f3f3;
+  padding: 24px 24px 0;
+}
+
+.landing-hero-row {
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
   gap: 32px;
-  padding: 24px 24px 0;
 }
 
 .landing-hero-text {
@@ -49,7 +65,8 @@
 }
 
 .landing-hero-logo {
-  width: 512px;
+  width: 100%;
+  max-width: 512px;
   height: auto;
 }
 
@@ -134,8 +151,6 @@
 }
 
 .landing-tiers-grid {
-  width: 100%;
-  max-width: 1241px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -236,10 +251,13 @@
 
 .landing-footer {
   padding: 32px 20px 40px;
+  border-top: 1px solid #f3f3f3;
+}
+
+.landing-footer-row {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  border-top: 1px solid #f3f3f3;
 }
 
 .landing-footer-reqs p {
@@ -268,16 +286,22 @@
 
 @media (min-width: 720px) {
   .landing-hero {
+    padding: 56px 40px 0;
+  }
+
+  .landing-hero-row {
     flex-direction: row;
     justify-content: center;
     align-items: center;
     gap: 64px;
-    padding: 56px 40px 0;
   }
 
   .landing-hero-text {
     align-items: flex-start;
     text-align: left;
+    width: 575px;
+    max-width: 575px;
+    min-height: 367px;
   }
 
   .landing-hero-visual {
@@ -289,11 +313,10 @@
     align-items: stretch;
   }
 
-  .landing-footer {
+  .landing-footer-row {
     flex-direction: row;
     align-items: flex-end;
     justify-content: space-between;
-    padding: 40px;
   }
 
   .landing-footer-links {
