@@ -36,7 +36,7 @@
   flex-direction: column-reverse;
   align-items: center;
   gap: 32px;
-  padding: 24px 24px 48px;
+  padding: 24px 24px 0;
 }
 
 .landing-hero-text {
@@ -73,7 +73,7 @@
 }
 
 .landing-hero-visual {
-  width: 220px;
+  width: 50%;
   flex-shrink: 0;
 }
 
@@ -272,7 +272,7 @@
     justify-content: center;
     align-items: center;
     gap: 64px;
-    padding: 56px 40px;
+    padding: 56px 40px 0;
   }
 
   .landing-hero-text {
