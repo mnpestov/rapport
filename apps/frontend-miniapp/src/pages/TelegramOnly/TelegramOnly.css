@@ -166,6 +166,15 @@
   border-radius: 4px;
 }
 
+/* Обе карточки тарифов растянуты до одной высоты (align-items: stretch на
+   .landing-tiers-grid, десктоп), но контента в них разное количество —
+   без этого кнопка в более короткой карточке (Базовый) висела бы выше
+   "Оплатить" в Расширенном. margin-top: auto прижимает её к низу карточки
+   независимо от разницы в высоте контента. */
+.landing-tier > .landing-btn {
+  margin-top: auto;
+}
+
 .landing-tier-free {
   background-color: #f3f3f3;
 }
