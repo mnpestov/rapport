@@ -58,22 +58,18 @@ export const createPayment = async (req: Request, res: Response): Promise<void> 
     const outSum = SUBSCRIPTION_PRICE_RUB.toFixed(2);
     const invId = payment.invId;
 
-    // Receipt участвует в подписи в URL-кодированном виде — подтверждено
-    // примером из документации Robokassa (не сырым JSON), см.
-    // PAYMENTS_ROBOKASSA_PLAN.md §3.3a. Начиная отсюда и до сборки URL ниже
-    // используется ТОЛЬКО encodeURIComponent — сознательно не
-    // URLSearchParams (та кодирует пробел как "+", encodeURIComponent — как
-    // "%20"; если бы подпись считалась одним способом, а реальный запрос
-    // строился другим, значения на проводе разошлись бы с тем, что
-    // подписано). Остаётся общая неопределённость — кодирует ли сам
-    // Robokassa пробел как "+" или "%20" на своей стороне, документация
-    // приводит только PHP-примеры с другой функцией по умолчанию — это
-    // стоит явно проверить в первом тестовом прогоне (IsTest=1, §7 шаг 6),
-    // а не считать решённым только по факту, что URL синтаксически верный.
+    // Receipt участвует в подписи СЫРЫМ JSON, без URL-кодирования — этим
+    // и была вызвана Error code 29 на первом прод-прогоне (шаг 6,
+    // 2026-08-19): раньше здесь стоял encodeURIComponent(receiptJson).
+    // Найдено и независимо подтверждено по исходникам официального PHP SDK
+    // Robokassa (`kvalood/Robokassa`, `Robokassa.php`): подпись — всегда
+    // `md5("$login:$price:$invId:$receipt:$pass1")`, где `$receipt =
+    // json_encode(...)` без urlencode; urlencode применяется отдельно,
+    // только при вставке значения в саму форму/URL (см. queryString ниже —
+    // там `receiptJson` кодируется точно так же, как остальные параметры).
     const receiptJson = buildReceiptJson();
-    const receiptEncoded = encodeURIComponent(receiptJson);
 
-    const signatureSource = `${merchantLogin}:${outSum}:${invId}:${receiptEncoded}:${password1}`;
+    const signatureSource = `${merchantLogin}:${outSum}:${invId}:${receiptJson}:${password1}`;
     const signatureValue = crypto.createHash("md5").update(signatureSource).digest("hex");
 
     const queryParams: [string, string][] = [
