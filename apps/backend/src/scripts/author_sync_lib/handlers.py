@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 
 from .utils import normalize_url, get_base_url
 from .parsers import parse_yarn, parse_density, detect_instruments, is_machine_knitting
+from .hooks import _parse_woo_price
 
 
 def _fetch_tilda_store_products(storepartuid, recid, label, headers):
@@ -326,6 +327,108 @@ def _make_tilda_hashroute_store_handler(storepartuid, site_url, label, extra_dec
         return items, len(full_containers)
     return handler
 
+def _make_tilda_named_popup_store_handler(catalog_url, label):
+    # A third Tilda t754 "Store" variant, distinct from both the JSON-API
+    # sites above and the "#!/tproduct/<storepartuid>-<lid>" hashroute sites
+    # below (aggushop.tilda.ws — no storepartuid concept exists here at all).
+    # Each catalog card's link is "#popup:<name>" where <name> is a
+    # human-chosen slug per product (e.g. "#popup:karusel"), not a numeric
+    # ID — but it's a genuine 1:1 mapping (verified: 24/24 cards resolve to
+    # a distinct popup, 0 missing). The popup itself is a server-rendered
+    # T750 block, matched via its own "data-tooltip-hook" attribute holding
+    # that exact "#popup:<name>" string — full description already sits in
+    # ".t750__descr" with no noise to decompose (title/price/buy-button are
+    # separate sibling divs, not nested inside it, unlike the hashroute
+    # variant's shared t754__content container). One fetch of the catalog
+    # page has everything; no per-product request needed.
+    def handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+        try:
+            resp = requests.get(catalog_url, headers=headers, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+        except Exception as e:
+            print(f"Error fetching {label}: {e}")
+            return [], 0
+
+        cards = soup.select('.t754__col.js-product[data-product-lid]')
+        items = []
+        for card in cards:
+            link = card.select_one('a.js-product-link')
+            href = link.get('href') if link else None
+            if not href or not href.startswith('#popup:'):
+                continue
+            popup = soup.select_one(f'[data-tooltip-hook="{href}"]')
+            if not popup:
+                continue
+
+            product_url = f"{catalog_url}{href}"
+            base_norm = get_base_url(normalize_url(product_url))
+            if base_norm in all_existing_base_urls:
+                continue
+            all_existing_base_urls.add(base_norm)
+
+            title_el = popup.select_one('.t750__title')
+            title = title_el.get_text(strip=True) if title_el else ''
+
+            images = []
+            for bgimg in popup.select('.t-slds__bgimg'):
+                src = bgimg.get('data-original')
+                if not src:
+                    style_match = re.search(r"url\(['\"]?(.*?)['\"]?\)", bgimg.get('style', ''))
+                    src = style_match.group(1) if style_match else None
+                if src and src not in images:
+                    images.append(src)
+            image_url = images[0] if images else ''
+
+            # Some products append extra text after the number (e.g.
+            # "490 (без скидки)" for popup:pannomore) — _parse_woo_price's
+            # digit-anchored regex handles that; a bare replace/float() cast
+            # (used elsewhere for the plain-numeric Tilda API/HTML prices)
+            # would raise on the trailing text and silently drop the price.
+            cur_price_el = popup.select_one('.t750__price .t750__price-value')
+            old_price_el = popup.select_one('.t750__price_old .t750__price-value')
+            price = _parse_woo_price(cur_price_el) if cur_price_el else None
+            old_price = _parse_woo_price(old_price_el) if old_price_el else None
+            if old_price == price:
+                old_price = None
+
+            descr_el = popup.select_one('.t750__descr')
+            text_content = descr_el.get_text(separator=' ', strip=True) if descr_el else ''
+            combined = title + ' ' + text_content
+            details = descr_el.get_text(separator='\n', strip=True) if descr_el else None
+
+            density_s, density_r = parse_density(text_content)
+            yarn_meters = parse_yarn(text_content)
+            unique_yarns = []
+            seen_y = set()
+            for ym in set(yarn_meters):
+                for y_id, y_name, y_min, y_max in yarn_ranges_db:
+                    if y_max is None: y_max = 999999
+                    if y_min <= ym <= y_max:
+                        if y_id not in seen_y:
+                            unique_yarns.append({"id": y_id, "label": y_name})
+                            seen_y.add(y_id)
+                        break
+
+            items.append({
+                'url': product_url,
+                'title': title,
+                'imageUrl': image_url,
+                'images': images,
+                'details': details,
+                'price': price,
+                'oldPrice': old_price,
+                'densityStitches': density_s,
+                'densityRows': density_r,
+                'yarnRanges': unique_yarns,
+                'instruments': detect_instruments(combined, instruments_db),
+                'isMachineKnitting': is_machine_knitting(combined),
+            })
+        print(f"{label}: {len(cards)} products total, {len(items)} completely new.")
+        return items, len(cards)
+    return handler
+
+scrape_aggushop_store = _make_tilda_named_popup_store_handler('https://aggushop.tilda.ws/mk', 'aggushop.tilda.ws')
+
 scrape_bysergeeva_store = _make_tilda_hashroute_store_handler('582150733', 'https://bysergeeva.ru/', 'bysergeeva.ru')
 scrape_likavyazhi_store = _make_tilda_hashroute_store_handler('1251845301', 'https://likavyazhi.ru/shop', 'likavyazhi.ru')
 # Repeated "→ ПОЛУЧИТЬ ДОСТУП" payment link (twice per product, no <p>/<li>
@@ -466,6 +569,7 @@ SITE_HANDLERS = {
     'foxknit.ru': scrape_foxknit_store,
     'bayuma.ru': scrape_bayuma_store,
     'obnimi-mamu.ru': scrape_obnimi_mamu_store,
+    'aggushop.tilda.ws': scrape_aggushop_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
