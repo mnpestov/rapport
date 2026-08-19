@@ -168,6 +168,17 @@ scrape_kitirrr_store = _make_tilda_store_full_handler('225031935381', '351959523
 # full product description (verified: yarn thickness mentioned inline).
 scrape_foxknit_store = _make_tilda_store_full_handler('903544897722', '927359896', 'foxknit.ru')
 discover_knitmode_products = _make_tilda_store_discovery_handler('779903633633', '188641560', 'knitmode.ru')
+# ekaterinafrog.ru uses Tilda's "Cataloger" widget (t-catalog__card markup,
+# distinct from both the older t754 Store block and the T396 Zero Block
+# product pages themselves — see the extract_details/price hooks in
+# hooks.py) — same underlying store.tildaapi.com API, storepart/recid found
+# inline in the page's own t_catalog_init('2326543181', options) call
+# (options.storepart='437332075062'). The API's own "text"/"descr" fields
+# are populated for only 1 of 18 live products (mk_uni) — not reliable
+# enough to trust site-wide, so this only resolves url/title/image here and
+# hands off to the normal per-product page fetch, which already extracts
+# the real description via the T396-specific extract_details hook.
+discover_ekaterinafrog_products = _make_tilda_store_discovery_handler('437332075062', '2326543181', 'ekaterinafrog.ru')
 # storepart/recid found inline in the page's own t_store_init('846427699', options)
 # call (options.storepart='523878719412') — same discovery method as foxknit.ru
 # above. API's "text" field carries the full product description (verified:
@@ -579,6 +590,7 @@ SITE_HANDLERS = {
 # nothing and no seed_url is configured. Keyed by a domain substring.
 DISCOVERY_HANDLERS = {
     'knitmode.ru': discover_knitmode_products,
+    'ekaterinafrog.ru': discover_ekaterinafrog_products,
 }
 
 # Supplemental full-parse store sections: for sites where PART of the

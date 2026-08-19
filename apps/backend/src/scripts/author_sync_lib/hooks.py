@@ -531,6 +531,37 @@ def _extract_frog_price(soup):
     m = re.match(r'(\d+)', el.get_text(strip=True))
     return (float(m.group(1)), None) if m else (None, None)
 
+def _extract_frog_details(soup):
+    # ekaterinafrog.ru: same Tilda Zero Block (T396) page as the price hook
+    # above — crawlers.py's title-matching isolation only looks for
+    # js-product/t-item/t754__product-full/t-popup classes, none of which
+    # exist on this free-form canvas layout, and none of its fallback
+    # selectors match either, so details came back empty for every product
+    # on this domain (confirmed live: all 10 DB rows had NULL details).
+    #
+    # Originally anchored on the same stable price field id as
+    # _extract_frog_price and walked up to its T396 ancestor — works for
+    # paid patterns, but some products (e.g. mk_peach) are free "открытый
+    # доступ" video master classes with no price markup on the page at all,
+    # so that field doesn't exist there and the whole extraction came back
+    # None. Every page has 2-3 T396 blocks total: a shared site-nav block
+    # ("мастер-классы | магазин | отзывы | контакты") and, on single-mk
+    # pages, a shared contact-footer block ("Есть вопрос? ...") — both
+    # identical across every product page, unlike the actual product-info
+    # block. Filtering those two out by their fixed opening text and taking
+    # the longest survivor is robust whether or not a price field is
+    # present, and matches (same result) on every page that DOES have one.
+    blocks = soup.find_all(attrs={'data-record-type': '396'})
+    candidates = []
+    for b in blocks:
+        text = b.get_text(separator='\n', strip=True)
+        if not text or text.startswith(('мастер-классы', 'Есть вопрос')):
+            continue
+        candidates.append(text)
+    if not candidates:
+        return None
+    return max(candidates, key=len)
+
 def _extract_julia_vyazget_price(soup):
     # juliavyazget.com: same "duplicated-template, stable internal field id"
     # situation as ekaterinafrog.ru above — a plain Tilda feature-list text
@@ -983,6 +1014,10 @@ DOMAIN_CRAWL_HOOKS = {
         'exclude_product': lambda href: 'draft_1_politic' in href or 'gayd_pryazha' in href,
         'extract_details': _wool_style_extract_details,
         'extract_gallery': _wool_style_extract_gallery,
+    },
+    # ekaterinafrog.ru: see _extract_frog_details/_extract_frog_price above.
+    'ekaterinafrog.ru': {
+        'extract_details': _extract_frog_details,
     },
 }
 
