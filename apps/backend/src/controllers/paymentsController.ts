@@ -32,9 +32,16 @@ export const createPayment = async (req: Request, res: Response): Promise<void> 
   const userId = req.user!.userId;
 
   const merchantLogin = process.env.ROBOKASSA_MERCHANT_LOGIN;
-  const password1 = process.env.ROBOKASSA_PASSWORD_1;
+  // Тестовый и боевой контуры Robokassa проверяют подпись по разным парам
+  // паролей из личного кабинета — при IsTest=1 нужен именно
+  // ROBOKASSA_TEST_PASSWORD_1, боевой Password#1 там не подойдёт (даёт
+  // "Error code: 29 No payment methods available", ранее найдено вживую).
+  const testMode = process.env.ROBOKASSA_TEST_MODE === "true";
+  const password1 = testMode ? process.env.ROBOKASSA_TEST_PASSWORD_1 : process.env.ROBOKASSA_PASSWORD_1;
   if (!merchantLogin || !password1) {
-    console.error("[Payments] ROBOKASSA_MERCHANT_LOGIN or ROBOKASSA_PASSWORD_1 is not configured.");
+    console.error(
+      `[Payments] ROBOKASSA_MERCHANT_LOGIN or ROBOKASSA_${testMode ? "TEST_" : ""}PASSWORD_1 is not configured.`
+    );
     res.status(500).json({ error: "Payments are not configured" });
     return;
   }
@@ -77,7 +84,7 @@ export const createPayment = async (req: Request, res: Response): Promise<void> 
       ["Receipt", receiptJson],
       ["SignatureValue", signatureValue],
     ];
-    if (process.env.ROBOKASSA_TEST_MODE === "true") {
+    if (testMode) {
       queryParams.push(["IsTest", "1"]);
     }
 
@@ -99,9 +106,13 @@ export const createPayment = async (req: Request, res: Response): Promise<void> 
 // должен быть строго телом "OK{invId}", без пробела — иначе Robokassa
 // сочтёт уведомление необработанным и будет повторять запрос.
 export const handleRobokassaResult = async (req: Request, res: Response): Promise<void> => {
-  const password2 = process.env.ROBOKASSA_PASSWORD_2;
+  // Та же тестовая/боевая пара паролей, что и в createPayment — Robokassa
+  // подписывает вызов Result URL тестовым Password#2, пока платёж шёл через
+  // IsTest=1, а не боевым.
+  const testMode = process.env.ROBOKASSA_TEST_MODE === "true";
+  const password2 = testMode ? process.env.ROBOKASSA_TEST_PASSWORD_2 : process.env.ROBOKASSA_PASSWORD_2;
   if (!password2) {
-    console.error("[Payments] ROBOKASSA_PASSWORD_2 is not configured.");
+    console.error(`[Payments] ROBOKASSA_${testMode ? "TEST_" : ""}PASSWORD_2 is not configured.`);
     res.status(500).send("Payments are not configured");
     return;
   }

@@ -457,6 +457,18 @@ Robokassa пробелы в `Receipt` как `%20` (как здесь, `encodeUR
   `rapport.su/payments/...` будет молча отдавать HTML фронтенда вместо
   ответа бэкенда (см. находку в §9.2).
 
+**Найден и исправлен реальный баг на первом прод-прогоне (шаг 6, 2026-08-19):**
+`createPayment` и `handleRobokassaResult` всегда подписывали боевой парой
+паролей (`ROBOKASSA_PASSWORD_1/2`), даже когда в URL добавлялся `IsTest=1`.
+Robokassa в тестовом режиме проверяет подпись по отдельной тестовой паре из
+личного кабинета — несовпадение давало `Error code: 29 No payment methods
+available` на каждой попытке, независимо от того, насколько свежие
+пароли лежали в `.env`. Исправлено: обе функции теперь выбирают
+`ROBOKASSA_TEST_PASSWORD_1/2` при `ROBOKASSA_TEST_MODE=true`, боевые —
+иначе. Проверено локально: подпись из `/payments/create` пересчитана вручную
+по тестовому паролю — совпала; `/payments/robokassa/result` с подписью,
+посчитанной по тестовому Password#2, вернул `OK{invId}`.
+
 ### Шаг 4. Backend — Result URL (webhook) — ✅ готово
 
 `POST /payments/robokassa/result` (`controllers/paymentsController.ts:
