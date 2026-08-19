@@ -176,9 +176,14 @@ export const telegramAuth = async (req: Request, res: Response) => {
       (isAdmin || !hasExtra) &&
       // allowDevAuth (ALLOW_DEV_AUTH=true, local-only — see the mock_dev
       // branch above) skips the 7-day cooldown entirely, so the banner is
-      // visible on every login while iterating on it. Never true in prod,
-      // where the real cooldown always applies — safe to leave in place.
+      // visible on every login while iterating on it. `isAdmin ||` extends
+      // the same bypass to prod — otherwise the one open-modal impression
+      // (paywallController.ts sets lastPaywallShownAt on it) locks the
+      // banner out for the next 7 days even for the account meant to
+      // repeatedly test the payment flow on prod (шаг 6/8). Never true for
+      // a non-admin in prod, where the real cooldown always applies.
       (allowDevAuth ||
+        isAdmin ||
         userRecord.lastPaywallShownAt === null ||
         Date.now() - userRecord.lastPaywallShownAt.getTime() >= 7 * 24 * 60 * 60 * 1000);
 
