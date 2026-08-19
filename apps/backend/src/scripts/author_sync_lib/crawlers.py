@@ -236,12 +236,27 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
             winning_container = None
             text_content = detail_soup.get_text(separator=' ', strip=True)
 
+        # Domain-specific full text extraction (see DOMAIN_CRAWL_HOOKS,
+        # e.g. wool-style.ru) — for sites whose real description sits in
+        # one of several visually-identical sibling containers with no CSS
+        # marker distinguishing it from the page's title block or other
+        # unrelated text, so neither the title-matching isolation above nor
+        # the shared fallback-selector list can find it. Takes priority
+        # over both — including feeding text_content, so density/yarn
+        # regex parsing below runs against this clean text instead of the
+        # noisy whole-page fallback.
+        details_hook = hooks.get('extract_details') if hooks else None
+        hook_details = details_hook(detail_soup) if details_hook else None
+        if hook_details:
+            text_content = hook_details
+
         # "Подробности" — same confidence tiers as text_content above, but
         # re-extracted with real line breaks (separator='\n') rather than
         # reusing the space-joined string, so paragraph structure survives
         # for the page's white-space: pre-wrap rendering. A dedicated
         # extraction (not a .replace on text_content) since collapsing
         # whitespace loses the original newlines entirely.
+        #   - extract_details hook fired -> highest confidence, use it
         #   - isolated container matched -> high confidence, use it
         #   - no container, but page is already about just this one product
         #     (is_single_product_page) -> medium confidence, whole page
@@ -250,7 +265,9 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
         #     read-facing text block does not (nav remnants, unrelated
         #     sections) — leave details empty rather than risk garbage.
         exclude_paragraph_hook = hooks.get('exclude_details_paragraph') if hooks else None
-        if winning_container is not None:
+        if hook_details:
+            p['details'] = hook_details
+        elif winning_container is not None:
             p['details'] = _extract_details_text(winning_container, exclude_paragraph_hook)
         elif is_single_product_page:
             p['details'] = detail_soup.get_text(separator='\n', strip=True) or None

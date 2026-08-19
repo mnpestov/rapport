@@ -416,6 +416,63 @@ def _extract_eiwi_price(soup):
         old = None
     return current, old
 
+def _extract_wool_style_price(soup):
+    # wool-style.ru (Strikingly-style page constructor, "str-bw_*" classes)
+    # has no dedicated price element at all — the number IS the visible
+    # label of the main "buy" button (class "strwf_button"), e.g. "990
+    # рублей" (verified live: detalis_casual). A second, alternate buy
+    # button sometimes sits right after with the same class plus
+    # "strwf_button-two" and inline "display:none" (an A/B variant, not
+    # shown) — looping and taking the first button whose OWN text starts
+    # with a digit naturally skips both that hidden variant and the plain
+    # contact-form submit buttons ("Отправить" etc., no leading digit)
+    # sharing unrelated classes on the same page.
+    for btn in soup.select('.strwf_button'):
+        text = btn.get_text(strip=True)
+        if text and text[0].isdigit():
+            return _parse_woo_price(btn), None
+    return None, None
+
+def _wool_style_extract_gallery(soup, raw_html=None, url=None):
+    # wool-style.ru's photo slider (".strw-slider__image") has no <img> tag
+    # at all — each slide is a div with an inline "background-image:
+    # url(...)" style, same shape the generic crawler already knows how to
+    # pull off listing-page cards (see the has_bg_img handling in
+    # scrape_author_site) but _generic_extract_gallery doesn't look for on
+    # detail pages. Dedup while preserving DOM order — the same photo CDN
+    # URL is never repeated across slides in what's been checked live.
+    images = []
+    seen = set()
+    for el in soup.select('.strw-slider__image'):
+        style = el.get('style', '')
+        m = re.search(r"url\(['\"]?(.*?)['\"]?\)", style)
+        if m and m.group(1) and m.group(1) not in seen:
+            seen.add(m.group(1))
+            images.append(m.group(1))
+    return images or None
+
+def _wool_style_extract_details(soup):
+    # wool-style.ru scatters plain text across many visually-identical
+    # sibling ".str-bw_text" divs with no single wrapping description
+    # container — one holds just the title (wrapped in <h3><b>...),
+    # another (no <h3>) the real description (density, yarn, needle size,
+    # skill level). Excluding any block that contains an <h3> is enough to
+    # drop the title while keeping the rest — verified live: exactly one
+    # non-<h3> block per product page, matching the real description.
+    # Hidden slider-caption placeholder text ("Пример текста, который вы
+    # можете написать" — leftover template boilerplate, inline
+    # display:none) lives in a completely different class
+    # (.strw-slider__caption), so it's excluded just by only looking at
+    # .str-bw_text — no separate exclude step needed for it.
+    texts = []
+    for block in soup.select('.str-bw_text'):
+        if block.find('h3'):
+            continue
+        text = block.get_text(separator='\n', strip=True)
+        if text:
+            texts.append(text)
+    return '\n\n'.join(texts) or None
+
 def _extract_romnastena_price(soup):
     # romnastena.com's own catalog (same site as the .product__text details
     # fallback) — single ".product__price" div, text is the bare number
@@ -666,6 +723,9 @@ def extract_price_any_known_platform(soup, url=None, headers=None):
     price, old_price = _extract_romnastena_price(soup)
     if price is not None:
         return price, old_price
+    price, old_price = _extract_wool_style_price(soup)
+    if price is not None:
+        return price, old_price
     price, old_price = _extract_omalica_price(soup)
     if price is not None:
         return price, old_price
@@ -909,6 +969,20 @@ DOMAIN_CRAWL_HOOKS = {
         'extra_pagination_match': lambda href: bool(re.search(r'/avtorskie_mk/?$', href)),
         'extra_valid_href_match': lambda href: bool(re.search(r'/avtorskie_mk/[\w-]+', href)),
         'extract_gallery': _juliavyazget_extract_gallery,
+    },
+    # wool-style.ru: every product URL is a bare root-level slug
+    # ("/detalis_casual", "/air_detalis", "/crystal_top" — no /shop/,
+    # /catalog/, /product/ etc.), so the generic has_valid_href regex never
+    # matches any of them. A handful of other root-level single-segment
+    # links on the same listing page are NOT products (a policy draft, a
+    # yarn-buying guide) — excluded explicitly by slug rather than by a
+    # pattern, since nothing in the URL shape itself tells them apart from
+    # real products.
+    'wool-style.ru': {
+        'extra_valid_href_match': lambda href: bool(re.match(r'^https?://[^/]+/[\w-]+/?$', href)),
+        'exclude_product': lambda href: 'draft_1_politic' in href or 'gayd_pryazha' in href,
+        'extract_details': _wool_style_extract_details,
+        'extract_gallery': _wool_style_extract_gallery,
     },
 }
 
