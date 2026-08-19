@@ -11,6 +11,10 @@ export interface AuthResponse {
     // regardless of what the frontend renders.
     role?: "USER" | "AUTHOR" | "ADMIN";
     permissions?: string[];
+    // Server-computed "1 in 7 days, never for paid users" gate — see
+    // PAYWALL_BANNER_PLAN.md §4/§5.1. Read once at mount by App.tsx's
+    // paywall trigger, not re-derived on the frontend.
+    showPaywallBanner?: boolean;
   };
 }
 

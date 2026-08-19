@@ -12,6 +12,8 @@ import { UpdateTelegram } from './pages/UpdateTelegram/UpdateTelegram';
 import { LoadError } from './pages/LoadError/LoadError';
 import { PaymentSuccess } from './pages/PaymentSuccess/PaymentSuccess';
 import { PaymentFail } from './pages/PaymentFail/PaymentFail';
+import { PaywallModal } from './components/PaywallModal/PaywallModal';
+import { submitPaywallImpression } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -31,6 +33,7 @@ type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" |
 function App() {
   const [appState, setAppState] = useState<AppState>("loading");
   const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   useEffect(() => {
     // Result-страницы после оплаты (Robokassa Success/Fail URL) открываются в
@@ -187,6 +190,38 @@ function App() {
     };
   }, []);
 
+  // Paywall banner — at most once per session, gated server-side on "not
+  // paid, not shown in the last 7 days" (authController.ts, see
+  // PAYWALL_BANNER_PLAN.md §4/§6.2). Fires once appState reaches
+  // "authorized" — the same point <Routes> below starts rendering — so
+  // localStorage.user_data (written synchronously by authenticate() before
+  // appState flips) is already fresh. The sessionStorage guard is what
+  // stops this from re-firing if the user leaves /pattern/:id and comes
+  // back — appState doesn't change on route navigation, only on a fresh
+  // auth run, but the effect itself would otherwise still see the same
+  // "authorized" value and (without the guard) could re-open on strict-mode
+  // double-invoke or an auth:recheck-triggered rerun.
+  useEffect(() => {
+    if (appState !== "authorized") return;
+    // Skipped in DEV so the modal reopens on every reload while iterating
+    // on it, instead of only once per browser tab — import.meta.env.DEV is
+    // statically false in a production build, so this never applies there.
+    if (!import.meta.env.DEV && sessionStorage.getItem("paywall_shown_session")) return;
+
+    let showPaywallBanner = false;
+    try {
+      const raw = localStorage.getItem("user_data");
+      showPaywallBanner = raw ? Boolean(JSON.parse(raw).showPaywallBanner) : false;
+    } catch {
+      showPaywallBanner = false;
+    }
+    if (!showPaywallBanner) return;
+
+    if (!import.meta.env.DEV) sessionStorage.setItem("paywall_shown_session", "true");
+    setIsPaywallOpen(true);
+    submitPaywallImpression();
+  }, [appState]);
+
   if (window.location.pathname === '/success') {
     return <PaymentSuccess />;
   }
@@ -220,11 +255,14 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Catalog />} />
-      <Route path="/pattern/:id" element={<PatternDetails />} />
-      <Route path="/favorites" element={<Favorites />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Catalog />} />
+        <Route path="/pattern/:id" element={<PatternDetails />} />
+        <Route path="/favorites" element={<Favorites />} />
+      </Routes>
+      <PaywallModal isOpen={isPaywallOpen} onClose={() => setIsPaywallOpen(false)} />
+    </>
   );
 }
 

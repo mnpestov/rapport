@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Request, Response } from "express";
-import { Permission } from "@prisma/client";
+import { Permission, UserRole } from "@prisma/client";
 import { validateTelegramWebAppData } from "../utils/telegramAuth";
 import { generateToken } from "../utils/jwt";
 import { prisma } from "../prismaClient";
@@ -151,6 +151,37 @@ export const telegramAuth = async (req: Request, res: Response) => {
 
     console.log(`[AUTH] [${requestId}] Final decision: ${finalDecision}`);
 
+    // ── Paywall banner gate ──────────────────────────────────────────────────
+    // See PAYWALL_BANNER_PLAN.md §4/§5.1 — never shown to anyone with the
+    // paid tier (PREMIUM_EXTRA), and at most once every 7 days.
+    // Gated on effectiveIsSubscriber too: the frontend never reaches the
+    // catalog/modal render for anyone who fails the channel-subscription
+    // gate, so there's no point computing this for them.
+    const isAdmin = userRecord.role === UserRole.ADMIN;
+    const hasExtra = isAdmin || permissions.includes(Permission.PREMIUM_EXTRA);
+    // Kill-switch (PAYMENTS_ROBOKASSA_PLAN.md §7 шаг 5/7a): until public
+    // launch, only admins can see the banner at all — this is what lets the
+    // real Robokassa payment flow be tested end-to-end on prod (шаг 8)
+    // without exposing anything to regular users, who all already have
+    // PREMIUM_CORE today and would otherwise see the banner the moment this
+    // ships. `isAdmin ||` on the !hasExtra check below is a deliberate
+    // bypass just for this: isAdmin already forces hasExtra=true elsewhere
+    // (role-gated premium UI), which would otherwise make the banner
+    // unreachable even for an admin, i.e. for the very account meant to
+    // test it.
+    const paywallPubliclyLaunched = process.env.PAYWALL_BANNER_PUBLIC_LAUNCH === "true";
+    const showPaywallBanner =
+      (paywallPubliclyLaunched || isAdmin) &&
+      effectiveIsSubscriber &&
+      (isAdmin || !hasExtra) &&
+      // allowDevAuth (ALLOW_DEV_AUTH=true, local-only — see the mock_dev
+      // branch above) skips the 7-day cooldown entirely, so the banner is
+      // visible on every login while iterating on it. Never true in prod,
+      // where the real cooldown always applies — safe to leave in place.
+      (allowDevAuth ||
+        userRecord.lastPaywallShownAt === null ||
+        Date.now() - userRecord.lastPaywallShownAt.getTime() >= 7 * 24 * 60 * 60 * 1000);
+
     // ── JWT ───────────────────────────────────────────────────────────────────
     const token = generateToken({
       userId: userRecord.id,
@@ -236,6 +267,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
         role: userRecord.role,
         // Same non-boundary caveat as role — see usePremiumAccess.ts.
         permissions,
+        showPaywallBanner,
       },
     };
 

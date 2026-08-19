@@ -7,8 +7,8 @@ datasource db {
 }
 
 model Pattern {
-  id              String   @id @default(uuid())
-  slug            String   @unique
+  id              String    @id @default(uuid())
+  slug            String    @unique
   title           String
   url             String
   // Derived — always kept equal to images[0] by the backend on every write.
@@ -24,7 +24,7 @@ model Pattern {
   // non-premium users see there when `images` is empty, so imageUrl must
   // stay full quality, not this one.
   thumbnailUrl    String?
-  images          String[] @default([])
+  images          String[]  @default([])
   // Long-form free text ("Подробности"), shown collapsed by default on the
   // detail page. Nullable (not "") so an empty/never-set block can be
   // omitted from the UI entirely via a plain truthy check. Will eventually
@@ -34,21 +34,21 @@ model Pattern {
   // Absolute rubles, not a stored discount %/flag — oldPrice > price IS the
   // "discount active" signal, computed on display. Avoids the two numbers
   // going out of sync if only one gets edited later.
-  price           Decimal? @db.Decimal(10, 2)
-  oldPrice        Decimal? @db.Decimal(10, 2)
-  isFree          Boolean  @default(false)
-  isNew           Boolean  @default(false)
-  isVisible       Boolean  @default(true)
+  price           Decimal?  @db.Decimal(10, 2)
+  oldPrice        Decimal?  @db.Decimal(10, 2)
+  isFree          Boolean   @default(false)
+  isNew           Boolean   @default(false)
+  isVisible       Boolean   @default(true)
   // Set once, the first time isVisible ever transitions to true — the actual
   // "went live" moment. Never touched again by later edits/re-hides, unlike
   // createdAt which for archive-queued sync items (isVisible: false at
   // creation) can predate real publication by however long it sits in
   // review. Anchor for the isNew auto-expiry job (see src/jobs).
   publishedAt     DateTime?
-  densityStitches Decimal? @db.Decimal(5, 2)
-  densityRows     Decimal? @db.Decimal(5, 2)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  densityStitches Decimal?  @db.Decimal(5, 2)
+  densityRows     Decimal?  @db.Decimal(5, 2)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   authorId String
   author   Author @relation(fields: [authorId], references: [id])
@@ -128,32 +128,51 @@ enum Permission {
   PREMIUM_DETAILS
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
 model User {
-  id           String   @id @default(uuid())
-  telegramId   BigInt   @unique
+  id           String    @id @default(uuid())
+  telegramId   BigInt    @unique
   firstName    String
   lastName     String?
   username     String?
   languageCode String?
-  isPremium    Boolean  @default(false)
-  role         UserRole @default(USER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isPremium    Boolean   @default(false)
+  role         UserRole  @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   lastSeenAt   DateTime?
   platform     String?
   tgVersion    String?
   userAgent    String?
+
+  // Paywall banner "1 in 7 days" gate — see PAYWALL_BANNER_PLAN.md §3.
+  // lastPaywallClickedAt is not read anywhere yet, kept purely for future
+  // conversion analytics (cheaper to add now than in a second migration).
+  lastPaywallShownAt   DateTime?
+  lastPaywallClickedAt DateTime?
+
+  // Paid subscription (Robokassa) — see PAYMENTS_ROBOKASSA_PLAN.md §5.2.
+  // Denormalized the same way as Pattern.imageUrl: the only reader is the
+  // daily reminder/revoke cron job. Access itself is still decided purely
+  // by UserPermission (resolveRole, /auth/telegram permissions[], admin UI)
+  // — nothing else needs to know this field exists.
+  premiumExpiresAt DateTime?
 
   favorites         UserFavorite[]
   patternViews      PatternView[]
   patternLinkClicks PatternLinkClick[]
   subscribeClicks   SubscribeClick[]
   searchQueries     SearchQuery[]
+  payments          Payment[]
 
-  authorId      String?  @unique
-  author        Author?  @relation("UserAuthor", fields: [authorId], references: [id])
+  authorId      String?          @unique
+  author        Author?          @relation("UserAuthor", fields: [authorId], references: [id])
   permissions   UserPermission[]
-  closedDrafts  Draft[]  @relation("DraftClosedBy")
+  closedDrafts  Draft[]          @relation("DraftClosedBy")
   refreshTokens RefreshToken[]
 }
 
@@ -174,7 +193,7 @@ model UserFavorite {
 // Decoupled from the Mini App auth flow (which stays as telegramAuth).
 // ---------------------------------------------------------------------------
 model LoginCode {
-  id         String    @id @default(cuid())
+  id         String @id @default(cuid())
   telegramId BigInt
 
   code      String
@@ -269,7 +288,7 @@ model BotInboundMessage {
   telegramId  BigInt
   username    String?
   firstName   String?
-  messageType String   // text | sticker | photo | voice | video | document | other
+  messageType String // text | sticker | photo | voice | video | document | other
   text        String?
   fileId      String?
   createdAt   DateTime @default(now())
@@ -288,20 +307,20 @@ model AdminChatState {
 }
 
 model WhitelistedUser {
-  id           String   @id @default(uuid())
-  telegramId   BigInt   @unique
-  username     String?
-  firstName    String?
-  lastName     String?
-  comment      String?
+  id                           String    @id @default(uuid())
+  telegramId                   BigInt    @unique
+  username                     String?
+  firstName                    String?
+  lastName                     String?
+  comment                      String?
   forceAllow                   Boolean   @default(false)
   debugLogging                 Boolean   @default(false)
   needsInvestigation           Boolean   @default(false)
   contactedViaBot              Boolean   @default(false)
   lastWhitelistAuthorizationAt DateTime?
   createdAt                    DateTime  @default(now())
-  updatedAt    DateTime @updatedAt
-  createdBy    String?
+  updatedAt                    DateTime  @updatedAt
+  createdBy                    String?
 }
 
 // ---------------------------------------------------------------------------
@@ -407,20 +426,20 @@ model AuthorSyncReport {
   status    AuthorSyncReportStatus @default(PENDING)
   createdAt DateTime               @default(now())
   updatedAt DateTime               @updatedAt
-  
-  items     AuthorSyncItem[]
+
+  items AuthorSyncItem[]
 
   @@index([status])
 }
 
 model AuthorSyncItem {
-  id              String               @id @default(uuid())
-  reportId        String
-  report          AuthorSyncReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  status          AuthorSyncItemStatus @default(PENDING)
-  url             String
-  title           String
-  parsedData      Json
+  id         String               @id @default(uuid())
+  reportId   String
+  report     AuthorSyncReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  status     AuthorSyncItemStatus @default(PENDING)
+  url        String
+  title      String
+  parsedData Json
 
   @@unique([reportId, url])
   @@index([reportId])
@@ -449,4 +468,28 @@ model PriceCheckRun {
   createdAt   DateTime @default(now())
 
   @@index([startedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Robokassa payments — plain history/accounting, does NOT participate in
+// access logic (see PAYMENTS_ROBOKASSA_PLAN.md §5.1). Access is decided by
+// UserPermission + User.premiumExpiresAt; this table exists so every charge
+// has a record, a receipt-sent flag, and a numeric order id.
+// invId is separate from id: Robokassa requires a plain numeric InvId, not
+// a UUID, so it gets its own autoincrement column rather than reusing id.
+// ---------------------------------------------------------------------------
+model Payment {
+  id            String        @id @default(uuid())
+  invId         Int           @unique @default(autoincrement())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  paidAt        DateTime?
+  // Set once the Robokassa-generated receipt has been sent to the user's
+  // bot chat, so a Result URL retry doesn't send it twice.
+  receiptSentAt DateTime?
+
+  @@index([userId])
 }
