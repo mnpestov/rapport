@@ -164,11 +164,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     // real Robokassa payment flow be tested end-to-end on prod (шаг 8)
     // without exposing anything to regular users, who all already have
     // PREMIUM_CORE today and would otherwise see the banner the moment this
-    // ships. `isAdmin ||` on the !hasExtra check below is a deliberate
-    // bypass just for this: isAdmin already forces hasExtra=true elsewhere
-    // (role-gated premium UI), which would otherwise make the banner
-    // unreachable even for an admin, i.e. for the very account meant to
-    // test it.
+    // ships.
     const paywallPubliclyLaunched = process.env.PAYWALL_BANNER_PUBLIC_LAUNCH === "true";
     // Единственный выключатель на ВСЕ платные элементы интерфейса: баннер,
     // предупреждения об истечении и кнопку подписки в строке поиска. Пока
@@ -181,17 +177,27 @@ export const telegramAuth = async (req: Request, res: Response) => {
     const showPaywallBanner =
       paywallUiEnabled &&
       effectiveIsSubscriber &&
-      (isAdmin || !hasExtra) &&
+      // Баннер "оформите подписку" — только тем, у кого платного доступа
+      // НЕТ. Здесь раньше стоял обход `isAdmin || !hasExtra`: у админа
+      // hasExtra всегда true (роль подразумевает все премиум-флаги), и без
+      // обхода баннер был недостижим для аккаунта, которым его и нужно было
+      // проверять на шагах 6/8. После реальной оплаты это стало вредить —
+      // владельцу действующей подписки предлагалось её оформить. Обход
+      // убран: посмотреть любую шторку можно кнопкой подписки в строке
+      // поиска, не подменяя смысл автопоказа.
+      !hasExtra &&
       // allowDevAuth (ALLOW_DEV_AUTH=true, local-only — see the mock_dev
-      // branch above) skips the 7-day cooldown entirely, so the banner is
-      // visible on every login while iterating on it. `isAdmin ||` extends
-      // the same bypass to prod — otherwise the one open-modal impression
-      // (paywallController.ts sets lastPaywallShownAt on it) locks the
-      // banner out for the next 7 days even for the account meant to
-      // repeatedly test the payment flow on prod (шаг 6/8). Never true for
-      // a non-admin in prod, where the real cooldown always applies.
+      // branch above) skips the 7-day cooldown entirely, так что локально
+      // баннер открывается на каждый вход, пока над ним работают. В проде
+      // всегда действует настоящий кулдаун — в том числе для админа.
+      //
+      // Раньше здесь стоял ещё и обход `isAdmin ||`: на шагах 6/8 нужно
+      // было многократно прогонять оплату на проде, а одного показа
+      // достаточно, чтобы paywallController проставил lastPaywallShownAt и
+      // закрыл баннер на неделю. Убран после завершения тестирования —
+      // открыть шторку вручную теперь можно кнопкой подписки в строке
+      // поиска, ради чего ломать частоту показа больше незачем.
       (allowDevAuth ||
-        isAdmin ||
         userRecord.lastPaywallShownAt === null ||
         Date.now() - userRecord.lastPaywallShownAt.getTime() >= 7 * 24 * 60 * 60 * 1000);
 
