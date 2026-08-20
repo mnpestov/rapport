@@ -63,6 +63,43 @@
   height: 31px;
 }
 
+/* Варианты "истекает через 3 дня / 1 день" (Figma 975:5061 / 975:5217) —
+   та же шторка, другая шапка. .paywall-modal-body только в 3-дневном, где
+   списка фич нет; .paywall-list-heading ("Вы потеряете:") только в
+   однодневном, над тем же списком. */
+.paywall-modal-body {
+  margin: 0;
+  color: #1D1C1C;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* "Все функции открыты." в варианте 'active' (Figma 1072:5548) — жирный,
+   в отличие от обычного .paywall-modal-body, и с отступом сверху, т.к. в
+   макете это отдельный блок под датой. */
+.paywall-modal-note {
+  margin: 12px 0 0;
+  color: #1D1C1C;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.paywall-list-heading {
+  margin: 20px 0 12px;
+  padding: 0 20px;
+  color: #1D1C1C;
+  font-family: Mulish, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
 .paywall-advantages-list {
   list-style: none;
   margin: 0;

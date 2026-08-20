@@ -1,0 +1,54 @@
+/* Figma: Frame 318 — 48x48, fill #A9AE36, cornerRadius 2. Те же размеры,
+   что у соседней .search-favorite-btn, чтобы обе кнопки в строке поиска
+   стояли ровно. Бейдж PRO позиционируется от кнопки и намеренно свисает за
+   её нижнюю границу (в макете top:37 при высоте 48), поэтому overflow не
+   режем. */
+.subscription-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background-color: #A9AE36;
+  cursor: pointer;
+}
+
+.subscription-btn-logo {
+  width: 30px;
+  height: 23px;
+  display: block;
+}
+
+.subscription-btn-badge {
+  position: absolute;
+  right: 0;
+  top: 37px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-size: 6px;
+  font-weight: 400;
+  line-height: 1.1;
+  /* Бейдж прижат к правому краю кнопки (в макете left:27 при ширине 48,
+     т.е. впритык). Считаем от правого края, а не от левого, чтобы при
+     чуть более широком рендере шрифта он уходил внутрь кнопки, а не за
+     её границу — иначе он вылезал бы за пределы строки. */
+  white-space: nowrap;
+  /* По умолчанию — неактивная подписка (Figma 997:4967): серый фон,
+     тёмный текст. Активная переопределяет оба цвета. */
+  background-color: #E5E5E5;
+  color: #1D1C1C;
+}
+
+.subscription-btn-badge.active {
+  background-color: #D8520F;
+  color: #ffffff;
+}

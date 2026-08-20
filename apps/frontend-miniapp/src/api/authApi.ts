@@ -15,6 +15,16 @@ export interface AuthResponse {
     // PAYWALL_BANNER_PLAN.md §4/§5.1. Read once at mount by App.tsx's
     // paywall trigger, not re-derived on the frontend.
     showPaywallBanner?: boolean;
+    // Предупреждение действующему подписчику о скором окончании доступа.
+    // Взаимоисключимо с showPaywallBanner (тот — для тех, у кого доступа
+    // нет). Считается на бэкенде, см. authController.ts.
+    subscriptionWarning?: "expiring_3_days" | "expiring_1_day" | null;
+    // ISO-строка либо null. Определяет, что покажет кнопка подписки в
+    // строке поиска: продление (есть дата) или оформление (нет).
+    premiumExpiresAt?: string | null;
+    // Общий выключатель платного UI (баннер, предупреждения, кнопка
+    // подписки). До публичного запуска true только для админа.
+    paywallUiEnabled?: boolean;
   };
 }
 

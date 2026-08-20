@@ -10,6 +10,12 @@
 /* Figma: Input Field — fill:#F3F3F3, cornerRadius:2, h:48, p:16 on all sides */
 .search-input-wrapper {
   flex: 1;
+  /* Как и у .search-input ниже, но на уровне самой обёртки: без этого её
+     min-width:auto (дефолт для flex-элемента) не даёт ей сжаться меньше
+     собственного min-content, и строка распирает страницу в горизонтальный
+     скролл. Стало заметно, когда рядом с "сердечком" добавилась вторая
+     фиксированная кнопка 48px (SubscriptionButton). */
+  min-width: 0;
   display: flex;
   flex-direction: row;
   align-items: center;

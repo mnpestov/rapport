@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, X, Heart, SlidersHorizontal, ArrowDownUp } from 'lucide-react';
 import { CustomX } from '../Icons/Icons';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
+import { SubscriptionButton } from '../SubscriptionButton/SubscriptionButton';
 import './SearchFilterBar.css';
 
 interface SearchFilterBarProps {
@@ -67,7 +68,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   foundCount,
   hasActiveQuery,
 }) => {
-  const { extra } = usePremiumAccess();
+  const { extra, paywallUiEnabled } = usePremiumAccess();
 
   return (
     <>
@@ -100,6 +101,17 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
             <X size={24} className="clear-icon" />
           </button>
         </div>
+        {/* Ручной вызов шторки подписки (Figma 1073:5550 / 997:4769).
+            Открывает её через window-событие, а не проп: сама шторка живёт
+            в App.tsx, а этот компонент рендерится внутри Catalog/Favorites
+            — прокидывать колбэк пришлось бы через обе страницы. Тот же
+            приём, что уже используется для auth:ready/auth:recheck. */}
+        {paywallUiEnabled && (
+          <SubscriptionButton
+            isActive={extra}
+            onClick={() => window.dispatchEvent(new CustomEvent('paywall:open'))}
+          />
+        )}
         {showFavoritesButton && (
           <button className="search-favorite-btn" onClick={onFavoritesClick} aria-label="Favorites">
             <Heart size={24} color="#D8540F" fill="#D8540F" />

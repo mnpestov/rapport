@@ -222,7 +222,12 @@ export const handleRobokassaResult = async (req: Request, res: Response): Promis
 
       await tx.user.update({
         where: { id: user.id },
-        data: { premiumExpiresAt: newExpiresAt },
+        data: {
+          premiumExpiresAt: newExpiresAt,
+          // Новый оплаченный период — снова имеет право на своё
+          // напоминание за 3 дня (см. checkSubscriptions.ts).
+          premiumReminderSentAt: null,
+        },
       });
       await tx.userPermission.upsert({
         where: { userId_permission: { userId: user.id, permission: Permission.PREMIUM_CORE } },

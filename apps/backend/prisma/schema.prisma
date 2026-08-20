@@ -162,6 +162,13 @@ model User {
   // — nothing else needs to know this field exists.
   premiumExpiresAt DateTime?
 
+  // Когда ушло напоминание "подписка заканчивается через 3 дня" за текущий
+  // оплаченный период. Без этого поля cron слал бы его каждые сутки все
+  // три дня подряд — окно "истекает в ближайшие 3 дня" совпадает при каждом
+  // прогоне. Сбрасывается в null при каждой новой оплате, чтобы следующий
+  // период снова получил своё напоминание (paymentsController.ts).
+  premiumReminderSentAt DateTime?
+
   favorites         UserFavorite[]
   patternViews      PatternView[]
   patternLinkClicks PatternLinkClick[]

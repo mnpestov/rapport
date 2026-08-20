@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { CustomRadioChecked, CustomRadioUnchecked } from '../Icons/Icons';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
+import { useSheetTransition } from '../../hooks/useSheetTransition';
+import '../../styles/sheet.css';
 import './SortModal.css';
 
 export type SortOption = 'newest' | 'price_asc' | 'price_desc';
@@ -26,6 +28,10 @@ const OPTIONS: { value: SortOption; label: string; extraOnly?: boolean }[] = [
 ];
 
 export const SortModal: React.FC<SortModalProps> = ({ isOpen, onClose, value, onApply }) => {
+  // Держит шторку в дереве на время выезда вниз и даёт класс для
+  // открытого состояния — сам по себе `isOpen` размонтировал бы её
+  // мгновенно, до анимации закрытия.
+  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
   const { extra } = usePremiumAccess();
   const [selected, setSelected] = useState<SortOption>(value);
 
@@ -33,7 +39,7 @@ export const SortModal: React.FC<SortModalProps> = ({ isOpen, onClose, value, on
     if (isOpen) setSelected(value);
   }, [isOpen, value]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   const options = OPTIONS.filter(o => !o.extraOnly || extra);
 
@@ -44,8 +50,8 @@ export const SortModal: React.FC<SortModalProps> = ({ isOpen, onClose, value, on
   };
 
   return (
-    <div className="sort-modal-overlay" onClick={onClose}>
-      <div className="sort-modal-content" onClick={(e) => e.stopPropagation()}>
+    <div ref={sheetRef} className={`sort-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+      <div className="sort-modal-content sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="sort-modal-grabber" />
         <h2 className="sort-modal-title">Показать сначала</h2>
 

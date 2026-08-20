@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Paperclip, MailCheck } from 'lucide-react';
 import { submitErrorReport } from '../../api/reportApi';
+import { useSheetTransition } from '../../hooks/useSheetTransition';
+import '../../styles/sheet.css';
 import './ReportErrorModal.css';
 
 interface ReportErrorModalProps {
@@ -12,6 +14,10 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
 export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onClose }) => {
+  // Держит шторку в дереве на время выезда вниз и даёт класс для
+  // открытого состояния — сам по себе `isOpen` размонтировал бы её
+  // мгновенно, до анимации закрытия.
+  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [message, setMessage] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -31,7 +37,7 @@ export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onCl
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -64,8 +70,8 @@ export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="report-modal-overlay" onClick={onClose}>
-      <div className="report-modal-content" onClick={(e) => e.stopPropagation()}>
+    <div ref={sheetRef} className={`report-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+      <div className="report-modal-content sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="report-modal-grabber" />
 
         {step === 'form' ? (

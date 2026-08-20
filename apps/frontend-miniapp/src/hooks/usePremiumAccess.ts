@@ -17,15 +17,20 @@ export interface PremiumAccess {
   core: boolean;
   extra: boolean;
   details: boolean;
+  // Показывать ли вообще платные элементы интерфейса (кнопка подписки в
+  // строке поиска). Считается на бэкенде одним флагом на все поверхности —
+  // см. paywallUiEnabled в authController.ts. До публичного запуска true
+  // только у админа, поэтому обычный пользователь платного UI не видит.
+  paywallUiEnabled: boolean;
 }
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false };
 
 const readAccess = (): PremiumAccess => {
   const raw = localStorage.getItem("user_data");
   if (!raw) return NO_ACCESS;
   try {
-    const data = JSON.parse(raw) as { role?: string; permissions?: string[] };
+    const data = JSON.parse(raw) as { role?: string; permissions?: string[]; paywallUiEnabled?: boolean };
     const isAdmin = data.role === "ADMIN";
     const permissions = data.permissions ?? [];
     return {
@@ -33,6 +38,7 @@ const readAccess = (): PremiumAccess => {
       core: isAdmin || permissions.includes("PREMIUM_CORE"),
       extra: isAdmin || permissions.includes("PREMIUM_EXTRA"),
       details: isAdmin || permissions.includes("PREMIUM_DETAILS"),
+      paywallUiEnabled: Boolean(data.paywallUiEnabled),
     };
   } catch {
     return NO_ACCESS;

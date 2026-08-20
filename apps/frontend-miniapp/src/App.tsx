@@ -12,7 +12,7 @@ import { UpdateTelegram } from './pages/UpdateTelegram/UpdateTelegram';
 import { LoadError } from './pages/LoadError/LoadError';
 import { PaymentSuccess } from './pages/PaymentSuccess/PaymentSuccess';
 import { PaymentFail } from './pages/PaymentFail/PaymentFail';
-import { PaywallModal } from './components/PaywallModal/PaywallModal';
+import { PaywallModal, PaywallVariant } from './components/PaywallModal/PaywallModal';
 import { submitPaywallImpression } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
@@ -34,6 +34,8 @@ function App() {
   const [appState, setAppState] = useState<AppState>("loading");
   const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>('paywall');
+  const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
 
   useEffect(() => {
     // Result-страницы после оплаты (Robokassa Success/Fail URL) открываются в
@@ -63,6 +65,17 @@ function App() {
       if (tg) {
         tg.ready();
         tg.expand();
+        // Резкий свайп вниз по контенту Telegram трактовал как жест
+        // сворачивания мини-аппа, и вместо прокрутки каталога приложение
+        // закрывалось. Отключаем — свернуть по-прежнему можно, но только
+        // потянув за заголовок, а не за содержимое.
+        //
+        // Опциональный вызов обязателен: метод появился в Bot API 7.7, а
+        // приложение работает и на клиентах старше (см. ниже проверку
+        // majorVersion < 6 и экран update_telegram). На старых клиентах
+        // метода просто нет — тогда ничего не произойдёт, вместо падения
+        // всей инициализации Telegram WebApp.
+        tg.disableVerticalSwipes?.();
         if (import.meta.env.DEV) {
           // Development mode initData hook
         }
@@ -203,24 +216,65 @@ function App() {
   // double-invoke or an auth:recheck-triggered rerun.
   useEffect(() => {
     if (appState !== "authorized") return;
+
     // Skipped in DEV so the modal reopens on every reload while iterating
     // on it, instead of only once per browser tab — import.meta.env.DEV is
     // statically false in a production build, so this never applies there.
     if (!import.meta.env.DEV && sessionStorage.getItem("paywall_shown_session")) return;
 
     let showPaywallBanner = false;
+    let subscriptionWarning: PaywallVariant | null = null;
     try {
       const raw = localStorage.getItem("user_data");
-      showPaywallBanner = raw ? Boolean(JSON.parse(raw).showPaywallBanner) : false;
+      const parsed = raw ? JSON.parse(raw) : null;
+      showPaywallBanner = Boolean(parsed?.showPaywallBanner);
+      const warning = parsed?.subscriptionWarning;
+      if (warning === "expiring_3_days" || warning === "expiring_1_day") {
+        subscriptionWarning = warning;
+      }
     } catch {
       showPaywallBanner = false;
+      subscriptionWarning = null;
     }
-    if (!showPaywallBanner) return;
+
+    // Предупреждение об истечении важнее баннера: у подписчика доступ ещё
+    // есть, и предлагать ему "оформите подписку" вместо "продлите" было бы
+    // неверно. На практике эти два состояния и так не пересекаются
+    // (см. authController.ts), приоритет — страховка от такого показа.
+    if (!subscriptionWarning && !showPaywallBanner) return;
 
     if (!import.meta.env.DEV) sessionStorage.setItem("paywall_shown_session", "true");
+    setPaywallVariant(subscriptionWarning ?? "paywall");
     setIsPaywallOpen(true);
-    submitPaywallImpression();
+    // Аналитика показов — только про сам баннер (PAYWALL_BANNER_PLAN.md §7),
+    // предупреждения об истечении в ней не участвуют.
+    if (!subscriptionWarning) submitPaywallImpression();
   }, [appState]);
+
+  // Ручное открытие шторки кнопкой в строке поиска (SubscriptionButton).
+  // В отличие от автопоказа выше здесь нет ни серверного гейта, ни
+  // ограничения "раз в сессию" — пользователь запросил её сам. Платному
+  // показываем состояние подписки с датой, бесплатному — обычный баннер.
+  useEffect(() => {
+    const onOpenPaywall = () => {
+      let hasPaidTier = false;
+      let expiresAt: string | null = null;
+      try {
+        const raw = localStorage.getItem("user_data");
+        const parsed = raw ? JSON.parse(raw) : null;
+        const permissions: string[] = parsed?.permissions ?? [];
+        hasPaidTier = parsed?.role === "ADMIN" || permissions.includes("PREMIUM_EXTRA");
+        expiresAt = parsed?.premiumExpiresAt ?? null;
+      } catch {
+        hasPaidTier = false;
+      }
+      setPremiumExpiresAt(expiresAt);
+      setPaywallVariant(hasPaidTier ? "active" : "paywall");
+      setIsPaywallOpen(true);
+    };
+    window.addEventListener("paywall:open", onOpenPaywall);
+    return () => window.removeEventListener("paywall:open", onOpenPaywall);
+  }, []);
 
   if (window.location.pathname === '/success') {
     return <PaymentSuccess />;
@@ -261,7 +315,12 @@ function App() {
         <Route path="/pattern/:id" element={<PatternDetails />} />
         <Route path="/favorites" element={<Favorites />} />
       </Routes>
-      <PaywallModal isOpen={isPaywallOpen} onClose={() => setIsPaywallOpen(false)} />
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        variant={paywallVariant}
+        premiumExpiresAt={premiumExpiresAt}
+        onClose={() => setIsPaywallOpen(false)}
+      />
     </>
   );
 }

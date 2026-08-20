@@ -3,6 +3,8 @@ import { X, Search } from 'lucide-react';
 import { CustomSquareUncheck, CustomSquareCheck, CustomChevronDown, CustomChevronUp } from '../Icons/Icons';
 import { fetchFilters, FiltersResponse, FilterOption } from '../../api/patternsApi';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
+import { useSheetTransition } from '../../hooks/useSheetTransition';
+import '../../styles/sheet.css';
 import './FilterModal.css';
 
 interface FilterModalProps {
@@ -48,6 +50,10 @@ const defaultFetchFacets = (selected: SelectedFilters, signal: AbortSignal) =>
   fetchFilters({ ...selected, signal });
 
 export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading, fetchFacets = defaultFetchFacets }) => {
+  // Держит шторку в дереве на время выезда вниз и даёт класс для
+  // открытого состояния — сам по себе `isOpen` размонтировал бы её
+  // мгновенно, до анимации закрытия.
+  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
   // Density/yarn-thickness sections require PREMIUM_CORE — renderSection
   // always renders its header regardless of whether options is empty, so
   // gating has to happen at the call site, not inside it. See
@@ -113,7 +119,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     };
   }, [selected, isOpen, filtersData, fetchFacets]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   const handleToggle = (section: keyof FiltersResponse, id: string) => {
     setSelected(prev => {
@@ -340,8 +346,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   };
 
   return (
-    <div className="filter-modal-overlay">
-      <div className="filter-modal-content">
+    <div ref={sheetRef} className={`filter-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`}>
+      <div className="filter-modal-content sheet-panel">
         <div className="filter-modal-header">
           <button className="filter-close-btn" onClick={onClose}>
             <X size={24} />

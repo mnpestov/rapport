@@ -170,8 +170,16 @@ export const telegramAuth = async (req: Request, res: Response) => {
     // unreachable even for an admin, i.e. for the very account meant to
     // test it.
     const paywallPubliclyLaunched = process.env.PAYWALL_BANNER_PUBLIC_LAUNCH === "true";
+    // Единственный выключатель на ВСЕ платные элементы интерфейса: баннер,
+    // предупреждения об истечении и кнопку подписки в строке поиска. Пока
+    // флаг выключен, обычный пользователь не видит ничего из этого и
+    // работает ровно как раньше; админ видит всё — это и позволяет
+    // тестировать на проде до публичного запуска. Держать проверку одну на
+    // все три поверхности принципиально: разъехавшись, они дали бы
+    // состояние вроде "кнопка есть, а оплатить по ней нельзя".
+    const paywallUiEnabled = paywallPubliclyLaunched || isAdmin;
     const showPaywallBanner =
-      (paywallPubliclyLaunched || isAdmin) &&
+      paywallUiEnabled &&
       effectiveIsSubscriber &&
       (isAdmin || !hasExtra) &&
       // allowDevAuth (ALLOW_DEV_AUTH=true, local-only — see the mock_dev
@@ -186,6 +194,23 @@ export const telegramAuth = async (req: Request, res: Response) => {
         isAdmin ||
         userRecord.lastPaywallShownAt === null ||
         Date.now() - userRecord.lastPaywallShownAt.getTime() >= 7 * 24 * 60 * 60 * 1000);
+
+    // ── Предупреждение об истечении подписки ─────────────────────────────────
+    // Считается на бэкенде по той же причине, что и showPaywallBanner: фронт
+    // получает готовое решение, а не сырую дату, которую пришлось бы
+    // интерпретировать в двух местах. Не пересекается с баннером — тот
+    // показывается только тем, у кого доступа НЕТ, а это, наоборот, только
+    // действующим подписчикам. Пороги совпадают с cron-напоминанием в бот
+    // (checkSubscriptions.ts, 3 дня), плюс отдельный "последний день".
+    let subscriptionWarning: "expiring_3_days" | "expiring_1_day" | null = null;
+    if (paywallUiEnabled && effectiveIsSubscriber && userRecord.premiumExpiresAt) {
+      const msLeft = userRecord.premiumExpiresAt.getTime() - Date.now();
+      if (msLeft > 0) {
+        const daysLeft = msLeft / (24 * 60 * 60 * 1000);
+        if (daysLeft <= 1) subscriptionWarning = "expiring_1_day";
+        else if (daysLeft <= 3) subscriptionWarning = "expiring_3_days";
+      }
+    }
 
     // ── JWT ───────────────────────────────────────────────────────────────────
     const token = generateToken({
@@ -273,6 +298,13 @@ export const telegramAuth = async (req: Request, res: Response) => {
         // Same non-boundary caveat as role — see usePremiumAccess.ts.
         permissions,
         showPaywallBanner,
+        subscriptionWarning,
+        // Показывать ли кнопку подписки в строке поиска. До публичного
+        // запуска — только админу (см. paywallUiEnabled выше).
+        paywallUiEnabled,
+        // Нужна кнопке подписки в строке поиска: у действующего подписчика
+        // она открывает шторку "Premium-доступ активен до <дата>".
+        premiumExpiresAt: userRecord.premiumExpiresAt?.toISOString() ?? null,
       },
     };
 
