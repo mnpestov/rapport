@@ -23,6 +23,16 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/../.."
 ENV_FILE="$BACKEND_DIR/.env"
+
+# cron запускает джоб с почти пустым окружением: PATH сводится к /usr/bin:/bin,
+# HOME может отсутствовать. Проверено на проде — `npx tsx` в таких условиях
+# падает с "sh: 1: tsx: not found" (npx не добирается до локального пакета
+# без нормального окружения npm). Поэтому вызываем бинарь tsx из
+# node_modules напрямую, а PATH задаём явно: сам tsx — sh-скрипт, которому
+# нужен node из /usr/bin. Соседний run_price_check.sh с этим не сталкивался,
+# т.к. запускает системный python3.
+export PATH="/usr/bin:/bin:$PATH"
+TSX_BIN="$BACKEND_DIR/node_modules/.bin/tsx"
 LOCK_FILE="/tmp/subscription_check.lock"
 ADMIN_TELEGRAM_ID="505293788"  # @mnpestov — не секрет, публичный Telegram user id
 
@@ -49,9 +59,14 @@ if ! flock -n 9; then
   exit 0
 fi
 
+if [ ! -x "$TSX_BIN" ]; then
+  notify "Subscription check: не найден $TSX_BIN — похоже, не установлены зависимости бэкенда. Джоб не запущен."
+  exit 1
+fi
+
 cd "$BACKEND_DIR"
 set +e
-npx tsx src/scripts/checkSubscriptions.ts "$@"
+"$TSX_BIN" src/scripts/checkSubscriptions.ts "$@"
 RC=$?
 set -e
 
