@@ -148,6 +148,14 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           <ArrowDownUp size={24} />
         </button>
         <div className="catalog-filters">
+          {extra && (
+            <button
+              className={`filter-btn ${isDiscountActive ? 'active' : ''}`}
+              onClick={onToggleDiscount}
+            >
+              Скидка
+            </button>
+          )}
           <button
             className={`filter-btn ${isNewActive ? 'active' : ''}`}
             onClick={onToggleNew}
@@ -160,14 +168,6 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           >
             Бесплатные
           </button>
-          {extra && (
-            <button
-              className={`filter-btn ${isDiscountActive ? 'active' : ''}`}
-              onClick={onToggleDiscount}
-            >
-              Скидка
-            </button>
-          )}
         </div>
       </div>
 
