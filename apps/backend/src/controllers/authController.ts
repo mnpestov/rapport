@@ -102,16 +102,11 @@ export const telegramAuth = async (req: Request, res: Response) => {
 
   try {
     // ── Database ──────────────────────────────────────────────────────────────
-    // upsert() doesn't report create-vs-update, and this whole handler runs
-    // on every login, not just the first — checking existence first is what
-    // lets the auto-grant below run exactly once, on real account creation,
-    // instead of re-firing (and silently undoing an admin's revocation) on
-    // every subsequent open of the mini app. See PAID_TIER_PERMISSIONS_PLAN.md §5.
-    const existingUser = await prisma.user.findUnique({
-      where: { telegramId: BigInt(telegramId) },
-      select: { id: true },
-    });
-
+    // Раньше здесь дополнительно проверялось, существует ли пользователь —
+    // это было нужно только временному auto-grant PREMIUM_CORE (убран при
+    // публичном запуске, см. ниже), чтобы он срабатывал ровно один раз, на
+    // создании аккаунта. Вместе с грантом убран и лишний запрос: он
+    // выполнялся на каждой авторизации, а результат больше никто не читает.
     const userRecord = await prisma.user.upsert({
       where: { telegramId: BigInt(telegramId) },
       update: { firstName, lastName, username, languageCode },
@@ -121,29 +116,17 @@ export const telegramAuth = async (req: Request, res: Response) => {
 
     console.log(`[AUTH] [${requestId}] User upsert completed dbUserId=${userRecord.id}`);
 
-    // TEMPORARY: pre-payment period only — PREMIUM_CORE (density/yarn-
-    // thickness filters, already free in prod before the permissions system
-    // existed) is auto-granted to every newly created user so nothing changes
-    // for them. Gated on `!existingUser`, not the upsert branch, for exactly
-    // the reason above. Removing this is part of the "launch day" runbook —
-    // together with the `permissions.push` below, not on its own (removing
-    // one without the other leaves the auth response lying about what a new
-    // user actually has). See PAID_TIER_PERMISSIONS_PLAN.md §8.
-    if (!existingUser) {
-      await prisma.userPermission.upsert({
-        where: { userId_permission: { userId: userRecord.id, permission: Permission.PREMIUM_CORE } },
-        create: { userId: userRecord.id, permission: Permission.PREMIUM_CORE },
-        update: {},
-      });
-    }
+    // Здесь до публичного запуска платной подписки стоял временный
+    // auto-grant PREMIUM_CORE каждому новому пользователю — чтобы на этапе
+    // подготовки для людей ничего не менялось. Убран в день запуска вместе
+    // с парной строкой `permissions.push(PREMIUM_CORE)` ниже: снимать
+    // только одно из двух нельзя, иначе ответ авторизации продолжал бы
+    // сообщать новому пользователю о разрешении, которого в БД уже никто не
+    // выдаёт (PAID_TIER_PERMISSIONS_PLAN.md §8). С этого момента
+    // PREMIUM_CORE выдаётся исключительно по факту оплаты
+    // (services/paymentCompletion.ts).
 
-    // userRecord.permissions reflects DB state as of the upsert above, i.e.
-    // BEFORE the grant just issued for a brand new user — append it manually
-    // rather than re-querying (see PAID_TIER_PERMISSIONS_PLAN.md §3.4).
     const permissions = userRecord.permissions.map((p) => p.permission as string);
-    if (!existingUser) {
-      permissions.push(Permission.PREMIUM_CORE);
-    }
 
     // ── Whitelist ─────────────────────────────────────────────────────────────
     const whitelistResult = await checkWhitelistAccess({ telegramId, username, firstName, lastName, subResult });
