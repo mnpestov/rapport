@@ -26,10 +26,13 @@ interface SearchFilterBarProps {
   onToggleDiscount: () => void;
   // Opens the sort bottom sheet — the sort VALUE itself lives with the
   // caller (Catalog/Favorites), same division of ownership as
-  // totalFiltersCount/onOpenFilterModal below. Button itself always
-  // renders (unlike the "Скидка" chip) — "Последние добавленные" stays
-  // available with no PREMIUM_EXTRA, only the two price options inside
-  // the sheet are gated (see SortModal).
+  // totalFiltersCount/onOpenFilterModal below.
+  //
+  // Кнопка скрыта без PREMIUM_EXTRA (гейт здесь, как и у чипа "Скидка").
+  // Раньше она показывалась всем, а гейтились только два ценовых варианта
+  // внутри шторки — но тогда у бесплатного пользователя оставался ровно
+  // один вариант, "Последние добавленные", он же выбранный по умолчанию.
+  // Кнопка, открывающая выбор из одного уже выбранного пункта, бесполезна.
   onOpenSortModal: () => void;
   totalFiltersCount: number;
   onOpenFilterModal: () => void;
@@ -43,6 +46,13 @@ interface SearchFilterBarProps {
   // directly would flip the label a beat before the count it's describing
   // catches up.
   hasActiveQuery: boolean;
+  // Избранное: фильтры там — платная функция целиком (в баннере это
+  // "Фильтры в Избранном"), поэтому кнопка скрывается без PREMIUM_EXTRA.
+  // В каталоге фильтры бесплатны (платные — только плотность и толщина
+  // пряжи, и они гейтятся внутри самой шторки), поэтому там проп не
+  // передаётся. Флаг про поведение, а не про страницу: гейт задаёт тот,
+  // кто знает, платная ли фича в его контексте.
+  filtersRequireExtra?: boolean;
 }
 
 // Identical search+filter header used on Catalog and Favorites — see
@@ -68,8 +78,11 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   onClearFilters,
   foundCount,
   hasActiveQuery,
+  filtersRequireExtra = false,
 }) => {
   const { extra, paywallUiEnabled } = usePremiumAccess();
+  const showSortButton = extra;
+  const showFilterButton = !filtersRequireExtra || extra;
 
   return (
     <>
@@ -124,29 +137,35 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
       </div>
 
       <div className="filters-row">
-        <button
-          className={`filter-settings-btn ${totalFiltersCount > 0 ? 'has-filters' : ''}`}
-          aria-label="Настройки фильтров"
-          onClick={onOpenFilterModal}
-        >
-          <SlidersHorizontal size={24} />
-          {totalFiltersCount > 0 && (
-            <>
-              <span className="filter-count">({totalFiltersCount})</span>
-              <div className="filter-clear-icon" onClick={onClearFilters}>
-                <CustomX size={24} />
-              </div>
-            </>
-          )}
-        </button>
-        <div className="filter-separator" />
-        <button
-          className="sort-settings-btn"
-          aria-label="Сортировка"
-          onClick={onOpenSortModal}
-        >
-          <ArrowDownUp size={24} />
-        </button>
+        {showFilterButton && (
+          <button
+            className={`filter-settings-btn ${totalFiltersCount > 0 ? 'has-filters' : ''}`}
+            aria-label="Настройки фильтров"
+            onClick={onOpenFilterModal}
+          >
+            <SlidersHorizontal size={24} />
+            {totalFiltersCount > 0 && (
+              <>
+                <span className="filter-count">({totalFiltersCount})</span>
+                <div className="filter-clear-icon" onClick={onClearFilters}>
+                  <CustomX size={24} />
+                </div>
+              </>
+            )}
+          </button>
+        )}
+        {/* Разделитель имеет смысл только между двумя кнопками — иначе
+            повисает у края ряда. */}
+        {showFilterButton && showSortButton && <div className="filter-separator" />}
+        {showSortButton && (
+          <button
+            className="sort-settings-btn"
+            aria-label="Сортировка"
+            onClick={onOpenSortModal}
+          >
+            <ArrowDownUp size={24} />
+          </button>
+        )}
         <div className="catalog-filters">
           {extra && (
             <button

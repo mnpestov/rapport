@@ -17,10 +17,13 @@ interface SortModalProps {
 }
 
 // Price-based options need real price data to mean anything — same gate as
-// the "Скидка" chip/filter (SearchFilterBar.tsx, FilterModal.tsx's future
-// "Цена" section): hidden entirely for non-PREMIUM_EXTRA, not shown
-// disabled. "Последние добавленные" has no such dependency and stays
-// available to everyone, so the sheet always has at least one option.
+// the "Скидка" chip/filter: hidden entirely for non-PREMIUM_EXTRA, not
+// shown disabled.
+//
+// Сегодня без PREMIUM_EXTRA эта шторка вообще не открывается — кнопка
+// сортировки скрыта в SearchFilterBar. Фильтр ниже оставлен намеренно, как
+// второй слой: если кнопку когда-нибудь снова покажут всем, ценовые
+// варианты не утекут вместе с ней.
 const OPTIONS: { value: SortOption; label: string; extraOnly?: boolean }[] = [
   { value: 'newest', label: 'Последние добавленные' },
   { value: 'price_asc', label: 'Дешевле', extraOnly: true },

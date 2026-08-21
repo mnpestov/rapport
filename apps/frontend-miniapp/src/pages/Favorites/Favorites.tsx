@@ -8,6 +8,7 @@ import { FilterModal, SelectedFilters } from '../../components/FilterModal/Filte
 import { SortModal, SortOption } from '../../components/SortModal/SortModal';
 import { Footer } from '../../components/Footer/Footer';
 import { filterPatterns, sortPatterns, computeFacetsFromPatterns } from '../../utils/clientPatternFilters';
+import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './Favorites.css';
 
@@ -38,6 +39,8 @@ export const Favorites: React.FC = () => {
   // PREMIUM_CORE-gated in FilterModal anyway, and simply renders no options
   // for non-core users regardless.
   const [yarnRangesUniverse, setYarnRangesUniverse] = useState<FiltersResponse['yarnRanges']>([]);
+
+  const { extra } = usePremiumAccess();
 
   const [searchInput, setSearchInput] = useState(() => sessionStorage.getItem('favorites_search') || '');
   const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
@@ -122,13 +125,22 @@ export const Favorites: React.FC = () => {
     return () => { isMounted = false; };
   }, [favorites]);
 
+  // Фильтры и сортировка в Избранном — платные (кнопки скрыты без
+  // PREMIUM_EXTRA, см. SearchFilterBar). Здесь дополнительно НЕ применяем
+  // сохранённый выбор, если права больше нет: значения лежат в
+  // sessionStorage и переживают истечение подписки, а кнопки к тому моменту
+  // уже скрыты — человек остался бы с отфильтрованным списком без всякой
+  // возможности это увидеть и сбросить.
+  const effectiveFilters = extra ? advancedFilters : EMPTY_FILTERS;
+  const effectiveSort: SortOption = extra ? sortValue : 'newest';
+
   const filteredPatterns = useMemo(() => sortPatterns(filterPatterns(allPatterns, {
     search: debouncedSearch,
     isFree: isFreeFilterActive,
     isNew: isNewFilterActive,
     isDiscount: isDiscountFilterActive,
-    selected: advancedFilters,
-  }), sortValue), [allPatterns, debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
+    selected: effectiveFilters,
+  }), effectiveSort), [allPatterns, debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, effectiveSort, effectiveFilters]);
 
   // Reset client-side pagination whenever the effective filter changes —
   // same trigger set Catalog resets its (server-side) offset on.
@@ -230,6 +242,7 @@ export const Favorites: React.FC = () => {
             onClearFilters={clearFilters}
             foundCount={filteredPatterns.length}
             hasActiveQuery={hasActiveQuery}
+            filtersRequireExtra
           />
 
           {filteredPatterns.length === 0 && (
