@@ -503,10 +503,30 @@ def _extract_galasheikh_details(soup):
     # pages' plain <strong>-wrapped one. Only the OUTER edges of each
     # block are trimmed (Python .strip(), not BeautifulSoup's), for the
     # exact same reason.
+    #
+    # <p>/<li> alone isn't enough either — leto/volna/gracia's PDF-paste
+    # bullet lines ("• JarnArt Jeans ... 160м/50г ...", "• Alize Cotton
+    # Gold ... 330м/100 г ...") aren't <li>s at all, there's no <ul> on the
+    # page anywhere; each line is its own bare <div class="s21">/<div
+    # class="s23"> sibling of the surrounding <p>s. Missing them dropped
+    # the yarn lines silently — real bug caught live comparing against the
+    # page's own visible "Оригинальная пряжа и аналог" list, which came
+    # back as two empty labels with nothing in between.
+    #
+    # Widening the search to ['p', 'div', 'li'] naively would also match
+    # the 2-3 layers of pure single-child WRAPPER divs #tab-description
+    # itself sits inside (.wc-tab-inner etc.) — those contain ALL of the
+    # above blocks again, so collecting them too would duplicate the
+    # entire description. Filtering to only tags with no <p>/<div>/<li>
+    # descendant of their own keeps exactly the leaf content blocks
+    # (bullet divs, real <li>s in a real <ul> — e.g. ariel-kostum's yarn
+    # list — and <p>s alike) regardless of how many wrapper layers a given
+    # product's page happens to have, without hardcoding a specific
+    # nesting depth.
     el = soup.select_one('#tab-description')
     if not el:
         return None
-    blocks = el.find_all(['p', 'li'])
+    blocks = [tag for tag in el.find_all(['p', 'div', 'li']) if not tag.find(['p', 'div', 'li'])]
     texts = [t for t in (tag.get_text().strip() for tag in blocks) if t]
     return '\n\n'.join(texts) or None
 
