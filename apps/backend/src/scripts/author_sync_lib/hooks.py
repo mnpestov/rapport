@@ -79,8 +79,7 @@ def _parse_woo_price(bdi_tag):
     # keep-digits/dots/commas-anywhere strip turned that into ".1900" ->
     # float 0.19, a real bug caught live comparing against the site's
     # actual displayed price. Starting the match at the first digit skips
-    # straight past any such prefix. Then drop the comma (thousands
-    # separator in this markup, e.g. "1,490.00").
+    # straight past any such prefix.
     #
     # Whitespace is stripped FIRST, separately — hollywool.ru uses a
     # non-breaking space (\xa0, matched by \s) as ITS OWN thousands
@@ -92,7 +91,30 @@ def _parse_woo_price(bdi_tag):
     match = _WOO_PRICE_NUM_RE.search(raw)
     if not match:
         return None
-    cleaned = match.group(0).replace(',', '')
+    num = match.group(0)
+
+    # Comma is ambiguous across WooCommerce locales — knittingsamurai.ru's
+    # "1,900" is comma-as-THOUSANDS (dot-decimal or no decimal shown at
+    # all), but galasheikh.ru's "1150,00" is comma-as-DECIMAL (Russian
+    # locale's woocommerce_price_decimal_sep) — blindly stripping every
+    # comma turned that into 115000, a 100x-inflated price, real bug caught
+    # live comparing against the site's actual displayed price. Thousands
+    # groups are always exactly 3 digits; a currency's decimal part is
+    # always 2 (kopecks/cents) — that's a reliable, distinct signal to tell
+    # them apart without a per-site flag. When both '.' and ',' appear
+    # together, the RIGHTMOST one is the real decimal separator (handles
+    # "1.490,00" European and "1,490.00" American style alike) — not yet
+    # seen live on any registered site, but cheap to handle correctly.
+    if ',' in num and '.' in num:
+        if num.rindex(',') > num.rindex('.'):
+            cleaned = num.replace('.', '').replace(',', '.')
+        else:
+            cleaned = num.replace(',', '')
+    elif ',' in num and re.search(r',\d{2}$', num):
+        cleaned = num.replace(',', '.')
+    else:
+        cleaned = num.replace(',', '')
+
     try:
         return float(cleaned)
     except ValueError:
