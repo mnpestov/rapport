@@ -23,7 +23,7 @@
 .favorites-header {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 /* .favorites-title-container {
@@ -38,6 +38,16 @@
   line-height: 110%;
   text-align: center;
   margin: 0 0 16px 0;
+}
+
+/* .search-row задан общим стилем как padding: 16px 0, но здесь его верхний
+   отступ складывается с margin-bottom заголовка "Избранное" (16px) и даёт
+   лишние 32px. Обнуляем сверху — правка только для этой страницы, поэтому
+   живёт здесь, а не в SearchFilterBar.css, который общий с каталогом.
+   Селектор из двух классов бьёт одиночный .search-row по специфичности,
+   независимо от порядка импорта стилей. */
+.favorites-container .search-row {
+  padding: 0 0 16px;
 }
 
 .favorites-subtitle {
