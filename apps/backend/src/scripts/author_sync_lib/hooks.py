@@ -473,6 +473,43 @@ def _wool_style_extract_gallery(soup, raw_html=None, url=None):
             images.append(m.group(1))
     return images or None
 
+def _extract_galasheikh_details(soup):
+    # galasheikh.ru: crawlers.py's fallback selector list tries
+    # ".woocommerce-product-details__short-description" before
+    # "#tab-description" — on most WooCommerce sites the short-description
+    # IS a real (if brief) product blurb, but on this site it's a repeated
+    # shipping/account-access notice identical on every product page ("Все
+    # купленные МК и ВИДЕО сразу автоматически добавляются в Ваш Личный
+    # кабинет...", no density/yarn/needle info at all), so it wins the
+    # "first match" fallback and the real description — sitting in the
+    # standard WooCommerce Description tab instead — never gets reached.
+    # Verified live: #tab-description carries the full text (плотность,
+    # спицы, пряжа), confirmed present on every product checked.
+    #
+    # Deliberately NOT the shared _extract_details_text (or any
+    # separator=' '/'\n' get_text call) — some of this author's product
+    # pages (verified: leto, volna, gracia) look like a PDF/Word paste:
+    # numbers are split across several ADJACENT <span> runs with no real
+    # whitespace between them in the source at all, e.g.
+    # "<span>2</span><span>6</span>" for "26" (class "bumpedFont15" gives
+    # it away). Any separator that forces a space/newline at EVERY tag
+    # boundary turns that into "2 6", and parse_density then reads "2" as
+    # the row count instead of "26" — a real bug caught live comparing
+    # against the site's own displayed "Плотность: 20 петель * 26 рядов".
+    # Plain get_text() (no separator, no per-node strip — strip=True would
+    # itself eat the real, meaningful trailing space inside e.g.
+    # "<strong>23 </strong>петли") reproduces exactly what a browser would
+    # render, correct on both this fragmented-markup style AND the other
+    # pages' plain <strong>-wrapped one. Only the OUTER edges of each
+    # block are trimmed (Python .strip(), not BeautifulSoup's), for the
+    # exact same reason.
+    el = soup.select_one('#tab-description')
+    if not el:
+        return None
+    blocks = el.find_all(['p', 'li'])
+    texts = [t for t in (tag.get_text().strip() for tag in blocks) if t]
+    return '\n\n'.join(texts) or None
+
 def _wool_style_extract_details(soup):
     # wool-style.ru scatters plain text across many visually-identical
     # sibling ".str-bw_text" divs with no single wrapping description
@@ -1040,6 +1077,10 @@ DOMAIN_CRAWL_HOOKS = {
     # ekaterinafrog.ru: see _extract_frog_details/_extract_frog_price above.
     'ekaterinafrog.ru': {
         'extract_details': _extract_frog_details,
+    },
+    # galasheikh.ru: see _extract_galasheikh_details above.
+    'galasheikh.ru': {
+        'extract_details': _extract_galasheikh_details,
     },
 }
 
