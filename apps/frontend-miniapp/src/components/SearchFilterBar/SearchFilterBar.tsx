@@ -46,13 +46,20 @@ interface SearchFilterBarProps {
   // directly would flip the label a beat before the count it's describing
   // catches up.
   hasActiveQuery: boolean;
-  // Избранное: фильтры там — платная функция целиком (в баннере это
-  // "Фильтры в Избранном"), поэтому кнопка скрывается без PREMIUM_EXTRA.
-  // В каталоге фильтры бесплатны (платные — только плотность и толщина
-  // пряжи, и они гейтятся внутри самой шторки), поэтому там проп не
+  // Избранное: ВЕСЬ инструментарий поиска и фильтрации там — платная
+  // функция (в баннере это "Фильтры в Избранном"), поэтому без
+  // PREMIUM_EXTRA скрывается строка поиска, быстрые чипы и обе кнопки —
+  // остаётся только кнопка подписки и счётчик.
+  //
+  // В каталоге поиск и фильтры бесплатны (платные — плотность и толщина
+  // пряжи, они гейтятся внутри шторки фильтров), поэтому там проп не
   // передаётся. Флаг про поведение, а не про страницу: гейт задаёт тот,
   // кто знает, платная ли фича в его контексте.
-  filtersRequireExtra?: boolean;
+  toolbarRequiresExtra?: boolean;
+  // Кнопка вызова шторки подписки. В Избранном не нужна — там она только
+  // мешает, а открыть шторку можно из каталога, куда с этой страницы и так
+  // есть переход. По умолчанию показывается (каталог проп не передаёт).
+  showSubscriptionButton?: boolean;
 }
 
 // Identical search+filter header used on Catalog and Favorites — see
@@ -78,15 +85,28 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   onClearFilters,
   foundCount,
   hasActiveQuery,
-  filtersRequireExtra = false,
+  toolbarRequiresExtra = false,
+  showSubscriptionButton = true,
 }) => {
   const { extra, paywallUiEnabled } = usePremiumAccess();
+  // Один выключатель на всю панель: строку поиска, чипы и обе кнопки.
+  const toolbarLocked = toolbarRequiresExtra && !extra;
+  // Сортировка платная и в каталоге тоже: без PREMIUM_EXTRA в её шторке
+  // остаётся единственный вариант — он же выбранный по умолчанию.
   const showSortButton = extra;
-  const showFilterButton = !filtersRequireExtra || extra;
+  const showFilterButton = !toolbarLocked;
+  // Что осталось бы в ряду поиска, если саму строку скрыли.
+  const hasSearchRowContent = (showSubscriptionButton && paywallUiEnabled) || !!showFavoritesButton;
 
   return (
     <>
+      {/* Без единого элемента ряд поиска — просто вертикальный отступ
+          ниоткуда, поэтому не рендерим его вовсе. Так бывает в Избранном у
+          бесплатного пользователя: поиск скрыт, кнопки подписки нет, а
+          "сердечко" туда и не передаётся. */}
+      {(!toolbarLocked || hasSearchRowContent) && (
       <div className="search-row">
+        {!toolbarLocked && (
         <div className="search-input-wrapper">
           <Search size={20} className="search-icon" />
           <input
@@ -115,12 +135,13 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
             <X size={24} className="clear-icon" />
           </button>
         </div>
+        )}
         {/* Ручной вызов шторки подписки (Figma 1073:5550 / 997:4769).
             Открывает её через window-событие, а не проп: сама шторка живёт
             в App.tsx, а этот компонент рендерится внутри Catalog/Favorites
             — прокидывать колбэк пришлось бы через обе страницы. Тот же
             приём, что уже используется для auth:ready/auth:recheck. */}
-        {paywallUiEnabled && (
+        {showSubscriptionButton && paywallUiEnabled && (
           <SubscriptionButton
             isActive={extra}
             onClick={() => {
@@ -135,7 +156,9 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           </button>
         )}
       </div>
+      )}
 
+      {!toolbarLocked && (
       <div className="filters-row">
         {showFilterButton && (
           <button
@@ -189,6 +212,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       <div className="catalog-found-count">
         {hasActiveQuery ? 'найдено описаний:' : 'всего описаний:'}{' '}

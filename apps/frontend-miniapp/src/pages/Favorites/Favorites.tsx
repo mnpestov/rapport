@@ -133,14 +133,21 @@ export const Favorites: React.FC = () => {
   // возможности это увидеть и сбросить.
   const effectiveFilters = extra ? advancedFilters : EMPTY_FILTERS;
   const effectiveSort: SortOption = extra ? sortValue : 'newest';
+  // То же и для поиска с быстрыми чипами: поле ввода и кнопки скрыты, но
+  // сохранённые в sessionStorage значения иначе продолжили бы резать список
+  // — человек увидел бы неполное Избранное и не понял бы, почему.
+  const effectiveSearch = extra ? debouncedSearch : '';
+  const effectiveFree = extra ? isFreeFilterActive : false;
+  const effectiveNew = extra ? isNewFilterActive : false;
+  const effectiveDiscount = extra ? isDiscountFilterActive : false;
 
   const filteredPatterns = useMemo(() => sortPatterns(filterPatterns(allPatterns, {
-    search: debouncedSearch,
-    isFree: isFreeFilterActive,
-    isNew: isNewFilterActive,
-    isDiscount: isDiscountFilterActive,
+    search: effectiveSearch,
+    isFree: effectiveFree,
+    isNew: effectiveNew,
+    isDiscount: effectiveDiscount,
     selected: effectiveFilters,
-  }), effectiveSort), [allPatterns, debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, effectiveSort, effectiveFilters]);
+  }), effectiveSort), [allPatterns, effectiveSearch, effectiveFree, effectiveNew, effectiveDiscount, effectiveSort, effectiveFilters]);
 
   // Reset client-side pagination whenever the effective filter changes —
   // same trigger set Catalog resets its (server-side) offset on.
@@ -198,7 +205,11 @@ export const Favorites: React.FC = () => {
     setAdvancedFilters(EMPTY_FILTERS);
   };
 
-  const hasActiveQuery = isFreeFilterActive || isNewFilterActive || isDiscountFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== '';
+  // По ПРИМЕНЯЕМЫМ значениям, а не по сохранённым: у бесплатного
+  // пользователя панель скрыта и ничего не фильтруется, поэтому счётчик
+  // должен говорить "всего описаний", а не "найдено".
+  const hasActiveQuery = effectiveFree || effectiveNew || effectiveDiscount
+    || (extra && totalFiltersCount > 0) || effectiveSearch.trim() !== '';
 
   return (
     <div className="favorites-container">
@@ -242,7 +253,8 @@ export const Favorites: React.FC = () => {
             onClearFilters={clearFilters}
             foundCount={filteredPatterns.length}
             hasActiveQuery={hasActiveQuery}
-            filtersRequireExtra
+            toolbarRequiresExtra
+            showSubscriptionButton={false}
           />
 
           {filteredPatterns.length === 0 && (
