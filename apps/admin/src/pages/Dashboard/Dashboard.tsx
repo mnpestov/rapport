@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getDashboardStats, getPaywallStats, DashboardResponse, PaywallStatsResponse, TopPatternItem, TopAuthorItem, TopSearchQueryItem, Period } from "../../api/dashboard";
 import { PaywallFunnel } from "./PaywallFunnel";
+import { PaywallUsersModal, DrilldownTarget } from "./PaywallUsersModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
 import styles from "./Dashboard.module.css";
@@ -170,6 +171,8 @@ export function Dashboard() {
   // независима, и её ошибка не должна прятать весь дашборд — виджет просто
   // не отрисуется.
   const [paywallStats, setPaywallStats] = useState<PaywallStatsResponse | null>(null);
+  // Какую метрику детализируем. null — модалка закрыта.
+  const [drilldown, setDrilldown] = useState<DrilldownTarget | null>(null);
 
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -294,7 +297,14 @@ export function Dashboard() {
       {/* Воронка подписки — PAYMENTS_ROBOKASSA_PLAN.md §10. Не рисуется,
           пока данные не пришли: пустой виджет с нулями выглядел бы как
           "конверсия ноль", хотя на деле запрос ещё не завершился. */}
-      {paywallStats && <PaywallFunnel stats={paywallStats} />}
+      {paywallStats && <PaywallFunnel stats={paywallStats} onDrilldown={setDrilldown} />}
+
+      <PaywallUsersModal
+        target={drilldown}
+        period={period}
+        appliedRange={appliedRange}
+        onClose={() => setDrilldown(null)}
+      />
 
       {/* Top tables */}
       <div className={styles.topGrid}>

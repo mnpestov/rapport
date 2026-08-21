@@ -71,6 +71,28 @@
   gap: 14px;
 }
 
+/* .step и .eventCard — кнопки (клик открывает список пользователей за
+   цифрой), поэтому сбрасываем браузерные дефолты и задаём вид вручную. */
+.step {
+  display: block;
+  width: 100%;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.step:hover:not(:disabled) {
+  background: #F9FAFB;
+}
+
+.step:disabled {
+  cursor: default;
+}
+
 .stepHeader {
   display: flex;
   align-items: baseline;
@@ -129,7 +151,22 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  border: none;
   border-right: 1px solid #E5E7EB;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.eventCard:hover:not(:disabled) {
+  background: #F9FAFB;
+}
+
+.eventCard:disabled {
+  cursor: default;
 }
 
 .eventCard:last-child {

@@ -1,0 +1,118 @@
+/* Детализация метрики воронки — список пользователей за цифрой. */
+.summary {
+  margin-bottom: 12px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.summary strong {
+  color: #1D1C1C;
+}
+
+/* Список может быть длинным (баннер видят тысячи) — прокручиваем внутри
+   модалки, а не растим её на весь экран. */
+.tableWrapper {
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 10px 14px;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+  font-weight: 600;
+  color: #6B7280;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #F3F4F6;
+  color: #1D1C1C;
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.meta {
+  color: #6B7280;
+  white-space: nowrap;
+}
+
+.tgId {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.center {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.pageBtn {
+  padding: 6px 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: #fff;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pageInfo {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.empty {
+  padding: 28px;
+  text-align: center;
+  color: #9CA3AF;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+}
+
+.spinner {
+  display: inline-block;
+  vertical-align: middle;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -109,3 +109,55 @@ export const getPaywallStats = async (
 
   return response.json();
 };
+
+// Детализация метрики — кто именно стоит за цифрой на дашборде.
+export type PaywallMetric =
+  | "SHOWN"
+  | "SCROLLED_TO_END"
+  | "SUBSCRIBE_CLICK"
+  | "CLOSED"
+  | "BUTTON_OPENED"
+  | "PAID";
+
+export type PaywallScope = "all" | "acquisition" | "retention";
+
+export interface PaywallStatsUser {
+  userId: string;
+  telegramId: string;
+  firstName: string;
+  lastName: string | null;
+  username: string | null;
+  // Сколько раз событие случилось у этого человека за период (для PAID
+  // всегда 1 — там строка на платёж).
+  count: number;
+  lastAt: string | null;
+  amount?: number;
+  invId?: number;
+}
+
+export interface PaywallStatsUsersResponse {
+  total: number;
+  items: PaywallStatsUser[];
+}
+
+export const getPaywallStatsUsers = async (
+  params: FetchParams & { metric: PaywallMetric; scope?: PaywallScope; limit?: number; offset?: number }
+): Promise<PaywallStatsUsersResponse> => {
+  const q = new URLSearchParams();
+  if ("from" in params) {
+    q.set("from", params.from);
+    q.set("to", params.to);
+  } else {
+    q.set("period", params.period);
+  }
+  q.set("metric", params.metric);
+  if (params.scope) q.set("scope", params.scope);
+  if (params.limit != null) q.set("limit", String(params.limit));
+  if (params.offset != null) q.set("offset", String(params.offset));
+
+  const response = await fetchWithAuth(`${API_URL}/admin/paywall-stats/users?${q}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch paywall stats users: ${response.statusText}`);
+  }
+  return response.json();
+};

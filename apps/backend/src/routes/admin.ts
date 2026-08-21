@@ -6,7 +6,7 @@ import { Permission } from "@prisma/client";
 import { requireAuth } from "../middlewares/auth";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { requirePermissionOrAdmin } from "../middlewares/requirePermission";
-import { getPaywallStats } from "../controllers/paywallStatsController";
+import { getPaywallStats, getPaywallStatsUsers } from "../controllers/paywallStatsController";
 import { getPayments, checkPaymentStatus } from "../controllers/adminPaymentsController";
 import {
   getUsersStats,
@@ -150,6 +150,7 @@ router.get("/patterns/stats", getPatternsStats);
 router.get("/dashboard", getDashboard);
 router.get("/dashboard/stats", getDashboardStats);
 router.get("/paywall-stats", getPaywallStats);
+router.get("/paywall-stats/users", getPaywallStatsUsers);
 
 // Счета: список всех платежей и ручная сверка конкретного счёта с
 // Robokassa (см. adminPaymentsController).

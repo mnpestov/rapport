@@ -130,3 +130,120 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// ── Детализация: кто именно попал в метрику ──────────────────────────────
+// Цифра без имён отвечает "сколько", но не "кто" — а разбираться обычно
+// нужно именно со вторым. Возвращает постранично список пользователей,
+// стоящих за конкретным числом на дашборде.
+
+const SCOPE_SOURCES: Record<string, PaywallSource[] | undefined> = {
+  all: undefined,
+  acquisition: ACQUISITION_SOURCES,
+  retention: RETENTION_SOURCES,
+};
+
+// GET /admin/paywall-stats/users?metric=SHOWN|...|PAID&scope=all|acquisition|retention
+export const getPaywallStatsUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const range = parsePeriod(req);
+    const { metric, scope = "all", limit = "50", offset = "0" } = req.query as Record<string, string>;
+
+    const take = Math.min(parseInt(limit, 10) || 50, 200);
+    const skip = parseInt(offset, 10) || 0;
+    const sources = SCOPE_SOURCES[scope];
+
+    const createdAtFilter =
+      range.from || range.to
+        ? { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) }
+        : undefined;
+
+    // "Оплатили" живёт в Payment, а не в логе событий — отдельная ветка.
+    if (metric === "PAID") {
+      const where = {
+        status: "PAID" as const,
+        ...(sources ? { source: { in: sources } } : {}),
+        ...(createdAtFilter ? { paidAt: createdAtFilter } : {}),
+      };
+      const [payments, distinctUsers] = await Promise.all([
+        prisma.payment.findMany({
+          where,
+          orderBy: { paidAt: "desc" },
+          take,
+          skip,
+          include: {
+            user: { select: { id: true, telegramId: true, firstName: true, lastName: true, username: true } },
+          },
+        }),
+        prisma.payment.findMany({ where, select: { userId: true }, distinct: ["userId"] }),
+      ]);
+
+      res.json({
+        total: distinctUsers.length,
+        items: payments.map((p) => ({
+          userId: p.user.id,
+          telegramId: p.user.telegramId.toString(),
+          firstName: p.user.firstName,
+          lastName: p.user.lastName,
+          username: p.user.username,
+          count: 1,
+          lastAt: p.paidAt?.toISOString() ?? null,
+          amount: Number(p.amount),
+          invId: p.invId,
+        })),
+      });
+      return;
+    }
+
+    if (!(Object.values(PaywallEventType) as string[]).includes(metric)) {
+      res.status(400).json({ error: "Unknown metric" });
+      return;
+    }
+
+    const where = {
+      type: metric as PaywallEventType,
+      ...(sources ? { source: { in: sources } } : {}),
+      ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+    };
+
+    // groupBy, а не findMany+distinct: нужен ещё и счётчик событий на
+    // пользователя (сколько раз видел баннер) и время последнего — по одной
+    // строке на человека, как и в самой метрике.
+    const [grouped, allGroups] = await Promise.all([
+      prisma.paywallEvent.groupBy({
+        by: ["userId"],
+        where,
+        _count: { _all: true },
+        _max: { createdAt: true },
+        orderBy: { _max: { createdAt: "desc" } },
+        take,
+        skip,
+      }),
+      prisma.paywallEvent.findMany({ where, select: { userId: true }, distinct: ["userId"] }),
+    ]);
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: grouped.map((g) => g.userId) } },
+      select: { id: true, telegramId: true, firstName: true, lastName: true, username: true },
+    });
+    const byId = new Map(users.map((u) => [u.id, u]));
+
+    res.json({
+      total: allGroups.length,
+      items: grouped.map((g) => {
+        const u = byId.get(g.userId);
+        return {
+          userId: g.userId,
+          telegramId: u?.telegramId.toString() ?? "—",
+          firstName: u?.firstName ?? "—",
+          lastName: u?.lastName ?? null,
+          username: u?.username ?? null,
+          count: g._count._all,
+          lastAt: g._max.createdAt?.toISOString() ?? null,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("[PaywallStats] Failed to list users:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
