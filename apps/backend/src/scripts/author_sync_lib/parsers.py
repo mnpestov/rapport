@@ -29,7 +29,15 @@ def parse_yarn(text):
     # otherwise doesn't match "-" in either the separator or the dash-range
     # swallow group, silently dropping the entire yarn spec.
     dash = r'[-–—]'
-    unit_m = r'(?:метр[а-я]*|м(?![а-я]))'
+    # Latin "m"/"g" alongside the Cyrillic forms — kolechkoknit.ru states
+    # yarn as "50g/100-110m" (Latin letters, no Cyrillic anywhere in the
+    # phrase at all), which unit_g already matched via its own "|g"
+    # alternative but unit_m had no Latin equivalent, silently dropping the
+    # whole yarn spec. Same word-boundary guard as the Cyrillic "м" (not
+    # just "g" the way unit_g's bare form works) since a bare Latin "m" is
+    # far more likely to appear as the first letter of an unrelated Latin
+    # word/brand name in these otherwise-Russian product descriptions.
+    unit_m = r'(?:метр[а-я]*|м(?![а-я])|m(?![a-zа-я]))'
     unit_g = r'(?:гр[а-я]*|г(?![а-я])|g)'
     pattern1 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?\s*(?:в|на|/|{dash}|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?', re.IGNORECASE)
     pattern2 = re.compile(rf'(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_g}\.?\s*(?:в|на|/|{dash}|,)?\s*(\d+(?:[.,]\d+)?)(?:\s*{dash}\s*\d+(?:[.,]\d+)?)?\s*{unit_m}\.?', re.IGNORECASE)

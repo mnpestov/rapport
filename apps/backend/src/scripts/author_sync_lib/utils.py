@@ -68,11 +68,29 @@ def _nearest_clause_boundary(text, region_start, region_end, from_right):
     # region_end, i.e. closest to a match that follows this region),
     # from_right=False searches from the start forward (closest to
     # region_start, i.e. closest to a match that precedes this region).
+    #
+    # A candidate only counts as a real clause boundary if the clause on
+    # the FAR side of it (away from the match) itself states a number —
+    # e.g. "Плотность в узоре: 42 п. ..., в лицевой глади: 31 п. ..."
+    # (alenabarteneva.ru) has "31" right after the comma, a genuine second
+    # density statement whose "в лицевой глади" qualifier must not leak
+    # into the first match's context. But "Плотность 25п * 30 р - образец
+    # 10x10 см, ажурная резинка" (kolechkoknit.ru) has no digit at all
+    # after that same comma — "ажурная резинка" is still qualifying THIS
+    # one density, not introducing another, so stopping there clipped the
+    # ignore-word ("ажур") out of its own match's context, wrongly letting
+    # an openwork-stitch gauge through as if it were plain стокинетт — a
+    # real bug caught live comparing against the site's own stated stitch
+    # pattern. Skip a digit-less candidate and keep looking outward instead
+    # of stopping at the very first one.
     positions = [i for i in range(region_start, region_end) if text[i] in ',;.']
     if from_right:
         positions.reverse()
     for p in positions:
-        if not _in_parens(text, p):
+        if _in_parens(text, p):
+            continue
+        far_side = text[region_start:p] if from_right else text[p + 1:region_end]
+        if re.search(r'\d', far_side):
             return p
     return -1
 
