@@ -1,6 +1,12 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
-import { buildPatternWhere, stripPremiumFacetParams } from "../utils/patternFilters";
+import {
+  buildPatternWhere,
+  stripPremiumFacetParams,
+  ADULT_TAG_ID,
+  ADULT_TAG_NAME,
+  CHILDREN_TAG_NAME,
+} from "../utils/patternFilters";
 import { hasCore } from "../utils/patternVisibility";
 
 // Accepts the same facet query params as /patterns (categories, tags,
@@ -22,13 +28,21 @@ export const getFilters = async (req: Request, res: Response) => {
     const core = hasCore(req);
     const query = stripPremiumFacetParams(req.query, core);
 
-    const [categories, tags, instruments, authors, yarnRangesRaw, densityRaw] = await Promise.all([
+    const [categories, tags, instruments, authors, yarnRangesRaw, densityRaw, adultSample] = await Promise.all([
       prisma.productType.findMany({
         where: { patterns: { some: buildPatternWhere(query, "categories") } },
         select: { id: true, name: true },
       }),
+      // Без excludeFacet, в отличие от остальных секций: значения тегов
+      // объединяются по И, поэтому добавление ещё одного тега может только
+      // сузить выборку. Если бы секция не сужала саму себя, пользователю
+      // предлагались бы соседние теги, дающие в паре с уже выбранным ноль
+      // описаний. Уже выбранный тег из списка не пропадёт — он подходит под
+      // собственное условие; а если всё же пропадёт (например, после смены
+      // другого фильтра), FilterModal покажет его как "stale" из общего
+      // справочника, чтобы выбор можно было снять.
       prisma.tag.findMany({
-        where: { patterns: { some: buildPatternWhere(query, "tags") } },
+        where: { patterns: { some: buildPatternWhere(query) } },
         select: { id: true, name: true },
       }),
       prisma.instrument.findMany({
@@ -61,7 +75,34 @@ export const getFilters = async (req: Request, res: Response) => {
             distinct: ["densityStitches", "densityRows"],
           })
         : Promise.resolve([]),
+      // Есть ли вообще что показать под "взрослое" при текущих остальных
+      // фильтрах. Синтетический вариант ведёт себя как обычная опция фасета:
+      // появляется, только если ему соответствует хотя бы одно описание —
+      // иначе пользователь выбрал бы заведомо пустой фильтр. findFirst, а не
+      // count: нужен факт наличия, а не число.
+      prisma.pattern.findFirst({
+        where: (() => {
+          // Тоже без excludeFacet — по той же причине, что и у секции выше.
+          // Условие "не детское" добавляется в AND, а не отдельным ключом
+          // `tags`: сами теги теперь тоже живут в AND, и ключ бы их затёр.
+          const base = buildPatternWhere(query);
+          return {
+            ...base,
+            AND: [
+              ...(base.AND || []),
+              { tags: { none: { name: { equals: CHILDREN_TAG_NAME, mode: "insensitive" } } } },
+            ],
+          };
+        })(),
+        select: { id: true },
+      }),
     ]);
+
+    // Порядок не задаём — фронт сортирует опции по алфавиту, так что
+    // "взрослое" само встанет рядом с "детское".
+    const tagsWithAdult = adultSample
+      ? [...tags, { id: ADULT_TAG_ID, name: ADULT_TAG_NAME }]
+      : tags;
 
     const yarnRanges = yarnRangesRaw.map((y) => ({ id: y.id, name: y.label }));
 
@@ -72,7 +113,7 @@ export const getFilters = async (req: Request, res: Response) => {
 
     res.json({
       categories,
-      tags,
+      tags: tagsWithAdult,
       instruments,
       authors,
       yarnRanges,

@@ -14,11 +14,33 @@ import { hasActiveDiscount } from './priceHelpers';
 
 type PatternFacet = keyof SelectedFilters;
 
+// Зеркало ADULT_TAG_ID/ADULT_TAG_NAME/CHILDREN_TAG_NAME из бэкендового
+// patternFilters.ts. Продублировано, а не импортировано: фронтенд и бэкенд —
+// отдельные пакеты без общего модуля. При переименовании тега "детское"
+// править нужно оба места.
+const ADULT_TAG_ID = 'adult';
+const ADULT_TAG_NAME = 'взрослое';
+const CHILDREN_TAG_NAME = 'детское';
+
 const idsIntersect = (patternIds: string[] | undefined, selectedIds: string[]): boolean => {
   if (selectedIds.length === 0) return true;
   if (!patternIds || patternIds.length === 0) return false;
   return patternIds.some(id => selectedIds.includes(id));
 };
+
+const isAdultPattern = (pattern: Pattern): boolean =>
+  !(pattern.tags || []).some(n => n.toLowerCase() === CHILDREN_TAG_NAME);
+
+// Секция тегов отличается от остальных дважды: значения объединяются по И
+// (а не по ИЛИ, как везде), и одно из значений — отрицание ("взрослое" =
+// нет тега "детское"). Поэтому у неё свой матчер вместо общего
+// idsIntersect. Зеркалит ветку tags в buildPatternWhere на бэкенде.
+const matchesTags = (pattern: Pattern, selectedTags: string[]): boolean =>
+  selectedTags.every(id =>
+    id === ADULT_TAG_ID
+      ? isAdultPattern(pattern)
+      : (pattern.tagIds || []).includes(id)
+  );
 
 const matchesDensity = (pattern: Pattern, selectedKeys: string[]): boolean => {
   if (selectedKeys.length === 0) return true;
@@ -40,7 +62,7 @@ export const matchesFacetsExcept = (
   excludeFacet?: PatternFacet
 ): boolean => {
   if (excludeFacet !== 'categories' && !idsIntersect(pattern.categoryIds, selected.categories)) return false;
-  if (excludeFacet !== 'tags' && !idsIntersect(pattern.tagIds, selected.tags)) return false;
+  if (excludeFacet !== 'tags' && !matchesTags(pattern, selected.tags)) return false;
   if (excludeFacet !== 'instruments' && !idsIntersect(pattern.instrumentIds, selected.instruments)) return false;
   if (excludeFacet !== 'authors' && selected.authors.length > 0 && !selected.authors.includes(pattern.authorId)) return false;
   if (excludeFacet !== 'yarnRanges' && !idsIntersect(pattern.yarnRangeIds, selected.yarnRanges)) return false;
@@ -162,11 +184,23 @@ export const computeFacetsFromPatterns = (
     p => matchesFacetsExcept(p, selected, 'categories'),
     p => zip(p.categoryIds, p.productTypes)
   );
-  const tags = collectUnique(
+  // Без исключения собственной секции, в отличие от остальных: теги
+  // объединяются по И, поэтому список должен сужаться по мере выбора —
+  // иначе предлагались бы теги, дающие в паре с уже выбранным ноль.
+  // Зеркалит вызовы без excludeFacet в filtersController.ts.
+  const tagsFromPatterns = collectUnique(
     patterns,
-    p => matchesFacetsExcept(p, selected, 'tags'),
+    p => matchesFacetsExcept(p, selected),
     p => zip(p.tagIds, p.tags)
   );
+  // Как и на бэкенде: вариант "взрослое" появляется, только если под него
+  // реально что-то подпадает при остальных фильтрах.
+  const hasAdult = patterns.some(
+    p => matchesFacetsExcept(p, selected) && isAdultPattern(p)
+  );
+  const tags = hasAdult
+    ? [...tagsFromPatterns, { id: ADULT_TAG_ID, name: ADULT_TAG_NAME }]
+    : tagsFromPatterns;
   const instruments = collectUnique(
     patterns,
     p => matchesFacetsExcept(p, selected, 'instruments'),
