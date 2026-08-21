@@ -267,6 +267,12 @@ const SIMILAR_LIMIT = 12;
 // broaden to category-only rather than show a near-empty "Похожие описания" row.
 const SIMILAR_MIN_RESULTS = 4;
 
+// "детское" is never treated as a droppable characteristic tag like the
+// others — a kids pattern must only surface kids "similar" results, and a
+// non-kids pattern must never surface kids ones, at EVERY tier (including
+// the category-only fallback where every other tag gets dropped).
+const CHILDREN_TAG_NAME = 'детское';
+
 // GET /patterns/:id/similar — "Похожие описания" on the detail page. Tiered
 // matching: category AND characteristics (tags) first; if that's too thin,
 // broaden to category alone (a strict superset, so it always yields at least
@@ -291,7 +297,7 @@ export const getSimilarPatterns = async (req: Request, res: Response) => {
       where: { id, isVisible: true },
       select: {
         categories: { select: { id: true } },
-        tags: { select: { id: true } },
+        tags: { select: { id: true, name: true } },
       },
     });
 
@@ -301,6 +307,16 @@ export const getSimilarPatterns = async (req: Request, res: Response) => {
 
     const categoryIds = source.categories.map(c => c.id);
     const tagIds = source.tags.map(t => t.id);
+    const isChildren = source.tags.some(t => t.name === CHILDREN_TAG_NAME);
+    // Kept separate from the two tiers below (rather than folded into their
+    // own `tags` clause) since a Prisma where object can only hold one
+    // `tags` key — tier 1 already needs its own `tags: { some: { id: in
+    // tagIds } } }` for the characteristics match, and tier 2 has no `tags`
+    // clause at all once dropped, so this rides along as its own AND branch
+    // in both instead.
+    const childrenFilter = isChildren
+      ? { tags: { some: { name: CHILDREN_TAG_NAME } } }
+      : { tags: { none: { name: CHILDREN_TAG_NAME } } };
     // PREMIUM_EXTRA and PREMIUM_CORE are independent flags — the early
     // return above only guards EXTRA (so price never needs gating past this
     // point), but an EXTRA-without-CORE user reaching here would otherwise
@@ -323,15 +339,21 @@ export const getSimilarPatterns = async (req: Request, res: Response) => {
     if (categoryIds.length > 0 && tagIds.length > 0) {
       patterns = await fetchSimilar({
         ...baseWhere,
-        categories: { some: { id: { in: categoryIds } } },
-        tags: { some: { id: { in: tagIds } } },
+        AND: [
+          { categories: { some: { id: { in: categoryIds } } } },
+          { tags: { some: { id: { in: tagIds } } } },
+          childrenFilter,
+        ],
       });
     }
 
     if (patterns.length < SIMILAR_MIN_RESULTS && categoryIds.length > 0) {
       patterns = await fetchSimilar({
         ...baseWhere,
-        categories: { some: { id: { in: categoryIds } } },
+        AND: [
+          { categories: { some: { id: { in: categoryIds } } } },
+          childrenFilter,
+        ],
       });
     }
 
