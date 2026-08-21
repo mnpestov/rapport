@@ -255,6 +255,23 @@ export const deleteTag = async (id: string): Promise<void> => {
   if (!response.ok) throw new Error("Failed to delete tag");
 };
 
+export const updateInstrument = async (id: string, name: string): Promise<DictionaryItem> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/instruments/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error("Failed to update instrument");
+  return response.json();
+};
+
+export const deleteInstrument = async (id: string): Promise<void> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/instruments/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Failed to delete instrument");
+};
+
 export const fixArchiveQuotes = async (): Promise<{ updated: number }> => {
   const response = await fetchWithAuth(
     `${API_URL}/admin/patterns/fix-archive-quotes`,

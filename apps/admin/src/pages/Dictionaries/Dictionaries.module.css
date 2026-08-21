@@ -1,286 +1,205 @@
+/* Стили страницы справочников. Список, вкладки и кнопки визуально повторяют
+   DictionariesModal.module.css — та же сущность, просто на всю страницу.
+   Скопированы, а не вынесены в общий модуль: модалка ограничена шириной 520px
+   и живёт по своим размерам, а тут список во всю ширину страницы; общий файл
+   пришлось бы параметризовать ради двух мест. */
 .page {
   padding: 24px 32px;
 }
 
-.section {
-  margin-top: 24px;
-}
-
-.sectionHeader {
+.list {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.sectionTitle {
-  font-family: Mulish, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1D1C1C;
-  margin-bottom: 4px;
-}
-
-.sectionHint {
-  font-family: Mulish, sans-serif;
-  font-size: 13px;
-  color: #8e8e93;
-  margin-bottom: 16px;
-  max-width: 720px;
-  line-height: 1.4;
-}
-
-.triggerActions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.triggerBtn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 2px;
-  border: none;
-  background: var(--matcha, #A9AE36);
-  color: #fff;
-  font-family: Mulish, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.triggerBtn:disabled {
-  background: #D9D9D9;
-  cursor: default;
-}
-
-.triggerBtnSecondary {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 2px;
-  border: 1px solid #D9D9D9;
-  background: #fff;
-  color: #1D1C1C;
-  font-family: Mulish, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.triggerBtnSecondary:disabled {
-  color: #B8B8B8;
-  border-color: #EDEDED;
-  cursor: default;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .spinner {
-  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* === Author picker modal === */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0;
+}
 
-.pickerSearchWrapper {
+.tab,
+.tabActive {
+  padding: 8px 16px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: #6b7280;
+}
+
+.tabActive {
+  color: #83942C;
+  border-bottom-color: #83942C;
+  font-weight: 600;
+}
+
+.searchWrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 12px;
-  background: #F3F3F3;
-  border-radius: 2px;
   margin-bottom: 12px;
 }
 
-.pickerSearchIcon {
-  color: #9B9A9A;
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 36px;
+  padding: 0 32px 0 32px;
+  background: #F3F3F3;
+  border: none;
+  border-radius: 4px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1D1C1C;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
+}
+
+.searchClear {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 2px;
+}
+
+.searchClear:hover {
+  color: #6b7280;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-radius: 4px;
+}
+
+.item:hover {
+  background: #f9fafb;
+}
+
+.itemName {
+  flex: 1;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1D1C1C;
+}
+
+.itemCount {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
+.itemActions {
+  display: flex;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.pickerSearchInput {
+.editInput {
   flex: 1;
-  border: none;
-  background: transparent;
+  height: 34px;
+  padding: 0 10px;
+  background: #F3F3F3;
+  border: 1px solid #83942C;
+  border-radius: 4px;
   font-family: Mulish, sans-serif;
   font-size: 14px;
+  color: #1D1C1C;
   outline: none;
 }
 
-.pickerSelectAll {
+.iconBtnGreen,
+.iconBtnGray,
+.iconBtnRed {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-family: Mulish, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1D1C1C;
-  padding: 4px 0 8px;
-  cursor: pointer;
-  border-bottom: 1px solid #F3F3F3;
-  margin-bottom: 4px;
-}
-
-.pickerList {
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.pickerRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  font-family: Mulish, sans-serif;
-  font-size: 14px;
-  color: #1D1C1C;
-  cursor: pointer;
-}
-
-.pickerEmpty {
-  font-family: Mulish, sans-serif;
-  font-size: 13px;
-  color: #8e8e93;
-  padding: 12px 0;
-}
-
-.pickerFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #F3F3F3;
-}
-
-.pickerCount {
-  font-family: Mulish, sans-serif;
-  font-size: 13px;
-  color: #8e8e93;
-}
-
-.loading,
-.error,
-.empty {
-  font-family: Mulish, sans-serif;
-  font-size: 14px;
-  color: #8e8e93;
-}
-
-.error {
-  color: #D8540F;
-}
-
-.runCard {
-  border: 1px solid #F3F3F3;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  overflow: hidden;
-}
-
-.runHeader {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  background: #fff;
+  justify-content: center;
   border: none;
+  border-radius: 4px;
   cursor: pointer;
-  text-align: left;
+  transition: background 0.15s;
+}
+
+.iconBtnGreen {
+  background: #83942C;
+  color: #fff;
+}
+
+.iconBtnGreen:hover:not(:disabled) {
+  background: #6e7c24;
+}
+
+.iconBtnGray {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.iconBtnGray:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.iconBtnRed {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.iconBtnRed:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.iconBtnGreen:disabled,
+.iconBtnGray:disabled,
+.iconBtnRed:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: #9ca3af;
   font-family: Mulish, sans-serif;
-}
-
-.runHeader:disabled {
-  cursor: default;
-}
-
-.statusIcon {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.runTime {
   font-size: 14px;
-  font-weight: 600;
-  color: #1D1C1C;
-  flex-shrink: 0;
-  width: 110px;
 }
 
-.runStats {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-  font-size: 13px;
-  color: #8e8e93;
-}
-
-.errorCount {
-  color: #D8540F;
-  font-weight: 600;
-}
-
-.escalationBadge {
-  color: #D8540F;
-  font-weight: 600;
-}
-
-.runDetail {
-  padding: 16px;
-  background: #FAFAFA;
-  border-top: 1px solid #F3F3F3;
-}
-
-.detailSection {
-  margin-bottom: 16px;
-}
-
-.detailSection:last-child {
-  margin-bottom: 0;
-}
-
-.detailTitle {
-  font-family: Mulish, sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1D1C1C;
-  margin-bottom: 8px;
-}
-
-.detailTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: Mulish, sans-serif;
-  font-size: 13px;
-}
-
-.detailTable th {
-  text-align: left;
-  color: #8e8e93;
-  font-weight: 400;
-  padding: 6px 8px;
-  border-bottom: 1px solid #F3F3F3;
-}
-
-.detailTable td {
-  padding: 6px 8px;
-  border-bottom: 1px solid #F3F3F3;
-  color: #1D1C1C;
-}
-
-.detailTable a {
-  color: #83942C;
-}

@@ -28,6 +28,8 @@ import {
   getTags,
   updateTag,
   deleteTag,
+  updateInstrument,
+  deleteInstrument,
   getInstruments,
   getYarnRanges,
   getDraftsList,
@@ -167,6 +169,8 @@ router.patch("/categories/:id", updateCategory);
 router.delete("/categories/:id", deleteCategory);
 router.patch("/tags/:id", updateTag);
 router.delete("/tags/:id", deleteTag);
+router.patch("/instruments/:id", updateInstrument);
+router.delete("/instruments/:id", deleteInstrument);
 
 router.get("/whitelist", getWhitelist);
 router.post("/whitelist", createWhitelistEntry);

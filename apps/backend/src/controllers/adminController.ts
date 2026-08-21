@@ -959,9 +959,39 @@ export const deleteTag = async (req: Request, res: Response): Promise<void> => {
 
 export const getInstruments = async (req: Request, res: Response): Promise<void> => {
   try {
-    const instruments = await prisma.instrument.findMany({ orderBy: { name: 'asc' } });
-    res.json(instruments.map(i => ({ id: i.id, name: i.name })));
+    // patternsCount добавлен вместе со страницей "Справочники": там инструменты
+    // можно удалять, и без счётчика непонятно, сколько описаний зацепит
+    // удаление. Формат ответа теперь совпадает с getCategories/getTags.
+    const instruments = await prisma.instrument.findMany({
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { patterns: true } } },
+    });
+    res.json(instruments.map(i => ({ id: i.id, name: i.name, patternsCount: i._count.patterns })));
   } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const updateInstrument = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name?.trim()) { res.status(400).json({ error: "Name is required" }); return; }
+    const instrument = await prisma.instrument.update({ where: { id }, data: { name: name.trim() } });
+    res.json({ id: instrument.id, name: instrument.name });
+  } catch (error: any) {
+    if (error.code === 'P2025') { res.status(404).json({ error: "Instrument not found" }); return; }
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const deleteInstrument = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    await prisma.instrument.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === 'P2025') { res.status(404).json({ error: "Instrument not found" }); return; }
     res.status(500).json({ error: "Internal server error" });
   }
 };
