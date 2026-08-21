@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { submitPaywallImpression } from '../../api/paywallApi';
+import React, { useEffect, useRef, useState } from 'react';
+import { submitPaywallImpression, submitPaywallEvent, PaywallSource } from '../../api/paywallApi';
 import { createPayment } from '../../api/paymentsApi';
 import { openExternalLink } from '../../utils/telegram';
 import logo from '../../assets/paywall/rapport-logo.svg';
@@ -30,6 +30,9 @@ interface PaywallModalProps {
   // Только для варианта 'active' — дата в подзаголовке "до 20 сентября
   // 2026". ISO-строка из user_data (см. authController.ts).
   premiumExpiresAt?: string | null;
+  // Только для variant='paywall': автопоказ или кнопка у поиска. Для
+  // остальных вариантов источник выводится из самого варианта.
+  source?: PaywallSource;
 }
 
 interface VariantConfig {
@@ -49,29 +52,38 @@ const VARIANTS: Record<PaywallVariant, VariantConfig> = {
     title: '',
     showLogoHeader: true,
     showAdvantages: true,
-    ctaTitle: 'Месяц',
+    ctaTitle: 'Оформить подписку',
   },
   expiring_3_days: {
-    title: 'Ваша подписка истекает через 3 дня',
-    body: 'Чтобы не потерять доступ ко всем фичам, продлите подписку уже сейчас.',
+    title: 'Ваша Премиум-подписка истекает через 3 дня',
+    body: 'Чтобы не потерять доступ ко всем функциям, продлите подписку уже сейчас.',
     showLogoHeader: false,
     showAdvantages: false,
     ctaTitle: 'Продлить подписку',
   },
   expiring_1_day: {
-    title: 'Через 1 день ваш Премиум-доступ закончится',
+    title: 'Через 1 день ваша Премиум-подписка закончится',
     listHeading: 'Вы потеряете:',
     showLogoHeader: false,
     showAdvantages: true,
     ctaTitle: 'Продлить подписку',
   },
   active: {
-    title: 'Ваш Premium-доступ активен',
+    title: 'Ваша Премиум-подписка активна',
     body: 'Все функции открыты.',
     showLogoHeader: false,
     showAdvantages: false,
     ctaTitle: 'Продлить на месяц',
   },
+};
+
+// Вариант шторки однозначно задаёт источник для аналитики, кроме обычного
+// баннера: его можно открыть и автопоказом, и кнопкой у поиска, поэтому там
+// источник приходит пропом (PAYMENTS_ROBOKASSA_PLAN.md §10.3).
+const VARIANT_SOURCE: Record<Exclude<PaywallVariant, 'paywall'>, PaywallSource> = {
+  expiring_3_days: 'EXPIRING_3_DAYS',
+  expiring_1_day: 'EXPIRING_1_DAY',
+  active: 'ACTIVE',
 };
 
 interface Advantage {
@@ -97,24 +109,60 @@ function formatExpiryDate(iso: string): string {
 const ADVANTAGES: Advantage[] = [
   { image: discountTag, title: 'Тег «Скидка»', text: 'Фильтруйте описания с акциями. Экономьте на том, что и так планировали купить.' },
   { image: priceVisibility, title: 'Видимость цены', text: 'Стоимость описания теперь сразу на карточке. Без лишних действий.' },
-  { image: authorLink, title: 'Гиперссылка на автора', text: 'Переходите к другим работам мастера в один клик прямо со страницы описания.' },
+  { image: authorLink, title: 'Ссылка на автора', text: 'Переходите к другим работам мастера в один клик прямо со страницы описания.' },
   { image: priceSort, title: 'Сортировка по цене', text: 'Упорядочивайте модели — от дешёвых к дорогим или наоборот.' },
   { image: similarPatterns, title: 'Похожие модели', text: 'Рекомендации описаний со схожими характеристиками. Легко выбрать альтернативу.' },
-  { image: multiPhoto, title: 'Множественность фото', text: '5 фотографий вместо одной. Рассмотрите модель со всех сторон.' },
+  { image: multiPhoto, title: 'Серия фото', text: 'До 5 фотографий вместо одной. Рассмотрите модель со всех сторон.' },
   { image: priceFilter, title: 'Фильтр по цене', text: 'Отбирайте описания в нужном ценовом диапазоне.' },
   { image: favoritesFilters, title: 'Фильтры в Избранном', text: 'Находите нужное среди сохранёнок: по плотности, пряже, типу изделия.' },
   { image: yarnThicknessFilter, title: 'Фильтр по толщине пряжи', text: 'Подборка моделей под метраж вашей пряжи. Используйте то, что уже есть.' },
   { image: densityFilter, title: 'Фильтр по плотности', text: 'Находите описания, идеально подходящие под вашу плотность вязания. Никаких пересчётов.' },
 ];
 
-export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, variant = 'paywall', premiumExpiresAt }) => {
+export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, variant = 'paywall', premiumExpiresAt, source }) => {
   // Держит шторку в дереве на время выезда вниз и даёт класс для
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
   // мгновенно, до анимации закрытия.
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Долистывание засчитываем один раз за открытие: событие onScroll стреляет
+  // десятками, а воронке нужен факт "дочитал", а не сколько раз он проскроллил
+  // туда-обратно.
+  const scrolledToEndRef = useRef(false);
+
+  const eventSource: PaywallSource =
+    variant === 'paywall' ? (source ?? 'AUTO_BANNER') : VARIANT_SOURCE[variant];
+
+  // SHOWN пишется здесь, а не у вызывающего: шторка открывается из четырёх
+  // мест, и раскладывать одно и то же событие по всем точкам вызова —
+  // верный способ где-нибудь его забыть.
+  useEffect(() => {
+    if (!isOpen) return;
+    scrolledToEndRef.current = false;
+    submitPaywallEvent('SHOWN', eventSource);
+  }, [isOpen, eventSource]);
 
   if (!isMounted) return null;
+
+  const handleScroll = () => {
+    if (scrolledToEndRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // 24px допуска: на части устройств scrollTop не дотягивает до предела
+    // ровно на доли пикселя, и строгое равенство никогда бы не сработало.
+    if (el.scrollHeight - el.scrollTop - el.clientHeight <= 24) {
+      scrolledToEndRef.current = true;
+      submitPaywallEvent('SCROLLED_TO_END', eventSource);
+    }
+  };
+
+  // Закрытие — кнопкой и тапом по затемнению считаем одинаково, различать
+  // способ не просили (§10.2).
+  const handleClose = () => {
+    submitPaywallEvent('CLOSED', eventSource);
+    onClose();
+  };
 
   const config = VARIANTS[variant];
 
@@ -127,9 +175,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
   const handleSubscribeClick = async () => {
     if (isCreatingPayment) return;
     submitPaywallImpression(true);
+    submitPaywallEvent('SUBSCRIBE_CLICK', eventSource);
     setIsCreatingPayment(true);
     try {
-      const paymentUrl = await createPayment();
+      const paymentUrl = await createPayment(eventSource);
       if (new URL(paymentUrl).origin !== ROBOKASSA_ORIGIN) {
         throw new Error(`Unexpected payment URL origin: ${paymentUrl}`);
       }
@@ -143,9 +192,9 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
   };
 
   return (
-    <div ref={sheetRef} className={`paywall-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+    <div ref={sheetRef} className={`paywall-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={handleClose}>
       <div className="paywall-modal-content sheet-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="paywall-modal-scroll">
+        <div className="paywall-modal-scroll" ref={scrollRef} onScroll={handleScroll}>
           <div className="paywall-modal-header">
             {config.showLogoHeader ? (
               <>
@@ -199,7 +248,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
               {isCreatingPayment ? 'Открываем оплату…' : '69 ₽/мес.'}
             </span>
           </button>
-          <button type="button" className="paywall-close-btn" onClick={onClose}>
+          <button type="button" className="paywall-close-btn" onClick={handleClose}>
             Закрыть
           </button>
         </div>

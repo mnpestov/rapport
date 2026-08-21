@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { getDashboardStats, DashboardResponse, TopPatternItem, TopAuthorItem, TopSearchQueryItem, Period } from "../../api/dashboard";
+import { getDashboardStats, getPaywallStats, DashboardResponse, PaywallStatsResponse, TopPatternItem, TopAuthorItem, TopSearchQueryItem, Period } from "../../api/dashboard";
+import { PaywallFunnel } from "./PaywallFunnel";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
 import styles from "./Dashboard.module.css";
@@ -165,6 +166,10 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>("all");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null);
+  // Воронка грузится отдельным запросом от основной статистики: она
+  // независима, и её ошибка не должна прятать весь дашборд — виджет просто
+  // не отрисуется.
+  const [paywallStats, setPaywallStats] = useState<PaywallStatsResponse | null>(null);
 
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -186,6 +191,10 @@ export function Dashboard() {
       .then((res) => { if (isMounted) { setData(res); setError(null); } })
       .catch((err) => { if (isMounted) setError(err.message ?? "Ошибка загрузки"); })
       .finally(() => { if (isMounted) { setLoading(false); setIsRefreshing(false); } });
+
+    getPaywallStats(params)
+      .then((res) => { if (isMounted) setPaywallStats(res); })
+      .catch((err) => console.error("Не удалось загрузить воронку подписки:", err));
 
     return () => { isMounted = false; };
   }, [period, appliedRange]);
@@ -281,6 +290,11 @@ export function Dashboard() {
         <StatCard label="Переходов на подписку" value={stats.totalSubscribeClicks} />
         <StatCard label="Добавлений в избранное" value={stats.totalFavorites} />
       </div>
+
+      {/* Воронка подписки — PAYMENTS_ROBOKASSA_PLAN.md §10. Не рисуется,
+          пока данные не пришли: пустой виджет с нулями выглядел бы как
+          "конверсия ноль", хотя на деле запрос ещё не завершился. */}
+      {paywallStats && <PaywallFunnel stats={paywallStats} />}
 
       {/* Top tables */}
       <div className={styles.topGrid}>

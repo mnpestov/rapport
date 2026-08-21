@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked } from "lucide-react";
+import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -116,6 +116,16 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
             >
               <BookUser size={24} strokeWidth={1} className={styles.icon} />
               <span className={styles.label}>Пользователи</span>
+            </NavLink>
+
+            <NavLink
+              to="/payments"
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <ReceiptText size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Счета</span>
             </NavLink>
 
             <NavLink

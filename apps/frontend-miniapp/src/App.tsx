@@ -13,7 +13,7 @@ import { LoadError } from './pages/LoadError/LoadError';
 import { PaymentSuccess } from './pages/PaymentSuccess/PaymentSuccess';
 import { PaymentFail } from './pages/PaymentFail/PaymentFail';
 import { PaywallModal, PaywallVariant } from './components/PaywallModal/PaywallModal';
-import { submitPaywallImpression } from './api/paywallApi';
+import { submitPaywallImpression, PaywallSource } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -36,6 +36,9 @@ function App() {
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>('paywall');
   const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
+  // Различает автопоказ и открытие кнопкой — для варианта 'paywall' по
+  // самому варианту источник не определить (PAYMENTS_ROBOKASSA_PLAN.md §10.3).
+  const [paywallSource, setPaywallSource] = useState<PaywallSource>('AUTO_BANNER');
 
   useEffect(() => {
     // Result-страницы после оплаты (Robokassa Success/Fail URL) открываются в
@@ -244,6 +247,7 @@ function App() {
     if (!subscriptionWarning && !showPaywallBanner) return;
 
     if (!import.meta.env.DEV) sessionStorage.setItem("paywall_shown_session", "true");
+    setPaywallSource("AUTO_BANNER");
     setPaywallVariant(subscriptionWarning ?? "paywall");
     setIsPaywallOpen(true);
     // Аналитика показов — только про сам баннер (PAYWALL_BANNER_PLAN.md §7),
@@ -269,6 +273,7 @@ function App() {
         hasPaidTier = false;
       }
       setPremiumExpiresAt(expiresAt);
+      setPaywallSource("SEARCH_BUTTON");
       setPaywallVariant(hasPaidTier ? "active" : "paywall");
       setIsPaywallOpen(true);
     };
@@ -319,6 +324,7 @@ function App() {
         isOpen={isPaywallOpen}
         variant={paywallVariant}
         premiumExpiresAt={premiumExpiresAt}
+        source={paywallSource}
         onClose={() => setIsPaywallOpen(false)}
       />
     </>

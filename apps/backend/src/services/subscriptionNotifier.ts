@@ -51,7 +51,7 @@ function formatDate(date: Date): string {
 /** За 3 дня до истечения — предупреждение, пока доступ ещё работает. */
 export async function sendExpiryReminder(telegramId: bigint, premiumExpiresAt: Date): Promise<boolean> {
   const text =
-    `Подписка Rapport заканчивается ${formatDate(premiumExpiresAt)}.\n\n` +
+    `Ваша Премиум-подписка заканчивается ${formatDate(premiumExpiresAt)}.\n\n` +
     `Чтобы расширенные функции продолжили работать, продлите её в приложении — ` +
     `оплаченные дни не сгорают, новый месяц добавится к текущему сроку.`;
   return sendViaGateway(telegramId, text, "SubscriptionReminder");
@@ -60,7 +60,7 @@ export async function sendExpiryReminder(telegramId: bigint, premiumExpiresAt: D
 /** В момент фактического отключения — уже после снятия разрешений. */
 export async function sendExpiredNotice(telegramId: bigint): Promise<boolean> {
   const text =
-    `Подписка Rapport закончилась — расширенные функции отключены.\n\n` +
+    `Ваша Премиум-подписка закончилась — расширенные функции отключены.\n\n` +
     `Каталог, поиск и Избранное остаются доступны как раньше. ` +
     `Возобновить расширенный доступ можно в любой момент в приложении.`;
   return sendViaGateway(telegramId, text, "SubscriptionExpired");

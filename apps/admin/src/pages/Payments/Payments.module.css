@@ -1,0 +1,221 @@
+/* Страница счетов. Таблица и типографика следуют остальным спискам
+   админки (Users/Patterns), чтобы не выбиваться. */
+.page {
+  padding: 24px 32px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.filters {
+  display: flex;
+  gap: 4px;
+}
+
+.filter,
+.filterActive {
+  padding: 6px 14px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: #fff;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+  cursor: pointer;
+}
+
+.filterActive {
+  border-color: #83942C;
+  color: #83942C;
+  font-weight: 600;
+}
+
+.sum {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.sum strong {
+  color: #1D1C1C;
+  font-size: 15px;
+}
+
+/* Горизонтальная прокрутка внутри своего контейнера — колонок много, и на
+   узком окне страница не должна разъезжаться целиком. */
+.tableWrapper {
+  overflow-x: auto;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid #E5E7EB;
+  font-weight: 600;
+  color: #6B7280;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #F3F4F6;
+  color: #1D1C1C;
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.invId {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.userName {
+  font-weight: 600;
+}
+
+.userMeta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.amount {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.date,
+.source {
+  white-space: nowrap;
+  color: #6B7280;
+}
+
+.muted {
+  color: #D1D5DB;
+}
+
+/* Оплачен, но чек не ушёл — не ошибка оплаты, но повод посмотреть. */
+.warn {
+  color: #D8520F;
+}
+
+.badgePaid,
+.badgePending {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgePaid {
+  background: #ECFDF5;
+  color: #047857;
+}
+
+.badgePending {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.checkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: #fff;
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #1D1C1C;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.checkBtn:hover:not(:disabled) {
+  border-color: #83942C;
+  color: #83942C;
+}
+
+.checkBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.pageBtn {
+  padding: 6px 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: #fff;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pageInfo {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  color: #9CA3AF;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+}
+
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 16px;
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #9CA3AF;
+  line-height: 1.5;
+}
+
+.spinner {
+  display: inline-block;
+  vertical-align: middle;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

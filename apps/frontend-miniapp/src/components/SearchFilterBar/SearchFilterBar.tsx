@@ -3,6 +3,7 @@ import { Search, X, Heart, SlidersHorizontal, ArrowDownUp } from 'lucide-react';
 import { CustomX } from '../Icons/Icons';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { SubscriptionButton } from '../SubscriptionButton/SubscriptionButton';
+import { submitPaywallEvent } from '../../api/paywallApi';
 import './SearchFilterBar.css';
 
 interface SearchFilterBarProps {
@@ -109,7 +110,10 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
         {paywallUiEnabled && (
           <SubscriptionButton
             isActive={extra}
-            onClick={() => window.dispatchEvent(new CustomEvent('paywall:open'))}
+            onClick={() => {
+              submitPaywallEvent('BUTTON_OPENED', 'SEARCH_BUTTON');
+              window.dispatchEvent(new CustomEvent('paywall:open'));
+            }}
           />
         )}
         {showFavoritesButton && (

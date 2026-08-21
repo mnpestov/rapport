@@ -1,0 +1,158 @@
+/* Виджет воронки подписки. Рамки и типографика повторяют .topCard/.statCard
+   из Dashboard.module.css, чтобы блок не выбивался из остальной страницы. */
+.wrapper {
+  margin-top: 24px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 28px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.title {
+  font-family: 'Mulish', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.subtitle {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.funnels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 900px) {
+  .funnels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.funnel {
+  padding: 20px 28px 24px;
+  border-right: 1px solid #E5E7EB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.funnel:last-child {
+  border-right: none;
+}
+
+.funnelTitle {
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.funnelHint {
+  margin-top: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.steps {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stepHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stepLabel {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.stepValue {
+  font-family: 'Mulish', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.barTrack {
+  margin-top: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: #F3F4F6;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #83942C;
+  transition: width 0.3s ease;
+}
+
+.stepShare {
+  margin-top: 4px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.eventsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 900px) {
+  .eventsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.eventCard {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid #E5E7EB;
+}
+
+.eventCard:last-child {
+  border-right: none;
+}
+
+.eventValue {
+  font-family: 'Mulish', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.eventLabel {
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.note {
+  padding: 12px 28px 16px;
+  border-top: 1px solid #E5E7EB;
+  font-family: 'Mulish', sans-serif;
+  font-size: 12px;
+  color: #9CA3AF;
+}

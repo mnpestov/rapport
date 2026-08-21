@@ -25,3 +25,46 @@ export const submitPaywallImpression = async (clicked?: boolean): Promise<void> 
     console.error("[Paywall] Network error recording impression:", error);
   }
 };
+
+// Значения обязаны совпадать с enum-ами PaywallEventType/PaywallSource в
+// schema.prisma — бэкенд отвергает всё, чего нет в enum, чтобы мусор не
+// попал в выборку и не исказил отчёт.
+export type PaywallEventType =
+  | "SHOWN"
+  | "SCROLLED_TO_END"
+  | "SUBSCRIBE_CLICK"
+  | "CLOSED"
+  | "BUTTON_OPENED";
+
+export type PaywallSource =
+  | "AUTO_BANNER"
+  | "SEARCH_BUTTON"
+  | "EXPIRING_3_DAYS"
+  | "EXPIRING_1_DAY"
+  | "ACTIVE";
+
+// Отдельно от submitPaywallImpression намеренно: тот пишет функциональное
+// поле, на котором висит 7-дневный кулдаун показа, а это — append-only лог
+// для воронки. Смешивать нельзя, иначе чистка статистики сломала бы логику
+// показа (PAYMENTS_ROBOKASSA_PLAN.md §10.1).
+export const submitPaywallEvent = async (
+  type: PaywallEventType,
+  source: PaywallSource
+): Promise<void> => {
+  try {
+    await fetchWithTimeout(
+      `${API_URL}/analytics/paywall-event`,
+      {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ type, source }),
+      },
+      5000
+    );
+  } catch (error) {
+    // Осознанно молча: часть событий будет теряться (сеть, закрытие
+    // приложения), и верх воронки systematically занижен — это заложено в
+    // §10.6. Ронять из-за аналитики ничего нельзя.
+    console.error("[Paywall] Network error recording event:", error);
+  }
+};

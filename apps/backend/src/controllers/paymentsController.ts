@@ -1,12 +1,12 @@
 import crypto from "crypto";
 import { Request, Response } from "express";
-import { Permission } from "@prisma/client";
+import { PaywallSource } from "@prisma/client";
 import { prisma } from "../prismaClient";
-import { sendPaymentReceipt } from "../services/paymentReceiptSender";
+import { completePayment } from "../services/paymentCompletion";
+import { sendPaymentAlert } from "../services/paymentAlerts";
 
 const SUBSCRIPTION_PRICE_RUB = 69;
 const SUBSCRIPTION_DESCRIPTION = "Подписка Rapport, 1 месяц";
-const SUBSCRIPTION_PERIOD_DAYS = 30;
 const ROBOKASSA_PAYMENT_URL = "https://auth.robokassa.ru/Merchant/Index.aspx";
 
 // Всегда передаём Receipt, даже если для самозанятых через "Робочеки СМЗ"
@@ -30,6 +30,15 @@ function buildReceiptJson(): string {
 // (см. PAYMENTS_ROBOKASSA_PLAN.md §7, шаг 2).
 export const createPayment = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
+  // Откуда пользователь пришёл к оплате — приходит от фронта вместе с
+  // вариантом открытой шторки. Задним числом источник не восстановить
+  // (§10.3), поэтому пишем сразу; невалидное/отсутствующее значение просто
+  // не сохраняем, а не роняем оплату из-за аналитики.
+  const rawSource = req.body?.source;
+  const source =
+    typeof rawSource === "string" && (Object.values(PaywallSource) as string[]).includes(rawSource)
+      ? (rawSource as PaywallSource)
+      : null;
 
   const merchantLogin = process.env.ROBOKASSA_MERCHANT_LOGIN;
   // Тестовый и боевой контуры Robokassa проверяют подпись по разным парам
@@ -52,6 +61,7 @@ export const createPayment = async (req: Request, res: Response): Promise<void> 
         userId,
         amount: SUBSCRIPTION_PRICE_RUB,
         status: "PENDING",
+        source,
       },
     });
 
@@ -138,6 +148,15 @@ export const handleRobokassaResult = async (req: Request, res: Response): Promis
       `[Payments] Result URL: signature mismatch for InvId=${InvId}. ` +
         `Someone forged the request, or Password#2 is wrong.`
     );
+    // Самый опасный из сигналов: если разъехались пароли, Robokassa
+    // принимает деньги, а мы отвергаем все уведомления и никому не выдаём
+    // доступ. Молча в лог такое писать нельзя (§10.5).
+    void sendPaymentAlert(
+      "result-signature-mismatch",
+      `Result URL отверг уведомление по InvId=${InvId}: не сошлась подпись.\n\n` +
+        `Либо кто-то подделал запрос, либо Пароль#2 в .env разошёлся с личным кабинетом. ` +
+        `Во втором случае оплаты проходят у Robokassa, но доступ не выдаётся.`
+    );
     res.status(400).send("Invalid signature");
     return;
   }
@@ -179,77 +198,13 @@ export const handleRobokassaResult = async (req: Request, res: Response): Promis
       return;
     }
 
-    const now = new Date();
-    const user = payment.user;
-
-    // Гонка (найдена ревью перед деплоем): два разных платежа одного
-    // пользователя (два InvId), Result URL по ним приходит почти
-    // одновременно — оба запроса читали бы один и тот же старый
-    // premiumExpiresAt до того, как первый закоммитит запись, и оба
-    // писали бы один и тот же newExpiresAt (lost update — заплачено дважды,
-    // выдан один период). Закрыто в два слоя внутри одной интерактивной
-    // транзакции:
-    // 1) updateMany с WHERE status='PENDING' на Payment — атомарный
-    //    conditional update; если строка уже обработана параллельным
-    //    запросом (или повторной доставкой от Robokassa), count будет 0, и
-    //    мы просто идемпотентно выходим, не трогая User/разрешения.
-    // 2) SELECT ... FOR UPDATE на строку User — берёт блокировку строки на
-    //    время транзакции, так что счёт от старого premiumExpiresAt
-    //    выполняется строго последовательно между параллельными платежами
-    //    одного пользователя, а не оба от одного и того же снимка.
-    let newExpiresAt: Date | null = null;
-
-    await prisma.$transaction(async (tx) => {
-      const claimed = await tx.payment.updateMany({
-        where: { id: payment.id, status: "PENDING" },
-        data: { status: "PAID", paidAt: now },
-      });
-      if (claimed.count === 0) {
-        console.log(`[Payments] Result URL: InvId=${invId} already claimed by a concurrent request — no-op.`);
-        return;
-      }
-
-      const locked = await tx.$queryRaw<{ premiumExpiresAt: Date | null }[]>`
-        SELECT "premiumExpiresAt" FROM "User" WHERE id = ${user.id} FOR UPDATE
-      `;
-      const lockedExpiresAt = locked[0]?.premiumExpiresAt ?? null;
-      // Продление "с запасом" (открытый вопрос §8.1) — решено: если у
-      // пользователя ещё есть неистёкший период, новые 30 дней добавляются
-      // поверх него, а не поверх now(), чтобы досрочная оплата не отнимала
-      // уже оплаченные дни.
-      const basis = lockedExpiresAt && lockedExpiresAt > now ? lockedExpiresAt : now;
-      newExpiresAt = new Date(basis.getTime() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: {
-          premiumExpiresAt: newExpiresAt,
-          // Новый оплаченный период — снова имеет право на своё
-          // напоминание за 3 дня (см. checkSubscriptions.ts).
-          premiumReminderSentAt: null,
-        },
-      });
-      await tx.userPermission.upsert({
-        where: { userId_permission: { userId: user.id, permission: Permission.PREMIUM_CORE } },
-        create: { userId: user.id, permission: Permission.PREMIUM_CORE },
-        update: {},
-      });
-      await tx.userPermission.upsert({
-        where: { userId_permission: { userId: user.id, permission: Permission.PREMIUM_EXTRA } },
-        create: { userId: user.id, permission: Permission.PREMIUM_EXTRA },
-        update: {},
-      });
-    });
-
-    if (newExpiresAt) {
-      sendPaymentReceipt(user.telegramId, outSumNumber, newExpiresAt)
-        .then((delivered) => {
-          if (delivered) {
-            return prisma.payment.update({ where: { id: payment.id }, data: { receiptSentAt: new Date() } });
-          }
-          console.error(`[Payments] Receipt not delivered for InvId=${invId} — receiptSentAt left null.`);
-        })
-        .catch((err) => console.error(`[Payments] Failed to send receipt for InvId=${invId}:`, err));
+    // Выдача доступа живёт в completePayment (services/paymentCompletion.ts),
+    // а не здесь: ровно ту же функцию вызывает сверка с Robokassa
+    // (scripts/reconcilePayments.ts) для платежей, по которым уведомление
+    // до нас не дошло. Две копии этой логики со временем разошлись бы.
+    const result = await completePayment(payment, outSumNumber);
+    if (result.outcome === "already_paid") {
+      console.log(`[Payments] Result URL: InvId=${invId} already claimed by a concurrent request — no-op.`);
     }
 
     res.status(200).send(`OK${invId}`);

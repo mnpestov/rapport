@@ -174,6 +174,13 @@ export const telegramAuth = async (req: Request, res: Response) => {
     // все три поверхности принципиально: разъехавшись, они дали бы
     // состояние вроде "кнопка есть, а оплатить по ней нельзя".
     const paywallUiEnabled = paywallPubliclyLaunched || isAdmin;
+    // ALLOW_DEV_AUTH включает и mock-авторизацию, и обход 7-дневного
+    // кулдауна баннера — удобно, пока над баннером работают, но мешает
+    // посмотреть на приложение глазами обычного пользователя: баннер
+    // вылезает на каждой перезагрузке. Разделено: DEV_PAYWALL_COOLDOWN=true
+    // возвращает локально настоящий кулдаун, не трогая mock-авторизацию.
+    // На прод не влияет — там allowDevAuth всегда false, и обхода нет.
+    const skipPaywallCooldown = allowDevAuth && process.env.DEV_PAYWALL_COOLDOWN !== "true";
     const showPaywallBanner =
       paywallUiEnabled &&
       effectiveIsSubscriber &&
@@ -186,10 +193,9 @@ export const telegramAuth = async (req: Request, res: Response) => {
       // убран: посмотреть любую шторку можно кнопкой подписки в строке
       // поиска, не подменяя смысл автопоказа.
       !hasExtra &&
-      // allowDevAuth (ALLOW_DEV_AUTH=true, local-only — see the mock_dev
-      // branch above) skips the 7-day cooldown entirely, так что локально
-      // баннер открывается на каждый вход, пока над ним работают. В проде
-      // всегда действует настоящий кулдаун — в том числе для админа.
+      // Локально кулдаун по умолчанию не действует (см. skipPaywallCooldown
+      // выше) — баннер открывается на каждый вход, пока над ним работают.
+      // В проде всегда действует настоящий, в том числе для админа.
       //
       // Раньше здесь стоял ещё и обход `isAdmin ||`: на шагах 6/8 нужно
       // было многократно прогонять оплату на проде, а одного показа
@@ -197,7 +203,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
       // закрыл баннер на неделю. Убран после завершения тестирования —
       // открыть шторку вручную теперь можно кнопкой подписки в строке
       // поиска, ради чего ломать частоту показа больше незачем.
-      (allowDevAuth ||
+      (skipPaywallCooldown ||
         userRecord.lastPaywallShownAt === null ||
         Date.now() - userRecord.lastPaywallShownAt.getTime() >= 7 * 24 * 60 * 60 * 1000);
 

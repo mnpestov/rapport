@@ -128,6 +128,30 @@ enum Permission {
   PREMIUM_DETAILS
 }
 
+// Что именно произошло с баннером подписки. Append-only лог событий, из
+// которого строится воронка (PAYMENTS_ROBOKASSA_PLAN.md §10).
+// Хранить это в User.lastPaywallShownAt нельзя: то поле перезаписывается и
+// на нём висит функциональный 7-дневный кулдаун показа.
+enum PaywallEventType {
+  SHOWN            // баннер открылся
+  SCROLLED_TO_END  // долистал список функций до конца
+  SUBSCRIBE_CLICK  // нажал "Оформить подписку" / "Продлить"
+  CLOSED           // закрыл — кнопкой или тапом по затемнению, не различаем
+  BUTTON_OPENED    // открыл шторку кнопкой в строке поиска
+}
+
+// Откуда открылась шторка. Нужен и на событии, и на Payment: без источника
+// нельзя ответить, окупается ли кнопка у поиска и работают ли напоминания.
+// Задним числом не восстанавливается — единственная часть аналитики,
+// которую нельзя отложить (§10.3, §10.7).
+enum PaywallSource {
+  AUTO_BANNER      // автопоказ при входе
+  SEARCH_BUTTON    // кнопка подписки в строке поиска
+  EXPIRING_3_DAYS  // предупреждение "истекает через 3 дня"
+  EXPIRING_1_DAY   // предупреждение "через 1 день"
+  ACTIVE           // шторка "подписка активна" (продление из неё)
+}
+
 enum PaymentStatus {
   PENDING
   PAID
@@ -175,6 +199,7 @@ model User {
   subscribeClicks   SubscribeClick[]
   searchQueries     SearchQuery[]
   payments          Payment[]
+  paywallEvents     PaywallEvent[]
 
   authorId      String?          @unique
   author        Author?          @relation("UserAuthor", fields: [authorId], references: [id])
@@ -497,6 +522,32 @@ model Payment {
   // Set once the Robokassa-generated receipt has been sent to the user's
   // bot chat, so a Result URL retry doesn't send it twice.
   receiptSentAt DateTime?
+  // Откуда пользователь пришёл к оплате. Nullable: платежи, созданные до
+  // появления аналитики, источника не знают, и задним числом его не
+  // вычислить. Заполняется при создании платежа из того, какая шторка была
+  // открыта.
+  source        PaywallSource?
 
+  @@index([userId])
+  // Для воронки и статистики продлений: выборки всегда по периоду
+  // (createdAt/paidAt) — см. §10.
+  @@index([status, paidAt])
+}
+
+// Append-only лог событий баннера подписки — по образцу PatternView/
+// SearchQuery. Одна строка на событие; воронка считается по УНИКАЛЬНЫМ
+// пользователям за период, а не по числу строк: один человек видит баннер
+// ~4 раза в месяц, и смешение оснований занизило бы конверсию (§10.2).
+model PaywallEvent {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      PaywallEventType
+  source    PaywallSource
+  createdAt DateTime         @default(now())
+
+  // Воронка группирует по (type, source) в границах периода — этим
+  // индексом и читается.
+  @@index([createdAt, type, source])
   @@index([userId])
 }
