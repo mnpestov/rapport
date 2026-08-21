@@ -88,6 +88,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
       languageCode: true,
       isPremium: true,
       role: true,
+      excludeFromStats: true,
       authorId: true,
       author: { select: { id: true, name: true } },
       permissions: { select: { permission: true } },
@@ -115,7 +116,11 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { role, authorId } = req.body as { role?: UserRole; authorId?: string | null };
+  const { role, authorId, excludeFromStats } = req.body as {
+    role?: UserRole;
+    authorId?: string | null;
+    excludeFromStats?: boolean;
+  };
 
   if (role !== undefined && !Object.values(UserRole).includes(role)) {
     res.status(400).json({ error: "Invalid role" });
@@ -134,6 +139,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         data: {
           ...(role !== undefined ? { role } : {}),
           ...(authorId !== undefined ? { authorId: authorId ?? null } : {}),
+          ...(typeof excludeFromStats === "boolean" ? { excludeFromStats } : {}),
         },
       });
 

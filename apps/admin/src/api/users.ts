@@ -24,6 +24,10 @@ export interface AdminUser {
 
 export interface AdminUserDetail extends AdminUser {
   permissions: string[];
+  // Исключён ли из статистики воронки подписки — свои и тестовые аккаунты
+  // заметно искажают конверсию на малых числах. На основную статистику
+  // дашборда флаг не влияет.
+  excludeFromStats: boolean;
 }
 
 export interface UsersResponse {
@@ -60,7 +64,7 @@ export const getUserById = async (id: string): Promise<AdminUserDetail> => {
 
 export const updateUser = async (
   id: string,
-  data: { role?: UserRole; authorId?: string | null }
+  data: { role?: UserRole; authorId?: string | null; excludeFromStats?: boolean }
 ): Promise<{ success: boolean }> => {
   const res = await fetchWithAuth(`${API_URL}/admin/users/${id}`, {
     method: 'PATCH',

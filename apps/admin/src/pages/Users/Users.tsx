@@ -62,6 +62,7 @@ function PermissionsSection({
   const [premiumCore, setPremiumCore] = useState(user.permissions.includes("PREMIUM_CORE"));
   const [premiumDetails, setPremiumDetails] = useState(user.permissions.includes("PREMIUM_DETAILS"));
   const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
+  const [excludeFromStats, setExcludeFromStats] = useState(user.excludeFromStats);
   const [authorId, setAuthorId] = useState<string | null>(user.authorId);
   const [authorName, setAuthorName] = useState<string>(user.author?.name ?? "");
   const [authorSearch, setAuthorSearch] = useState(user.author?.name ?? "");
@@ -105,6 +106,7 @@ function PermissionsSection({
       await updateUser(user.id, {
         role,
         authorId: role === "AUTHOR" ? authorId : null,
+        excludeFromStats,
       });
       await syncPermission(user.id, "PREMIUM_CORE", premiumCore, user.permissions.includes("PREMIUM_CORE"));
       await syncPermission(user.id, "PREMIUM_DETAILS", premiumDetails, user.permissions.includes("PREMIUM_DETAILS"));
@@ -121,7 +123,8 @@ function PermissionsSection({
   const isDirty = role !== user.role || authorId !== user.authorId
     || premiumCore !== user.permissions.includes("PREMIUM_CORE")
     || premiumDetails !== user.permissions.includes("PREMIUM_DETAILS")
-    || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA");
+    || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA")
+    || excludeFromStats !== user.excludeFromStats;
 
   return (
     <div className={styles.permissionsSection}>
@@ -151,6 +154,14 @@ function PermissionsSection({
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Максимальный</span>
         <ToggleSwitch checked={premiumExtra} onChange={setPremiumExtra} />
+      </div>
+
+      {/* Не разрешение, а отметка "это наш/тестовый аккаунт" — влияет
+          только на воронку подписки, доступа не меняет. Стоит в этом же
+          блоке, потому что редактируется там же, где роль. */}
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Не учитывать в статистике</span>
+        <ToggleSwitch checked={excludeFromStats} onChange={setExcludeFromStats} />
       </div>
 
       {role === "AUTHOR" && (

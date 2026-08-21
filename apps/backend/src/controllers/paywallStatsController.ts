@@ -22,6 +22,12 @@ function parsePeriod(req: Request): { from?: Date; to?: Date } {
   return { from };
 }
 
+// Свои и тестовые аккаунты не должны попадать в воронку — иначе на малых
+// числах они заметно искажают конверсию. Фильтр применяется В КАЖДОМ
+// запросе этого файла: пропусти его в одном месте, и виджет разойдётся со
+// своей же детализацией. Влияет только на воронку, не на дашборд.
+const EXCLUDE_TEST_USERS = { user: { excludeFromStats: false } };
+
 // Считаем УНИКАЛЬНЫХ пользователей, а не события: один человек видит баннер
 // ~4 раза в месяц, и если верх воронки мерить показами, а низ — людьми,
 // конверсия окажется занижена в разы (§10.2). distinct на userId.
@@ -33,6 +39,7 @@ async function countUniqueUsers(
   const rows = await prisma.paywallEvent.findMany({
     where: {
       type,
+      ...EXCLUDE_TEST_USERS,
       ...(sources ? { source: { in: sources } } : {}),
       ...(range.from || range.to
         ? { createdAt: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
@@ -61,6 +68,7 @@ async function countPayingUsers(
   const rows = await prisma.payment.findMany({
     where: {
       status: "PAID",
+      ...EXCLUDE_TEST_USERS,
       source: { in: sources },
       ...(range.from || range.to
         ? { paidAt: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
@@ -111,6 +119,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       prisma.payment.count({
         where: {
           status: "PAID",
+          ...EXCLUDE_TEST_USERS,
           source: null,
           ...(range.from || range.to
             ? { paidAt: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } }
@@ -161,6 +170,7 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
     if (metric === "PAID") {
       const where = {
         status: "PAID" as const,
+        ...EXCLUDE_TEST_USERS,
         ...(sources ? { source: { in: sources } } : {}),
         ...(createdAtFilter ? { paidAt: createdAtFilter } : {}),
       };
@@ -201,6 +211,7 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
 
     const where = {
       type: metric as PaywallEventType,
+      ...EXCLUDE_TEST_USERS,
       ...(sources ? { source: { in: sources } } : {}),
       ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     };

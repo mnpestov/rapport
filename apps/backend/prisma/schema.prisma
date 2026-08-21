@@ -179,6 +179,16 @@ model User {
   lastPaywallShownAt   DateTime?
   lastPaywallClickedAt DateTime?
 
+  // Свои и тестовые аккаунты, которых не должно быть в статистике воронки
+  // подписки (PAYMENTS_ROBOKASSA_PLAN.md §10). Отдельный флаг, а не роль:
+  // "кто управляет системой" и "чья активность — тестовый шум" — разные
+  // вещи, и помечать тестировщика не должно означать выдачу ему прав
+  // админа. Переключается в карточке пользователя в админке.
+  //
+  // Сейчас влияет только на воронку подписки: основная статистика
+  // дашборда (просмотры, переходы, топы) флаг не учитывает.
+  excludeFromStats Boolean @default(false)
+
   // Paid subscription (Robokassa) — see PAYMENTS_ROBOKASSA_PLAN.md §5.2.
   // Denormalized the same way as Pattern.imageUrl: the only reader is the
   // daily reminder/revoke cron job. Access itself is still decided purely
