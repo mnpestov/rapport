@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { useFavorites } from '../../context/FavoritesContext';
+import { ImageWithRetry } from '../ImageWithRetry/ImageWithRetry';
 import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
 import './PatternCard.css';
 
@@ -63,7 +64,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ id, title, primaryProd
   return (
     <div className="pattern-card" onClick={handleCardClick}>
       <div className="pattern-card-image-container">
-        <img
+        <ImageWithRetry
           src={thumbnailUrl}
           alt={title}
           className="pattern-card-image"

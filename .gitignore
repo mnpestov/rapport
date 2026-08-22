@@ -77,6 +77,8 @@ apps/backend/uploads/
 pattern_table.html
 yarn_report.html
 yarn_analytics.json
+patterns_with_details_enriched*.json
+questionable_patterns.json
 implementation_plan*.md
 walkthrough.md
 
@@ -117,4 +119,6 @@ privacy_policy_410116038191.docx
 
 # Working plan draft, not meant to be tracked.
 PAYWALL_BANNER_PLAN.md
+BACKLOG.md
+SECURITY_FIXES_PLAN.md
 

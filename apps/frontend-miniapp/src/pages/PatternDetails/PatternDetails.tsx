@@ -7,6 +7,7 @@ import { useFavorites } from '../../context/FavoritesContext';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
+import { ImageWithRetry } from '../../components/ImageWithRetry/ImageWithRetry';
 import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
 import { openExternalLink } from '../../utils/telegram';
 import { Footer } from '../../components/Footer/Footer';
@@ -21,13 +22,13 @@ const formatDecimal = (value: string): string => {
 };
 
 // Swipeable gallery — plain CSS scroll-snap, no carousel library. Single
-// image falls back to a static <img> (no track/dots overhead).
+// image renders on its own (no track/dots overhead).
 const ImageCarousel: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   if (images.length <= 1) {
-    return <img src={images[0]} alt={alt} className="details-image" />;
+    return <ImageWithRetry src={images[0]} alt={alt} className="details-image" />;
   }
 
   const handleScroll = () => {
@@ -46,7 +47,18 @@ const ImageCarousel: React.FC<{ images: string[]; alt: string }> = ({ images, al
     <>
       <div className="details-image-track" ref={trackRef} onScroll={handleScroll}>
         {images.map((src, index) => (
-          <img key={index} src={src} alt={`${alt} ${index + 1}`} className="details-image-slide" />
+          <ImageWithRetry
+            key={index}
+            src={src}
+            alt={`${alt} ${index + 1}`}
+            className="details-image-slide"
+            // 70% of patterns carry 5 full-size photos (~1.1 MB together) and
+            // every slide used to start at once, competing with the one the
+            // reader actually looks at. Only the visible slide and its
+            // neighbour load up front; the rest wait until swiped near.
+            loading={index <= 1 ? 'eager' : 'lazy'}
+            decoding="async"
+          />
         ))}
       </div>
       <div className="details-image-dots">
