@@ -79,6 +79,17 @@
   font-weight: 500;
 }
 
+.filter-section-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.filter-section-chevron--expanded {
+  transform: rotate(180deg);
+}
+
 .filter-section-body {
   display: flex;
   flex-direction: column;

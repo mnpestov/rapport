@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
-import { CustomSquareUncheck, CustomSquareCheck, CustomChevronDown, CustomChevronUp } from '../Icons/Icons';
+import { CustomSquareUncheck, CustomSquareCheck, CustomChevronDown } from '../Icons/Icons';
 import { fetchFilters, FiltersResponse, FilterOption } from '../../api/patternsApi';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
@@ -156,7 +156,12 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
         onClick={() => setIsPriceExpanded(v => !v)}
       >
         <span className="filter-section-title">Цена</span>
-        {isPriceExpanded ? <CustomChevronDown size={32} /> : <CustomChevronUp size={32} />}
+        {/* Одна и та же стрелка вниз, повёрнутая на 180° в раскрытом
+            состоянии — так поворот анимируется (подмена двух разных иконок
+            была бы мгновенной). */}
+        <span className={`filter-section-chevron${isPriceExpanded ? ' filter-section-chevron--expanded' : ''}`}>
+          <CustomChevronDown size={32} />
+        </span>
       </button>
       {isPriceExpanded && (
         <div className="filter-section-body">
@@ -261,7 +266,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           )}
         >
           <span className="filter-section-title">{title}</span>
-          {isExpanded ? <CustomChevronDown size={32} /> : <CustomChevronUp size={32} />}
+          <span className={`filter-section-chevron${isExpanded ? ' filter-section-chevron--expanded' : ''}`}>
+            <CustomChevronDown size={32} />
+          </span>
         </button>
         {isExpanded && (
           <div className="filter-section-body">
