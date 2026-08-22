@@ -6,6 +6,7 @@ export type PaymentStatus = "PENDING" | "PAID";
 export type PaywallSource =
   | "AUTO_BANNER"
   | "SEARCH_BUTTON"
+  | "FILTER_LOCK"
   | "EXPIRING_3_DAYS"
   | "EXPIRING_1_DAY"
   | "ACTIVE";

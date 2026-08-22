@@ -147,6 +147,7 @@ enum PaywallEventType {
 enum PaywallSource {
   AUTO_BANNER      // автопоказ при входе
   SEARCH_BUTTON    // кнопка подписки в строке поиска
+  FILTER_LOCK      // тап по платной секции в шторке фильтров
   EXPIRING_3_DAYS  // предупреждение "истекает через 3 дня"
   EXPIRING_1_DAY   // предупреждение "через 1 день"
   ACTIVE           // шторка "подписка активна" (продление из неё)

@@ -16,6 +16,7 @@ const LIMIT = 50;
 const SOURCE_LABELS: Record<PaywallSource, string> = {
   AUTO_BANNER: "Автопоказ баннера",
   SEARCH_BUTTON: "Кнопка у поиска",
+  FILTER_LOCK: "Замок в фильтрах",
   EXPIRING_3_DAYS: "Напоминание за 3 дня",
   EXPIRING_1_DAY: "Напоминание за 1 день",
   ACTIVE: "Шторка активной подписки",

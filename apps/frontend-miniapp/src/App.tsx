@@ -260,7 +260,12 @@ function App() {
   // ограничения "раз в сессию" — пользователь запросил её сам. Платному
   // показываем состояние подписки с датой, бесплатному — обычный баннер.
   useEffect(() => {
-    const onOpenPaywall = () => {
+    const onOpenPaywall = (event: Event) => {
+      // Источник приходит в detail — кнопка у поиска его не передаёт
+      // (исторически событие было только её), а замки в шторке фильтров
+      // шлют 'FILTER_LOCK', чтобы в воронке было видно, за какой именно
+      // функцией пришёл человек.
+      const source = (event as CustomEvent<{ source?: PaywallSource }>).detail?.source ?? 'SEARCH_BUTTON';
       let hasPaidTier = false;
       let expiresAt: string | null = null;
       try {
@@ -273,7 +278,7 @@ function App() {
         hasPaidTier = false;
       }
       setPremiumExpiresAt(expiresAt);
-      setPaywallSource("SEARCH_BUTTON");
+      setPaywallSource(source);
       setPaywallVariant(hasPaidTier ? "active" : "paywall");
       setIsPaywallOpen(true);
     };

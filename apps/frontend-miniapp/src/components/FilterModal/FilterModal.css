@@ -79,6 +79,23 @@
   font-weight: 500;
 }
 
+/* Платная секция без подписки: приглушена, но кликабельна — тап открывает
+   шторку с предложением оплаты. cursor остаётся pointer именно поэтому:
+   not-allowed сказал бы, что нажимать бессмысленно. */
+.filter-section-header--locked .filter-section-title {
+  color: #9b9a9a;
+}
+
+.filter-section-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: #9b9a9a;
+}
+
 .filter-section-chevron {
   display: flex;
   align-items: center;

@@ -54,7 +54,13 @@ async function countUniqueUsers(
 // Привлечение и удержание — разные воронки: у них разный знаменатель и
 // разный смысл, складывать нельзя (§10.3). ACQUISITION — те, у кого доступа
 // нет; RETENTION — продление действующей или истекающей подписки.
-const ACQUISITION_SOURCES: PaywallSource[] = [PaywallSource.AUTO_BANNER, PaywallSource.SEARCH_BUTTON];
+const ACQUISITION_SOURCES: PaywallSource[] = [
+  PaywallSource.AUTO_BANNER,
+  PaywallSource.SEARCH_BUTTON,
+  // Замок на платной секции фильтров — тоже привлечение: доступа у человека
+  // нет, знаменатель тот же.
+  PaywallSource.FILTER_LOCK,
+];
 const RETENTION_SOURCES: PaywallSource[] = [
   PaywallSource.EXPIRING_3_DAYS,
   PaywallSource.EXPIRING_1_DAY,

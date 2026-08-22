@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, Lock } from 'lucide-react';
 import { CustomSquareUncheck, CustomSquareCheck, CustomChevronDown } from '../Icons/Icons';
 import { fetchFilters, FiltersResponse, FilterOption } from '../../api/patternsApi';
+import { submitPaywallEvent } from '../../api/paywallApi';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
 import '../../styles/sheet.css';
@@ -54,11 +55,23 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
   // мгновенно, до анимации закрытия.
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
-  // Density/yarn-thickness sections require PREMIUM_CORE — renderSection
-  // always renders its header regardless of whether options is empty, so
-  // gating has to happen at the call site, not inside it. See
-  // PAID_TIER_PERMISSIONS_PLAN.md §3.4.
-  const { core, extra } = usePremiumAccess();
+  // Density/yarn-thickness sections require PREMIUM_CORE, price requires
+  // PREMIUM_EXTRA — renderSection always renders its header regardless of
+  // whether options is empty, so gating has to happen at the call site, not
+  // inside it. See PAID_TIER_PERMISSIONS_PLAN.md §3.4.
+  //
+  // Без доступа секция больше не исчезает, а показывается замком
+  // (renderLockedSection): бесплатный пользователь видит полный список
+  // фильтров и понимает, что именно даёт подписка — иначе о платных
+  // фильтрах неоткуда узнать. Сам доступ этим не ослаблен: раскрыть такую
+  // секцию нельзя, значений в `selected` не появляется, а бэкенд и так
+  // игнорирует платные параметры без разрешения (§3.4).
+  //
+  // `paywallUiEnabled` — тот же единственный выключатель всех платных
+  // поверхностей, что у баннера и кнопки подписки (authController.ts): до
+  // публичного запуска обычный пользователь платного UI не видит вовсе, и
+  // замки для него — четвёртая такая поверхность, а не исключение.
+  const { core, extra, paywallUiEnabled } = usePremiumAccess();
   const [selected, setSelected] = useState<SelectedFilters>(initialFilters);
   const [isPriceExpanded, setIsPriceExpanded] = useState(false);
   // Live, narrowed option lists — recomputed server-side (see the effect
@@ -141,6 +154,37 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     onApply(selected);
     onClose();
   };
+
+  // Шторка подписки живёт в App.tsx — отсюда она открывается window-событием,
+  // тем же приёмом, что и кнопка подписки в строке поиска (SearchFilterBar).
+  // Шторку фильтров при этом НЕ закрываем: баннер перекрывает её сверху, и
+  // после закрытия человек возвращается к своему незавершённому набору
+  // фильтров, а не начинает заново.
+  const handleLockedClick = () => {
+    submitPaywallEvent('BUTTON_OPENED', 'FILTER_LOCK');
+    window.dispatchEvent(new CustomEvent('paywall:open', { detail: { source: 'FILTER_LOCK' } }));
+  };
+
+  // Платная секция без доступа: тот же заголовок на своём месте, но
+  // приглушённый, с замком вместо стрелки и без тела. Не <button disabled> —
+  // тап по ней должен работать, он и есть точка входа в оплату; для
+  // скринридера состояние передаёт aria-disabled.
+  const renderLockedSection = (title: string) => (
+    <div className="filter-section">
+      <button
+        className="filter-section-header filter-section-header--locked"
+        onClick={handleLockedClick}
+        aria-disabled="true"
+      >
+        <span className="filter-section-title">{title}</span>
+        {/* Тот же бокс 32×32, что у стрелки (её svg именно такого размера) —
+            иначе платные строки оказались бы ниже остальных. */}
+        <span className="filter-section-lock">
+          <Lock size={20} />
+        </span>
+      </button>
+    </div>
+  );
 
   // Bespoke, not routed through renderSection — price is a continuous range,
   // not a facet with a discrete option list (handleToggle/staleIds/
@@ -364,9 +408,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
         </div>
 
         <div className="filter-modal-body">
-          {extra && (
+          {(extra || paywallUiEnabled) && (
             <>
-              {renderPriceSection()}
+              {extra ? renderPriceSection() : renderLockedSection('Цена')}
               <div className="filter-divider" />
             </>
           )}
@@ -377,12 +421,14 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           {renderSection("Инструмент", "instruments")}
           <div className="filter-divider" />
           {renderSection("Автор", "authors")}
-          {core && (
+          {(core || paywallUiEnabled) && (
             <>
               <div className="filter-divider" />
-              {renderSection("Толщина пряжи (м/100г)", "yarnRanges")}
+              {core
+                ? renderSection("Толщина пряжи (м/100г)", "yarnRanges")
+                : renderLockedSection("Толщина пряжи (м/100г)")}
               <div className="filter-divider" />
-              {renderSection("Плотность", "density")}
+              {core ? renderSection("Плотность", "density") : renderLockedSection("Плотность")}
             </>
           )}
         </div>
