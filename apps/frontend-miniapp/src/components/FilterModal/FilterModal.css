@@ -100,11 +100,46 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  /* Та же длительность и кривая, что у раскрытия тела ниже: стрелка и
+     содержимое обязаны идти одним движением. */
+  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .filter-section-chevron--expanded {
   transform: rotate(180deg);
+}
+
+/* Плавное раскрытие секции. Анимируется доля строки грида (0fr → 1fr), а не
+   height/max-height: высота тела заранее неизвестна и меняется по ходу
+   (поиск внутри секции, пересчёт фасетов), а max-height «с запасом» съедал
+   бы часть времени анимации на пустоту.
+
+   visibility выключает свёрнутое содержимое из фокуса и для скринридера,
+   но с нулевой длительностью и задержкой на всю анимацию: при закрытии оно
+   должно оставаться видимым, пока секция схлопывается, а при открытии —
+   появляться сразу.
+
+   Где interpolation grid-template-rows не поддерживается (WebKit до 16),
+   правило деградирует в мгновенное раскрытие — само значение 0fr/1fr там
+   работает, не анимируется только переход. */
+.filter-collapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 280ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 280ms;
+}
+
+.filter-collapsible--open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 280ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s;
+}
+
+/* min-height: 0 обязателен — без него grid-элемент не сжимается меньше
+   своего содержимого, и строка никогда не дойдёт до нуля. */
+.filter-collapsible-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .filter-section-body {
@@ -298,4 +333,15 @@
    and checked so the user can see and deselect it, just visually muted. */
 .filter-checkbox-label--stale {
   opacity: 0.45;
+}
+
+/* Просившим систему уменьшить анимации — мгновенное раскрытие, как и у
+   самих шторок (styles/sheet.css). */
+@media (prefers-reduced-motion: reduce) {
+
+  .filter-collapsible,
+  .filter-collapsible--open,
+  .filter-section-chevron {
+    transition: none;
+  }
 }

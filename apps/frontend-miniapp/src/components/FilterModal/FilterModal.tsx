@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { X, Search, Lock } from 'lucide-react';
 import { CustomSquareUncheck, CustomSquareCheck, CustomChevronDown } from '../Icons/Icons';
 import { fetchFilters, FiltersResponse, FilterOption } from '../../api/patternsApi';
@@ -50,6 +50,20 @@ interface FilterModalProps {
 const defaultFetchFacets = (selected: SelectedFilters, signal: AbortSignal) =>
   fetchFilters({ ...selected, signal });
 
+// Плавное раскрытие через grid-template-rows: 0fr → 1fr. Высоту тела не
+// измеряем и не задаём: она у секций разная и меняется на лету (поиск внутри
+// секции, пересчёт фасетов), а любой max-height пришлось бы брать с запасом —
+// тогда анимация идёт «пустую» часть запаса и выглядит рваной.
+//
+// Объявлен на уровне модуля намеренно: определи его внутри FilterModal, и
+// каждый рендер давал бы React новый тип компонента — тело секции
+// размонтировалось бы и монтировалось заново, теряя фокус в поле поиска.
+const Collapsible: React.FC<{ open: boolean; children: React.ReactNode }> = ({ open, children }) => (
+  <div className={`filter-collapsible${open ? ' filter-collapsible--open' : ''}`}>
+    <div className="filter-collapsible-inner">{children}</div>
+  </div>
+);
+
 export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading, fetchFacets = defaultFetchFacets }) => {
   // Держит шторку в дереве на время выезда вниз и даёт класс для
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
@@ -81,6 +95,18 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   // as the seed/fallback and as the name lookup for "stale" options below.
   const [facetData, setFacetData] = useState<FiltersResponse | null>(filtersData);
   const [expandedSections, setExpandedSections] = useState<Array<keyof FiltersResponse>>([]);
+  // Какие секции уже открывали хоть раз. Свёрнутая секция теперь остаётся в
+  // DOM (иначе анимировать закрытие нечем), но монтировать содержимое всех
+  // шести сразу при открытии шторки — это сотни строк с иконками у density и
+  // authors и заметный фриз на слабом Android. Поэтому тело появляется при
+  // первом раскрытии и дальше живёт вместе с секцией; больше шести таких
+  // тел набраться не может.
+  const [openedSections, setOpenedSections] = useState<Array<keyof FiltersResponse>>([]);
+  // Секция, которую попросили раскрыть ВПЕРВЫЕ: тело для неё уже
+  // смонтировано, но класс раскрытия ещё не выставлен — см. useLayoutEffect
+  // ниже. Для уже открывавшихся секций всегда null, там раскрытие идёт одним
+  // шагом.
+  const [pendingSection, setPendingSection] = useState<keyof FiltersResponse | null>(null);
   const [filterSearches, setFilterSearches] = useState<Record<keyof FiltersResponse, string>>({
     categories: '',
     tags: '',
@@ -132,7 +158,42 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     };
   }, [selected, isOpen, filtersData, fetchFacets]);
 
+  // Ровно тот же приём и по той же причине, что в useSheetTransition: если
+  // тело секции монтируется тем же коммитом, каким выставляется класс
+  // раскрытия, браузеру не от чего анимировать — открытое состояние он
+  // считает начальным, и секция раскрывается рывком. Причём непредсказуемо:
+  // у «Цены» тело смонтировано всегда, поэтому она шла плавно, а любая
+  // секция при ПЕРВОМ раскрытии — рывком, дальше плавно. Отсюда и
+  // «иногда мгновенно, иногда плавно».
+  //
+  // Чтение offsetHeight принудительно считает layout со свёрнутым, но уже
+  // смонтированным телом — это и становится состоянием «до», от которого
+  // браузер анимирует следующую смену класса. rAF здесь не годится по тем
+  // же причинам, что разобраны в useSheetTransition.ts.
+  useLayoutEffect(() => {
+    if (!pendingSection) return;
+    void sheetRef.current?.offsetHeight;
+    const key = pendingSection;
+    setPendingSection(null);
+    setExpandedSections(prev => prev.includes(key) ? prev : [...prev, key]);
+  }, [pendingSection, sheetRef]);
+
   if (!isMounted) return null;
+
+  const toggleSection = (sectionKey: keyof FiltersResponse) => {
+    if (expandedSections.includes(sectionKey)) {
+      setExpandedSections(prev => prev.filter(k => k !== sectionKey));
+      return;
+    }
+    if (!openedSections.includes(sectionKey)) {
+      // Первое раскрытие — в два шага: сначала смонтировать тело свёрнутым,
+      // и только потом раскрыть.
+      setOpenedSections(prev => [...prev, sectionKey]);
+      setPendingSection(sectionKey);
+      return;
+    }
+    setExpandedSections(prev => [...prev, sectionKey]);
+  };
 
   const handleToggle = (section: keyof FiltersResponse, id: string) => {
     setSelected(prev => {
@@ -197,6 +258,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     <div className="filter-section">
       <button
         className="filter-section-header"
+        aria-expanded={isPriceExpanded}
         onClick={() => setIsPriceExpanded(v => !v)}
       >
         <span className="filter-section-title">Цена</span>
@@ -207,7 +269,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           <CustomChevronDown size={32} />
         </span>
       </button>
-      {isPriceExpanded && (
+      <Collapsible open={isPriceExpanded}>
         <div className="filter-section-body">
           <div className="filter-density-search-row">
             <input
@@ -243,12 +305,13 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
             </button>
           </div>
         </div>
-      )}
+      </Collapsible>
     </div>
   );
 
   const renderSection = (title: string, sectionKey: keyof FiltersResponse) => {
     const isExpanded = expandedSections.includes(sectionKey);
+    const hasOpened = openedSections.includes(sectionKey);
     // `facetData` is the live, narrowed list (falls back to the unfiltered
     // `filtersData` until the first facet response arrives). An already-
     // checked value that fell out of the narrowed list is merged back in
@@ -305,93 +368,94 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
       <div className="filter-section">
         <button
           className="filter-section-header"
-          onClick={() => setExpandedSections(prev =>
-            prev.includes(sectionKey) ? prev.filter(k => k !== sectionKey) : [...prev, sectionKey]
-          )}
+          aria-expanded={isExpanded}
+          onClick={() => toggleSection(sectionKey)}
         >
           <span className="filter-section-title">{title}</span>
           <span className={`filter-section-chevron${isExpanded ? ' filter-section-chevron--expanded' : ''}`}>
             <CustomChevronDown size={32} />
           </span>
         </button>
-        {isExpanded && (
-          <div className="filter-section-body">
-            {sectionKey === 'density' ? (
-              <div className="filter-density-search-row">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  // placeholder="20"
-                  className="filter-search-input filter-density-input"
-                  value={densitySearch.stitches}
-                  onChange={(e) => setDensitySearch(prev => ({ ...prev, stitches: e.target.value }))}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span className="filter-density-search-label">п. ×</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  // placeholder="32"
-                  className="filter-search-input filter-density-input"
-                  value={densitySearch.rows}
-                  onChange={(e) => setDensitySearch(prev => ({ ...prev, rows: e.target.value }))}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span className="filter-density-search-label">р.</span>
-                {/* Always rendered — reserves its space in the flex row at
-                    all times so the two flex:1 inputs don't lose/regain
-                    width (split evenly between them) as this shows up. */}
-                <button
-                  className="filter-search-clear"
-                  onClick={(e) => { e.stopPropagation(); setDensitySearch({ stitches: '', rows: '' }); }}
-                  style={{ visibility: (densitySearch.stitches || densitySearch.rows) ? 'visible' : 'hidden' }}
-                  tabIndex={(densitySearch.stitches || densitySearch.rows) ? 0 : -1}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            ) : sectionKey !== 'instruments' && sectionKey !== 'yarnRanges' && (
-              <div className="filter-search-input-wrapper filter-search-inline">
-                <Search size={20} className="filter-search-icon" />
-                <input
-                  type="text"
-                  placeholder="Поиск..."
-                  className="filter-search-input"
-                  value={filterSearches[sectionKey]}
-                  onChange={(e) => setFilterSearches(prev => ({ ...prev, [sectionKey]: e.target.value }))}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                {/* Same reasoning as density's clear button above. */}
-                <button
-                  className="filter-search-clear"
-                  onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
-                  style={{ visibility: filterSearches[sectionKey] ? 'visible' : 'hidden' }}
-                  tabIndex={filterSearches[sectionKey] ? 0 : -1}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            )}
-            {loading && <p className="filter-loading">Загрузка...</p>}
-            {!loading && options.length === 0 && <p className="filter-empty">Ничего не найдено</p>}
-            {!loading && options.map((opt: FilterOption) => {
-              const isChecked = selected[sectionKey].includes(opt.id);
-              const isStale = staleIds.has(opt.id);
-              return (
-                <div
-                  key={opt.id}
-                  className={`filter-checkbox-label${isStale ? ' filter-checkbox-label--stale' : ''}`}
-                  onClick={() => handleToggle(sectionKey, opt.id)}
-                >
-                  <div className="filter-checkbox-custom">
-                    {isChecked ? <CustomSquareCheck size={32} /> : <CustomSquareUncheck size={32} />}
-                  </div>
-                  <span className="filter-checkbox-text">{opt.name}</span>
+        <Collapsible open={isExpanded}>
+          {hasOpened && (
+            <div className="filter-section-body">
+              {sectionKey === 'density' ? (
+                <div className="filter-density-search-row">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    // placeholder="20"
+                    className="filter-search-input filter-density-input"
+                    value={densitySearch.stitches}
+                    onChange={(e) => setDensitySearch(prev => ({ ...prev, stitches: e.target.value }))}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span className="filter-density-search-label">п. ×</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    // placeholder="32"
+                    className="filter-search-input filter-density-input"
+                    value={densitySearch.rows}
+                    onChange={(e) => setDensitySearch(prev => ({ ...prev, rows: e.target.value }))}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span className="filter-density-search-label">р.</span>
+                  {/* Always rendered — reserves its space in the flex row at
+                      all times so the two flex:1 inputs don't lose/regain
+                      width (split evenly between them) as this shows up. */}
+                  <button
+                    className="filter-search-clear"
+                    onClick={(e) => { e.stopPropagation(); setDensitySearch({ stitches: '', rows: '' }); }}
+                    style={{ visibility: (densitySearch.stitches || densitySearch.rows) ? 'visible' : 'hidden' }}
+                    tabIndex={(densitySearch.stitches || densitySearch.rows) ? 0 : -1}
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ) : sectionKey !== 'instruments' && sectionKey !== 'yarnRanges' && (
+                <div className="filter-search-input-wrapper filter-search-inline">
+                  <Search size={20} className="filter-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Поиск..."
+                    className="filter-search-input"
+                    value={filterSearches[sectionKey]}
+                    onChange={(e) => setFilterSearches(prev => ({ ...prev, [sectionKey]: e.target.value }))}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {/* Same reasoning as density's clear button above. */}
+                  <button
+                    className="filter-search-clear"
+                    onClick={(e) => { e.stopPropagation(); setFilterSearches(prev => ({ ...prev, [sectionKey]: '' })); }}
+                    style={{ visibility: filterSearches[sectionKey] ? 'visible' : 'hidden' }}
+                    tabIndex={filterSearches[sectionKey] ? 0 : -1}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              )}
+              {loading && <p className="filter-loading">Загрузка...</p>}
+              {!loading && options.length === 0 && <p className="filter-empty">Ничего не найдено</p>}
+              {!loading && options.map((opt: FilterOption) => {
+                const isChecked = selected[sectionKey].includes(opt.id);
+                const isStale = staleIds.has(opt.id);
+                return (
+                  <div
+                    key={opt.id}
+                    className={`filter-checkbox-label${isStale ? ' filter-checkbox-label--stale' : ''}`}
+                    onClick={() => handleToggle(sectionKey, opt.id)}
+                  >
+                    <div className="filter-checkbox-custom">
+                      {isChecked ? <CustomSquareCheck size={32} /> : <CustomSquareUncheck size={32} />}
+                    </div>
+                    <span className="filter-checkbox-text">{opt.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Collapsible>
       </div>
     );
   };
