@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { fetchPatternById, fetchSimilarPatterns, Pattern } from '../../api/patternsApi';
 import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
@@ -8,6 +8,7 @@ import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { ImageWithRetry } from '../../components/ImageWithRetry/ImageWithRetry';
+import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
 import { openExternalLink } from '../../utils/telegram';
 import { Footer } from '../../components/Footer/Footer';
@@ -79,7 +80,6 @@ const ImageCarousel: React.FC<{ images: string[]; alt: string }> = ({ images, al
 export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
   // authorId/author name are already public regardless of access level
   // (unlike price/details/similar, which the backend itself omits) — this
@@ -150,7 +150,11 @@ export const PatternDetails: React.FC = () => {
   }, [id]);
 
   const handleBack = () => {
-    if (location.key !== 'default') {
+    // Не location.key: он живёт в history.state и переживает перезагрузку
+    // документа, поэтому после того, как WebView поднял приложение заново
+    // прямо на карточке (возврат с сайта автора), он врал, что позади есть
+    // страница, и navigate(-1) уходил за пределы приложения.
+    if (canGoBackInApp()) {
       navigate(-1);
     } else {
       navigate('/');

@@ -25,12 +25,18 @@ function logFrontend(event: string, extra?: Record<string, unknown>) {
 }
 
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
+import { useNavigationDepthTracker } from './hooks/useNavigationDepth';
 
 const MAINTENANCE_MODE = false;
 
 type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" | "telegram_only" | "update_telegram" | "load_error";
 
 function App() {
+  // Считает глубину переходов внутри приложения — по ней кнопка «Назад» на
+  // карточке описания решает, есть ли куда возвращаться. Вызов до любых
+  // ранних return'ов: хук должен отработать на каждый рендер.
+  useNavigationDepthTracker();
+
   const [appState, setAppState] = useState<AppState>("loading");
   const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
