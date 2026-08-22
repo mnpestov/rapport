@@ -100,9 +100,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Та же длительность и кривая, что у раскрытия тела ниже: стрелка и
-     содержимое обязаны идти одним движением. */
-  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* Длительность здесь фиксированная, в отличие от тела секции: стрелка
+     всегда проходит одни и те же 180°, и привязывать её к высоте списка
+     значило бы на «Авторе» крутить её вдвое медленнее без всякой причины. */
+  transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .filter-section-chevron--expanded {
@@ -126,13 +127,20 @@
   display: grid;
   grid-template-rows: 0fr;
   visibility: hidden;
-  transition: grid-template-rows 280ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 280ms;
+  /* --filter-collapse-ms приходит инлайном из Collapsible и зависит от
+     высоты конкретной секции — см. revealDurationMs. Значение по умолчанию
+     нужно только на случай, если переменной почему-то нет. */
+  transition:
+    grid-template-rows var(--filter-collapse-ms, 280ms) cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear var(--filter-collapse-ms, 280ms);
 }
 
 .filter-collapsible--open {
   grid-template-rows: 1fr;
   visibility: visible;
-  transition: grid-template-rows 280ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s;
+  transition:
+    grid-template-rows var(--filter-collapse-ms, 280ms) cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s;
 }
 
 /* min-height: 0 обязателен — без него grid-элемент не сжимается меньше

@@ -58,11 +58,43 @@ const defaultFetchFacets = (selected: SelectedFilters, signal: AbortSignal) =>
 // Объявлен на уровне модуля намеренно: определи его внутри FilterModal, и
 // каждый рендер давал бы React новый тип компонента — тело секции
 // размонтировалось бы и монтировалось заново, теряя фокус в поле поиска.
-const Collapsible: React.FC<{ open: boolean; children: React.ReactNode }> = ({ open, children }) => (
-  <div className={`filter-collapsible${open ? ' filter-collapsible--open' : ''}`}>
+const Collapsible: React.FC<{ open: boolean; durationMs: number; children: React.ReactNode }> = ({ open, durationMs, children }) => (
+  <div
+    className={`filter-collapsible${open ? ' filter-collapsible--open' : ''}`}
+    style={{ '--filter-collapse-ms': `${durationMs}ms` } as React.CSSProperties}
+  >
     <div className="filter-collapsible-inner">{children}</div>
   </div>
 );
+
+// Раскрытие идёт с постоянной СКОРОСТЬЮ, а не за постоянное время. Секции
+// разной высоты проезжают разный путь: «Инструмент» — сотню пикселей,
+// «Автор» — под две тысячи. При общей длительности первая ползёт, вторая
+// пролетает так, что раскрытия не видно вовсе.
+//
+// Границы обязательны с обеих сторон: без нижней короткая секция дёргалась
+// бы за 50 мс, без верхней закрытие длинной длилось бы секунду — а при
+// закрытии движение видно всё время, содержимое снизу едет вверх.
+const REVEAL_PX_PER_MS = 2.2;
+const MIN_REVEAL_MS = 200;
+const MAX_REVEAL_MS = 600;
+
+const revealDurationMs = (distancePx: number) =>
+  Math.round(Math.min(MAX_REVEAL_MS, Math.max(MIN_REVEAL_MS, distancePx / REVEAL_PX_PER_MS)));
+
+// Высота тела считается по разметке, а не измеряется в DOM, намеренно.
+// Измерение — это принудительный пересчёт layout, и сделать его нужно было бы
+// РАНЬШЕ смены класса: браузер запоминает длительность в тот момент, когда
+// стартует переход, и выставленная после этого переменная досталась бы уже
+// следующему раскрытию. Оценка же уезжает в DOM тем же коммитом, что и класс.
+// Точность здесь ни к чему — от числа зависит только темп.
+const ROW_PX = 44;          // строка опции: иконка 32 + gap 12 из .filter-section-body
+const SEARCH_ROW_PX = 60;   // поле поиска 48 + тот же gap
+const BODY_PADDING_PX = 24; // padding 8px сверху + 16px снизу
+const PRICE_BODY_PX = SEARCH_ROW_PX + BODY_PADDING_PX;
+
+const estimateBodyPx = (optionsCount: number, hasSearchRow: boolean) =>
+  BODY_PADDING_PX + (hasSearchRow ? SEARCH_ROW_PX : 0) + optionsCount * ROW_PX;
 
 export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, initialFilters, filtersData, loading, fetchFacets = defaultFetchFacets }) => {
   // Держит шторку в дереве на время выезда вниз и даёт класс для
@@ -269,7 +301,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           <CustomChevronDown size={32} />
         </span>
       </button>
-      <Collapsible open={isPriceExpanded}>
+      <Collapsible open={isPriceExpanded} durationMs={revealDurationMs(PRICE_BODY_PX)}>
         <div className="filter-section-body">
           <div className="filter-density-search-row">
             <input
@@ -312,6 +344,10 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   const renderSection = (title: string, sectionKey: keyof FiltersResponse) => {
     const isExpanded = expandedSections.includes(sectionKey);
     const hasOpened = openedSections.includes(sectionKey);
+    // Совпадает с условием рендера поля поиска ниже: у «Инструмента» и
+    // «Толщины пряжи» его нет, у «Плотности» вместо него свой ряд из двух
+    // инпутов — по высоте это то же самое.
+    const hasSearchRow = sectionKey !== 'instruments' && sectionKey !== 'yarnRanges';
     // `facetData` is the live, narrowed list (falls back to the unfiltered
     // `filtersData` until the first facet response arrives). An already-
     // checked value that fell out of the narrowed list is merged back in
@@ -376,7 +412,10 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
             <CustomChevronDown size={32} />
           </span>
         </button>
-        <Collapsible open={isExpanded}>
+        <Collapsible
+          open={isExpanded}
+          durationMs={revealDurationMs(estimateBodyPx(options.length, hasSearchRow))}
+        >
           {hasOpened && (
             <div className="filter-section-body">
               {sectionKey === 'density' ? (
