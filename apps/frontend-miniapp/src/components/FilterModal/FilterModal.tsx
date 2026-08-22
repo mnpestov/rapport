@@ -139,6 +139,14 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   // ниже. Для уже открывавшихся секций всегда null, там раскрытие идёт одним
   // шагом.
   const [pendingSection, setPendingSection] = useState<keyof FiltersResponse | null>(null);
+  // Какие варианты поднимать наверх списка. Это СНИМОК выбранного на момент
+  // раскрытия секции, а не живой `selected`: пересортируй список прямо по
+  // тапу — и отмеченная строка тут же улетает вверх, а на её место под
+  // пальцем встаёт соседняя. Отметить пять авторов подряд после этого
+  // невозможно. Снимок обновляется при каждом раскрытии секции и при
+  // открытии шторки, так что «выбранное сверху» пользователь видит ровно
+  // тогда, когда ему это нужно — заходя в секцию.
+  const [hoistedIds, setHoistedIds] = useState<Partial<Record<keyof FiltersResponse, string[]>>>({});
   const [filterSearches, setFilterSearches] = useState<Record<keyof FiltersResponse, string>>({
     categories: '',
     tags: '',
@@ -154,6 +162,14 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   useEffect(() => {
     if (isOpen) {
       setSelected(initialFilters);
+      setHoistedIds({
+        categories: initialFilters.categories,
+        tags: initialFilters.tags,
+        instruments: initialFilters.instruments,
+        authors: initialFilters.authors,
+        yarnRanges: initialFilters.yarnRanges,
+        density: initialFilters.density,
+      });
     }
   }, [isOpen, initialFilters]);
 
@@ -217,6 +233,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
       setExpandedSections(prev => prev.filter(k => k !== sectionKey));
       return;
     }
+    // Пересобираем порядок ровно в момент раскрытия — пока секция открыта,
+    // список под пальцем не шевелится.
+    setHoistedIds(prev => ({ ...prev, [sectionKey]: selected[sectionKey] }));
     if (!openedSections.includes(sectionKey)) {
       // Первое раскрытие — в два шага: сначала смонтировать тело свёрнутым,
       // и только потом раскрыть.
@@ -379,6 +398,18 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
       options.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
     }
 
+    // Выбранное — наверх. Внутри обеих групп порядок сохраняется тот, что
+    // получился выше (алфавит, а у yarnRanges/density — порядок бэкенда):
+    // filter стабилен, поэтому пересортировка ничего больше не перемешивает.
+    const hoisted = hoistedIds[sectionKey];
+    if (hoisted && hoisted.length > 0) {
+      const isHoisted = new Set(hoisted);
+      options = [
+        ...options.filter(o => isHoisted.has(o.id)),
+        ...options.filter(o => !isHoisted.has(o.id)),
+      ];
+    }
+
     // Apply search — density uses two independent numeric prefix matches
     // (stitches, rows) against its "stitchesxrows" id instead of the shared
     // single free-text search everyone else uses.
@@ -407,7 +438,17 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           aria-expanded={isExpanded}
           onClick={() => toggleSection(sectionKey)}
         >
-          <span className="filter-section-title">{title}</span>
+          <span className="filter-section-heading">
+            <span className="filter-section-title">{title}</span>
+            {/* Считаем весь selected по секции, включая «протухшие» варианты
+                (те, что выпали из суженного списка, но остаются отмеченными
+                — см. staleIds выше): для пользователя они выбраны так же,
+                как остальные. При нуле не рисуем ничего — «(0)» ничего не
+                сообщает. */}
+            {selected[sectionKey].length > 0 && (
+              <span className="filter-section-count">({selected[sectionKey].length})</span>
+            )}
+          </span>
           <span className={`filter-section-chevron${isExpanded ? ' filter-section-chevron--expanded' : ''}`}>
             <CustomChevronDown size={32} />
           </span>
