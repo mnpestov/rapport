@@ -137,12 +137,41 @@
 
 .eventsGrid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
+}
+
+/* Шесть плашек в ряд помещаются только на широком экране. Ниже — по три и
+   по две, и тогда правую границу снимает уже не :last-child, а последняя
+   плашка В РЯДУ: иначе крайняя правая рисовала бы линию по краю виджета. */
+.eventCard:nth-child(6n) {
+  border-right: none;
+}
+
+@media (max-width: 1200px) {
+  .eventsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .eventCard:nth-child(6n) {
+    border-right: 1px solid #E5E7EB;
+  }
+
+  .eventCard:nth-child(3n) {
+    border-right: none;
+  }
 }
 
 @media (max-width: 900px) {
   .eventsGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .eventCard:nth-child(3n) {
+    border-right: 1px solid #E5E7EB;
+  }
+
+  .eventCard:nth-child(2n) {
+    border-right: none;
   }
 }
 

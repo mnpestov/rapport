@@ -81,7 +81,11 @@ export interface PaywallStatsResponse {
     scrolledToEnd: number;
     subscribeClick: number;
     closed: number;
+    // Ручные открытия шторки разделены по источнику: кнопка у поиска и
+    // замок на платной секции фильтров — разные намерения, и подпись у
+    // каждой плашки своя.
     buttonOpened: number;
+    buttonOpenedFromFilters: number;
   };
   // Привлечение и удержание разделены: у них разный знаменатель и разный
   // смысл, складывать нельзя.
@@ -119,7 +123,7 @@ export type PaywallMetric =
   | "BUTTON_OPENED"
   | "PAID";
 
-export type PaywallScope = "all" | "acquisition" | "retention";
+export type PaywallScope = "all" | "acquisition" | "retention" | "filter_lock" | "search_button";
 
 export interface PaywallStatsUser {
   userId: string;

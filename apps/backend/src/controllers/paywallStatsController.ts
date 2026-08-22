@@ -61,6 +61,13 @@ const ACQUISITION_SOURCES: PaywallSource[] = [
   // нет, знаменатель тот же.
   PaywallSource.FILTER_LOCK,
 ];
+// Разрезы внутри привлечения: обе поверхности пользователь открывает сам,
+// но приходит с разным намерением — из фильтров за конкретной функцией, с
+// кнопки у поиска просто посмотреть, что даёт подписка. Отдельные счётчики
+// нужны, чтобы это было видно, а не тонуло в общей цифре.
+const FILTER_LOCK_SOURCES: PaywallSource[] = [PaywallSource.FILTER_LOCK];
+const SEARCH_BUTTON_SOURCES: PaywallSource[] = [PaywallSource.SEARCH_BUTTON];
+
 const RETENTION_SOURCES: PaywallSource[] = [
   PaywallSource.EXPIRING_3_DAYS,
   PaywallSource.EXPIRING_1_DAY,
@@ -97,6 +104,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       subscribeClick,
       closed,
       buttonOpened,
+      buttonOpenedFromFilters,
       acquisitionShown,
       acquisitionClick,
       acquisitionPaid,
@@ -112,7 +120,11 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countUniqueUsers(PaywallEventType.SCROLLED_TO_END, range),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range),
       countUniqueUsers(PaywallEventType.CLOSED, range),
-      countUniqueUsers(PaywallEventType.BUTTON_OPENED, range),
+      // Именно кнопка у поиска, а не все ручные открытия: с появлением
+      // замков в фильтрах BUTTON_OPENED приходит из двух мест, и общая
+      // цифра под подписью «кнопкой у поиска» была бы неверной.
+      countUniqueUsers(PaywallEventType.BUTTON_OPENED, range, SEARCH_BUTTON_SOURCES),
+      countUniqueUsers(PaywallEventType.BUTTON_OPENED, range, FILTER_LOCK_SOURCES),
 
       countUniqueUsers(PaywallEventType.SHOWN, range, ACQUISITION_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, ACQUISITION_SOURCES),
@@ -135,7 +147,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
     ]);
 
     res.json({
-      events: { shown, scrolledToEnd, subscribeClick, closed, buttonOpened },
+      events: { shown, scrolledToEnd, subscribeClick, closed, buttonOpened, buttonOpenedFromFilters },
       acquisition: { shown: acquisitionShown, subscribeClick: acquisitionClick, paid: acquisitionPaid },
       retention: { shown: retentionShown, subscribeClick: retentionClick, paid: retentionPaid },
       paidWithoutSource,
@@ -155,9 +167,12 @@ const SCOPE_SOURCES: Record<string, PaywallSource[] | undefined> = {
   all: undefined,
   acquisition: ACQUISITION_SOURCES,
   retention: RETENTION_SOURCES,
+  filter_lock: FILTER_LOCK_SOURCES,
+  search_button: SEARCH_BUTTON_SOURCES,
 };
 
-// GET /admin/paywall-stats/users?metric=SHOWN|...|PAID&scope=all|acquisition|retention
+// GET /admin/paywall-stats/users?metric=SHOWN|...|PAID
+//   &scope=all|acquisition|retention|filter_lock|search_button
 export const getPaywallStatsUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const range = parsePeriod(req);

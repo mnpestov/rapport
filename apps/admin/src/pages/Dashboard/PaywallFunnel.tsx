@@ -87,7 +87,7 @@ export function PaywallFunnel({ stats, onDrilldown }: Props) {
       <div className={styles.funnels}>
         <Funnel
           title="Привлечение"
-          hint="Автопоказ баннера и кнопка у поиска"
+          hint="Автопоказ баннера, кнопка у поиска и замки в фильтрах"
           step={acquisition}
           scope="acquisition"
           onDrilldown={onDrilldown}
@@ -107,13 +107,18 @@ export function PaywallFunnel({ stats, onDrilldown }: Props) {
           { metric: "SCROLLED_TO_END", value: events.scrolledToEnd, label: "Долистали до конца" },
           { metric: "SUBSCRIBE_CLICK", value: events.subscribeClick, label: "Клик «Оформить»" },
           { metric: "CLOSED", value: events.closed, label: "Закрыли баннер" },
-          { metric: "BUTTON_OPENED", value: events.buttonOpened, label: "Открыли кнопкой у поиска" },
-        ] as { metric: PaywallMetric; value: number; label: string }[]).map((c) => (
+          // Две последние плашки — единственные со своим scope: BUTTON_OPENED
+          // приходит и от кнопки у поиска, и от замков в фильтрах, а подпись
+          // у каждой только про своё. Остальные метрики источником не
+          // разделяются. Ключ плашки поэтому не metric — он бы совпал.
+          { key: "BUTTON_OPENED_SEARCH", metric: "BUTTON_OPENED", value: events.buttonOpened, label: "Открыли кнопкой у поиска", scope: "search_button" },
+          { key: "BUTTON_OPENED_FILTERS", metric: "BUTTON_OPENED", value: events.buttonOpenedFromFilters, label: "Открыли из фильтров", scope: "filter_lock" },
+        ] as { key?: string; metric: PaywallMetric; value: number; label: string; scope?: PaywallScope }[]).map((c) => (
           <button
             type="button"
-            key={c.metric}
+            key={c.key ?? c.metric}
             className={styles.eventCard}
-            onClick={() => onDrilldown({ metric: c.metric, scope: "all", title: c.label })}
+            onClick={() => onDrilldown({ metric: c.metric, scope: c.scope ?? "all", title: c.label })}
             disabled={c.value === 0}
             title={c.value === 0 ? "Нет данных" : "Показать пользователей"}
           >
