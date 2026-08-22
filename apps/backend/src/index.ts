@@ -35,6 +35,7 @@ import internalRouter from "./routes/internal";
 import diagRouter from "./routes/diag";
 import paymentsRouter from "./routes/payments";
 import { startExpireNewPatternsJob } from "./jobs/expireNewPatterns";
+import { startPopularityJob } from "./jobs/popularity";
 
 const uploadsDir = path.join(__dirname, "../uploads/patterns");
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -97,6 +98,7 @@ app.use("/diag", diagRouter);
 app.use("/payments", paymentsRouter);
 
 startExpireNewPatternsJob();
+startPopularityJob();
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

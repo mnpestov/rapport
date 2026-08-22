@@ -87,8 +87,19 @@ export const getPatterns = async (req: Request, res: Response) => {
     // ordering anyway. price is nullable (free items, always NULL not 0 —
     // verified live) so both directions push NULLs to the end rather than
     // clustering free items at the top of "Дороже".
+    // popular — по popularityScore, который раз в сутки пересчитывает
+    // src/jobs/popularity.ts. Готовое проиндексированное поле, а не агрегат
+    // на лету: считать долю вовлечённых по трём логам событий на каждую
+    // страницу каталога дорого, и балл менялся бы прямо во время прокрутки.
+    // В отличие от price_* не требует PREMIUM_EXTRA — популярность считается
+    // по событиям, платных полей в ответе для неё не нужно. Запасные ключи
+    // обязательны: у описаний без открытий балл одинаковый, и без них БД не
+    // гарантирует порядок внутри такой группы — соседние страницы могли бы
+    // вернуть одну и ту же карточку дважды.
     let orderBy: any = [{ publishedAt: 'desc' }, { id: 'asc' }];
-    if (sort === 'price_asc' && extra) {
+    if (sort === 'popular') {
+      orderBy = [{ popularityScore: 'desc' }, { publishedAt: 'desc' }, { id: 'asc' }];
+    } else if (sort === 'price_asc' && extra) {
       orderBy = [{ price: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }];
     } else if (sort === 'price_desc' && extra) {
       orderBy = [{ price: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }];

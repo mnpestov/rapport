@@ -132,7 +132,10 @@ export const Favorites: React.FC = () => {
   // уже скрыты — человек остался бы с отфильтрованным списком без всякой
   // возможности это увидеть и сбросить.
   const effectiveFilters = extra ? advancedFilters : EMPTY_FILTERS;
-  const effectiveSort: SortOption = extra ? sortValue : 'newest';
+  // Платные здесь только ценовые варианты; «Популярные» доступны всем, и
+  // сбрасывать их в 'newest' вместе с price_* было бы неверно.
+  const effectiveSort: SortOption =
+    extra || sortValue === 'popular' ? sortValue : 'newest';
   // То же и для поиска с быстрыми чипами: поле ввода и кнопки скрыты, но
   // сохранённые в sessionStorage значения иначе продолжили бы резать список
   // — человек увидел бы неполное Избранное и не понял бы, почему.

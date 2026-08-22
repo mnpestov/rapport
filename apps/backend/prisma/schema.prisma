@@ -47,12 +47,21 @@ model Pattern {
   publishedAt     DateTime?
   densityStitches Decimal?  @db.Decimal(5, 2)
   densityRows     Decimal?  @db.Decimal(5, 2)
+  // Оценка популярности для сортировки «Популярные». НЕ счётчик избранного:
+  // сырые счётчики измеряют показы, а не интерес — бесплатных в каталоге
+  // 2.9%, но им показывают в 6.7 раза больше, и по сырому избранному они
+  // занимали весь топ-10. Здесь — доля открывших, которые сделали что-то
+  // значимое (перешли к автору или добавили в избранное), сглаженная по
+  // объёму. Считается фоновой задачей раз в сутки (src/jobs/popularity.ts),
+  // а не запросом: агрегат по трём логам событий на каждую страницу
+  // каталога не потянуть, да и балл не должен меняться в середине
+  // прокрутки — иначе пагинация начнёт дублировать карточки.
+  popularityScore Float     @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  authorId String
-  author   Author @relation(fields: [authorId], references: [id])
-
+  authorId    String
+  author      Author             @relation(fields: [authorId], references: [id])
   instruments Instrument[]
   categories  ProductType[]
   tags        Tag[]
@@ -61,6 +70,8 @@ model Pattern {
   views       PatternView[]
   linkClicks  PatternLinkClick[]
   drafts      Draft[]
+
+  @@index([popularityScore, id])
 }
 
 model Author {
@@ -133,11 +144,11 @@ enum Permission {
 // Хранить это в User.lastPaywallShownAt нельзя: то поле перезаписывается и
 // на нём висит функциональный 7-дневный кулдаун показа.
 enum PaywallEventType {
-  SHOWN            // баннер открылся
-  SCROLLED_TO_END  // долистал список функций до конца
-  SUBSCRIBE_CLICK  // нажал "Оформить подписку" / "Продлить"
-  CLOSED           // закрыл — кнопкой или тапом по затемнению, не различаем
-  BUTTON_OPENED    // открыл шторку кнопкой в строке поиска
+  SHOWN // баннер открылся
+  SCROLLED_TO_END // долистал список функций до конца
+  SUBSCRIBE_CLICK // нажал "Оформить подписку" / "Продлить"
+  CLOSED // закрыл — кнопкой или тапом по затемнению, не различаем
+  BUTTON_OPENED // открыл шторку кнопкой в строке поиска
 }
 
 // Откуда открылась шторка. Нужен и на событии, и на Payment: без источника
@@ -145,12 +156,12 @@ enum PaywallEventType {
 // Задним числом не восстанавливается — единственная часть аналитики,
 // которую нельзя отложить (§10.3, §10.7).
 enum PaywallSource {
-  AUTO_BANNER      // автопоказ при входе
-  SEARCH_BUTTON    // кнопка подписки в строке поиска
-  FILTER_LOCK      // тап по платной секции в шторке фильтров
-  EXPIRING_3_DAYS  // предупреждение "истекает через 3 дня"
-  EXPIRING_1_DAY   // предупреждение "через 1 день"
-  ACTIVE           // шторка "подписка активна" (продление из неё)
+  AUTO_BANNER // автопоказ при входе
+  SEARCH_BUTTON // кнопка подписки в строке поиска
+  FILTER_LOCK // тап по платной секции в шторке фильтров
+  EXPIRING_3_DAYS // предупреждение "истекает через 3 дня"
+  EXPIRING_1_DAY // предупреждение "через 1 день"
+  ACTIVE // шторка "подписка активна" (продление из неё)
 }
 
 enum PaymentStatus {
@@ -229,6 +240,10 @@ model UserFavorite {
   pattern Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
 
   @@unique([userId, patternId])
+  // Составной unique выше начинается с userId и для группировки по
+  // patternId бесполезен — а именно она нужна сортировке «Популярные»
+  // (orderBy favoritedBy._count) и топам в админке.
+  @@index([patternId])
 }
 
 // ---------------------------------------------------------------------------
@@ -522,13 +537,13 @@ model PriceCheckRun {
 // a UUID, so it gets its own autoincrement column rather than reusing id.
 // ---------------------------------------------------------------------------
 model Payment {
-  id            String        @id @default(uuid())
-  invId         Int           @unique @default(autoincrement())
+  id            String         @id @default(uuid())
+  invId         Int            @unique @default(autoincrement())
   userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount        Decimal       @db.Decimal(10, 2)
-  status        PaymentStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Decimal        @db.Decimal(10, 2)
+  status        PaymentStatus  @default(PENDING)
+  createdAt     DateTime       @default(now())
   paidAt        DateTime?
   // Set once the Robokassa-generated receipt has been sent to the user's
   // bot chat, so a Result URL retry doesn't send it twice.

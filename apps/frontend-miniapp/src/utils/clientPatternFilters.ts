@@ -140,6 +140,17 @@ export const sortPatterns = (patterns: Pattern[], sort: SortOption): Pattern[] =
       new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime() || a.id.localeCompare(b.id)
     );
   }
+  // Популярность — по тому же popularityScore, по которому сортируется
+  // каталог; здесь он приезжает в самих описаниях. Запасные ключи те же и в
+  // том же порядке, что у сервера (publishedAt, затем id): у описаний без
+  // открытий балл одинаковый, и без них порядок разошёлся бы с каталогом.
+  if (sort === 'popular') {
+    return [...patterns].sort((a, b) =>
+      (b.popularityScore ?? 0) - (a.popularityScore ?? 0) ||
+      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime() ||
+      a.id.localeCompare(b.id)
+    );
+  }
   const dir = sort === 'price_asc' ? 1 : -1;
   return [...patterns].sort((a, b) => {
     const pa = a.price != null ? parseFloat(a.price) : null;

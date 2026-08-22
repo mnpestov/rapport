@@ -5,7 +5,7 @@ import { useSheetTransition } from '../../hooks/useSheetTransition';
 import '../../styles/sheet.css';
 import './SortModal.css';
 
-export type SortOption = 'newest' | 'price_asc' | 'price_desc';
+export type SortOption = 'newest' | 'popular' | 'price_asc' | 'price_desc';
 
 const DEFAULT_SORT: SortOption = 'newest';
 
@@ -26,6 +26,9 @@ interface SortModalProps {
 // варианты не утекут вместе с ней.
 const OPTIONS: { value: SortOption; label: string; extraOnly?: boolean }[] = [
   { value: 'newest', label: 'Последние добавленные' },
+  // Не extraOnly: популярность считается по добавлениям в избранное, платных
+  // полей в ответе для неё не нужно — в отличие от цены.
+  { value: 'popular', label: 'Популярные' },
   { value: 'price_asc', label: 'Дешевле', extraOnly: true },
   { value: 'price_desc', label: 'Дороже', extraOnly: true },
 ];

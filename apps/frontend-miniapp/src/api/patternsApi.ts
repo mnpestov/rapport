@@ -16,6 +16,11 @@ export interface Pattern {
   thumbnailUrl: string;
   isFree: boolean;
   isNew: boolean;
+  // Балл популярности (доля открывших описание, которые перешли к автору
+  // или добавили его в избранное; пересчитывается на сервере раз в сутки).
+  // Каталог по нему сортируется запросом, Избранному он нужен в ответе —
+  // там список уже загружен целиком и сортируется на клиенте.
+  popularityScore?: number;
   productTypes: string[];
   instruments: string[];
   tags: string[];
@@ -70,8 +75,9 @@ export interface FetchPatternsOptions {
   // 'newest' (publishedAt desc) is the server's own default when omitted —
   // only sent when non-default. price_asc/price_desc silently fall back to
   // 'newest' server-side for non-PREMIUM_EXTRA requests, same reasoning as
-  // isDiscount above.
-  sort?: 'newest' | 'price_asc' | 'price_desc';
+  // isDiscount above. 'popular' (число добавлений в избранное) такого гейта
+  // не имеет — оно считается по UserFavorite, а не по платным полям.
+  sort?: 'newest' | 'popular' | 'price_asc' | 'price_desc';
   // Server ignores both for non-PREMIUM_EXTRA requests, same as isDiscount —
   // doesn't narrow any other facet's option list (see getFilters), only the
   // main pattern list.
