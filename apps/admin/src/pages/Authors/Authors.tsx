@@ -134,6 +134,16 @@ export function Authors() {
         getAuthors(debouncedSearchQuery),
         getPendingReports()
       ]);
+      
+      const reportAuthorIds = new Set(reports.map((r: any) => r.authorId));
+      data.sort((a, b) => {
+        const aHas = reportAuthorIds.has(a.id);
+        const bHas = reportAuthorIds.has(b.id);
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return a.name.localeCompare(b.name, "ru");
+      });
+
       setAuthors(data);
       setSyncReports(reports);
     } catch (err: any) {

@@ -7,6 +7,7 @@ import { getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, 
 import { SyncReportItem, updateSyncItem, SyncItemUpdateDTO } from "../../api/authors";
 import { AdminDraft } from "../../api/admin-drafts";
 import { MAX_CATEGORIES, MAX_TAGS, labelStyle, optionalStyle, inputStyle, selectStyles, btnStyle, ModalCheckbox } from "../Patterns/formShared";
+import patternsStyles from "../Patterns/Patterns.module.css";
 
 interface SyncItemEditModalProps {
   isOpen: boolean;
@@ -120,7 +121,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Редактировать новинку" maxWidth={760}>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 30 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 20, rowGap: 30 }}>
+        <div className={patternsStyles.formGrid}>
 
           {/* Название */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

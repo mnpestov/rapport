@@ -142,7 +142,7 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Новинки: ${authorName}`} maxWidth={1024} noPadding={true}>
-      <div style={{ minWidth: "1000px", padding: "16px", boxSizing: "border-box", maxHeight: "calc(90vh - 80px)", overflowY: "auto" }}>
+      <div style={{ width: "100%", padding: "16px", boxSizing: "border-box", maxHeight: "calc(90vh - 80px)", overflowY: "auto" }}>
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "40px" }}>
             <Loader2 className={styles.spinner} size={32} />
@@ -160,7 +160,7 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
                 Очистить новинки
               </button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 400px), 1fr))", gap: "16px" }}>
             {report.items.map(item => {
               const draft = toDraft(item, report.authorId, authorName);
 
