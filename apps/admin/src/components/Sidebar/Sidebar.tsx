@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText } from "lucide-react";
+import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText, X } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -9,9 +9,11 @@ import { logout } from "../../api/auth";
 interface SidebarProps {
   variant?: "admin" | "author";
   subtitle?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
+export function Sidebar({ variant = "admin", subtitle, isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { whitelistTotal, allTotal, syncReportsCount } = useUnread();
   const { clearToken } = useAuth();
@@ -30,10 +32,17 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
   };
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.logoContainer}>
-        <img src="/logo-dark.svg" alt="Rapport" className={styles.logoImage} />
-      </div>
+    <>
+      {isOpen && <div className={styles.overlay} onClick={onClose} />}
+      <aside className={`${styles.sidebar} ${isOpen ? styles.open : ""}`}>
+        {onClose && (
+          <button className={styles.closeBtn} onClick={onClose}>
+            <X size={24} strokeWidth={1} color="#1d1c1c" />
+          </button>
+        )}
+        <div className={styles.logoContainer}>
+          <img src="/logo-dark.svg" alt="Rapport" className={styles.logoImage} />
+        </div>
 
       {subtitle && <div className={styles.subtitle}>
         <span className="author-name">{subtitle}</span>
@@ -43,6 +52,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
         {variant === "admin" ? (
           <NavLink
             to="/patterns"
+            onClick={onClose}
             className={({ isActive }) =>
               `${styles.navItem} ${isActive ? styles.active : ""}`
             }
@@ -54,6 +64,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
           <NavLink
             to="/cabinet"
             end
+            onClick={onClose}
             className={({ isActive }) =>
               `${styles.navItem} ${isActive ? styles.active : ""}`
             }
@@ -67,6 +78,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
           <>
             <NavLink
               to="/authors"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -78,6 +90,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/stats"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -88,6 +101,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/requests"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -99,6 +113,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/whitelist"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -110,6 +125,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/users"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -120,6 +136,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/payments"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -130,6 +147,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/price-check"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -140,6 +158,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
 
             <NavLink
               to="/dictionaries"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ""}`
               }
@@ -171,6 +190,7 @@ export function Sidebar({ variant = "admin", subtitle }: SidebarProps) {
         <LogOut size={24} strokeWidth={1} className={styles.icon} />
         <span className={styles.label}>Выйти</span>
       </button>
-    </aside>
+      </aside>
+    </>
   );
 }

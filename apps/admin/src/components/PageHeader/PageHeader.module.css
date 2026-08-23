@@ -1,13 +1,8 @@
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 16px;
-}
-
-.left {
-  display: flex;
-  align-items: flex-end;
-  gap: 100px;
 }
 
 .title {
@@ -17,6 +12,7 @@
   font-weight: 700;
   line-height: 110%;
   margin: 0;
+  margin-right: 84px;
 }
 
 .search {
@@ -87,4 +83,20 @@
   font-size: 25.63px;
   font-weight: 700;
   line-height: normal;
+}
+
+@media (max-width: 768px) {
+  .title {
+    order: 1;
+    margin-right: auto;
+  }
+  .count {
+    order: 2;
+    margin-left: 0;
+  }
+  .search {
+    order: 3;
+    width: 100%;
+    margin-top: 12px;
+  }
 }

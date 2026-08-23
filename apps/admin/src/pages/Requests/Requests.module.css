@@ -235,3 +235,13 @@
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
 }
+
+@media (max-width: 768px) {
+  .mobileHidden {
+    display: none !important;
+  }
+  .userList {
+    width: 100%;
+    border-right: none;
+  }
+}

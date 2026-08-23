@@ -86,3 +86,10 @@
   justify-content: center;
   color: var(--c-text);
 }
+
+@media (max-width: 768px) {
+  .colAuthor,
+  .colFav {
+    display: none !important;
+  }
+}

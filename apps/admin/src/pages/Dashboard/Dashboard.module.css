@@ -230,3 +230,41 @@
   font-size: 15px;
   font-family: 'Mulish', sans-serif;
 }
+
+.mobileSelect {
+  display: none;
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: #fff;
+  color: #1D1C1C;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .periodTabs {
+    display: none;
+  }
+  .mobileSelect {
+    display: block;
+  }
+  .rightControls {
+    align-items: stretch;
+    width: 100%;
+  }
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+  .statCard {
+    border-right: none;
+    border-bottom: 1px solid #E5E7EB;
+  }
+  .statCard:last-child {
+    border-bottom: none;
+  }
+  .topGrid {
+    grid-template-columns: 1fr;
+  }
+}

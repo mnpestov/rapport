@@ -106,7 +106,7 @@ export function Requests() {
       </div>
 
       <div className={styles.layout}>
-        <div className={styles.userList}>
+        <div className={`${styles.userList} ${selectedId ? styles.mobileHidden : ""}`}>
           {isLoading && <div className={styles.empty}>Загрузка...</div>}
           {!isLoading && filtered.length === 0 && (
             <div className={styles.empty}>Нет обращений</div>
@@ -149,7 +149,7 @@ export function Requests() {
           })}
         </div>
 
-        <div className={styles.chatArea}>
+        <div className={`${styles.chatArea} ${!selectedId ? styles.mobileHidden : ""}`}>
           {selectedUser ? (
             <ChatPanel
               key={selectedUser.telegramId}
@@ -159,6 +159,7 @@ export function Requests() {
                 load();
                 refreshUnread();
               }}
+              onBack={() => setSelectedId(null)}
             />
           ) : (
             <div className={styles.chatEmpty}>

@@ -40,7 +40,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function Stack({ items }: { items: { id: string; name: string }[] }) {
-  if (items.length === 0) return <span>—</span>;
+  if (items.length === 0) return null;
   return (
     <div className={styles.stack}>
       {items.map((item) => (
@@ -76,24 +76,26 @@ export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabe
             <span className={styles.titleValue}>{draft.title}</span>
             {draft.patternId && <span className={styles.editBadge}>Правка</span>}
           </Row>
-          <Row label="Новинка"><CheckboxGlyph checked={draft.isNew} /></Row>
-          <Row label="Бесплатное"><CheckboxGlyph checked={draft.isFree} /></Row>
-          <Row label="Категория"><Stack items={draft.categories} /></Row>
-          <Row label="Хар-ки"><Stack items={draft.tags} /></Row>
-          <Row label="Ссылка">
-            <a href={draft.url} target="_blank" rel="noreferrer" className={styles.link}>ссылка</a>
-          </Row>
-          <Row label="Инструмент"><Stack items={draft.instruments} /></Row>
-          <Row label="Толщина нити">
-            <span>{draft.yarnRanges.length > 0 ? draft.yarnRanges.map((y) => y.label).join(", ") : "—"}</span>
-          </Row>
-          <Row label="Плотность">
-            <span>
-              {draft.densityStitches != null && draft.densityRows != null
-                ? `${draft.densityStitches} х ${draft.densityRows}`
-                : "—"}
-            </span>
-          </Row>
+          {!!draft.isNew && <Row label="Новинка"><CheckboxGlyph checked={draft.isNew} /></Row>}
+          {!!draft.isFree && <Row label="Бесплатное"><CheckboxGlyph checked={draft.isFree} /></Row>}
+          {draft.categories.length > 0 && <Row label="Категория"><Stack items={draft.categories} /></Row>}
+          {draft.tags.length > 0 && <Row label="Хар-ки"><Stack items={draft.tags} /></Row>}
+          {!!draft.url && (
+            <Row label="Ссылка">
+              <a href={draft.url} target="_blank" rel="noreferrer" className={styles.link}>ссылка</a>
+            </Row>
+          )}
+          {draft.instruments.length > 0 && <Row label="Инструмент"><Stack items={draft.instruments} /></Row>}
+          {draft.yarnRanges.length > 0 && (
+            <Row label="Толщина нити">
+              <span>{draft.yarnRanges.map((y) => y.label).join(", ")}</span>
+            </Row>
+          )}
+          {draft.densityStitches != null && draft.densityRows != null && (
+            <Row label="Плотность">
+              <span>{`${draft.densityStitches} х ${draft.densityRows}`}</span>
+            </Row>
+          )}
         </div>
 
         <div className={styles.actions}>

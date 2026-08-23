@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import { ButtonHTMLAttributes, ReactNode, useState, useEffect } from "react";
 import { List, LayoutGrid } from "lucide-react";
 import styles from "./ControlPanel.module.css";
 
@@ -18,29 +18,50 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({ tabs, activeTab, onTabChange, actions }: ControlPanelProps) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div className={styles.panel}>
       {tabs && (
-        <div className={styles.tabs}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              className={`${styles.tab} ${activeTab === tab.value ? styles.tabActive : ""}`}
-              onClick={() => onTabChange?.(tab.value)}
-            >
-              {tab.prefix && (
-                <span
-                  className={styles.tabPrefix}
-                  style={tab.prefixColor ? { background: tab.prefixColor } : undefined}
-                >
-                  {tab.prefix}
-                </span>
-              )}
-              {tab.label}
-              {tab.count !== undefined && <span className={styles.badge}>{tab.count}</span>}
-            </button>
-          ))}
-        </div>
+        isMobile ? (
+          <select 
+            className={styles.mobileSelect} 
+            value={activeTab} 
+            onChange={(e) => onTabChange?.(e.target.value)}
+          >
+            {tabs.map((tab) => (
+              <option key={tab.value} value={tab.value}>
+                {tab.label} {tab.count !== undefined ? `(${tab.count})` : ""}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className={styles.tabs}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                className={`${styles.tab} ${activeTab === tab.value ? styles.tabActive : ""}`}
+                onClick={() => onTabChange?.(tab.value)}
+              >
+                {tab.prefix && (
+                  <span
+                    className={styles.tabPrefix}
+                    style={tab.prefixColor ? { background: tab.prefixColor } : undefined}
+                  >
+                    {tab.prefix}
+                  </span>
+                )}
+                {tab.label}
+                {tab.count !== undefined && <span className={styles.badge}>{tab.count}</span>}
+              </button>
+            ))}
+          </div>
+        )
       )}
       {actions && <div className={styles.actions}>{actions}</div>}
     </div>

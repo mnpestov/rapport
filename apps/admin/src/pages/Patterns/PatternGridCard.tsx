@@ -62,20 +62,18 @@ export function PatternGridCard({ item, onEdit, actionLabel, onAction }: Pattern
           <Row label="Название">
             <span className={styles.titleValue}>{item.title}</span>
           </Row>
-          <Row label="Новинка"><CheckboxGlyph checked={item.isNew} /></Row>
-          <Row label="Бесплатное"><CheckboxGlyph checked={!!item.isFree} /></Row>
-          <Row label="Категория"><span>{item.category || "—"}</span></Row>
-          <Row label="Хар-ки"><span>{item.characteristics || "—"}</span></Row>
-          <Row label="Ссылка">
-            {item.url ? (
+          {!!item.isNew && <Row label="Новинка"><CheckboxGlyph checked={item.isNew} /></Row>}
+          {!!item.isFree && <Row label="Бесплатное"><CheckboxGlyph checked={!!item.isFree} /></Row>}
+          {!!item.category && <Row label="Категория"><span>{item.category}</span></Row>}
+          {!!item.characteristics && <Row label="Хар-ки"><span>{item.characteristics}</span></Row>}
+          {!!item.url && (
+            <Row label="Ссылка">
               <a href={item.url} target="_blank" rel="noreferrer" className={styles.link}>ссылка</a>
-            ) : (
-              <span>—</span>
-            )}
-          </Row>
-          <Row label="Инструмент"><span>{item.instrument || "—"}</span></Row>
-          <Row label="Толщина нити"><span>{item.thickness || "—"}</span></Row>
-          <Row label="Плотность"><span>{item.density || "—"}</span></Row>
+            </Row>
+          )}
+          {!!item.instrument && <Row label="Инструмент"><span>{item.instrument}</span></Row>}
+          {!!item.thickness && <Row label="Толщина нити"><span>{item.thickness}</span></Row>}
+          {!!item.density && <Row label="Плотность"><span>{item.density}</span></Row>}
         </div>
 
         <div className={styles.actions}>

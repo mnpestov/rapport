@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Download, FileText, Mic } from "lucide-react";
+import { Send, Download, FileText, Mic, ChevronLeft } from "lucide-react";
 import {
   getChatHistory,
   sendChatMessage,
@@ -15,6 +15,7 @@ interface Props {
   telegramId: string;
   displayName: string;
   onRead?: () => void;
+  onBack?: () => void;
 }
 
 function MediaMessage({ msg }: { msg: ChatMessage }) {
@@ -87,7 +88,7 @@ function MediaMessage({ msg }: { msg: ChatMessage }) {
   );
 }
 
-export function ChatPanel({ telegramId, displayName, onRead }: Props) {
+export function ChatPanel({ telegramId, displayName, onRead, onBack }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -158,7 +159,14 @@ export function ChatPanel({ telegramId, displayName, onRead }: Props) {
 
   return (
     <div className={styles.panel}>
-      <div className={styles.panelHeader}>Чат с {displayName}</div>
+      <div className={styles.panelHeader}>
+        {onBack && (
+          <button className={styles.backBtn} onClick={onBack}>
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        <span>Чат с {displayName}</span>
+      </div>
 
       <div className={styles.messages}>
         {messages.length === 0 && (

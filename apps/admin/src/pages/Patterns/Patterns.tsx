@@ -5,7 +5,7 @@ import { ModerationCard } from "./ModerationCard";
 import { PatternGridCard } from "./PatternGridCard";
 import { ControlPanel, ControlPanelBtn, ViewToggle, ViewMode } from "../../components/ControlPanel/ControlPanel";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
-import { getPatterns, createPattern, deletePattern, resetAllIsNew, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
+import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader, PatternStatus } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
@@ -134,7 +134,6 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [resetNewConfirmOpen, setResetNewConfirmOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     authorName: "",
@@ -157,6 +156,14 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [tagsList, setTagsList] = useState<DictionaryItem[]>([]);
   const [instrumentsList, setInstrumentsList] = useState<DictionaryItem[]>([]);
   const [yarnRangesList, setYarnRangesList] = useState<YarnRange[]>([]);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (isAuthor) return;
@@ -657,16 +664,6 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
   };
 
-  const confirmResetAllIsNew = async () => {
-    setResetNewConfirmOpen(false);
-    try {
-      const { updated } = await resetAllIsNew();
-      toast.success(`Флаг «Новинка» снят у ${updated} описаний`);
-    } catch (err: any) {
-      toast.error(err.message || "Не удалось сбросить флаг «Новинка»");
-    }
-  };
-
   const handleApproveDraft = async (id: string) => {
     try {
       await approveDraft(id);
@@ -753,6 +750,8 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const modalTitle = formReadonly
     ? "Описание (на модерации)"
     : editingId ? "Редактировать описание" : "Новое описание";
+
+  const effectiveViewMode = isMobile ? "grid" : viewMode;
 
   return (
     <div className={styles.container}>
@@ -856,10 +855,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               >
                 Добавить описание
               </ControlPanelBtn>
-              <ControlPanelBtn variant="neutral" onClick={() => setResetNewConfirmOpen(true)}>
-                Убрать статус «Новинка»
-              </ControlPanelBtn>
-              {viewMode === "list" && status === "archive" && (
+              {effectiveViewMode === "list" && status === "archive" && (
                 <ControlPanelBtn
                   variant="neutral"
                   disabled={selectedIds.size === 0}
@@ -868,7 +864,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   Опубликовать
                 </ControlPanelBtn>
               )}
-              {viewMode === "list" && (
+              {effectiveViewMode === "list" && (
                 <ControlPanelBtn
                   variant="danger"
                   disabled={selectedIds.size === 0}
@@ -877,7 +873,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   Удалить
                 </ControlPanelBtn>
               )}
-              {status !== "moderation" && (
+              {status !== "moderation" && !isMobile && (
                 <ViewToggle value={viewMode} onChange={setViewMode} />
               )}
             </>
@@ -906,7 +902,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
       {(isAuthor || status !== "moderation") && (
         <>
-          {!isAuthor && viewMode === "grid" ? (
+          {!isAuthor && effectiveViewMode === "grid" ? (
             <div className={styles.moderationGrid}>
               {isLoading && <div className={styles.centerState}>Загрузка...</div>}
 
@@ -1014,7 +1010,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 20, rowGap: 30 }}>
+              <div className={styles.formGrid}>
 
                 {/* Название */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1290,18 +1286,6 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             onConfirm={confirmDeleteSelected}
             onCancel={() => setConfirmOpen(false)}
           />
-
-          <ConfirmDialog
-            isOpen={resetNewConfirmOpen}
-            title="Сбросить все новинки"
-            message="Флаг «Новинка» будет снят у всех описаний. Продолжить?"
-            confirmText="Сбросить"
-            cancelText="Отмена"
-            variant="danger"
-            onConfirm={confirmResetAllIsNew}
-            onCancel={() => setResetNewConfirmOpen(false)}
-          />
-
         </>
       )}
 

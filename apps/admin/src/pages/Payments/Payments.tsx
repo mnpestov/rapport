@@ -151,40 +151,40 @@ export function Payments() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>№</th>
-                <th>Пользователь</th>
-                <th>Сумма</th>
-                <th>Статус</th>
-                <th>Создан</th>
-                <th>Оплачен</th>
-                <th>Источник</th>
-                <th>Чек</th>
-                <th />
+                <th className={styles.colId}>№</th>
+                <th className={styles.colUser}>Пользователь</th>
+                <th className={styles.colAmount}>Сумма</th>
+                <th className={styles.colStatus}>Статус</th>
+                <th className={styles.colCreated}>Создан</th>
+                <th className={styles.colPaid}>Оплачен</th>
+                <th className={styles.colSource}>Источник</th>
+                <th className={styles.colReceipt}>Чек</th>
+                <th className={styles.colAction} />
               </tr>
             </thead>
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id}>
-                  <td className={styles.invId}>{p.invId}</td>
-                  <td>
+                  <td className={`${styles.invId} ${styles.colId}`}>{p.invId}</td>
+                  <td className={styles.colUser}>
                     <div className={styles.userName}>{userLabel(p.user)}</div>
                     <div className={styles.userMeta}>
                       {p.user.username ? `@${p.user.username} · ` : ""}
                       {p.user.telegramId}
                     </div>
                   </td>
-                  <td className={styles.amount}>{p.amount.toLocaleString("ru-RU")} ₽</td>
-                  <td>
+                  <td className={`${styles.amount} ${styles.colAmount}`}>{p.amount.toLocaleString("ru-RU")} ₽</td>
+                  <td className={styles.colStatus}>
                     <span className={p.status === "PAID" ? styles.badgePaid : styles.badgePending}>
                       {p.status === "PAID" ? "Оплачен" : "Не оплачен"}
                     </span>
                   </td>
-                  <td className={styles.date}>{formatDateTime(p.createdAt)}</td>
-                  <td className={styles.date}>{formatDateTime(p.paidAt)}</td>
-                  <td className={styles.source}>
+                  <td className={`${styles.date} ${styles.colCreated}`}>{formatDateTime(p.createdAt)}</td>
+                  <td className={`${styles.date} ${styles.colPaid}`}>{formatDateTime(p.paidAt)}</td>
+                  <td className={`${styles.source} ${styles.colSource}`}>
                     {p.source ? SOURCE_LABELS[p.source] : <span className={styles.muted}>—</span>}
                   </td>
-                  <td className={styles.date}>
+                  <td className={`${styles.date} ${styles.colReceipt}`}>
                     {p.status !== "PAID" ? (
                       <span className={styles.muted}>—</span>
                     ) : p.receiptSentAt ? (
@@ -193,7 +193,7 @@ export function Payments() {
                       <span className={styles.warn}>Не отправлен</span>
                     )}
                   </td>
-                  <td>
+                  <td className={styles.colAction}>
                     <button
                       className={styles.checkBtn}
                       onClick={() => handleCheck(p)}

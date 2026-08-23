@@ -8,6 +8,9 @@
 }
 
 .panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -16,6 +19,24 @@
   letter-spacing: 0.05em;
   margin-bottom: 12px;
   flex-shrink: 0;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  margin-left: -8px;
+  cursor: pointer;
+  color: #1D1C1C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 769px) {
+  .backBtn {
+    display: none !important;
+  }
 }
 
 .messages {

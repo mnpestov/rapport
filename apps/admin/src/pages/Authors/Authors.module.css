@@ -219,3 +219,23 @@
 .btnSecondary:hover:not(:disabled) {
   background-color: #f9fafb;
 }
+
+@media (max-width: 768px) {
+  .controlsPanel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .leftControls {
+    width: 100%;
+  }
+  .rightControls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .rightControls button {
+    flex: 1;
+    justify-content: center;
+    margin-right: 0 !important; /* Override inline margin if any */
+  }
+}

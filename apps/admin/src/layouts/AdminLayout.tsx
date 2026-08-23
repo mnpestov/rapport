@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import { Sidebar } from '../components/Sidebar/Sidebar'
 import { UnreadProvider } from '../contexts/UnreadContext'
 import { getCabinetAuthor } from '../api/cabinet'
+import styles from './AdminLayout.module.css'
 
 interface AdminLayoutProps {
   variant?: 'admin' | 'author'
@@ -10,6 +12,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ variant = 'admin' }: AdminLayoutProps) {
   const [authorName, setAuthorName] = useState('')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (variant !== 'author') return
@@ -19,10 +22,22 @@ export function AdminLayout({ variant = 'admin' }: AdminLayoutProps) {
   }, [variant]);
 
   const content = (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb', overflow: 'hidden' }}>
-      <Sidebar variant={variant} subtitle={variant === 'author' ? authorName : undefined} />
+    <div className={styles.container}>
+      <div className={styles.mobileHeader}>
+        <button className={styles.menuBtn} onClick={() => setIsMobileMenuOpen(true)}>
+          <Menu size={24} />
+        </button>
+        <img src="/logo-dark.svg" alt="Rapport" className={styles.mobileLogo} />
+      </div>
 
-      <main style={{ flex: 1, padding: '32px 48px', overflowY: 'auto' }}>
+      <Sidebar 
+        variant={variant} 
+        subtitle={variant === 'author' ? authorName : undefined} 
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
+
+      <main className={styles.main}>
         <Outlet />
       </main>
     </div>

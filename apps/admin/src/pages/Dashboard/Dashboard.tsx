@@ -274,6 +274,23 @@ export function Dashboard() {
             })}
           </div>
 
+          <select
+            className={styles.mobileSelect}
+            value={period}
+            onChange={(e) => handleTabClick(e.target.value as Period)}
+          >
+            {PERIODS.map((p) => {
+              const label = (p.value === "custom" && appliedRange)
+                ? formatRangeLabel(appliedRange.from, appliedRange.to)
+                : p.label;
+              return (
+                <option key={p.value} value={p.value}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+
           {pickerOpen && (
             <DateRangePicker
               initialRange={appliedRange}
