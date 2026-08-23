@@ -91,9 +91,13 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   const { extra, paywallUiEnabled } = usePremiumAccess();
   // Один выключатель на всю панель: строку поиска, чипы и обе кнопки.
   const toolbarLocked = toolbarRequiresExtra && !extra;
-  // Сортировка платная и в каталоге тоже: без PREMIUM_EXTRA в её шторке
-  // остаётся единственный вариант — он же выбранный по умолчанию.
-  const showSortButton = extra;
+  // Кнопка сортировки доступна всем: платные в шторке только ценовые
+  // варианты, а «Последние добавленные» и «Популярные» — нет. Раньше её
+  // прятали от бесплатных потому, что кроме ценовых там ничего и не было и
+  // выбирать было не из чего; с появлением популярности это перестало быть
+  // правдой. В Избранном на неё по-прежнему распространяется toolbarLocked
+  // ниже — там скрыта вся панель целиком, это отдельное решение.
+  const showSortButton = !toolbarLocked;
   const showFilterButton = !toolbarLocked;
   // Что осталось бы в ряду поиска, если саму строку скрыли.
   const hasSearchRowContent = (showSubscriptionButton && paywallUiEnabled) || !!showFavoritesButton;
