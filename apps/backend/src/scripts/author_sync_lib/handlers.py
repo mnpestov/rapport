@@ -566,6 +566,293 @@ def _make_taplink_store_handler(site_url, label):
 
 scrape_obnimi_mamu_store = _make_taplink_store_handler('https://obnimi-mamu.ru/m/', 'obnimi-mamu.ru')
 
+# ── Taplink, второй макет: страницы из блоков ──────────────────────────────
+#
+# У Taplink два принципиально разных способа продавать. Первый — блок
+# «Магазин» (обработчик выше): товары лежат готовым списком в
+# window.data.data.products, у каждого свой product_id, цена отдельным полем
+# и страница /o/<hex(product_id)>/. Второй — обычные страницы профиля,
+# собранные из блоков: window.data.fields[].items[], страницы /p/<id>/,
+# никаких «товаров» как сущности вообще нет. Так сделана
+# taplink.cc/sedmoye.avgusta.
+#
+# Во втором макете товар — это соседство трёх блоков в разделе:
+#
+#   pictures  — обложка
+#   text      — <b>"ПАРИЖАНКА"</b> + пара строк описания
+#   link      — «ПОДРОБНЕЕ», type=page, value=<id страницы товара>
+#
+# а сама страница товара устроена так:
+#
+#   pictures  — галерея (1–9 фото)
+#   text      — «С 12.08 по 31.08 цена МК 890₽ вместо 1390₽»
+#   link      — «КУПИТЬ МК», внешняя ссылка на payform.ru
+#   text      — длинное описание
+#   break     — ↓ ниже «РАБОТЫ УЧЕНИЦ» и 15–30 чужих фотографий
+#
+# Разделитель break здесь принципиален: без остановки на нём в галерею
+# описания попадали бы фотографии работ учениц — на некоторых страницах их
+# втрое больше, чем фото самого изделия.
+
+def _taplink_page_blocks(page_data):
+    # Блоки страницы разложены по секциям (fields[].items[]), но для разбора
+    # важен только их порядок на странице, а не принадлежность секции: товар
+    # в листинге может начаться в одной секции и закончиться в следующей —
+    # так и происходит на странице «сумки», где четвёртый товар вынесен в
+    # отдельную секцию.
+    return [it for fld in (page_data.get('fields') or []) for it in (fld.get('items') or [])]
+
+
+def _taplink_block_text(raw):
+    # Текст блока — это HTML-фрагмент с \n вместо <br> в одних местах и
+    # настоящими <br> в других, плюс &nbsp; и невидимый U+200C, которым
+    # редактор Taplink размечает пустые строки.
+    if not raw:
+        return ''
+    html = re.sub(r'<br\s*/?>', '\n', raw, flags=re.IGNORECASE)
+    text = BeautifulSoup(html, 'html.parser').get_text()
+    return text.replace('\u200c', '').replace('\xa0', ' ').strip()
+
+
+# Число с валютой: «890₽», «1 390 руб.», «440р». Точка/запятая как разделитель
+# дробной части у этой площадки не встречается — цены целые.
+_TAPLINK_MONEY_RE = re.compile(r'(\d[\d\s\u00a0]*)\s*(?:₽|руб\.?|р\.?(?![а-яё]))', re.IGNORECASE)
+_TAPLINK_INSTEAD_RE = re.compile(r'вместо', re.IGNORECASE)
+
+
+def _parse_taplink_text_price(text):
+    # «С 12.08 по 31.08 цена МК 890₽ вместо 1390₽» → (890.0, 1390.0).
+    # Даты не мешают: без валюты рядом число за цену не принимается.
+    # Регистр слова «вместо» плавает у самого автора («440р ВМЕСТО 690р»).
+    if not text:
+        return None, None
+    matches = [(m.start(), float(re.sub(r'[\s\u00a0]', '', m.group(1)))) for m in _TAPLINK_MONEY_RE.finditer(text)]
+    if not matches:
+        return None, None
+
+    instead = _TAPLINK_INSTEAD_RE.search(text)
+    if instead:
+        before = [v for pos, v in matches if pos < instead.start()]
+        after = [v for pos, v in matches if pos > instead.start()]
+        if before and after:
+            # Старая цена — та, что после «вместо»; она же обязана быть больше,
+            # иначе это не скидка, а неверно разобранная строка.
+            price, old_price = before[-1], after[0]
+            return (price, old_price) if old_price > price else (price, None)
+
+    return matches[0][1], None
+
+
+def _taplink_storage_domain(account):
+    return 'i.taplink.st' if (account or {}).get('language_code', '') == 'ru' else 'p.taplink.st'
+
+
+def _taplink_pictures(block, storage_domain):
+    items = ((block.get('options') or {}).get('list')) or []
+    return [
+        f"https://{storage_domain}/p/{it['p']['filename']}"
+        for it in items
+        if (it.get('p') or {}).get('filename')
+    ]
+
+
+def _parse_taplink_page_product(product_url, title, headers, yarn_ranges_db, instruments_db, fallback_text=''):
+    account, page_data = _fetch_taplink_json(product_url, headers)
+    if not page_data:
+        return None
+
+    storage_domain = _taplink_storage_domain(account)
+    images, texts = [], []
+    for block in _taplink_page_blocks(page_data):
+        block_type = block.get('block_type_name')
+        if block_type == 'break':
+            break
+        if block_type == 'pictures' and not images:
+            images = _taplink_pictures(block, storage_domain)
+        elif block_type == 'text':
+            texts.append(_taplink_block_text((block.get('options') or {}).get('text')))
+
+    price = old_price = None
+    remaining = []
+    for text in texts:
+        if price is None:
+            price, old_price = _parse_taplink_text_price(text)
+            if price is not None:
+                continue
+        remaining.append(text)
+    # Описание — самый длинный из оставшихся текстов, а не «второй по счёту»:
+    # у страниц без строки с ценой порядок блоков сдвигается на один.
+    details = max(remaining, key=len) if remaining else None
+
+    density_s, density_r = parse_density(details or '')
+    yarn_meters = parse_yarn(details or '')
+    unique_yarns = []
+    seen_y = set()
+    for ym in set(yarn_meters):
+        for y_id, y_name, y_min, y_max in yarn_ranges_db:
+            if y_max is None: y_max = 999999
+            if y_min <= ym <= y_max:
+                if y_id not in seen_y:
+                    unique_yarns.append({"id": y_id, "label": y_name})
+                    seen_y.add(y_id)
+                break
+
+    combined = f"{title} {details or ''}"
+    # Инструмент этот автор в описаниях не называет ни разу — ни «крючком», ни
+    # «столбик», ни «петли»: единственное упоминание техники живёт в шапке
+    # профиля («МАСТЕР-КЛАССЫ ПО ВЯЗАНИЮ КРЮЧКОМ») и в короткой подписи под
+    # обложкой в разделе. Поэтому если по тексту самого описания инструмент не
+    # определился, пробуем ещё раз с этим контекстом. Порядок именно такой:
+    # собственный текст товара всегда важнее — у автора, который продаёт и
+    # крючок, и спицы, шапка профиля назовёт оба, и подменять ею конкретный
+    # товар нельзя.
+    instruments = detect_instruments(combined, instruments_db)
+    if not instruments and fallback_text:
+        instruments = detect_instruments(f"{combined} {fallback_text}", instruments_db)
+    return {
+        'url': product_url,
+        'title': title,
+        'imageUrl': images[0] if images else '',
+        'images': images,
+        'details': details or None,
+        'price': price,
+        'oldPrice': old_price,
+        'densityStitches': density_s,
+        'densityRows': density_r,
+        'yarnRanges': unique_yarns,
+        'instruments': instruments,
+        'isMachineKnitting': is_machine_knitting(combined),
+    }
+
+
+def _strip_wrapping_quotes(text):
+    # Снимаем кавычки, только если в них обёрнута ВСЯ строка. Простой
+    # strip('"«»') портил названия вида «Курс по шапкам «КАЙФУЛЯ»»: там
+    # закрывающая кавычка в конце есть, а открывающая — в середине, и от
+    # имени оставалось «Курс по шапкам «КАЙФУЛЯ».
+    pairs = (('"', '"'), ('\u00ab', '\u00bb'), ('\u201c', '\u201d'))
+    changed = True
+    while changed:
+        changed = False
+        for left, right in pairs:
+            if len(text) >= 2 and text.startswith(left) and text.endswith(right):
+                text = text[1:-1].strip()
+                changed = True
+    return text
+
+
+def _taplink_page_url(profile_url, page_id):
+    return f"{profile_url.rstrip('/')}/p/{page_id}/"
+
+
+# Глубина обхода разделов. У этого автора она равна двум (профиль → «СУМКИ» →
+# товар), запас — на случай подразделов; заодно страховка от зацикливания
+# вместе с visited ниже.
+_TAPLINK_MAX_DEPTH = 4
+
+
+def _collect_taplink_page_products(profile_url, headers):
+    # Раздел от товара отличается структурно, а не по адресу: у раздела есть
+    # ссылки type=page (на товары или подразделы), у страницы товара — только
+    # внешние (кнопка «КУПИТЬ»). Поэтому обход рекурсивный, без зашитых
+    # id разделов: автор добавит четвёртый раздел — он подхватится сам.
+    # Каждая страница скачивается ровно один раз: здесь же, где решается,
+    # товар это или раздел.
+    products = []
+    visited = {profile_url}
+
+    def walk(page_url, title, listing_text, depth):
+        _, page_data = _fetch_taplink_json(page_url, headers)
+        if not page_data:
+            return
+
+        children = []
+        # Заголовок товара берётся из ТЕКСТОВОГО блока раздела, идущего перед
+        # ссылкой: на самой странице товара названия нет вообще — она
+        # начинается сразу с галереи и цены.
+        last_text = ''
+        for block in _taplink_page_blocks(page_data):
+            block_type = block.get('block_type_name')
+            options = block.get('options') or {}
+            if block_type == 'text':
+                last_text = _taplink_block_text(options.get('text'))
+            elif block_type == 'link' and options.get('type') == 'page' and options.get('value'):
+                # Название — первая строка текста над ссылкой, без кавычек,
+                # которыми автор оформляет модель («"ПАРИЖАНКА"»). Дальше его
+                # всё равно правит человек в модерации.
+                child_title = _strip_wrapping_quotes(last_text.split('\n')[0].strip())
+                children.append((_taplink_page_url(profile_url, options['value']), child_title, last_text))
+
+        if not children:
+            # Ссылок вглубь нет — это страница товара. У корня профиля они
+            # есть всегда, так что сам профиль сюда не попадёт.
+            if title:
+                products.append((page_url, title, listing_text))
+            return
+
+        if depth >= _TAPLINK_MAX_DEPTH:
+            return
+
+        for child_url, child_title, child_listing_text in children:
+            if child_url in visited:
+                continue
+            visited.add(child_url)
+            walk(child_url, child_title, child_listing_text, depth + 1)
+
+    walk(profile_url, None, '', 1)
+    return products
+
+
+def _make_taplink_page_store_handler(site_url, label):
+    profile_url = site_url.rstrip('/')
+
+    def handler(yarn_ranges_db, instruments_db, all_existing_base_urls, headers):
+        # Магазинный макет и страничный различаются по самому ответу, а не по
+        # автору: если у профиля есть блок «Магазин», разбирать нужно его —
+        # там и цены, и описания приходят структурированно.
+        _, root_data = _fetch_taplink_json(profile_url, headers)
+        if ((root_data or {}).get('data') or {}).get('products'):
+            return _make_taplink_store_handler(site_url, label)(
+                yarn_ranges_db, instruments_db, all_existing_base_urls, headers
+            )
+
+        # Корень профиля уже скачан выше — берём из него текстовые блоки как
+        # общий контекст для определения инструмента (см. _parse_taplink_page_product).
+        profile_text = ' '.join(
+            _taplink_block_text((b.get('options') or {}).get('text'))
+            for b in _taplink_page_blocks(root_data or {})
+            if b.get('block_type_name') == 'text'
+        )
+
+        products = _collect_taplink_page_products(profile_url, headers)
+        if not products:
+            print(f"{label}: Taplink page layout — no product pages found.")
+            return [], 0
+
+        items = []
+        for page_url, title, listing_text in products:
+            base_norm = get_base_url(normalize_url(page_url))
+            if base_norm in all_existing_base_urls:
+                continue
+            all_existing_base_urls.add(base_norm)
+            parsed = _parse_taplink_page_product(
+                page_url, title, headers, yarn_ranges_db, instruments_db,
+                fallback_text=f"{listing_text} {profile_text}",
+            )
+            if parsed:
+                items.append(parsed)
+
+        print(f"{label}: {len(products)} products total, {len(items)} completely new.")
+        return items, len(products)
+
+    return handler
+
+
+
+scrape_sedmoye_avgusta_store = _make_taplink_page_store_handler(
+    'https://taplink.cc/sedmoye.avgusta', 'taplink.cc/sedmoye.avgusta'
+)
+
 # Full-site handlers that bypass the generic crawler entirely (JS-hydrated
 # stores where the generic per-anchor loop finds nothing on the page itself,
 # AND the API response carries each product's complete description so no
@@ -581,6 +868,13 @@ SITE_HANDLERS = {
     'bayuma.ru': scrape_bayuma_store,
     'obnimi-mamu.ru': scrape_obnimi_mamu_store,
     'aggushop.tilda.ws': scrape_aggushop_store,
+    # Анастасия Мартюшева / «Как я встретил вашу пряжу». Ключ включает ник
+    # профиля, а не просто 'taplink.cc': обработчик замыкается на конкретный
+    # адрес (site_url в диспетчер не передаётся), поэтому следующий автор на
+    # этой площадке добавляется такой же строкой. Сам обработчик при этом
+    # универсален — он определяет по ответу, страничный у профиля макет или
+    # магазинный, и во втором случае отдаёт работу обработчику выше.
+    'taplink.cc/sedmoye.avgusta': scrape_sedmoye_avgusta_store,
 }
 
 # Discovery-only handlers: same JS-hydrated-listing problem, but the product
