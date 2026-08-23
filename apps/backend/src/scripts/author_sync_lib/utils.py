@@ -27,6 +27,17 @@ def normalize_url(url):
         if m:
             path = m.group(1) + m.group(2)
         result = f"{parsed.netloc}{path}"
+        # WooCommerce на «простых» постоянных ссылках WordPress: товар живёт по
+        # "/?product=<slug>", то есть его идентификатор — в строке запроса, а
+        # путь у ВСЕХ товаров сайта одинаковый ("/"). Отбрасывая query целиком,
+        # дедупликация схлопывала весь каталог в один ключ: на marinakilina.ru
+        # краулер находил 42 товара, а «новым» считался ровно один. Берём
+        # только сам параметр product, а не всю строку: utm-метки и прочий
+        # мусор в ней не должны превращать один товар в два (живые примеры
+        # таких url в базе есть — lavkabulavka.com, aggushop.tilda.ws).
+        product_param = urllib.parse.parse_qs(parsed.query).get('product')
+        if product_param:
+            result += f"?product={product_param[0]}"
         # Hash-routed SPA sites (e.g. bysergeeva.ru: "/#!/tproduct/<lid>") put the
         # only distinguishing info in the fragment — urlparse splits it off from
         # path entirely, so without this every such URL on a domain collapses to

@@ -447,7 +447,14 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                     bg_style = a.get('style', '')
                     has_bg_img = 'background-image' in bg_style
                     
-                    has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
+                    # "[?&]product=" — WooCommerce на «простых» постоянных ссылках
+                    # WordPress: товар живёт по "/?product=<slug>", а не по
+                    # "/product/<slug>/" (живой пример — marinakilina.ru, где
+                    # без этого краулер находил ровно ноль товаров при
+                    # совершенно обычном WooCommerce). Знак "=" в шаблоне
+                    # обязателен: он отделяет сам товар от листингов вида
+                    # "?product_cat=" и "?product_tag=".
+                    has_valid_href = bool(re.search(r'/shop/|/tproduct/|/product/|[?&]product=|/patterns/|catalog/|/opisania/|/item/|/mk|/master-klassy/', href, re.I))
                     if not has_valid_href and hooks.get('extra_valid_href_match') and hooks['extra_valid_href_match'](href):
                         has_valid_href = True
                     a_classes = a.get('class') or []
@@ -529,7 +536,11 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
                     if not href:
                         continue
                         
-                    is_pagination = re.search(r'page=|PAGEN_|[\?&]p=', href, re.I)
+                    # "paged=" — постраничная навигация того же WordPress без
+                    # ЧПУ ("/?paged=2"). Шаблон "page=" её не ловит: там между
+                    # "page" и "=" стоит "d", и вторая страница каталога
+                    # просто не обходилась.
+                    is_pagination = re.search(r'paged?=|PAGEN_|[\?&]p=', href, re.I)
                     is_category = re.search(r'/shop|/catalog|/pattern|/mk|/store|/category|/market|/master-klassy', href, re.I)
                     if not is_category and hooks.get('extra_pagination_match') and hooks['extra_pagination_match'](href):
                         is_category = True
