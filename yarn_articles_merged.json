@@ -460,11 +460,6 @@
   "kind": "colour"
  },
  {
-  "from": "Пехорка Детский Каприз Тёплый",
-  "into": "Пехорка Детский Каприз Теплый",
-  "kind": "duplicate"
- },
- {
   "from": "Gazzal Baby Organic Cotton",
   "into": "Gazzal Organic Baby Cotton",
   "kind": "duplicate"
@@ -472,16 +467,6 @@
  {
   "from": "Gazzal Baby Cotton Organic",
   "into": "Gazzal Baby Cotton",
-  "kind": "duplicate"
- },
- {
-  "from": "Камтекс Лен",
-  "into": "Камтекс Лён",
-  "kind": "duplicate"
- },
- {
-  "from": "Камтекс Мотылек",
-  "into": "Камтекс Мотылёк",
   "kind": "duplicate"
  },
  {

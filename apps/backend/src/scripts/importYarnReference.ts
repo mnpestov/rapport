@@ -80,6 +80,7 @@ async function applyMerges(dryRun: boolean) {
   let movedLinks = 0;
   let movedMentions = 0;
   let absent = 0;
+  let selfMerges = 0;
   const orphans: string[] = [];
 
   for (const m of merged) {
@@ -100,6 +101,14 @@ async function applyMerges(dryRun: boolean) {
     // Без адресата карточку не удаляем: это унесло бы связи в никуда.
     if (!parent) {
       orphans.push(`${m.from} -> ${m.into}`);
+      continue;
+    }
+    // Ребёнок и родитель — одна строка: их имена дают один normalizedKey
+    // («Камтекс Лен» и «Камтекс Лён» — транслитерация сводит «ё» к «e»).
+    // Без этой проверки карточка находит сама себя и удаляется вместе со
+    // своими связями. На проде так исчезли три штуки.
+    if (parent.id === child.id) {
+      selfMerges++;
       continue;
     }
     done++;
@@ -128,6 +137,9 @@ async function applyMerges(dryRun: boolean) {
       : `слито карточек ${done}: связей перенесено ${movedLinks}, ` +
         `упоминаний ${movedMentions} (не было в БД: ${absent})`,
   );
+  if (selfMerges) {
+    console.warn(`строк карты, где ребёнок и родитель — одна карточка: ${selfMerges}`);
+  }
   if (orphans.length) {
     console.warn(`слияний без адресата — карточки оставлены: ${orphans.length}`);
     orphans.slice(0, 10).forEach((o) => console.warn("  " + o));

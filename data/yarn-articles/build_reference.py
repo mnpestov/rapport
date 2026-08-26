@@ -511,7 +511,13 @@ for m in MERGED:
             break
         into = nxt
     m['into'] = into
-MERGED = [m for m in MERGED if m['into'] in _alive and m['from'] not in _alive]
+# Пары «е»/«ё» («Камтекс Лен» -> «Камтекс Лён») в карту не идут. Транслитерация
+# сводит обе буквы к «e», ключ у них ОДИН, и для заливки это одна и та же
+# карточка: она нашла бы сама себя и удалила вместе со связями. Слияние здесь
+# уже произошло раньше — на уровне ключа, вторая запись просто не возникла.
+MERGED = [m for m in MERGED
+          if m['into'] in _alive and m['from'] not in _alive
+          and _nkey(m['from']) != _nkey(m['into'])]
 json.dump(MERGED, open(OUT('yarn_articles_merged.json'), 'w', encoding='utf-8'),
           ensure_ascii=False, indent=1)
 
