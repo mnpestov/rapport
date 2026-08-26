@@ -51,6 +51,11 @@ function toDraft(item: SyncReportItem, authorId: string, authorName: string): Ad
     tags: pd.tags || [],
     instruments: pd.instruments || [],
     yarnRanges: pd.yarnRanges || [],
+    // Артикулы приходят только этим путём: настоящий Draft из кабинета
+    // автора их не знает. ModerationCard рендерит и то, и другое, поэтому
+    // поля необязательные, а не пустые массивы по умолчанию.
+    yarns: pd.yarns || [],
+    yarnMentions: pd.yarnMentions || [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     closedAt: null,

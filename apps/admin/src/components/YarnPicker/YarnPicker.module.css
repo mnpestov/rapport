@@ -1,0 +1,160 @@
+.wrapper {
+  position: relative;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f9fafb;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+}
+
+.chipName {
+  font-weight: 600;
+}
+
+.chipMeta,
+.chipSource {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* Пометка источника приглушена сильнее метража: это служебная информация,
+   а не характеристика пряжи. */
+.chipSource {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+.chipRemove {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  background: #e5e7eb;
+  color: #1d1c1c;
+}
+
+.inputRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 30px 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #a9ae36;
+}
+
+.spinner {
+  position: absolute;
+  right: 9px;
+  color: #9ca3af;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: Mulish, sans-serif;
+}
+
+.option:hover {
+  background: #f9fafb;
+}
+
+.optionName {
+  font-size: 14px;
+  color: #1d1c1c;
+}
+
+.optionMeta {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.createBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.createBtn:hover {
+  border-color: #a9ae36;
+  color: #83942c;
+}

@@ -96,6 +96,32 @@ export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabe
               <span>{`${draft.densityStitches} х ${draft.densityRows}`}</span>
             </Row>
           )}
+          {/* Распознанные артикулы — чипами, нераспознанные упоминания —
+              сырыми строками. Разделение намеренное: первое модератору
+              достаточно взглядом проверить, второе требует решения. */}
+          {!!draft.yarns?.length && (
+            <Row label="Пряжа">
+              <span className={styles.yarnChips}>
+                {draft.yarns.map((y) => (
+                  <span key={y.id} className={styles.yarnChip} title={y.name}>{y.name}</span>
+                ))}
+              </span>
+            </Row>
+          )}
+          {!!draft.yarnMentions?.length && (
+            <Row label="Не опознано">
+              <span className={styles.yarnChips}>
+                {draft.yarnMentions.map((m) => (
+                  <span key={m.rawText} className={styles.yarnMention} title={
+                    m.kind === "FAMILY" ? "семейство, а не артикул"
+                      : m.kind === "BRAND_ONLY" ? "названа только марка" : "нет в справочнике"
+                  }>
+                    {m.rawText}
+                  </span>
+                ))}
+              </span>
+            </Row>
+          )}
         </div>
 
         <div className={styles.actions}>

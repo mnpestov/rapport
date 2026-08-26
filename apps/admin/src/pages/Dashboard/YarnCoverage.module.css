@@ -1,0 +1,129 @@
+/* Рамки и типографика повторяют PaywallFunnel.module.css — оба виджета
+   стоят на одной странице и не должны выглядеть из разных приложений. */
+.wrapper {
+  margin-top: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 28px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.title {
+  font-family: "Mulish", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d1c1c;
+}
+
+.subtitle {
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.cell {
+  padding: 18px 24px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.cell:last-child {
+  border-right: none;
+}
+
+.value {
+  font-family: "Mulish", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d1c1c;
+}
+
+.label {
+  margin-top: 2px;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Разбивка по правилам — мелко и в одну строку: она нужна, чтобы заметить
+   сдвиг между прогонами, а не чтобы читать её каждый раз. */
+.hint {
+  margin-top: 6px;
+  font-family: "Mulish", sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #9ca3af;
+}
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 28px;
+  border-top: 1px solid #e5e7eb;
+  background: #fffbeb;
+}
+
+.alert {
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #b45309;
+}
+
+.top {
+  padding: 16px 28px 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.topTitle {
+  margin-bottom: 10px;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.topList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.topItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+  cursor: help;
+}
+
+.topCount {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  font-size: 11px;
+  color: #6b7280;
+}

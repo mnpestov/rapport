@@ -1,0 +1,762 @@
+[
+ {
+  "from": "Aura Yarns Love Me 2.0",
+  "into": "Aura Yarns Love Me",
+  "kind": "colour_code"
+ },
+ {
+  "from": "Alize Baby Wool Batik",
+  "into": "Alize Baby Wool",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Bella Batik",
+  "into": "Alize Bella",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Cotton Gold Batik",
+  "into": "Alize Cotton Gold",
+  "kind": "dye"
+ },
+ {
+  "from": "Gazzal Baby Cotton 50",
+  "into": "Gazzal Baby Cotton",
+  "kind": "colour"
+ },
+ {
+  "from": "Lana Grossa Allora Hand-Dyed",
+  "into": "Lana Grossa Allora",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Merino Degrade",
+  "into": "Lana Grossa Cool Merino",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Merino Print",
+  "into": "Lana Grossa Cool Merino",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool Melange",
+  "into": "Lana Grossa Cool Wool",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool Print",
+  "into": "Lana Grossa Cool Wool",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool hand dyed",
+  "into": "Lana Grossa Cool Wool",
+  "kind": "dye"
+ },
+ {
+  "from": "Katia Azteca Degrade",
+  "into": "Katia Azteca",
+  "kind": "dye"
+ },
+ {
+  "from": "Lang Yarns Merino 150 Degrade",
+  "into": "Lang Yarns Merino 150",
+  "kind": "dye"
+ },
+ {
+  "from": "Fibra Natura Bamboo Jazz Multi",
+  "into": "Fibra Natura Bamboo Jazz",
+  "kind": "dye"
+ },
+ {
+  "from": "Katia Concept Pluma Degrade",
+  "into": "Katia Concept Pluma",
+  "kind": "dye"
+ },
+ {
+  "from": "Rowan Felted Tweed Colour",
+  "into": "Rowan Felted Tweed",
+  "kind": "dye"
+ },
+ {
+  "from": "Rowan Kidsilk Haze Colour",
+  "into": "Rowan Kidsilk Haze",
+  "kind": "dye"
+ },
+ {
+  "from": "Schachenmayr Regia Premium Merino Yak Color",
+  "into": "Schachenmayr Regia Premium Merino Yak",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Diva Batik",
+  "into": "Alize Diva",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Puffy Color",
+  "into": "Alize Puffy",
+  "kind": "dye"
+ },
+ {
+  "from": "Seam Angora Fine Print",
+  "into": "Seam Angora Fine",
+  "kind": "dye"
+ },
+ {
+  "from": "Seam Filicudi Print",
+  "into": "Seam Filicudi",
+  "kind": "dye"
+ },
+ {
+  "from": "Seam Regina Print",
+  "into": "Seam Regina",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Bingo Melange",
+  "into": "Lana Grossa Bingo",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Brigitte No. 3 Color",
+  "into": "Lana Grossa Brigitte No. 3",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool Baby Degrade",
+  "into": "Lana Grossa Cool Wool Baby",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool Big Color",
+  "into": "Lana Grossa Cool Wool Big",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool Big Melange",
+  "into": "Lana Grossa Cool Wool Big",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Cool Wool Lace Hand-Dyed",
+  "into": "Lana Grossa Cool Wool Lace",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Ecopuno Hand Dyed",
+  "into": "Lana Grossa Ecopuno",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Gigante Multi",
+  "into": "Lana Grossa Gigante",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Meilenweit 100 Merino Hand Dyed",
+  "into": "Lana Grossa Meilenweit 100 Merino",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Natural Alpaca Pelo Color",
+  "into": "Lana Grossa Natural Alpaca Pelo",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Per Fortuna Degrade",
+  "into": "Lana Grossa Per Fortuna",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Setasuri Degrade",
+  "into": "Lana Grossa Setasuri",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Star Print",
+  "into": "Lana Grossa Star",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Superkid Seta Color",
+  "into": "Lana Grossa Superkid Seta",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Vintage Socks Multi",
+  "into": "Lana Grossa Vintage Socks",
+  "kind": "dye"
+ },
+ {
+  "from": "Lang Yarns Alpaca Soxx 4-Ply Hand Dyed",
+  "into": "Lang Yarns Alpaca Soxx 4-Ply",
+  "kind": "dye"
+ },
+ {
+  "from": "Lang Yarns Bold Color",
+  "into": "Lang Yarns Bold",
+  "kind": "dye"
+ },
+ {
+  "from": "Lang Yarns Mohair Luxe Color",
+  "into": "Lang Yarns Mohair Luxe",
+  "kind": "dye"
+ },
+ {
+  "from": "Lang Yarns WOOLADDICTS Sunshine Color",
+  "into": "Lang Yarns WOOLADDICTS Sunshine",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Alta Moda Cotolana Print",
+  "into": "Lana Grossa Alta Moda Cotolana",
+  "kind": "dye"
+ },
+ {
+  "from": "Infinity Design Aquarelle print",
+  "into": "Infinity Design Aquarelle",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Baby Best Batik",
+  "into": "Alize Baby Best",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Baby Best Colors",
+  "into": "Alize Baby Best",
+  "kind": "dye"
+ },
+ {
+  "from": "YarnArt Baby Color",
+  "into": "YarnArt Baby",
+  "kind": "dye"
+ },
+ {
+  "from": "Lang Yarns Baby Cotton Color",
+  "into": "Lang Yarns Baby Cotton",
+  "kind": "dye"
+ },
+ {
+  "from": "YarnArt Baby Cotton Multicolor",
+  "into": "YarnArt Baby Cotton",
+  "kind": "dye"
+ },
+ {
+  "from": "YarnArt Begonia Melange",
+  "into": "YarnArt Begonia",
+  "kind": "dye"
+ },
+ {
+  "from": "Himalaya Dolphin Baby Colors",
+  "into": "Himalaya Dolphin Baby",
+  "kind": "dye"
+ },
+ {
+  "from": "Lana Grossa Silkhair Print",
+  "into": "Lana Grossa Silkhair",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Superlana Maxi Batik",
+  "into": "Alize Superlana Maxi",
+  "kind": "dye"
+ },
+ {
+  "from": "Seam Velvety Color",
+  "into": "Seam Velvety",
+  "kind": "dye"
+ },
+ {
+  "from": "YarnArt Violet Melange",
+  "into": "YarnArt Violet",
+  "kind": "dye"
+ },
+ {
+  "from": "Botto Giuseppe Shine melange",
+  "into": "Botto Giuseppe Shine",
+  "kind": "dye"
+ },
+ {
+  "from": "Miss Tricot Filati Milleluci Color",
+  "into": "Miss Tricot Filati Milleluci",
+  "kind": "dye"
+ },
+ {
+  "from": "Miss Tricot Filati Pic-Nic Color",
+  "into": "Miss Tricot Filati Pic-Nic",
+  "kind": "dye"
+ },
+ {
+  "from": "Katia Linen rust 18",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen mustard 26",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen khaki 12",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen dark blue 5",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen camel 8",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen bright blue 34",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen black 2",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Linen 36",
+  "into": "Katia Linen",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Gatsby 88504",
+  "into": "Katia Gatsby",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Gatsby 88503",
+  "into": "Katia Gatsby",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Gatsby 88500",
+  "into": "Katia Gatsby",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Gatsby 7",
+  "into": "Katia Gatsby",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Silk-Alpaca Natural colors 105",
+  "into": "Katia Silk-Alpaca",
+  "kind": "colour"
+ },
+ {
+  "from": "Katia Cosmopolitan 80 Mustard",
+  "into": "Katia Cosmopolitan",
+  "kind": "colour"
+ },
+ {
+  "from": "Casagrande Angora 80 Nero",
+  "into": "Casagrande Angora 80",
+  "kind": "colour"
+ },
+ {
+  "from": "Aura Yarns Space 1427 Sand",
+  "into": "Aura Yarns Space",
+  "kind": "colour"
+ },
+ {
+  "from": "Aura Yarns Shiny Day 1411 Cream",
+  "into": "Aura Yarns Shiny Day",
+  "kind": "colour"
+ },
+ {
+  "from": "Aura Yarns Every Day 1413 Rose quartz",
+  "into": "Aura Yarns Every Day",
+  "kind": "colour"
+ },
+ {
+  "from": "Aura Yarns Every Day 1411 Cream",
+  "into": "Aura Yarns Every Day",
+  "kind": "colour"
+ },
+ {
+  "from": "Drops Eskimo/Snow Degrade",
+  "into": "Drops Eskimo/Snow",
+  "kind": "dye"
+ },
+ {
+  "from": "Drops Fabel Print",
+  "into": "Drops Fabel",
+  "kind": "dye"
+ },
+ {
+  "from": "Sandnes Garn Mini Alpakka Print",
+  "into": "Sandnes Garn Mini Alpakka",
+  "kind": "dye"
+ },
+ {
+  "from": "Sandnes Garn Perfect Print",
+  "into": "Sandnes Garn Perfect",
+  "kind": "dye"
+ },
+ {
+  "from": "Infinity Design Infinity Aquarelle Print",
+  "into": "Infinity Design Aquarelle",
+  "kind": "dye"
+ },
+ {
+  "from": "Alize Bamboo Fine Batik",
+  "into": "Alize Bamboo Fine",
+  "kind": "dye"
+ },
+ {
+  "from": "Камтекс Ангара Ассорти",
+  "into": "Камтекс Ангара",
+  "kind": "dye"
+ },
+ {
+  "from": "Камтекс Детская забава мулине",
+  "into": "Камтекс Детская забава",
+  "kind": "dye"
+ },
+ {
+  "from": "Камтекс Карамелька Ассорти",
+  "into": "Камтекс Карамелька",
+  "kind": "dye"
+ },
+ {
+  "from": "Astra Premium Детская мягкая цветная",
+  "into": "Astra Premium Детская мягкая",
+  "kind": "dye"
+ },
+ {
+  "from": "Astra Premium Панда Колор",
+  "into": "Astra Premium Панда",
+  "kind": "dye"
+ },
+ {
+  "from": "BC Garn Semilla melange",
+  "into": "BC Garn Semilla",
+  "kind": "dye"
+ },
+ {
+  "from": "BC Garn Babyalpaca 10/2",
+  "into": "BC Garn Babyalpaca",
+  "kind": "colour"
+ },
+ {
+  "from": "Lana Grossa Solo Lino Melange",
+  "into": "Lana Grossa Solo Lino",
+  "kind": "dye"
+ },
+ {
+  "from": "YarnArt Merino De Luxe 50 50",
+  "into": "YarnArt Merino De Luxe",
+  "kind": "colour"
+ },
+ {
+  "from": "Пехорка Детский Каприз Тёплый",
+  "into": "Пехорка Детский Каприз Теплый",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Gazzal Baby Organic Cotton",
+  "into": "Gazzal Organic Baby Cotton",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Gazzal Baby Cotton Organic",
+  "into": "Gazzal Baby Cotton",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Камтекс Лен",
+  "into": "Камтекс Лён",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Камтекс Мотылек",
+  "into": "Камтекс Мотылёк",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Gazzal Baby XL Cotton",
+  "into": "Gazzal Baby Cotton XL",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Air",
+  "into": "Infinity Design Air",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Design Air",
+  "into": "Infinity Design Air",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Alaska",
+  "into": "Infinity Design Alaska",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Alpaca",
+  "into": "Infinity Design Alpaca",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Alpaca Boucle",
+  "into": "Infinity Design Alpaca Boucle",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Alpaca Silk",
+  "into": "Infinity Design Alpaca Silk",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Alpaca Wool",
+  "into": "Infinity Design Alpaca Wool",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Aquarelle",
+  "into": "Infinity Design Aquarelle",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Baby Alpaca",
+  "into": "Infinity Design Baby Alpaca",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Baby Lama",
+  "into": "Infinity Design Baby Lama",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Baby Merino",
+  "into": "Infinity Design Baby Merino",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Big Alpaca Wool",
+  "into": "Infinity Design Big Alpaca Wool",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Big Merino",
+  "into": "Infinity Design Big Merino",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Big Merino Extrafine",
+  "into": "Infinity Design Big Merino Extrafine",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Big Merino Fine",
+  "into": "Infinity Design Big Merino Fine",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Cloud",
+  "into": "Infinity Design Cloud",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Cotton Alpaca",
+  "into": "Infinity Design Cotton Alpaca",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Cotton Grand",
+  "into": "Infinity Design Cotton Grand",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Cotton Linen",
+  "into": "Infinity Design Cotton Linen",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Cotton Merino",
+  "into": "Infinity Design Cotton Merino",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Cotton Merino New",
+  "into": "Infinity Design Cotton Merino New",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Dream",
+  "into": "Infinity Design Dream",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Everyday",
+  "into": "Infinity Design Everyday",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Fusion",
+  "into": "Infinity Design Fusion",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Harmony",
+  "into": "Infinity Design Harmony",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Ideal",
+  "into": "Infinity Design Ideal",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Magic",
+  "into": "Infinity Design Magic",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Magic Plus",
+  "into": "Infinity Design Magic Plus",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Merino",
+  "into": "Infinity Design Merino",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Merino Extrafine",
+  "into": "Infinity Design Merino Extrafine",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Merino Fine",
+  "into": "Infinity Design Merino Fine",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Nordic Tweed",
+  "into": "Infinity Design Nordic Tweed",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Pima Merino",
+  "into": "Infinity Design Pima Merino",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Rumi",
+  "into": "Infinity Design Rumi",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Silk Mohair",
+  "into": "Infinity Design Silk Mohair",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Design Silk Mohair",
+  "into": "Infinity Design Silk Mohair",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Sport",
+  "into": "Infinity Design Sport",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Suri Silk",
+  "into": "Infinity Design Suri Silk",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Tundra",
+  "into": "Infinity Design Tundra",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Infinity Design Infinity Tweed",
+  "into": "Infinity Design Tweed",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Rico Design Fashion Luxury Light",
+  "into": "Rico Design Fashion Light Luxury",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Seam Tweed-new",
+  "into": "Seam New Tweed",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Lana Grossa Linissimo (linea Pura)",
+  "into": "Lana Grossa Linea Pura Linissimo",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Lana Grossa Mosaico (linea Pura)",
+  "into": "Lana Grossa Linea Pura Mosaico",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Lana Grossa Meilenweit 150 6-Fach",
+  "into": "Lana Grossa Meilenweit 150 6-Fach 150",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Lana Grossa Meilenweit 6-fach 150",
+  "into": "Lana Grossa Meilenweit 150 6-Fach 150",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Concept by Katia Silver Alpaca",
+  "into": "Concept by Katia Alpaca Silver",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Lana Grossa Meilenweit Merino Extrafine",
+  "into": "Lana Grossa Merino Extrafine Meilenweit",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Drops Merino-cotton",
+  "into": "Drops Cotton Merino",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Drops Snow (Eskimo)",
+  "into": "Drops Eskimo/Snow",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Aura Yarns Aura Space",
+  "into": "Aura Yarns Space",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Rico Design Luxury Light",
+  "into": "Rico Design Light Luxury",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Concept by Katia Alpaca Silver/ Gold",
+  "into": "Concept by Katia Alpaca Gold/silver",
+  "kind": "duplicate"
+ },
+ {
+  "from": "Loro Piana New Tweed Coarsehair",
+  "into": "Loro Piana Coarsehair New Tweed",
+  "kind": "duplicate"
+ }
+]

@@ -221,3 +221,46 @@
     font-size: 14px;
   }
 }
+/* Артикулы в карточке модерации. Распознанные и нераспознанные различаются
+   цветом, а не подписью: подпись съела бы ширину, а решение по ним разное —
+   первые проверяются взглядом, вторые требуют завести карточку.
+
+   min-width: 0 обязателен. Без него флекс-элемент не сжимается меньше своего
+   содержимого, а содержимое здесь — чипы с white-space: nowrap и длинными
+   названиями вроде «Lana Grossa Meilenweit 100 Cashmere Inverno». Строка
+   распирается, и лэйбл, у которого flex-shrink: 0, выдавливается за край
+   карточки. */
+.yarnChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Длинное название режется многоточием, а не переносится: перенос сделал бы
+   чип двухстрочным и карточка поехала бы по высоте. Полное имя остаётся в
+   title — у нераспознанных там вид упоминания, у распознанных ставим само
+   название. */
+.yarnChip,
+.yarnMention {
+  max-width: 100%;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yarnChip {
+  background: #f3f4f6;
+  color: #1d1c1c;
+}
+
+.yarnMention {
+  background: #fffbeb;
+  color: #b45309;
+  cursor: help;
+}

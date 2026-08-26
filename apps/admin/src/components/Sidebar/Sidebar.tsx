@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText, X } from "lucide-react";
+import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText, X, Spool } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -165,6 +165,21 @@ export function Sidebar({ variant = "admin", subtitle, isOpen, onClose }: Sideba
             >
               <BookMarked size={24} strokeWidth={1} className={styles.icon} />
               <span className={styles.label}>Справочники</span>
+            </NavLink>
+
+            {/* Артикулы вынесены отдельным пунктом, а не вкладкой в
+                «Справочниках»: там три списка по несколько десятков строк с
+                общим устройством, здесь 2778 карточек со своим поиском,
+                страницами и слиянием дублей. */}
+            <NavLink
+              to="/yarns"
+              onClick={onClose}
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <Spool size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Артикулы пряжи</span>
             </NavLink>
           </>
         )}

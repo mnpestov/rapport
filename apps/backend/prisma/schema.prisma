@@ -60,16 +60,18 @@ model Pattern {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  authorId    String
-  author      Author             @relation(fields: [authorId], references: [id])
-  instruments Instrument[]
-  categories  ProductType[]
-  tags        Tag[]
-  yarnRanges  YarnRange[]
-  favoritedBy UserFavorite[]
-  views       PatternView[]
-  linkClicks  PatternLinkClick[]
-  drafts      Draft[]
+  authorId     String
+  author       Author               @relation(fields: [authorId], references: [id])
+  instruments  Instrument[]
+  categories   ProductType[]
+  tags         Tag[]
+  yarnRanges   YarnRange[]
+  favoritedBy  UserFavorite[]
+  views        PatternView[]
+  linkClicks   PatternLinkClick[]
+  drafts       Draft[]
+  yarns        PatternYarn[]
+  yarnMentions PatternYarnMention[]
 
   @@index([popularityScore, id])
 }
@@ -115,6 +117,195 @@ model YarnRange {
   sortOrder Int       @default(0)
   patterns  Pattern[]
   drafts    Draft[]
+}
+
+// ─── Артикулы пряжи ────────────────────────────────────────────────────────
+// Отдельная сущность, а не поле у Pattern: на описание приходится в среднем
+// 2,7 артикула, и одно поле выбросило бы больше половины связей. С YarnRange
+// не пересекается и его не заменяет — YarnRange это диапазон метража, по
+// которому идёт фильтр каталога, а здесь конкретная пряжа с именем.
+model Yarn {
+  id            String  @id @default(uuid())
+  brand         String?
+  line          String?
+  // Полное «бренд + линейка» — то, что видит человек и по чему идёт поиск.
+  name          String
+  // Ключ сравнения: NFKC -> буквы-двойники -> нижний регистр -> выброс
+  // «concept»/«by» -> транслитерация -> только буквы и цифры. Транслитерация
+  // обязательна: авторы пишут «ализе» и «Alize» вперемешку.
+  normalizedKey String  @unique
+  // Отсортированное МНОЖЕСТВО нормализованных слов. Множество, а не
+  // мультимножество: схлопывает и переставленный порядок («Baby Cotton XL» /
+  // «Baby XL Cotton»), и задвоенный бренд («Infinity Design Design Air»).
+  // Не уникален — служит для поиска дублей, а не для их запрета.
+  dedupKey      String
+  // Родовое название без марки: «Пух норки», «Эко-норка». У таких brand
+  // совпадает с name, а line пуст — это свойство, а не пробел в данных.
+  // Флаг нужен админке (не требовать бренд) и сопоставлению: родовые
+  // обрабатываются последним правилом, и правило уровня бренда обязано их
+  // пропускать, иначе перехватывает раньше.
+  isGeneric     Boolean @default(false)
+
+  // Характеристики — все необязательные: у трети карточек их нет вовсе.
+  // Сырая строка и разобранные числа лежат рядом намеренно: строка нужна
+  // человеку («4,5—5 мм»), числа — фильтрам. Тот же приём, что у
+  // Pattern.densityStitches/densityRows.
+  mPer100g        Int?
+  composition     String?
+  needleSizeRaw   String?
+  needleMinMm     Float?
+  needleMaxMm     Float?
+  densityRaw      String?
+  densityStitches Int?
+  densityRows     Int?
+  ballWeightG     Int?
+  ballLengthM     Int?
+
+  sourceName   String?
+  sourceUrl    String?
+  isActive     Boolean @default(true)
+  // При слиянии дублей карточка не удаляется, а помечается ссылкой на
+  // победителя: связи на неё уже могли разойтись по описаниям, и удаление
+  // порвало бы их.
+  mergedIntoId String?
+  mergedInto   Yarn?   @relation("YarnMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom   Yarn[]  @relation("YarnMerge")
+
+  aliases      YarnAlias[]
+  patterns     PatternYarn[]
+  suggestedFor PatternYarnMention[] @relation("YarnSuggested")
+  resolvedFor  PatternYarnMention[] @relation("YarnResolved")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dedupKey])
+  @@index([brand])
+}
+
+// Как пряжу пишут люди: опечатки («Lana Gossa»), транслитерации («Сеам»),
+// авторские написания, а также цветовые варианты, схлопнутые при чистке
+// («Rico Design Essentials Cotton DK banana 63»). Поиск смотрит и сюда, и в
+// Yarn.normalizedKey.
+model YarnAlias {
+  id              String @id @default(uuid())
+  yarnId          String
+  yarn            Yarn   @relation(fields: [yarnId], references: [id], onDelete: Cascade)
+  alias           String
+  normalizedAlias String @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([yarnId])
+}
+
+enum YarnLinkSource {
+  SCRAPER
+  ADMIN
+  BACKFILL
+}
+
+enum YarnLinkStatus {
+  ACTIVE
+  // «Человек удалил, не создавать заново». Без этого статуса перезапуск
+  // бэкофила воскрешал бы связь: текст описания не менялся, разбор даст тот
+  // же результат, и модератор удалял бы одно и то же по кругу.
+  REJECTED
+}
+
+enum YarnMatchRule {
+  EXACT
+  // Автор ошибся в написании, и человек сверил, что он имел в виду.
+  // Соответствия лежат в yarn_lib/corrections.py — это знание разбора, а не
+  // свойство пряжи, поэтому в справочник опечатка не попадает.
+  CORRECTION
+  PARTIAL
+  SHORT_FORM
+  FAMILY
+  LINE_NAME
+  BRAND_LEVEL
+  AUTHOR_METRAGE
+  GENERIC
+  MANUAL
+}
+
+// Связь «описание ↔ артикул». Роли (оригинал/альтернатива) у связи нет
+// сознательно: цель — понять, из какой пряжи это изделие уже вязали, и обе
+// роли отвечают на вопрос одинаково.
+model PatternYarn {
+  id        String  @id @default(uuid())
+  patternId String
+  pattern   Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+  yarnId    String
+  yarn      Yarn    @relation(fields: [yarnId], references: [id])
+
+  // Как пряжа названа в тексте описания, дословно, и метраж оттуда же.
+  // Метраж хранится здесь, а не переносится в Pattern.yarnRanges: это
+  // авторский текст, мы его не меняем.
+  rawMention    String?
+  metrageInText String?
+
+  source      YarnLinkSource
+  status      YarnLinkStatus @default(ACTIVE)
+  matchRule   YarnMatchRule?
+  // Отпечаток details, с которого связь собрана. Правка описания в админке
+  // связи не трогает, и без отпечатка расхождение больше негде заметить.
+  detailsHash String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([patternId, yarnId])
+  @@index([patternId])
+  @@index([yarnId])
+}
+
+enum YarnMentionKind {
+  // «Meilenweit», «Merino Extrafine» — уровень семейства: карточка семейства
+  // склеила бы нити разной толщины и сломала поиск.
+  FAMILY
+  // Названа только марка. Для «Katia» никакое пополнение справочника не
+  // поможет — у бренда десятки линеек, и какая имелась в виду, не следует.
+  BRAND_ONLY
+  UNKNOWN_ARTICLE
+}
+
+enum YarnMentionStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+// Упоминание пряжи, из которого связь не собралась. Данные не выбрасываем:
+// по этой таблице строится рабочий список на пополнение справочника.
+model PatternYarnMention {
+  id        String  @id @default(uuid())
+  patternId String
+  pattern   Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  rawText         String
+  metrageInText   String?
+  kind            YarnMentionKind
+  // Кандидат, предложенный правилом, у которого не хватило уверенности на
+  // связь: «по названию линейки» даёт 36% точности, поэтому оно пишет
+  // подсказку сюда, а не связь.
+  suggestedYarnId String?
+  suggestedYarn   Yarn?           @relation("YarnSuggested", fields: [suggestedYarnId], references: [id])
+  matchRule       YarnMatchRule?
+  resolvedYarnId  String?
+  resolvedYarn    Yarn?           @relation("YarnResolved", fields: [resolvedYarnId], references: [id])
+
+  status      YarnMentionStatus @default(PENDING)
+  detailsHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Одно и то же название в одном описании — одно упоминание. Без этого
+  // перезапуск бэкофила плодил бы копии, а решение модератора по одной из
+  // них не распространялось бы на остальные.
+  @@unique([patternId, rawText])
+  @@index([patternId])
+  @@index([status])
 }
 
 enum UserRole {

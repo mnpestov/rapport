@@ -1,0 +1,386 @@
+/* Справочник артикулов пряжи. Рамки, отступы и типографика повторяют
+   Dictionaries.module.css — та же сущность. Отличие одно и оно вынужденное:
+   здесь 2778 строк, поэтому список табличный, с колонками характеристик, а
+   не строкой с названием. */
+.page {
+  padding: 24px 32px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.searchBox {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: #a9ae36;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #a9ae36;
+  color: #fff;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.addBtn:hover {
+  background: #83942c;
+}
+
+.count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.table {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Колонки: название тянется, остальные фиксированы по содержимому — иначе
+   длинный состав растаскивает таблицу и метраж уезжает за край. */
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) 110px minmax(160px, 1.4fr) 110px 90px 108px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+}
+
+.headRow {
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.row {
+  border-bottom: 1px solid #f3f4f6;
+  color: #1d1c1c;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: #f9fafb;
+}
+
+.nameCell {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #6366f1;
+  font-size: 11px;
+}
+
+.aliases {
+  flex-shrink: 0;
+  color: #9ca3af;
+  font-size: 11px;
+  cursor: help;
+}
+
+/* Пустой метраж подсвечен намеренно: это рабочий признак «карточку надо
+   дополнить», ради него и существует фильтр «без метража». */
+.missing {
+  color: #d97706;
+}
+
+.clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.actions button {
+  display: flex;
+  padding: 5px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background: #e5e7eb;
+  color: #1d1c1c;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.pager button {
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Модалки ─────────────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.modal,
+.modalNarrow {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
+.modal {
+  width: 640px;
+}
+
+.modalNarrow {
+  width: 460px;
+  overflow: visible;               /* выпадашка подсказки не должна обрезаться */
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modalHead h2 {
+  margin: 0;
+  font-family: Mulish, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d1c1c;
+}
+
+.modalHead button {
+  display: flex;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+.field,
+.fieldWide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.fieldLabel {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.fieldInput {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  outline: none;
+}
+
+.fieldInput:focus {
+  border-color: #a9ae36;
+}
+
+.checkboxField {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.mergeBody {
+  padding: 20px 22px;
+}
+
+.mergeText {
+  margin: 0 0 14px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.modalFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.cancelBtn,
+.saveBtn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1d1c1c;
+}
+
+.saveBtn {
+  border: none;
+  background: #a9ae36;
+  color: #fff;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

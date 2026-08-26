@@ -1,4 +1,10 @@
 import { Request, Response } from "express";
+import {
+  Prisma,
+  YarnLinkSource,
+  YarnMatchRule,
+  YarnMentionKind,
+} from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { generateSlug } from "../utils/slug";
 import path from "path";
@@ -17,6 +23,103 @@ let isSyncing = false;
 // and writes via a single DB connection regardless of scope.
 let syncingAuthorId: string | null = null;
 const SOCIAL_SITE_PATTERN = /t\.me|vk\.com|instagram\.com/i;
+
+/**
+ * Артикулы пряжи, найденные скрапером, — в связи описания.
+ *
+ * Резолвим по `normalizedKey`, а `id` из `parsedData` служит только
+ * подсказкой: между скрапом и одобрением карточку могли слить или скрыть.
+ * `connect` по мёртвому id бросил бы исключение прямо посреди
+ * processSyncBatch, а он на ошибке отвечает 400 в середине цикла по
+ * элементам — часть пачки к тому моменту уже записана, и откатывать нечем.
+ * Ключ переживает слияние: у карточки-приёмника он тот же.
+ *
+ * Не нашлось — не теряем: название уходит в PatternYarnMention, по которому
+ * потом видно, чего справочнику не хватает.
+ */
+/**
+ * Нормализовать список артикулов, пришедший из админки, к тому же виду, в
+ * каком его пишет скрапер: id, имя и ключ. Ключ и имя берём из БД по id —
+ * присланному клиенту доверять в этих полях нечего, а резолв при одобрении
+ * идёт именно по ключу.
+ */
+async function resolveYarnPayload(yarns: any[]) {
+  const ids = yarns.map((y) => String(y?.id || "")).filter(Boolean);
+  if (!ids.length) return [];
+  const cards = await prisma.yarn.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, normalizedKey: true },
+  });
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .map((c) => ({
+      id: c!.id,
+      name: c!.name,
+      normalizedKey: c!.normalizedKey,
+      rawMention: null,
+      metrageInText: null,
+      // Выбор человека, а не срабатывание правила.
+      matchRule: YarnMatchRule.MANUAL,
+    }));
+}
+
+export async function attachScrapedYarns(
+  tx: Prisma.TransactionClient,
+  patternId: string,
+  parsedData: any,
+) {
+  const scraped: any[] = Array.isArray(parsedData?.yarns) ? parsedData.yarns : [];
+  const mentions: any[] = Array.isArray(parsedData?.yarnMentions) ? parsedData.yarnMentions : [];
+  if (!scraped.length && !mentions.length) return;
+
+  const keys = scraped.map((y) => String(y.normalizedKey || "")).filter(Boolean);
+  const cards = keys.length
+    ? await tx.yarn.findMany({
+        where: { normalizedKey: { in: keys } },
+        select: { id: true, normalizedKey: true, mergedIntoId: true },
+      })
+    : [];
+  const byKey = new Map(cards.map((c) => [c.normalizedKey, c]));
+
+  const links: { yarnId: string; y: any }[] = [];
+  const lost: any[] = [];
+  for (const y of scraped) {
+    const card = byKey.get(String(y.normalizedKey || ""));
+    // Слитая карточка ведёт к победителю — связь должна попасть на него.
+    const yarnId = card ? card.mergedIntoId ?? card.id : null;
+    if (yarnId) links.push({ yarnId, y });
+    else lost.push({ rawText: y.name || y.rawMention, metrageInText: y.metrageInText, kind: "UNKNOWN_ARTICLE" });
+  }
+
+  if (links.length) {
+    await tx.patternYarn.createMany({
+      data: links.map(({ yarnId, y }) => ({
+        patternId,
+        yarnId,
+        rawMention: y.rawMention ?? null,
+        metrageInText: y.metrageInText ?? null,
+        source: YarnLinkSource.SCRAPER,
+        matchRule: (y.matchRule as YarnMatchRule) ?? null,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const allMentions = [...mentions, ...lost].filter((m) => m.rawText);
+  if (allMentions.length) {
+    await tx.patternYarnMention.createMany({
+      data: allMentions.map((m) => ({
+        patternId,
+        rawText: String(m.rawText),
+        metrageInText: m.metrageInText ?? null,
+        kind: (m.kind as YarnMentionKind) ?? YarnMentionKind.UNKNOWN_ARTICLE,
+      })),
+      skipDuplicates: true,
+    });
+  }
+}
 
 export const getPendingReports = async (req: Request, res: Response) => {
   // Выборка только PENDING отчетов для бейджа
@@ -52,7 +155,7 @@ export const getReportById = async (req: Request, res: Response) => {
 // fresh from the DB row, so edits saved here take effect on the next approve).
 export const updateSyncItem = async (req: Request, res: Response) => {
   const { itemId } = req.params;
-  const { title, url, images, details, price, oldPrice, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds } = req.body;
+  const { title, url, images, details, price, oldPrice, isFree, isNew, densityStitches, densityRows, categories, tags, instruments, yarnRangeIds, yarns } = req.body;
 
   const existing = await prisma.authorSyncItem.findUnique({ where: { id: itemId } });
   if (!existing) {
@@ -110,6 +213,17 @@ export const updateSyncItem = async (req: Request, res: Response) => {
     tags: tagRecords,
     instruments: instrumentRecords,
     yarnRanges: yarnRangeRecords,
+    // Артикулы правит модератор, но связей ещё нет: описания в Pattern не
+    // существует. Лежат в parsedData до одобрения, там же, куда их положил
+    // скрапер, и резолвятся по normalizedKey — id к моменту одобрения может
+    // указывать на слитую карточку (attachScrapedYarns).
+    //
+    // Ключ проставляем сами, из БД: клиент присылает то, что вернула
+    // подсказка, а верить ему на слово в поле, по которому потом ищется
+    // карточка, незачем.
+    ...(Array.isArray(yarns)
+      ? { yarns: await resolveYarnPayload(yarns), yarnMentions: prevParsedData.yarnMentions ?? [] }
+      : {}),
   };
 
   const data: any = { parsedData };
@@ -199,7 +313,7 @@ export const processSyncBatch = async (req: Request, res: Response) => {
         const raceExists = await tx.pattern.findUnique({ where: { slug: finalPatternSlug } });
         if (raceExists) throw new Error("Slug race condition - retry needed");
 
-        await tx.pattern.create({
+        const createdPattern = await tx.pattern.create({
           data: {
             title: dbItem.title,
             slug: finalPatternSlug,
@@ -225,6 +339,8 @@ export const processSyncBatch = async (req: Request, res: Response) => {
             yarnRanges: { connect: (parsedData.yarnRanges || []).map((y: any) => ({ id: y.id })) },
           }
         });
+
+        await attachScrapedYarns(tx, createdPattern.id, parsedData);
 
         await tx.authorSyncItem.update({
           where: { id: dbItem.id },

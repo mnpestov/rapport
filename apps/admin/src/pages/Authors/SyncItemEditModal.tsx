@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { YarnPicker, PickedYarn } from "../../components/YarnPicker/YarnPicker";
 import CreatableSelect from "react-select/creatable";
 import toast from "react-hot-toast";
 import { Modal } from "../../components/Modal/Modal";
@@ -29,6 +30,7 @@ interface FormState {
   tags: string[];
   instruments: string[];
   yarnRangeIds: string[];
+  yarns: PickedYarn[];
   densityStitches: string;
   densityRows: string;
 }
@@ -49,6 +51,9 @@ function toFormState(item: AdminDraft): FormState {
     tags: item.tags.map((t) => t.name),
     instruments: item.instruments.map((i) => i.name),
     yarnRangeIds: item.yarnRanges.map((y) => y.id),
+    // Артикулы у новинки лежат в parsedData: описания в Pattern ещё нет, и
+    // вешать связь не на что. Резолв случится при одобрении.
+    yarns: (item.yarns || []).map((y) => ({ id: y.id, name: y.name, mPer100g: null, composition: null })),
     densityStitches: item.densityStitches != null ? String(item.densityStitches) : "",
     densityRows: item.densityRows != null ? String(item.densityRows) : "",
   };
@@ -104,6 +109,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
         tags: formData.tags,
         instruments: formData.instruments,
         yarnRangeIds: formData.yarnRangeIds,
+        yarns: formData.yarns.map((y) => ({ id: y.id })),
         densityStitches: formData.densityStitches.trim(),
         densityRows: formData.densityRows.trim(),
       };
@@ -225,6 +231,17 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
                 .map(y => ({ value: y.id, label: y.label }))}
               onChange={(vals: any) => setFormData({ ...formData, yarnRangeIds: vals.map((v: any) => v.value) })}
               placeholder="Диапазон толщины"
+            />
+          </div>
+
+          {/* Артикулы пряжи. Тот же контрол, что в форме описания, но
+              сохраняется иначе: описания в Pattern ещё нет, поэтому выбор
+              лежит в parsedData и превращается в связи при одобрении. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={labelStyle}>Пряжа <span style={optionalStyle}>(необязательно)</span></label>
+            <YarnPicker
+              value={formData.yarns}
+              onChange={(yarns) => setFormData({ ...formData, yarns })}
             />
           </div>
 

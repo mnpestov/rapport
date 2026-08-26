@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getDashboardStats, getPaywallStats, DashboardResponse, PaywallStatsResponse, TopPatternItem, TopAuthorItem, TopSearchQueryItem, Period } from "../../api/dashboard";
 import { PaywallFunnel } from "./PaywallFunnel";
+import { YarnCoverage } from "./YarnCoverage";
 import { PaywallUsersModal, DrilldownTarget } from "./PaywallUsersModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
@@ -315,6 +316,10 @@ export function Dashboard() {
           пока данные не пришли: пустой виджет с нулями выглядел бы как
           "конверсия ноль", хотя на деле запрос ещё не завершился. */}
       {paywallStats && <PaywallFunnel stats={paywallStats} onDrilldown={setDrilldown} />}
+
+      {/* Грузится сам и молча прячется при ошибке: покрытие пряжей — не та
+          цифра, ради которой стоит ронять всю страницу статистики. */}
+      <YarnCoverage />
 
       <PaywallUsersModal
         target={drilldown}

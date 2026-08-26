@@ -1,12 +1,70 @@
 import os
 import sys
 import json
+
+# yarn_lib лежит уровнем выше, рядом с author_sync.py
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import psycopg2
 
 from .utils import normalize_url, get_base_url, normalize_free_price
 from .hooks import _get_crawl_hooks
 from .handlers import SITE_HANDLERS, SUPPLEMENTAL_STORE_HANDLERS
 from .crawlers import scrape_author_site, find_seed_url, fetch_and_parse_detail
+
+
+# ── Артикулы пряжи у новинок (Этап 5 YARN_ARTICLES_PLAN.md) ────────────────
+# Справочник грузится один раз за прогон: 2209 строк, а прогон обходит
+# десятки авторов. Запрос не для онлайнового пути — правило «частичное»
+# ищет подстроку на нашей стороне, индексом это не покрывается.
+_yarn_index = None
+
+
+def _get_yarn_index(cursor):
+    global _yarn_index
+    if _yarn_index is None:
+        from yarn_lib.analyze import load_index
+        from yarn_lib.match import YarnIndex
+        _yarn_index = load_index(cursor, YarnIndex)
+    return _yarn_index
+
+
+def attach_yarns(item, cursor):
+    """Разложить подробности новинки на артикулы и отложенные упоминания.
+
+    Пишем в parsedData И id, И имя, И нормализованный ключ. Между скрапом и
+    одобрением карточку могут слить или скрыть, и connect по мёртвому id
+    бросит исключение прямо посреди processSyncBatch — часть пачки к тому
+    моменту уже записана, откатывать нечем. По ключу связь переживает
+    слияние: он у карточки-приёмника тот же.
+
+    Разбор общий с бэкофилом (yarn_lib.analyze) — второй копии быть не
+    должно, иначе одно описание давало бы разные связи в зависимости от
+    того, кто его обработал.
+    """
+    item['yarns'] = []
+    item['yarnMentions'] = []
+    if not item.get('details'):
+        return
+    try:
+        from yarn_lib.analyze import analyze
+        from yarn_lib.extract import extract_brand_hits, extract_art_hits
+        index = _get_yarn_index(cursor)
+        links, mentions = analyze(item['details'], index, extract_brand_hits,
+                                  extract_art_hits)
+    except Exception as e:
+        # Пряжа — дополнение к новинке, а не её суть. Если справочник ещё не
+        # залит или разбор упал, новинка всё равно должна доехать до
+        # модерации.
+        print(f"  yarn parse skipped: {e}")
+        return
+
+    item['yarns'] = [{
+        'id': l.yarn_id, 'name': l.yarn_name, 'normalizedKey': l.normalized_key,
+        'rawMention': l.raw_mention, 'metrageInText': l.metrage, 'matchRule': l.rule,
+    } for l in links]
+    item['yarnMentions'] = [{
+        'rawText': m.raw_text, 'metrageInText': m.metrage, 'kind': m.kind,
+    } for m in mentions]
 
 
 def main():
@@ -218,6 +276,7 @@ def main():
             if 'oldPrice' not in item:
                 item['oldPrice'] = None
             item['price'], item['oldPrice'], item['isFree'] = normalize_free_price(item['price'], item['oldPrice'])
+            attach_yarns(item, cursor)
         
         # Save to DB
         if parsed_items:

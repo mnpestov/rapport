@@ -173,10 +173,22 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
         #     short-description selector so a site with both (short
         #     description near the price, matching the pattern used
         #     elsewhere) keeps using the shorter, already-verified one.
-        # First match wins.
+        # First match wins — КРОМЕ записи-кортежа: она означает «взять самый
+        # длинный из перечисленных блоков». Так устроен единственный пока
+        # случай, где одного селектора мало.
+        #
+        #   Vigbo (nadin-shop.com, alyonashe.com, nastasiay.ru) даёт автору
+        #   ДВА поля описания, и какое из них заполнено — зависит от автора,
+        #   а не от площадки. Проверено на живых страницах: у nadin-shop и
+        #   alyonashe текст лежит в `.text.f__2` (384 и 429 символов), а
+        #   `.additional_product_info` пуст; у nastasiay.ru наоборот —
+        #   в `.text.f__2` только название товара (27 символов), весь текст
+        #   со списком пряжи в `.additional_product_info` (1289).
+        #   Первый-по-списку побеждал заголовок, и все описания этого автора
+        #   уходили в базу как одна строка с названием.
         if not valid_texts:
             for selector in [
-                '.description.js-description .text.f__2',
+                ('.description.js-description .text.f__2', '.additional_product_info'),
                 '.description.js-description',
                 '.woocommerce-product-details__short-description',
                 '.product__text',
@@ -185,9 +197,16 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
                 '.preview-desc[itemprop="description"]',
                 '#tab-description',
             ]:
-                fallback_container = detail_soup.select_one(selector)
-                if fallback_container:
-                    valid_texts = [(fallback_container, fallback_container.get_text(separator=' ', strip=True))]
+                candidates = []
+                for one in (selector if isinstance(selector, tuple) else (selector,)):
+                    el = detail_soup.select_one(one)
+                    if el:
+                        candidates.append((el, el.get_text(separator=' ', strip=True)))
+                # Пустой блок не считается найденным: на Vigbo незаполненное
+                # поле присутствует в разметке, но текста в нём нет.
+                candidates = [c for c in candidates if c[1]]
+                if candidates:
+                    valid_texts = [max(candidates, key=lambda pair: len(pair[1]))]
                     break
 
         # The listing page's own alt/link text is often unreliable (filename

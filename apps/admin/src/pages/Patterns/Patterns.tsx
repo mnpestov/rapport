@@ -4,6 +4,9 @@ import { Plus, X, Shield, Pen, ShieldX, Check } from "lucide-react";
 import { ModerationCard } from "./ModerationCard";
 import { PatternGridCard } from "./PatternGridCard";
 import { ControlPanel, ControlPanelBtn, ViewToggle, ViewMode } from "../../components/ControlPanel/ControlPanel";
+import { YarnPicker, PickedYarn } from "../../components/YarnPicker/YarnPicker";
+import { getPatternYarns, setPatternYarns, resolveMention, createYarn, PatternYarnMentionItem } from "../../api/yarns";
+import { YarnEditModal } from "../Yarns/YarnEditModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
@@ -156,6 +159,18 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [tagsList, setTagsList] = useState<DictionaryItem[]>([]);
   const [instrumentsList, setInstrumentsList] = useState<DictionaryItem[]>([]);
   const [yarnRangesList, setYarnRangesList] = useState<YarnRange[]>([]);
+  // Артикулы описания живут отдельно от formData: они сохраняются своим
+  // запросом уже после самого описания, и мешать их в общий diff незачем.
+  const [patternYarns, setPatternYarns_] = useState<PickedYarn[]>([]);
+  const [yarnMentions, setYarnMentions] = useState<PatternYarnMentionItem[]>([]);
+  const [creatingYarnName, setCreatingYarnName] = useState<string | null>(null);
+
+  // Форма переиспользуется между описаниями, и без сброса в новой карточке
+  // осталась бы пряжа предыдущей.
+  const resetYarns = () => {
+    setPatternYarns_([]);
+    setYarnMentions([]);
+  };
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -376,6 +391,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const handleOpenCreate = () => {
     setEditingId(null);
     setAuthorEditingDraft(null);
+    resetYarns();
     setFormData({
       title: "",
       authorName: isAuthor ? currentAuthorName : "",
@@ -423,6 +439,17 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       originalFormDataRef.current = { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] };
       editingIsVisibleRef.current = res.isVisible;
       setEditingId(id);
+      // Связи грузим отдельным запросом и не блокируем ими форму: описание
+      // должно открыться, даже если справочник недоступен.
+      getPatternYarns(id)
+        .then((r) => {
+          setPatternYarns_(r.links.map((l) => ({ ...l.yarn, source: l.source })));
+          setYarnMentions(r.mentions);
+        })
+        .catch(() => {
+          setPatternYarns_([]);
+          setYarnMentions([]);
+        });
       setIsModalOpen(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to load pattern details");
@@ -449,6 +476,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     });
     setAuthorEditingDraft(draft);
     setEditingId(draft.id);
+    // У черновика кабинета связей ещё нет: описание в Pattern не создано,
+    // и вешать артикулы не на что.
+    resetYarns();
     setIsModalOpen(true);
   };
 
@@ -602,6 +632,15 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             };
           }));
         if (!stillMatchesView) loadStatusCounts();
+        // Связи с артикулами сохраняются своим запросом: они лежат в
+        // отдельных таблицах и в payload описания не входят. Ошибка здесь
+        // не должна выглядеть как несохранённое описание — оно уже
+        // сохранено, поэтому сообщение отдельное.
+        try {
+          await setPatternYarns(editingId, patternYarns.map((y) => y.id));
+        } catch (e: any) {
+          toast.error(e.message || "Описание сохранено, но пряжу записать не удалось");
+        }
         toast.success(isVisible && !editingIsVisibleRef.current ? "Описание опубликовано" : "Описание успешно обновлено");
       } else {
         await createPattern({
@@ -1148,6 +1187,86 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   />
                 </div>
 
+                {/* Артикулы пряжи. Стоят рядом с толщиной, но заменой ей не
+                    являются: толщина — диапазон для фильтра каталога, здесь
+                    конкретная пряжа с именем. Метраж артикула в yarnRanges
+                    не переносится — это авторский текст, мы его не меняем. */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={labelStyle}>
+                    Пряжа <span style={optionalStyle}>(необязательно)</span>
+                  </label>
+                  {editingId ? (
+                    <>
+                      <YarnPicker
+                        value={patternYarns}
+                        onChange={setPatternYarns_}
+                        disabled={formReadonly}
+                        onCreateRequest={setCreatingYarnName}
+                      />
+                      {yarnMentions.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 12, color: "#9ca3af" }}>
+                            Разбор нашёл в подробностях, но артикул не опознал:
+                          </span>
+                          {yarnMentions.map((m) => (
+                            <div
+                              key={m.id}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
+                                border: "1px solid #fde68a", borderRadius: 6, background: "#fffbeb",
+                                fontFamily: "Mulish, sans-serif", fontSize: 13,
+                              }}
+                            >
+                              <span style={{ flex: 1 }}>
+                                {m.rawText}
+                                {m.metrageInText && (
+                                  <span style={{ color: "#9ca3af" }}> · {m.metrageInText}</span>
+                                )}
+                              </span>
+                              <span style={{ fontSize: 11, color: "#b45309" }}>
+                                {m.kind === "FAMILY" ? "семейство" : m.kind === "BRAND_ONLY" ? "только бренд" : "не найдено"}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={formReadonly}
+                                onClick={() => setCreatingYarnName(m.rawText)}
+                                style={{
+                                  padding: "3px 8px", border: "1px solid #d1d5db", borderRadius: 5,
+                                  background: "#fff", fontSize: 12, cursor: "pointer",
+                                }}
+                              >
+                                Завести артикул
+                              </button>
+                              <button
+                                type="button"
+                                disabled={formReadonly}
+                                onClick={async () => {
+                                  try {
+                                    await resolveMention(m.id, null);
+                                    setYarnMentions((prev) => prev.filter((x) => x.id !== m.id));
+                                  } catch (e: any) {
+                                    toast.error(e.message || "Не удалось скрыть упоминание");
+                                  }
+                                }}
+                                style={{
+                                  padding: "3px 8px", border: "none", borderRadius: 5,
+                                  background: "transparent", color: "#9ca3af", fontSize: 12, cursor: "pointer",
+                                }}
+                              >
+                                Не пряжа
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 13, color: "#9ca3af" }}>
+                      Появится после сохранения описания
+                    </span>
+                  )}
+                </div>
+
                 {/* Плотность */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <label style={labelStyle}>Плотность (петли × ряды) в лицевой глади <span style={optionalStyle}></span></label>
@@ -1339,6 +1458,30 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             </div>
           </div>
         </div>
+      )}
+      {creatingYarnName !== null && (
+        <YarnEditModal
+          yarn={null}
+          initialName={creatingYarnName}
+          onClose={() => setCreatingYarnName(null)}
+          onSave={async (data) => {
+            try {
+              const created = await createYarn(data);
+              // Созданный артикул сразу привязываем: модератор открывал
+              // форму именно ради этого описания, и лишний шаг «теперь
+              // найдите его в подсказке» ничего не даёт.
+              setPatternYarns_((prev) => [
+                ...prev,
+                { id: created.id, name: created.name, mPer100g: created.mPer100g, composition: created.composition },
+              ]);
+              setYarnMentions((prev) => prev.filter((m) => m.rawText !== creatingYarnName));
+              setCreatingYarnName(null);
+              toast.success("Артикул создан и привязан");
+            } catch (e: any) {
+              toast.error(e.message || "Не удалось создать артикул");
+            }
+          }}
+        />
       )}
     </div>
   );

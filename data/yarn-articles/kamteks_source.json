@@ -1,0 +1,76 @@
+{
+  "_note": "Справочник производителя Камтекс. ВНИМАНИЕ: поле length_per_100g_meters названо неверно — в нём МЕТРАЖ МОТКА, а не метраж на 100 г. Проверено на 12 позициях против независимого разбора kudel.ru: Денди 50 г/330 м, Аргентинская шерсть 100 г/200 м, Мотылёк 50 г/140 м и так далее — совпадает всё. Буквальное прочтение вдвое занизило бы метраж у каждой 50-граммовой пряжи.",
+  "categories": [
+    {"name": "Шерсть", "items": [
+      {"id": 1, "name": "Аргентинская шерсть", "composition": "Шерсть п/т 100%", "skein_weight_grams": 100, "length_per_100g_meters": 200},
+      {"id": 2, "name": "Околица", "composition": "Шерсть 90%, Акрил 10%", "skein_weight_grams": 100, "length_per_100g_meters": 250},
+      {"id": 3, "name": "Флорис", "composition": "Меринос 95%, Акрил 5%", "skein_weight_grams": 100, "length_per_100g_meters": 150}
+    ]},
+    {"name": "Полушерсть", "items": [
+      {"id": 4, "name": "Астория", "composition": "Хлопок 65%, Шерсть 35%", "skein_weight_grams": 50, "length_per_100g_meters": 180},
+      {"id": 5, "name": "Бамбино", "composition": "Акрил 65%, Меринос 35%", "skein_weight_grams": 50, "length_per_100g_meters": 150},
+      {"id": 6, "name": "Бюджетная Макси", "composition": "Акрил 60%, Шерсть 40%", "skein_weight_grams": 150, "length_per_100g_meters": 140},
+      {"id": 7, "name": "Верблюжка", "composition": "Верблюжья шерсть 70%, Акрил 30%", "skein_weight_grams": 100, "length_per_100g_meters": 250},
+      {"id": 8, "name": "Воздушная", "composition": "Акрил 50%, Меринос 25%, Шерсть п/т 25%", "skein_weight_grams": 100, "length_per_100g_meters": 370},
+      {"id": 9, "name": "Гармония", "composition": "Шерсть п/т 50%, Акрил 50%", "skein_weight_grams": 100, "length_per_100g_meters": 245},
+      {"id": 10, "name": "Машенька", "composition": "Меринос 10%, ПАН 45%, Объемный акрил 45%", "skein_weight_grams": 50, "length_per_100g_meters": 215},
+      {"id": 11, "name": "Меринго", "composition": "Меринос 50%, Акрил 50%", "skein_weight_grams": 100, "length_per_100g_meters": 380},
+      {"id": 12, "name": "Меринго объемная", "composition": "Шерсть п/т 20%, Меринос 20%, Акрил 56%, Лайкра 4%", "skein_weight_grams": 150, "length_per_100g_meters": 90},
+      {"id": 13, "name": "Северянка", "composition": "Акрил 65%, Шерсть п/т 30%, Верблюжья шерсть 5%", "skein_weight_grams": 100, "length_per_100g_meters": 150},
+      {"id": 14, "name": "Соната", "composition": "Шерсть п/т 50%, Акрил 50%", "skein_weight_grams": 100, "length_per_100g_meters": 250},
+      {"id": 15, "name": "Фантазия", "composition": "Шерсть 33%, Хлопок 33%, Нитрон 34%", "skein_weight_grams": 100, "length_per_100g_meters": 130},
+      {"id": 16, "name": "Шалунья Лайт", "composition": "Меринос 55%, Акрил 45%", "skein_weight_grams": 100, "length_per_100g_meters": 600},
+      {"id": 17, "name": "Шелкопряд", "composition": "Шерсть п/т 70%, Искусственный шелк 30%", "skein_weight_grams": 100, "length_per_100g_meters": 300}
+    ]},
+    {"name": "Мохер и Альпака", "items": [
+      {"id": 18, "name": "Альпака", "composition": "Альпака 65%, Вискоза 20%, Акрил 15%", "skein_weight_grams": 50, "length_per_100g_meters": 150},
+      {"id": 19, "name": "Ангара", "composition": "Мохер 35%, Шерсть кроссбред 15%, Акрил 50%", "skein_weight_grams": 100, "length_per_100g_meters": 250},
+      {"id": 20, "name": "Ангара Ассорти", "composition": "Мохер 35%, Шерсть кроссбред 15%, Акрил 50%", "skein_weight_grams": 100, "length_per_100g_meters": 250},
+      {"id": 21, "name": "Ангара Люкс", "composition": "Мохер 50%, Акрил 50%", "skein_weight_grams": 50, "length_per_100g_meters": 220},
+      {"id": 22, "name": "Криа альпака", "composition": "Альпака 75%, Шелк 15%, Акрил 10%", "skein_weight_grams": 50, "length_per_100g_meters": 220},
+      {"id": 23, "name": "Мохер Голд", "composition": "Мохер 60%, Хлопок 20%, Акрил 20%", "skein_weight_grams": 50, "length_per_100g_meters": 250},
+      {"id": 24, "name": "Мохер с хлопком", "composition": "Мохер 50%, Хлопок 40%, Акрил 10%", "skein_weight_grams": 50, "length_per_100g_meters": 165},
+      {"id": 25, "name": "Престиж люкс", "composition": "Мохер 30%, Акрил 70%", "skein_weight_grams": 50, "length_per_100g_meters": 275}
+    ]},
+    {"name": "Хлопок", "items": [
+      {"id": 26, "name": "Альма", "composition": "Хлопок 100%", "skein_weight_grams": 50, "length_per_100g_meters": 170},
+      {"id": 27, "name": "Денди", "composition": "Хлопок мерсеризованный 100%", "skein_weight_grams": 50, "length_per_100g_meters": 330},
+      {"id": 28, "name": "Классика", "composition": "Хлопок мерсеризованный 100%", "skein_weight_grams": 50, "length_per_100g_meters": 235},
+      {"id": 29, "name": "Мотылёк", "composition": "Хлопок 70%, Лавсан 30%", "skein_weight_grams": 50, "length_per_100g_meters": 140},
+      {"id": 30, "name": "Мягкий хлопок", "composition": "Хлопок 70%, Нейлон 30%", "skein_weight_grams": 100, "length_per_100g_meters": 220},
+      {"id": 31, "name": "Толстый Хлопок", "composition": "Хлопок 100%", "skein_weight_grams": 100, "length_per_100g_meters": 95},
+      {"id": 32, "name": "Хлопок", "composition": "Хлопок 100%", "skein_weight_grams": 50, "length_per_100g_meters": 140},
+      {"id": 33, "name": "Хлопок классик", "composition": "Хлопок 100%", "skein_weight_grams": 100, "length_per_100g_meters": 180},
+      {"id": 34, "name": "Хлопок мерсеризованный", "composition": "Хлопок мерсеризованный 100%", "skein_weight_grams": 50, "length_per_100g_meters": 200},
+      {"id": 35, "name": "Хлопок Травка", "composition": "Хлопок 65%, Полиамид 35%", "skein_weight_grams": 100, "length_per_100g_meters": 220},
+      {"id": 36, "name": "Хлопок травка Ассорти", "composition": "Хлопок 65%, Полиамид 35%", "skein_weight_grams": 100, "length_per_100g_meters": 220}
+    ]},
+    {"name": "Валяние", "items": [
+      {"id": 37, "name": "Ангорка для творчества", "composition": "Мохер 45%, Шерсть 37%, Акрил 18%", "skein_weight_grams": 100, "length_per_100g_meters": null},
+      {"id": 38, "name": "Кардочес Mini", "composition": "Шерсть п/т 100%", "skein_weight_grams": 100, "length_per_100g_meters": null},
+      {"id": 39, "name": "Кардочес Верблюд", "composition": "Верблюжья шерсть 100%", "skein_weight_grams": 100, "length_per_100g_meters": null},
+      {"id": 40, "name": "Кардочес Мохер", "composition": "Мохер 100%", "skein_weight_grams": 100, "length_per_100g_meters": null},
+      {"id": 41, "name": "Лента для валяния", "composition": "Шерсть п/т 100%", "skein_weight_grams": 50, "length_per_100g_meters": null},
+      {"id": 42, "name": "Лента для валяния Ассорти", "composition": "Шерсть п/т 100%", "skein_weight_grams": 50, "length_per_100g_meters": null},
+      {"id": 43, "name": "Лента для валяния меланж", "composition": "Шерсть п/т 100%", "skein_weight_grams": 50, "length_per_100g_meters": null}
+    ]},
+    {"name": "Джут и Лён", "items": [
+      {"id": 44, "name": "Ананасовая", "composition": "Ананасовое волокно 55%, Хлопок 45%", "skein_weight_grams": 100, "length_per_100g_meters": 250},
+      {"id": 45, "name": "Джутовая", "composition": "Джут 100%", "skein_weight_grams": 100, "length_per_100g_meters": 80},
+      {"id": 46, "name": "Лён", "composition": "Лён 100%", "skein_weight_grams": 100, "length_per_100g_meters": 330}
+    ]},
+    {"name": "Акрил", "items": [
+      {"id": 47, "name": "Акварель", "composition": "Леакрил 50%, Акрил 50%", "skein_weight_grams": 100, "length_per_100g_meters": 110},
+      {"id": 48, "name": "Детская забава", "composition": "Микрофибра 20%, Объемный акрил 80%", "skein_weight_grams": 50, "length_per_100g_meters": 140},
+      {"id": 49, "name": "Детская забава мулине", "composition": "Микрофибра 20%, Объемный акрил 80%", "skein_weight_grams": 50, "length_per_100g_meters": 140},
+      {"id": 50, "name": "Карамелька", "composition": "Акрил 100%", "skein_weight_grams": 50, "length_per_100g_meters": 175},
+      {"id": 51, "name": "Карамелька Ассорти", "composition": "Акрил 100%", "skein_weight_grams": 50, "length_per_100g_meters": 175},
+      {"id": 52, "name": "Карат", "composition": "Объемный акрил 50%, ПАН 50%", "skein_weight_grams": 100, "length_per_100g_meters": 165},
+      {"id": 53, "name": "Карат секц. крашения", "composition": "Объемный акрил 50%, ПАН 50%", "skein_weight_grams": 100, "length_per_100g_meters": 165},
+      {"id": 54, "name": "Лори", "composition": "Акрил 45%, Нейлон 30%, ПЭ 25%", "skein_weight_grams": 50, "length_per_100g_meters": 170},
+      {"id": 55, "name": "Лотос Травка Стрейч", "composition": "Акрил 70%, Полиамид 28%, Лайкра 2%", "skein_weight_grams": 50, "length_per_100g_meters": 80},
+      {"id": 56, "name": "Малышок", "composition": "Акрил 80%, Вискоза 20%", "skein_weight_grams": 100, "length_per_100g_meters": 290},
+      {"id": 57, "name": "Праздничная с люрексом", "composition": "Кашмилон 48%, ПАН 48%, Метанит 4%", "skein_weight_grams": 50, "length_per_100g_meters": 160}
+    ]}
+  ]
+}

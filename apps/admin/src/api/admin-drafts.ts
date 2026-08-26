@@ -28,6 +28,10 @@ export interface AdminDraft {
   categories: { id: string; name: string }[];
   instruments: { id: string; name: string }[];
   yarnRanges: { id: string; label: string }[];
+  /** Артикулы, найденные скрапером. У настоящих Draft из кабинета их нет —
+      скрапер туда не пишет, — поэтому поле необязательное. */
+  yarns?: { id: string; name: string; matchRule?: string | null }[];
+  yarnMentions?: { rawText: string; kind: string; metrageInText?: string | null }[];
 }
 
 export const getAdminDrafts = async (status?: string): Promise<AdminDraft[]> => {

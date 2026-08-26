@@ -66,6 +66,18 @@ import {
 import { getChatHistory, sendChatMessage, getChatFile, getUnreadMessages, markChatAsRead, getRequests } from "../controllers/chatController";
 import { getUsers, getUserById, updateUser, getUserSubscription } from "../controllers/usersController";
 import { getPriceCheckRuns, getPriceCheckStatus, triggerPriceCheck, getConfirmedAuthors } from "../controllers/priceCheckController";
+import {
+  listYarns,
+  suggestYarns,
+  createYarn,
+  updateYarn,
+  deleteYarn,
+  mergeYarn,
+  getPatternYarns,
+  setPatternYarns,
+  resolveMention,
+} from "../controllers/yarnsController";
+import { getYarnStats } from "../controllers/yarnStatsController";
 
 const router = Router();
 
@@ -136,6 +148,9 @@ router.get("/categories", ...dictReadHandler, getCategories);
 router.get("/tags", ...dictReadHandler, getTags);
 router.get("/instruments", ...dictReadHandler, getInstruments);
 router.get("/yarn-ranges", ...dictReadHandler, getYarnRanges);
+// Подсказка артикулов — здесь же и по той же причине: блок «Пряжа» живёт в
+// общей форме описания, а её открывает и кабинет автора.
+router.get("/yarns/suggest", ...dictReadHandler, suggestYarns);
 
 // ---------------------------------------------------------------------------
 // All remaining admin routes require an authenticated ADMIN user.
@@ -160,6 +175,22 @@ router.get("/price-check-runs", getPriceCheckRuns);
 router.get("/price-check-runs/status", getPriceCheckStatus);
 router.get("/price-check-runs/confirmed-authors", getConfirmedAuthors);
 router.post("/price-check-runs/trigger", triggerPriceCheck);
+
+// ---------------------------------------------------------------------------
+// Справочник артикулов пряжи и связи описаний с ним.
+// «/yarns/suggest» зарегистрирован выше, до requireAdmin, — если объявить
+// его здесь, до него не дойдёт очередь: «/yarns/:id» перехватит «suggest»
+// как идентификатор.
+// ---------------------------------------------------------------------------
+router.get("/yarns", listYarns);
+router.post("/yarns", createYarn);
+router.patch("/yarns/:id", updateYarn);
+router.delete("/yarns/:id", deleteYarn);
+router.post("/yarns/:id/merge", mergeYarn);
+router.get("/patterns/:id/yarns", getPatternYarns);
+router.put("/patterns/:id/yarns", setPatternYarns);
+router.post("/yarn-mentions/:id/resolve", resolveMention);
+router.get("/yarn-stats", getYarnStats);
 
 router.get("/patterns", getPatternsList);
 router.get("/patterns/:id", getPatternById);

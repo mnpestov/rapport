@@ -126,6 +126,8 @@ export interface SyncItemUpdateDTO {
   yarnRangeIds: string[];
   densityStitches: number | string;
   densityRows: number | string;
+  /** Артикулы пряжи: до одобрения живут в parsedData, связей ещё нет. */
+  yarns?: { id: string }[];
 }
 
 export const updateSyncItem = async (

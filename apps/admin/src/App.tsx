@@ -15,6 +15,7 @@ import { Users } from './pages/Users/Users';
 import { PriceCheck } from './pages/PriceCheck/PriceCheck';
 import { Payments } from './pages/Payments/Payments';
 import { Dictionaries } from './pages/Dictionaries/Dictionaries';
+import { Yarns } from './pages/Yarns/Yarns';
 
 function BootstrapSpinner() {
   return (
@@ -71,6 +72,7 @@ function AppRoutes() {
           <Route path="payments" element={<Payments />} />
           <Route path="price-check" element={<PriceCheck />} />
           <Route path="dictionaries" element={<Dictionaries />} />
+          <Route path="yarns" element={<Yarns />} />
         </Route>
       </Route>
 
