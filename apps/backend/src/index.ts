@@ -67,13 +67,24 @@ app.use(
 // frameguard and CSP are both off: the mini-app is rendered inside an
 // iframe by the Telegram client itself (both frameguard's default
 // X-Frame-Options: SAMEORIGIN and helmet's default CSP frame-ancestors
-// would block that). Everything else helmet sets by default (X-Content-
-// Type-Options, etc.) is safe to keep as-is. A properly scoped CSP is a
-// separate, deliberate follow-up — not something to bolt on blind here.
+// would block that). crossOriginResourcePolicy is also off: this same
+// process serves pattern images (/images, /uploads) that the admin panel
+// (a different origin — admin.rapport.su vs rapport.su) embeds directly in
+// <img> tags — helmet's default `same-origin` CORP blocks exactly that,
+// independently of the cors() config above (CORP is enforced by the
+// browser regardless of CORS headers). Everything else helmet sets by
+// default (X-Content-Type-Options, etc.) is safe to keep as-is. A properly
+// scoped CSP is a separate, deliberate follow-up — not something to bolt on
+// blind here.
 app.use(
   helmet({
     frameguard: false,
     contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
+    // Irrelevant for a pure API/static-asset backend with no HTML of its
+    // own to embed things into, but disabled explicitly rather than left to
+    // helmet's defaults — same reasoning as CORP above, just lower-risk.
+    crossOriginEmbedderPolicy: false,
   })
 );
 app.use(cookieParser());

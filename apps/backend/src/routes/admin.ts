@@ -13,17 +13,23 @@ import {
   getPatternsStats,
   getDashboard,
   getDashboardStats,
+} from "../controllers/adminDashboardController";
+import {
   getPatternsList,
   getPatternById,
   updatePattern,
   createPattern,
   deletePattern,
+  resetAllIsNew,
+  fixArchiveQuotes,
+} from "../controllers/adminPatternsController";
+import {
   getAuthors,
   createAuthor,
   updateAuthor,
   deleteAuthor,
-  resetAllIsNew,
-  fixArchiveQuotes,
+} from "../controllers/adminAuthorsController";
+import {
   getCategories,
   updateCategory,
   deleteCategory,
@@ -34,15 +40,19 @@ import {
   deleteInstrument,
   getInstruments,
   getYarnRanges,
+} from "../controllers/adminDictionariesController";
+import {
   getDraftsList,
   getDraftById,
   approveDraft,
   rejectDraft,
   linkAuthor,
+} from "../controllers/adminModerationController";
+import {
   getPermissions,
   grantPermission,
   revokePermission,
-} from "../controllers/adminController";
+} from "../controllers/adminPermissionsController";
 import {
   getPendingReports,
   getReportById,

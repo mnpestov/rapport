@@ -12,7 +12,7 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import { spawn } from "child_process";
-import { syncCategories, syncTags, syncInstruments } from "./adminController";
+import { syncCategories, syncTags, syncInstruments } from "../utils/adminShared";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, MAX_PATTERN_IMAGES } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
 
