@@ -10,9 +10,6 @@ importers:
 
   apps/admin:
     dependencies:
-      '@knitting/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@18.3.1)
@@ -141,9 +138,6 @@ importers:
 
   apps/frontend-miniapp:
     dependencies:
-      '@knitting/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@18.3.1)
