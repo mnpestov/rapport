@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "../prismaClient";
 import { generateToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import { sendLoginCode } from "../services/loginCodeSender";
+import { allowedOrigins } from "../utils/allowedOrigins";
 
 /**
  * Web / admin authentication via one-time Telegram codes.
@@ -19,6 +20,32 @@ const CODE_TTL_MS = 5 * 60 * 1_000;           // 5 minutes
 const RESEND_COOLDOWN_MS = 60 * 1_000;          // min interval between codes
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 3_600 * 1_000; // 30 days
 const GRACE_PERIOD_MS = 15 * 1_000;             // concurrent-refresh grace window
+
+// Failed-attempt counter for verify-code, keyed by telegramId (not IP — an
+// IP-based limit alone is trivially bypassed via CGNAT/botnets, and this is
+// what actually protects the 6-digit code from being brute-forced within its
+// 5-minute TTL). After MAX_VERIFY_ATTEMPTS failures the active code is
+// invalidated outright, so a fresh one has to be requested rather than just
+// waiting out a cooldown. Entries expire with the same TTL as the code they
+// guard — no point remembering failures past the point the code itself dies.
+const MAX_VERIFY_ATTEMPTS = 5;
+const verifyAttempts = new Map<string, { count: number; expiresAt: number }>();
+
+function registerFailedAttempt(telegramId: bigint): boolean {
+  const key = telegramId.toString();
+  const now = Date.now();
+  const entry = verifyAttempts.get(key);
+  if (!entry || entry.expiresAt <= now) {
+    verifyAttempts.set(key, { count: 1, expiresAt: now + CODE_TTL_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count >= MAX_VERIFY_ATTEMPTS;
+}
+
+function clearFailedAttempts(telegramId: bigint): void {
+  verifyAttempts.delete(telegramId.toString());
+}
 
 function generateCode(): string {
   return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
@@ -158,6 +185,16 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
     });
 
     if (!record) {
+      const exhausted = registerFailedAttempt(user.telegramId);
+      if (exhausted) {
+        // Too many wrong guesses against this user's active code — burn it
+        // outright rather than let a brute-force loop keep spending its
+        // remaining TTL. A fresh code has to be requested from scratch.
+        await prisma.loginCode.updateMany({
+          where: { telegramId: user.telegramId, usedAt: null },
+          data: { usedAt: new Date() },
+        });
+      }
       res.status(401).json({ error: "Invalid or expired code" });
       return;
     }
@@ -167,9 +204,12 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
       data: { usedAt: new Date() },
     });
     if (burned.count === 0) {
+      registerFailedAttempt(user.telegramId);
       res.status(401).json({ error: "Invalid or expired code" });
       return;
     }
+
+    clearFailedAttempts(user.telegramId);
 
     const accessToken = generateToken({
       userId: user.id,
@@ -258,10 +298,41 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// admin.rapport.su and rapport.su are same-site (same registrable domain,
+// different origins) — SameSite=lax on the refresh cookie does NOT stop a
+// same-site cross-origin request from carrying it, and the generic cors()
+// middleware in index.ts only rejects browser-enforced preflighted requests,
+// which a same-site request may not even trigger the same way. This is the
+// actual CSRF boundary for the one endpoint that turns a stolen/replayed
+// cookie into a fresh access token: explicitly check Origin (falling back to
+// Referer's origin, since some browsers omit Origin on same-origin-looking
+// requests) against the same allowlist the CORS config already trusts.
+function isAllowedRefreshOrigin(req: Request): boolean {
+  if (allowedOrigins.length === 0) return true; // dev fallback — matches cors()'s own open-fallback behavior
+  const origin = req.headers.origin;
+  if (origin) return allowedOrigins.includes(origin);
+  const referer = req.headers.referer;
+  if (referer) {
+    try {
+      return allowedOrigins.includes(new URL(referer).origin);
+    } catch {
+      return false;
+    }
+  }
+  // Neither header present — can't verify, refuse rather than assume.
+  return false;
+}
+
 // POST /auth/refresh — rotates the refresh token and returns a new access token.
-// Requires X-Requested-With: XMLHttpRequest (CSRF guard).
+// Requires X-Requested-With: XMLHttpRequest (CSRF guard) AND a matching
+// Origin/Referer (see isAllowedRefreshOrigin) — X-Requested-With alone isn't
+// enough once API and admin panel are same-site (see comment above).
 export const refresh = async (req: Request, res: Response): Promise<void> => {
   if (req.headers["x-requested-with"] !== "XMLHttpRequest") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  if (!isAllowedRefreshOrigin(req)) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }

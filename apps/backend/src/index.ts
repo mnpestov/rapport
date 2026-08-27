@@ -19,8 +19,10 @@ if (process.env.NODE_ENV === "production") {
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import fs from "fs";
 import path from "path";
+import { allowedOrigins } from "./utils/allowedOrigins";
 import { softAuth } from "./middlewares/softAuth";
 import healthRouter from "./routes/health";
 import authRouter from "./routes/auth";
@@ -43,11 +45,6 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const allowedOrigins = (process.env.ADMIN_CORS_ORIGINS || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
 // Fail fast in production if ADMIN_CORS_ORIGINS is missing/empty — the cors
 // fallback below (`origin: true`) reflects ANY Origin, and combined with
 // `credentials: true` that turns cookie-based auth (POST /auth/refresh) into
@@ -65,6 +62,18 @@ app.use(
     origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
+// frameguard and CSP are both off: the mini-app is rendered inside an
+// iframe by the Telegram client itself (both frameguard's default
+// X-Frame-Options: SAMEORIGIN and helmet's default CSP frame-ancestors
+// would block that). Everything else helmet sets by default (X-Content-
+// Type-Options, etc.) is safe to keep as-is. A properly scoped CSP is a
+// separate, deliberate follow-up — not something to bolt on blind here.
+app.use(
+  helmet({
+    frameguard: false,
+    contentSecurityPolicy: false,
   })
 );
 app.use(cookieParser());

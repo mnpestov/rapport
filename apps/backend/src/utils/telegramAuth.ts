@@ -32,8 +32,17 @@ export function validateTelegramWebAppData(initData: string, botToken: string): 
 
     const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
     const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-    
-    if (calculatedHash !== hash) {
+
+    // Constant-time comparison — same reasoning as the Robokassa signature
+    // check in paymentsController.ts: a plain `!==` on a value derived from
+    // an HMAC theoretically leaks timing information an attacker could use
+    // to guess it byte-by-byte. timingSafeEqual throws on mismatched buffer
+    // lengths, so the length check must short-circuit before it runs.
+    const calculatedBuf = Buffer.from(calculatedHash);
+    const receivedBuf = Buffer.from(hash);
+    const signatureValid =
+      calculatedBuf.length === receivedBuf.length && crypto.timingSafeEqual(calculatedBuf, receivedBuf);
+    if (!signatureValid) {
       return { isValid: false };
     }
 
