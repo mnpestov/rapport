@@ -159,9 +159,21 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
         #   - .product__text: romnastena.com's own catalog.
         #   - .hw-rich-description: hollywool.ru (Bitrix custom theme — same
         #     site as the extract_gallery hook above).
-        #   - .textDesk: eiwi.ru (DLE) — the actual description block; distinct
-        #     from the gallery's own JS-embedded array handled separately in
-        #     _eiwi_extract_gallery.
+        #   - #opisanieFS: eiwi.ru (DLE) — the author's own description text
+        #     and NOTHING else. Must stay AHEAD of .textDesk below: .textDesk
+        #     is a whole page section, not a description block — besides the
+        #     description it wraps the "Описание" heading, the "Нажимая
+        #     «Купить»…" terms notice and the entire "Рекомендуем также"
+        #     widget (every other product of the author with its own title,
+        #     price, file size, view/sale counters and URL). Measured on
+        #     6918-sovmestnoe-vjazanie-shapka-peruanka: .textDesk = 8926
+        #     chars of which the real description is 599. The page renders
+        #     #opisanieFS with white-space: pre-wrap and its text node
+        #     already carries the author's real line breaks, so the no-<p>
+        #     branch of _extract_details_text reproduces them as-is.
+        #   - .textDesk: eiwi.ru fallback for any page shape without
+        #     #opisanieFS; distinct from the gallery's own JS-embedded array
+        #     handled separately in _eiwi_extract_gallery.
         #   - .preview-desc[itemprop="description"]: omalica.ru (Bitrix) — the
         #     server-rendered product description (unlike its price widget,
         #     this one isn't JS-populated; confirmed present with real <p>
@@ -203,6 +215,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
                 '.woocommerce-product-details__short-description',
                 '.product__text',
                 '.hw-rich-description',
+                '#opisanieFS',
                 '.textDesk',
                 '.preview-desc[itemprop="description"]',
                 '#tab-description',

@@ -111,6 +111,7 @@ apps/backend/src/scripts/run_batch_6_fix.py
 # price_check_report.md above.
 apps/backend/src/scripts/DETAILS_PRICE_PARSING_PROCESS.md
 apps/backend/src/scripts/prod_details_price_backfill.sql
+apps/backend/src/scripts/prod_eiwi_details_fix.sql
 
 # Raw source docs for oferta.html/privacy.html — content already
 # transcribed, not meant to be tracked (see public/oferta.html, privacy.html).
