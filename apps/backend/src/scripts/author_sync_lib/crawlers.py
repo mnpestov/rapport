@@ -173,6 +173,16 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
         #     short-description selector so a site with both (short
         #     description near the price, matching the pattern used
         #     elsewhere) keeps using the shorter, already-verified one.
+        #   - .product-description: the WYSIWYG-authored description block on
+        #     the InSales-style shop template (class list is literally
+        #     "product-description wysiwyg"). Nothing in the title-matching
+        #     loop above can see it — its class matches neither the Tilda/
+        #     js-product container regex nor any earlier selector here — so
+        #     these pages produced NO details at all, and with no details
+        #     the yarn-article pass (backfill_pattern_yarns.py) has nothing
+        #     to read. Kept LAST: the class name is generic enough that a
+        #     site carrying it alongside one of the verified selectors above
+        #     should keep using the verified one.
         # First match wins — КРОМЕ записи-кортежа: она означает «взять самый
         # длинный из перечисленных блоков». Так устроен единственный пока
         # случай, где одного селектора мало.
@@ -196,6 +206,7 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
                 '.textDesk',
                 '.preview-desc[itemprop="description"]',
                 '#tab-description',
+                '.product-description',
             ]:
                 candidates = []
                 for one in (selector if isinstance(selector, tuple) else (selector,)):

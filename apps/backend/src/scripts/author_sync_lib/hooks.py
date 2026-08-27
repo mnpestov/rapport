@@ -1,3 +1,4 @@
+import copy
 import re
 import json
 import math
@@ -6,6 +7,37 @@ from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
+
+
+# Единственный настоящий перенос строки внутри <p> — это <br>: любые пробелы
+# и переводы строк в самом исходнике HTML схлопывает в один пробел, а <br>
+# браузер рисует переносом. get_text(separator=' ') этой разницы не видит и
+# склеивает всё в одну строку — а "Подробности" на фронте выводятся с
+# white-space: pre-wrap, то есть ровно так, как лежат в БД. У авторов, чьё
+# описание — один <p>, набитый <br> (шаблон InSales и подобные), из-за этого
+# получалась сплошная простыня текста вместо списка пряжи по строкам.
+# Замена делается на КОПИИ тега: сам detail_soup к этому моменту уже отдал
+# text_content и цену выше по стеку, и портить его для последующих хуков
+# (галерея, exclude_paragraph) нельзя.
+_BR_MARK = '\x00'  # маркер, которого заведомо нет в тексте страницы
+
+
+def _block_text(tag):
+    if tag.find('br') is None:
+        return tag.get_text(separator=' ', strip=True)
+    clone = copy.copy(tag)
+    for br in clone.find_all('br'):
+        br.replace_with(_BR_MARK)
+    text = clone.get_text(separator=' ', strip=True)
+    # strip=True срезал пробелы по краям каждой строки, но вокруг самого
+    # маркера они остаются — их наставил separator=' '. [^\S\n] — пробелы,
+    # кроме перевода строки: настоящие переносы, пришедшие из текста, тут
+    # не трогаем.
+    text = re.sub(r'[^\S\n]*' + _BR_MARK + r'[^\S\n]*', '\n', text)
+    # <br><br> в разметке — пустая строка между абзацами; три и больше подряд
+    # к пустой строке и сводим, чтобы не тянуть в БД вертикальные дыры.
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 
 def _extract_details_text(container, exclude_paragraph=None):
@@ -58,7 +90,7 @@ def _extract_details_text(container, exclude_paragraph=None):
             cells = [c.get_text(separator=' ', strip=True) for c in tag.find_all(['td', 'th'])]
             t = ' | '.join(c for c in cells if c)
         else:
-            t = tag.get_text(separator=' ', strip=True)
+            t = _block_text(tag)
         if not t:
             continue
         if exclude_paragraph and exclude_paragraph(t):
@@ -641,6 +673,69 @@ def _extract_frog_details(soup):
         return None
     return max(candidates, key=len)
 
+_INSALES_HIDDEN_RE = re.compile(r'display\s*:\s*none', re.I)
+
+
+def _insales_amount(el):
+    # data-product-price несёт уже нормализованное число ("1700.0"), без
+    # разделителя тысяч и валюты — это надёжнее видимого текста. Но атрибут
+    # есть не на всех темах, поэтому текст остаётся запасным путём:
+    # _parse_woo_price умеет и неразрывный пробел как разделитель тысяч
+    # ("1\xa0700"), и приклеенный символ валюты.
+    raw = el.get('data-product-price')
+    if raw:
+        try:
+            return float(str(raw).replace(',', '.'))
+        except ValueError:
+            pass
+    return _parse_woo_price(el)
+
+
+def _extract_insales_price(soup):
+    # InSales — платформа, а не один автор: разметка цены у неё общая
+    # (.product-price-container + span.js-product-price[data-product-price],
+    # <strike class="js-product-old-price-container"> со вложенным
+    # .js-product-old-price), как WooCommerce и js-description выше по
+    # цепочке. Та же платформа отдаёт и описание в .product-description
+    # (см. список запасных селекторов в crawlers.py).
+    #
+    # Старая цена присутствует в DOM ВСЕГДА, независимо от того, активна ли
+    # скидка: без скидки <strike> просто спрятан style="display: none", а
+    # вложенный span пуст. Это ровно тот случай, про который предупреждает
+    # DETAILS_PRICE_PARSING_PROCESS.md ("скрытые/задвоенные элементы"), —
+    # поэтому две независимые проверки: (1) ни на самом элементе, ни на
+    # предках до контейнера нет display:none / hidden; (2) число вообще
+    # разобралось и оно БОЛЬШЕ текущей цены. Второе нужно на случай, если
+    # тема оставит в спрятанном <strike> протухшее значение: "старая" цена
+    # меньше или равная текущей — это не скидка, а мусор, и на фронте она
+    # бы просто не отобразилась (скидка считается как oldPrice > price).
+    container = soup.select_one('.product-price-container')
+    if container is None:
+        return None, None
+
+    price_el = container.select_one('.js-product-price')
+    if price_el is None:
+        return None, None
+    price = _insales_amount(price_el)
+    if price is None:
+        return None, None
+
+    old_el = container.select_one('.js-product-old-price')
+    if old_el is None:
+        return price, None
+
+    node = old_el
+    while node is not None and node is not container.parent:
+        if node.get('hidden') is not None or _INSALES_HIDDEN_RE.search(node.get('style') or ''):
+            return price, None
+        node = node.parent
+
+    old_price = _insales_amount(old_el)
+    if old_price is None or old_price <= price:
+        return price, None
+    return price, old_price
+
+
 def _extract_julia_vyazget_price(soup):
     # juliavyazget.com: same "duplicated-template, stable internal field id"
     # situation as ekaterinafrog.ru above — a plain Tilda feature-list text
@@ -801,7 +896,7 @@ def extract_price_any_known_platform(soup, url=None, headers=None):
     # price mechanism implemented so far — WooCommerce, the js-description
     # platform, hollywool.ru's Bitrix widget, eiwi.ru, romnastena.com,
     # omalica.ru's Bitrix microdata, ekaterinafrog.ru/juliavyazget.com's
-    # stable-field-id Tilda text blocks. Each one auto-detects via its own
+    # stable-field-id Tilda text blocks, InSales. Each one auto-detects via its own
     # selectors and returns (None, None) when its markup isn't present, so
     # trying them in sequence is safe/cheap on any page.
     #
@@ -843,6 +938,9 @@ def extract_price_any_known_platform(soup, url=None, headers=None):
     if price is not None:
         return price, old_price
     price, old_price = _extract_julia_vyazget_price(soup)
+    if price is not None:
+        return price, old_price
+    price, old_price = _extract_insales_price(soup)
     if price is not None:
         return price, old_price
     price, old_price = _extract_tilda_store_popup_price(soup, url, headers)
