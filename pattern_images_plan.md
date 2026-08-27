@@ -1,6 +1,14 @@
 # Множественные изображения у описаний — план реализации
 
-Статус: план согласован, код не написан.
+Статус: реализовано. `Pattern.thumbnailUrl` и множественная галерея (`images[]`)
+есть в схеме и активно используются по всему коду (patternsController,
+authorController, admin-контроллеры, frontend `patternsApi.ts`), плюс есть
+инфраструктура backfill-скриптов (`backfill_all_thumbnails.py`,
+`backfill_detail_reencode.py`). Документ ниже описывает план ДО реализации —
+оставлен как историческая справка по замыслу и рассуждениям, а не как текущее
+состояние кода. Пути вида `adminController.ts::...` устарели: этот файл был
+разбит на доменные контроллеры (`adminPatternsController.ts`,
+`adminModerationController.ts` и др.) — см. `CODE_REVIEW_BACKLOG.md` находка #2.
 
 ## 1. Текущее состояние
 
