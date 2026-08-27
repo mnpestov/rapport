@@ -1,0 +1,77 @@
+/* ──────────────────────────────────────────────────────────────
+   Кнопки админки.
+
+   Геометрия взята из ControlPanel — единственного места, где кнопки
+   уже были общими. До этого каждая страница описывала свои: 53 класса
+   в 23 файлах, у которых при одинаковом зелёном фоне расходились
+   скругление (2 против 6), высота (32 против 40) и размер текста.
+
+   Размер `md` (32 px) — для панелей и строк таблиц, `lg` (40 px) —
+   для самостоятельных действий вроде «Запустить проверку».
+   ────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Mulish', sans-serif;
+  font-weight: 400;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.btn:hover:not(:disabled) { opacity: 0.9; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* размеры */
+.md { height: 32px; padding: 0 12px; font-size: 12px; }
+.lg { height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; }
+
+/* виды */
+.primary   { background: var(--brand-bright); color: var(--surface); }
+.secondary { background: var(--surface-gray); color: var(--text); }
+.neutral   { background: #BEC1F4; color: var(--text); }
+.danger    { background: var(--warning); color: var(--surface); }
+
+.block { width: 100%; }
+
+/* ── кнопка-иконка ────────────────────────────────────────────
+   Две разновидности, обе встречались в коде: прозрачная в строках
+   таблиц и залитая цветом в «Справочниках».
+   ──────────────────────────────────────────────────────────── */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.2s;
+}
+
+.icon:disabled { opacity: 0.5; cursor: not-allowed; }
+.icon:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.ghost {
+  padding: 4px;
+  background: none;
+  color: var(--text);
+  border-radius: 2px;
+}
+.ghost:hover:not(:disabled) { background: var(--surface-gray); }
+
+.filled {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--surface);
+}
+.filled:hover:not(:disabled) { opacity: 0.85; }
+
+.toneBrand   { background: var(--brand); }
+.toneNeutral { background: var(--text-subtle); }
+.toneDanger  { background: var(--danger); }

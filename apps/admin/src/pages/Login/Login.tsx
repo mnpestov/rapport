@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '../../components/Button/Button';
 import { useNavigate } from 'react-router-dom';
 import { requestCode, verifyCode } from '../../api/auth';
 import { useAuth } from '../../contexts/AuthContext';
@@ -97,13 +98,9 @@ export function Login() {
                 autoFocus
               />
             </div>
-            <button
-              type="submit"
-              className={styles.submitBtn}
-              disabled={isLoading || !username.trim()}
-            >
+            <Button type="submit" size="lg" block disabled={isLoading || !username.trim()}>
               {isLoading ? 'Отправка...' : 'Получить код'}
-            </button>
+            </Button>
           </form>
         ) : (
           <form className={styles.form} onSubmit={handleVerifyCode}>
@@ -119,16 +116,13 @@ export function Login() {
                 autoFocus
               />
             </div>
-            <button
-              type="submit"
-              className={styles.submitBtn}
-              disabled={isLoading || code.length !== 6}
-            >
+            <Button type="submit" size="lg" block disabled={isLoading || code.length !== 6}>
               {isLoading ? 'Проверка...' : 'Войти'}
-            </button>
-            <button
-              type="button"
-              className={styles.backBtn}
+            </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              block
               onClick={() => {
                 setStep(1);
                 setCode('');
@@ -136,7 +130,7 @@ export function Login() {
               disabled={isLoading}
             >
               Вернуться назад
-            </button>
+            </Button>
           </form>
         )}
       </div>

@@ -131,7 +131,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
 
           {/* Название */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <label style={labelStyle}>Название <span style={{ color: "#ef4444" }}>*</span></label>
+            <label style={labelStyle}>Название <span style={{ color: "var(--danger)" }}>*</span></label>
             <input
               type="text"
               value={formData.title}
@@ -194,7 +194,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
 
           {/* Ссылка */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <label style={labelStyle}>Ссылка <span style={{ color: "#ef4444" }}>*</span></label>
+            <label style={labelStyle}>Ссылка <span style={{ color: "var(--danger)" }}>*</span></label>
             <input
               type="url"
               value={formData.url}
@@ -257,7 +257,7 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
                 min={0}
                 step="any"
               />
-              <span style={{ fontFamily: "Mulish", fontSize: 14, color: "#1d1c1c", flexShrink: 0 }}>×</span>
+              <span style={{ fontFamily: "Mulish", fontSize: 14, color: "var(--text)", flexShrink: 0 }}>×</span>
               <input
                 type="number"
                 value={formData.densityRows}
@@ -268,9 +268,9 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
               />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Петли</span>
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Петли</span>
               <span style={{ width: 16 }} />
-              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Ряды</span>
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Ряды</span>
             </div>
           </div>
 
@@ -295,15 +295,15 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
               />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Текущая</span>
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Текущая</span>
               <span style={{ width: 16 }} />
-              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Старая (если скидка)</span>
+              <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Старая (если скидка)</span>
             </div>
           </div>
 
           {/* Фото (до 5, первое — обложка) */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <label style={labelStyle}>Фото <span style={{ color: "#ef4444" }}>*</span></label>
+            <label style={labelStyle}>Фото <span style={{ color: "var(--danger)" }}>*</span></label>
             <ImageGalleryManager
               images={formData.images}
               onChange={(images) => setFormData({ ...formData, images })}
@@ -325,10 +325,10 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
 
         {/* Кнопки */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 20 }}>
-          <button type="button" onClick={onClose} style={btnStyle("#f3f3f3", "#1d1c1c")}>
+          <button type="button" onClick={onClose} style={btnStyle("var(--surface-gray)", "var(--text)")}>
             Закрыть
           </button>
-          <button type="submit" disabled={isSaving} style={btnStyle("#a9ae36", "#ffffff")}>
+          <button type="submit" disabled={isSaving} style={btnStyle("var(--brand-bright)", "var(--surface)")}>
             {isSaving ? "Сохранение..." : "Сохранить"}
           </button>
         </div>

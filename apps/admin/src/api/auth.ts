@@ -49,17 +49,6 @@ export const verifyCode = async (
   return response.json();
 };
 
-export const getMe = async (): Promise<{ user: User }> => {
-  const response = await fetchWithAuth(`${API_URL}/auth/me`);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to fetch user");
-  }
-
-  return response.json();
-};
-
 export const logout = async (): Promise<void> => {
   try {
     await fetch(`${API_URL}/auth/logout`, {

@@ -6,7 +6,7 @@
 /* Upload button (default, without custom props) */
 .uploadBtn {
   background: white;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 8px 16px;
   cursor: pointer;
@@ -16,7 +16,7 @@
   font-size: 14px;
 }
 .uploadBtn:hover {
-  background: #f3f4f6;
+  background: var(--surface-alt);
 }
 
 /* Overlay: fills the modal exactly (modal must have position:relative + overflow:hidden) */
@@ -40,7 +40,7 @@
   margin: 0;
   font-size: 15px;
   font-weight: 500;
-  color: #fff;
+  color: var(--surface);
 }
 
 /* This wrapper constrains the image to fit inside the overlay */
@@ -54,47 +54,8 @@
   overflow: hidden;
 }
 
-/*
-  The image is constrained in PIXELS.
-  max-height here references the CSS pixel limit for the rendered element.
-  ReactCrop will wrap this element and will correctly compute percentages
-  from the rendered width/height.
-*/
-.cropImg {
-  display: block;
-  /* Fixed pixel cap — works regardless of parent height */
-  max-height: 380px;
-  max-width: 100%;
-  width: auto;
-  height: auto;
-}
-
 .cropActions {
   flex-shrink: 0;
   display: flex;
   gap: 12px;
-}
-
-.btnPrimary {
-  background: #83942C;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 20px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.btnPrimary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btnSecondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 8px 20px;
-  cursor: pointer;
-  font-size: 14px;
 }

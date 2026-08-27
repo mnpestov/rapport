@@ -5,6 +5,7 @@ import { YarnCoverage } from "./YarnCoverage";
 import { PaywallUsersModal, DrilldownTarget } from "./PaywallUsersModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
+import { Tabs } from "../../components/Tabs/Tabs";
 import styles from "./Dashboard.module.css";
 
 // ──────────────────────────────────────────────
@@ -237,7 +238,7 @@ export function Dashboard() {
     return (
       <div className={styles.container}>
         <h1 className={styles.pageTitle}>Статистика</h1>
-        <div className={styles.centerState} style={{ color: "#ef4444" }}>
+        <div className={styles.centerState} style={{ color: "var(--danger)" }}>
           {error ?? "Не удалось загрузить данные"}
         </div>
       </div>
@@ -257,22 +258,18 @@ export function Dashboard() {
 
         <div className={styles.rightControls}>
           <div className={styles.periodTabs}>
-            {PERIODS.map((p) => {
-              const isActive = period === p.value;
-              const label = (p.value === "custom" && appliedRange)
-                ? formatRangeLabel(appliedRange.from, appliedRange.to)
-                : p.label;
-              return (
-                <button
-                  key={p.value}
-                  className={isActive ? styles.tabActive : styles.tab}
-                  style={p.value === "custom" ? { minWidth: 137 } : undefined}
-                  onClick={() => handleTabClick(p.value)}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            <Tabs
+              tabs={PERIODS.map((p) => ({
+                value: p.value,
+                // У «Произвольного» подпись меняется на выбранный диапазон.
+                label: p.value === "custom" && appliedRange
+                  ? formatRangeLabel(appliedRange.from, appliedRange.to)
+                  : p.label,
+              }))}
+              value={period}
+              onChange={(v) => handleTabClick(v as Period)}
+              mobileLabel="Период"
+            />
           </div>
 
           <select

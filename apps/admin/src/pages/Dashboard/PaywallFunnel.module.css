@@ -2,9 +2,9 @@
    из Dashboard.module.css, чтобы блок не выбивался из остальной страницы. */
 .wrapper {
   margin-top: 24px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -13,20 +13,20 @@
   flex-direction: column;
   gap: 4px;
   padding: 20px 28px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--border);
 }
 
 .title {
   font-family: 'Mulish', sans-serif;
   font-size: 16px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .subtitle {
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .funnels {
@@ -42,8 +42,8 @@
 
 .funnel {
   padding: 20px 28px 24px;
-  border-right: 1px solid #E5E7EB;
-  border-bottom: 1px solid #E5E7EB;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .funnel:last-child {
@@ -54,14 +54,14 @@
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .funnelHint {
   margin-top: 2px;
   font-family: 'Mulish', sans-serif;
   font-size: 12px;
-  color: #9CA3AF;
+  color: var(--text-subtle);
 }
 
 .steps {
@@ -86,7 +86,7 @@
 }
 
 .step:hover:not(:disabled) {
-  background: #F9FAFB;
+  background: var(--surface-muted);
 }
 
 .step:disabled {
@@ -103,28 +103,28 @@
 .stepLabel {
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .stepValue {
   font-family: 'Mulish', sans-serif;
   font-size: 18px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .barTrack {
   margin-top: 6px;
   height: 8px;
   border-radius: 4px;
-  background: #F3F4F6;
+  background: var(--surface-alt);
   overflow: hidden;
 }
 
 .barFill {
   height: 100%;
   border-radius: 4px;
-  background: #83942C;
+  background: var(--brand);
   transition: width 0.3s ease;
 }
 
@@ -132,7 +132,7 @@
   margin-top: 4px;
   font-family: 'Mulish', sans-serif;
   font-size: 12px;
-  color: #9CA3AF;
+  color: var(--text-subtle);
 }
 
 .eventsGrid {
@@ -153,7 +153,7 @@
   }
 
   .eventCard:nth-child(6n) {
-    border-right: 1px solid #E5E7EB;
+    border-right: 1px solid var(--border);
   }
 
   .eventCard:nth-child(3n) {
@@ -167,7 +167,7 @@
   }
 
   .eventCard:nth-child(3n) {
-    border-right: 1px solid #E5E7EB;
+    border-right: 1px solid var(--border);
   }
 
   .eventCard:nth-child(2n) {
@@ -183,7 +183,7 @@
   align-items: flex-start;
   text-align: left;
   border: none;
-  border-right: 1px solid #E5E7EB;
+  border-right: 1px solid var(--border);
   background: transparent;
   font: inherit;
   cursor: pointer;
@@ -191,7 +191,7 @@
 }
 
 .eventCard:hover:not(:disabled) {
-  background: #F9FAFB;
+  background: var(--surface-muted);
 }
 
 .eventCard:disabled {
@@ -206,19 +206,19 @@
   font-family: 'Mulish', sans-serif;
   font-size: 22px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .eventLabel {
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .note {
   padding: 12px 28px 16px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid var(--border);
   font-family: 'Mulish', sans-serif;
   font-size: 12px;
-  color: #9CA3AF;
+  color: var(--text-subtle);
 }

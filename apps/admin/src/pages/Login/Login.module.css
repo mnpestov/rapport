@@ -9,7 +9,7 @@
 }
 
 .card {
-  background: #FFFFFF;
+  background: var(--surface);
   border-radius: 16px;
   padding: 48px;
   width: 100%;
@@ -25,13 +25,13 @@
   margin: 0 0 12px 0;
   font-size: 28px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .subtitle {
   margin: 0 0 32px 0;
   font-size: 15px;
-  color: #6B7280;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -52,7 +52,7 @@
 .label {
   font-size: 13px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -60,64 +60,20 @@
 .input {
   height: 48px;
   padding: 0 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-family: 'Mulish', sans-serif;
   font-size: 15px;
-  color: #1D1C1C;
+  color: var(--text);
   transition: all 0.2s;
   outline: none;
 }
 
 .input:focus {
-  border-color: #83942C;
+  border-color: var(--brand);
   box-shadow: 0 0 0 3px rgba(131, 148, 44, 0.1);
 }
 
 .input::placeholder {
-  color: #9CA3AF;
-}
-
-.submitBtn {
-  height: 48px;
-  background: #83942C;
-  color: #FFFFFF;
-  border: none;
-  border-radius: 8px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.submitBtn:hover:not(:disabled) {
-  background: #738226;
-  transform: translateY(-1px);
-}
-
-.submitBtn:disabled {
-  background: #A3B061;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.backBtn {
-  background: none;
-  border: none;
-  color: #6B7280;
-  font-family: 'Mulish', sans-serif;
-  font-size: 14px;
-  margin-top: 24px;
-  cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.2s;
-}
-
-.backBtn:hover {
-  color: #1D1C1C;
+  color: var(--text-subtle);
 }

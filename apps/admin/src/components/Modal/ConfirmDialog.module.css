@@ -13,7 +13,7 @@
   font-family: 'Mulish', sans-serif;
   font-size: 18px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .message {
@@ -28,63 +28,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-.cancelBtn {
-  display: flex;
-  height: 32px;
-  padding: 0 16px;
-  align-items: center;
-  border-radius: 2px;
-  background: #F3F3F3;
-  color: #1D1C1C;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.cancelBtn:hover {
-  opacity: 0.9;
-}
-
-.confirmBtn {
-  display: flex;
-  height: 32px;
-  padding: 0 16px;
-  align-items: center;
-  border-radius: 2px;
-  background: #A9AE36;
-  color: #1D1C1C;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.confirmBtn:hover {
-  opacity: 0.9;
-}
-
-.dangerBtn {
-  display: flex;
-  height: 32px;
-  padding: 0 16px;
-  align-items: center;
-  border-radius: 2px;
-  background: #ef4444;
-  color: white;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.dangerBtn:hover {
-  opacity: 0.9;
 }
 
 @keyframes slideUp {

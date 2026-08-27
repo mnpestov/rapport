@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { Tabs } from "../../components/Tabs/Tabs";
 import { getRequests, RequestUser } from "../../api/chat";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { ChatPanel } from "../Whitelist/ChatPanel";
@@ -87,23 +88,17 @@ export function Requests() {
         search={{ value: search, onChange: setSearch, placeholder: "Поиск по ID, имени, username" }}
       />
 
-      <div className={styles.tabsContainer}>
-        <button
-          className={filter === "all" ? styles.tabActive : styles.tab}
-          onClick={() => setFilter("all")}
-        >
-          Все
-        </button>
-        <button
-          className={filter === "unread" ? styles.tabActive : styles.tab}
-          onClick={() => setFilter("unread")}
-        >
-          Непрочитанные
-          {unreadCount > 0 && (
-            <span className={styles.tabBadge}>{unreadCount}</span>
-          )}
-        </button>
-      </div>
+      <Tabs
+        tabs={[
+          { value: "all", label: "Все" },
+          // Счётчик показываем, только когда есть что считать: «Непрочитанные (0)»
+          // выглядит как ошибка загрузки.
+          { value: "unread", label: "Непрочитанные", ...(unreadCount > 0 ? { count: unreadCount } : {}) },
+        ]}
+        value={filter}
+        onChange={(v) => setFilter(v as "all" | "unread")}
+        mobileLabel="Показывать"
+      />
 
       <div className={styles.layout}>
         <div className={`${styles.userList} ${selectedId ? styles.mobileHidden : ""}`}>

@@ -1,7 +1,7 @@
 .container {
   display: flex;
   height: 100vh;
-  background-color: #f9fafb;
+  background-color: var(--surface-muted);
   overflow: hidden;
   position: relative;
 }
@@ -24,7 +24,7 @@
     display: flex;
     align-items: center;
     padding: 16px;
-    background: #ffffff;
+    background: var(--surface);
     border-bottom: 1px solid #e5e5e5;
   }
   .menuBtn {

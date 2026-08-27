@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from '../Button/Button';
 import { Loader2, Plus, X } from "lucide-react";
 import { suggestYarns, YarnSuggestItem } from "../../api/yarns";
 import styles from "./YarnPicker.module.css";
@@ -148,13 +149,13 @@ export function YarnPicker({ value, onChange, onCreateRequest, disabled }: Props
             <div className={styles.empty}>
               Ничего не найдено
               {onCreateRequest && (
-                <button
-                  type="button"
-                  className={styles.createBtn}
+                <Button
+                  variant="secondary"
+                  icon={<Plus size={14} />}
                   onClick={() => onCreateRequest(query.trim())}
                 >
-                  <Plus size={14} /> Создать артикул «{query.trim()}»
-                </button>
+                  Создать артикул «{query.trim()}»
+                </Button>
               )}
             </div>
           )}

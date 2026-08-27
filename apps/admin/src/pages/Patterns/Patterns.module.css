@@ -7,7 +7,7 @@
 
 .tableWrapper {
   border-radius: 2px;
-  background: #FFF;
+  background: var(--surface);
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -16,7 +16,7 @@
 .centerState {
   padding: 48px;
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 15px;
   font-family: 'Mulish', sans-serif;
 }

@@ -1,4 +1,5 @@
 import { SquarePen, Image as ImageIcon, Check, Star, Wrench, MessageCircleX } from "lucide-react";
+import { IconButton } from '../../components/Button/Button';
 
 function CheckboxIcon({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -104,14 +105,13 @@ export function PatternCard({
         <div className={`${styles.colDensity} ${styles.cell}`}>{item.density || "—"}</div>
 
         <div className={styles.colEdit}>
-          <button
-            className={styles.iconBtn}
+          <IconButton
             title="Редактировать"
             onClick={() => onEdit(item.id)}
             disabled={editDisabled}
           >
             <SquarePen size={24} strokeWidth={1} />
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ interface PatternCardHeaderProps {
 
 export function PatternCardHeader({ allSelected = false, onSelectAll }: PatternCardHeaderProps) {
   return (
-    <div className={styles.row} style={{ borderBottom: "1px solid #f3f3f3" }}>
+    <div className={styles.row} style={{ borderBottom: "1px solid var(--surface-gray)" }}>
       <div className={styles.colCheckbox}>
         <CheckboxIcon checked={allSelected} onChange={(v) => onSelectAll?.(v)} />
       </div>

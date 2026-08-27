@@ -6,7 +6,7 @@
 }
 
 .title {
-  color: #83942C;
+  color: var(--brand);
   font-family: 'Mulish', sans-serif;
   font-size: 30px;
   font-weight: 700;
@@ -23,7 +23,7 @@
   padding: 8px 20px;
   width: 400px;
   height: 40px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 2px;
   box-sizing: border-box;
 }
@@ -35,12 +35,12 @@
   outline: none;
   font-family: 'Mulish', sans-serif;
   font-size: 15px;
-  color: #1D1C1C;
+  color: var(--text);
   background: transparent;
 }
 
 .searchInput::placeholder {
-  color: #9b9a9a;
+  color: var(--text-placeholder);
 }
 
 .searchIcons {
@@ -58,7 +58,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: #9b9a9a;
+  color: var(--text-placeholder);
 }
 
 .count {
@@ -70,7 +70,7 @@
 }
 
 .countLabel {
-  color: #1D1C1C;
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 17px;
   font-weight: 700;
@@ -78,7 +78,7 @@
 }
 
 .countValue {
-  color: #1D1C1C;
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 25.63px;
   font-weight: 700;

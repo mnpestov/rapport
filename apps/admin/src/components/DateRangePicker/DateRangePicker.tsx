@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Button } from "../Button/Button";
 import styles from "./DateRangePicker.module.css";
 
 const MONTHS_RU = [
@@ -204,7 +205,7 @@ export function DateRangePicker({ initialRange, onChange, onClose }: Props) {
             {formatLabel(rf)} — {formatLabel(rt)}
           </span>
         )}
-        <button className={styles.cancelBtn} onClick={onClose}>Отмена</button>
+        <Button variant="secondary" onClick={onClose}>Отмена</Button>
       </div>
     </div>
   );

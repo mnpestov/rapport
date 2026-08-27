@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from '../../components/Button/Button';
 import { Loader2 } from "lucide-react";
 import { Modal } from "../../components/Modal/Modal";
 import {
@@ -130,21 +131,21 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
 
       {pageCount > 1 && (
         <div className={styles.pagination}>
-          <button
-            className={styles.pageBtn}
+          <Button
+            variant="secondary"
             disabled={offset === 0}
             onClick={() => setOffset(Math.max(0, offset - PAGE))}
           >
             Назад
-          </button>
+          </Button>
           <span className={styles.pageInfo}>{currentPage} из {pageCount}</span>
-          <button
-            className={styles.pageBtn}
+          <Button
+            variant="secondary"
             disabled={currentPage >= pageCount}
             onClick={() => setOffset(offset + PAGE)}
           >
             Вперёд
-          </button>
+          </Button>
         </div>
       )}
     </Modal>

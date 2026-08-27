@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, Loader2, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { Button } from "../../components/Button/Button";
+import { ControlPanel } from "../../components/ControlPanel/ControlPanel";
 import {
   getPayments,
   checkPaymentStatus,
@@ -120,25 +122,21 @@ export function Payments() {
         totalCount={{ label: "счетов", value: total }}
       />
 
-      <div className={styles.toolbar}>
-        <div className={styles.filters}>
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value || "all"}
-              className={status === f.value ? styles.filterActive : styles.filter}
-              onClick={() => {
-                setStatus(f.value);
-                setOffset(0);
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className={styles.sum}>
-          Оплачено на <strong>{paidSum.toLocaleString("ru-RU")} ₽</strong>
-        </div>
-      </div>
+      <ControlPanel
+        // Значение «все счета» в состоянии — пустая строка, а вкладке нужен
+        // непустой ключ: пустой value у <option> на телефоне выбрать нельзя.
+        tabs={STATUS_FILTERS.map((f) => ({ value: f.value || "all", label: f.label }))}
+        activeTab={status || "all"}
+        onTabChange={(v) => {
+          setStatus(v === "all" ? "" : (v as PaymentStatus));
+          setOffset(0);
+        }}
+        actions={
+          <div className={styles.sum}>
+            Оплачено на <strong>{paidSum.toLocaleString("ru-RU")} ₽</strong>
+          </div>
+        }
+      />
 
       {loading ? (
         <div className={styles.empty}>
@@ -194,8 +192,8 @@ export function Payments() {
                     )}
                   </td>
                   <td className={styles.colAction}>
-                    <button
-                      className={styles.checkBtn}
+                    <Button
+                      variant="secondary"
                       onClick={() => handleCheck(p)}
                       disabled={checkingId === p.id}
                       title="Спросить Robokassa о реальном состоянии счёта"
@@ -206,7 +204,7 @@ export function Payments() {
                         <RefreshCw size={14} />
                       )}
                       Проверить
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -217,23 +215,23 @@ export function Payments() {
 
       {pageCount > 1 && (
         <div className={styles.pagination}>
-          <button
-            className={styles.pageBtn}
+          <Button
+            variant="secondary"
             disabled={offset === 0}
             onClick={() => setOffset(Math.max(0, offset - LIMIT))}
           >
             Назад
-          </button>
+          </Button>
           <span className={styles.pageInfo}>
             {currentPage} из {pageCount}
           </span>
-          <button
-            className={styles.pageBtn}
+          <Button
+            variant="secondary"
             disabled={currentPage >= pageCount}
             onClick={() => setOffset(offset + LIMIT)}
           >
             Вперёд
-          </button>
+          </Button>
         </div>
       )}
 

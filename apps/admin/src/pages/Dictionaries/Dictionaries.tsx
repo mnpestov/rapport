@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { Check, X, Pencil, Trash2, Search, Loader2 } from "lucide-react";
+import { Check, X, SquarePen, Trash2, Search, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { IconButton } from "../../components/Button/Button";
+import { Tabs } from "../../components/Tabs/Tabs";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import {
   DictionaryItem,
@@ -174,17 +176,12 @@ export function Dictionaries() {
         totalCount={{ label: "значений", value: allItems.length }}
       />
 
-      <div className={styles.tabs}>
-        {TABS.map(({ key, label }) => (
-          <button
-            key={key}
-            className={tab === key ? styles.tabActive : styles.tab}
-            onClick={() => switchTab(key)}
-          >
-            {label} ({items[key].length})
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map(({ key, label }) => ({ value: key, label, count: items[key].length }))}
+        value={tab}
+        onChange={(v) => switchTab(v as Tab)}
+        mobileLabel="Справочник"
+      />
 
       <div className={styles.searchWrapper}>
         <Search size={15} className={styles.searchIcon} />
@@ -220,12 +217,12 @@ export function Dictionaries() {
                     disabled={saving}
                   />
                   <div className={styles.itemActions}>
-                    <button className={styles.iconBtnGreen} onClick={saveEdit} disabled={saving} title="Сохранить">
-                      <Check size={15} />
-                    </button>
-                    <button className={styles.iconBtnGray} onClick={cancelEdit} disabled={saving} title="Отмена">
-                      <X size={15} />
-                    </button>
+                    <IconButton tone="brand" onClick={saveEdit} disabled={saving} title="Сохранить">
+                      <Check size={16} />
+                    </IconButton>
+                    <IconButton tone="neutral" onClick={cancelEdit} disabled={saving} title="Отмена">
+                      <X size={16} />
+                    </IconButton>
                   </div>
                 </>
               ) : (
@@ -235,12 +232,16 @@ export function Dictionaries() {
                     {item.patternsCount} {pluralize(item.patternsCount)}
                   </span>
                   <div className={styles.itemActions}>
-                    <button className={styles.iconBtnGray} onClick={() => startEdit(item)} title="Переименовать">
-                      <Pencil size={14} />
-                    </button>
-                    <button className={styles.iconBtnRed} onClick={() => setDeletingItem(item)} title="Удалить">
-                      <Trash2 size={14} />
-                    </button>
+                    <IconButton onClick={() => startEdit(item)} title="Переименовать">
+                      <SquarePen size={16} />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => setDeletingItem(item)}
+                      title="Удалить"
+                      style={{ color: "var(--danger)" }}
+                    >
+                      <Trash2 size={16} />
+                    </IconButton>
                   </div>
                 </>
               )}

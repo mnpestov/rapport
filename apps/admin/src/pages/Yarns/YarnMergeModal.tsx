@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Button } from "../../components/Button/Button";
+import { Modal } from "../../components/Modal/Modal";
 import { YarnItem } from "../../api/yarns";
 import { YarnPicker, PickedYarn } from "../../components/YarnPicker/YarnPicker";
 import styles from "./Yarns.module.css";
@@ -20,16 +21,8 @@ export function YarnMergeModal({ source, onClose, onMerge }: Props) {
   const [target, setTarget] = useState<PickedYarn[]>([]);
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modalNarrow} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <h2>Слить артикул</h2>
-          <button type="button" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className={styles.mergeBody}>
+    <Modal isOpen onClose={onClose} title="Слить артикул" maxWidth={460}>
+      <div className={styles.mergeBody}>
           <p className={styles.mergeText}>
             «<b>{source.name}</b>»
             {source._count.patterns > 0 && ` (${source._count.patterns} опис.)`} перестанет быть
@@ -42,20 +35,17 @@ export function YarnMergeModal({ source, onClose, onMerge }: Props) {
           />
         </div>
 
-        <div className={styles.modalFoot}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>
-            Отмена
-          </button>
-          <button
-            type="button"
-            className={styles.saveBtn}
-            disabled={target.length === 0 || target[0].id === source.id}
-            onClick={() => onMerge(target[0].id)}
-          >
-            Слить
-          </button>
-        </div>
+      <div className={styles.modalFoot}>
+        <Button variant="secondary" onClick={onClose}>
+          Отмена
+        </Button>
+        <Button
+          disabled={target.length === 0 || target[0].id === source.id}
+          onClick={() => onMerge(target[0].id)}
+        >
+          Слить
+        </Button>
       </div>
-    </div>
+    </Modal>
   );
 }

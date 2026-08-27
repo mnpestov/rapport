@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Loader2, Search } 
 import toast from "react-hot-toast";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Modal } from "../../components/Modal/Modal";
+import { Button } from "../../components/Button/Button";
 import { getPriceCheckRuns, getPriceCheckStatus, triggerPriceCheck, getConfirmedAuthors, PriceCheckRun } from "../../api/priceCheck";
 import styles from "./PriceCheck.module.css";
 
@@ -216,13 +217,13 @@ function AuthorPickerModal({ isOpen, onClose, authors, onConfirm }: AuthorPicker
 
       <div className={styles.pickerFooter}>
         <span className={styles.pickerCount}>{selected.size > 0 ? `Выбрано: ${selected.size}` : ""}</span>
-        <button
-          className={styles.triggerBtn}
+        <Button
+          size="lg"
           disabled={selected.size === 0}
           onClick={() => onConfirm(Array.from(selected))}
         >
           Запустить
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -314,8 +315,8 @@ export function PriceCheck() {
             </div>
           </div>
           <div className={styles.triggerActions}>
-            <button
-              className={styles.triggerBtn}
+            <Button
+              size="lg"
               onClick={() => handleTrigger()}
               disabled={isRunning || isTriggering}
             >
@@ -327,14 +328,15 @@ export function PriceCheck() {
               ) : (
                 "Запустить проверку"
               )}
-            </button>
-            <button
-              className={styles.triggerBtnSecondary}
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
               onClick={() => setIsPickerOpen(true)}
               disabled={isRunning || isTriggering || confirmedAuthors.length === 0}
             >
               Выбрать авторов...
-            </button>
+            </Button>
           </div>
         </div>
 

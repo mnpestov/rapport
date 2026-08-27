@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { IconButton } from '../../components/Button/Button';
 import { Send, Download, FileText, Mic, ChevronLeft } from "lucide-react";
 import {
   getChatHistory,
@@ -161,9 +162,9 @@ export function ChatPanel({ telegramId, displayName, onRead, onBack }: Props) {
     <div className={styles.panel}>
       <div className={styles.panelHeader}>
         {onBack && (
-          <button className={styles.backBtn} onClick={onBack}>
+          <IconButton title="Назад" onClick={onBack}>
             <ChevronLeft size={20} />
-          </button>
+          </IconButton>
         )}
         <span>Чат с {displayName}</span>
       </div>
@@ -200,14 +201,14 @@ export function ChatPanel({ telegramId, displayName, onRead, onBack }: Props) {
           rows={2}
           disabled={sending}
         />
-        <button
-          className={styles.sendBtn}
+        <IconButton
+          tone="brand"
           onClick={handleSend}
           disabled={sending || !input.trim()}
           title="Отправить"
         >
           <Send size={18} />
-        </button>
+        </IconButton>
       </div>
     </div>
   );

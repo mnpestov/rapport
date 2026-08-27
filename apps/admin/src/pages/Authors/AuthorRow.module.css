@@ -2,23 +2,23 @@
   display: flex;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--border);
   font-family: 'Mulish', sans-serif;
   font-size: 17px;
   font-weight: 700;
-  color: #1D1C1C;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
 }
 
 .row {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--border);
   font-family: 'Mulish', sans-serif;
   font-size: 15px;
-  color: #1D1C1C;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
 }
 
 .row:last-child {
@@ -31,7 +31,7 @@
 }
 
 .rowClickable:hover {
-  background: #f9fafb;
+  background: var(--surface-muted);
 }
 
 .colName {
@@ -62,7 +62,7 @@
 }
 
 .siteEmpty {
-  color: #9ca3af;
+  color: var(--text-subtle);
 }
 
 .colCount {
@@ -76,20 +76,6 @@
   justify-content: flex-end;
 }
 
-.iconBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.iconBtn:disabled {
-  cursor: not-allowed;
-}
-
 .spinning {
   animation: spin 1s linear infinite;
 }
@@ -99,8 +85,6 @@
   to { transform: rotate(360deg); }
 }
 
-
-
 .unreadDot {
   display: inline-flex;
   align-items: center;
@@ -109,7 +93,7 @@
   height: 14px;
   border-radius: 11px;
   background-color: #BEC1F4;
-  color: #1D1C1C;
+  color: var(--text);
   font-size: 9px;
   font-weight: 800;
   padding: 0 6px;

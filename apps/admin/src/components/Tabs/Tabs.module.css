@@ -1,0 +1,67 @@
+/* ──────────────────────────────────────────────────────────────
+   Вкладки.
+
+   Стили перенесены из ControlPanel без изменений. Отдельным
+   компонентом они понадобились потому, что вкладки нужны и там,
+   где панели нет: на дашборде это переключатель периода, и он
+   заводил себе те же классы и тот же мобильный список заново.
+   ────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: 'Mulish', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+  border-bottom: 1px solid transparent;
+}
+
+.tab.tabActive {
+  color: #000000;
+  font-weight: 700;
+  border-bottom-color: #000000;
+}
+
+.tabPrefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  width: 20px;
+  height: 20px;
+  background: #bec1f4;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.badge {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.mobileSelect {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  background-color: var(--surface);
+  color: var(--text);
+  outline: none;
+}

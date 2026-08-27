@@ -1,4 +1,5 @@
 import { SquarePen, Trash2, RefreshCw } from "lucide-react";
+import { IconButton } from "../../components/Button/Button";
 import { AuthorItem } from "../../api/authors";
 import styles from "./AuthorRow.module.css";
 
@@ -68,27 +69,25 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
       </span>
       <span className={styles.colCount}>{author.patternsCount}</span>
       <div className={styles.colActions}>
-        <button
-          className={styles.iconBtn}
+        <IconButton
           title={syncTitle}
           onClick={() => onRunSync(author)}
           disabled={syncDisabled}
-          style={{ color: hasScrapableSite ? "#1D1C1C" : "#9ca3af" }}
+          style={{ color: hasScrapableSite ? "var(--text)" : "var(--text-subtle)" }}
         >
           <RefreshCw size={16} className={isSyncingThisAuthor ? styles.spinning : undefined} />
-        </button>
-        <button className={styles.iconBtn} title="Редактировать" onClick={() => onEdit(author)}>
+        </IconButton>
+        <IconButton title="Редактировать" onClick={() => onEdit(author)}>
           <SquarePen size={16} />
-        </button>
-        <button
-          className={styles.iconBtn}
+        </IconButton>
+        <IconButton
           title="Удалить"
           onClick={() => onDelete(author)}
           disabled={author.patternsCount > 0}
-          style={{ color: author.patternsCount > 0 ? "#9ca3af" : "#ef4444" }}
+          style={{ color: author.patternsCount > 0 ? "var(--text-subtle)" : "var(--danger)" }}
         >
           <Trash2 size={16} />
-        </button>
+        </IconButton>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 .card {
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   border-bottom: 1px solid #e5e5e5;
   width: 100%;
 }
@@ -21,8 +21,8 @@
   margin: 0 0 12px 44px;
   padding: 4px 20px;
   border-radius: 2px;
-  background: #D8520F;
-  color: #FFF;
+  background: var(--warning);
+  color: var(--surface);
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 400;
@@ -30,7 +30,7 @@
 }
 
 .cell {
-  color: #1d1c1c;
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 400;
@@ -44,7 +44,7 @@
 }
 
 .dateCell {
-  color: #9b9a9a;
+  color: var(--text-placeholder);
   font-family: 'Mulish', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -55,7 +55,7 @@
 }
 
 .headerCell {
-  color: #1d1c1c;
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 700;
@@ -168,11 +168,11 @@
   width: 41px;
   height: 51px;
   border-radius: 2px;
-  background: #f3f4f6;
+  background: var(--surface-alt);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9b9a9a;
+  color: var(--text-placeholder);
 }
 
 .link {
@@ -185,24 +185,4 @@
 
 .link:hover {
   text-decoration: underline;
-}
-
-.iconBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #1d1c1c;
-}
-
-.iconBtn:hover {
-  color: #a9ae36;
-}
-
-.iconBtn:disabled {
-  color: #d1d5db;
-  cursor: default;
 }

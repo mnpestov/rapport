@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Button } from "../../components/Button/Button";
+import { Modal } from "../../components/Modal/Modal";
 import { YarnItem } from "../../api/yarns";
 import styles from "./Yarns.module.css";
 
@@ -69,16 +70,8 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
   );
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHead}>
-          <h2>{yarn ? "Артикул" : "Новый артикул"}</h2>
-          <button type="button" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className={styles.form}>
+    <Modal isOpen onClose={onClose} title={yarn ? "Артикул" : "Новый артикул"} maxWidth={640}>
+      <div className={styles.form}>
           {field("Название", "name", "Бренд и линейка целиком", true)}
           {field("Бренд", "brand")}
           {field("Линейка", "line")}
@@ -103,22 +96,19 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
           {field("Состав", "composition", "", true)}
           {field("Источник", "sourceName", "", true)}
           {field("Ссылка на источник", "sourceUrl", "", true)}
-        </div>
-
-        <div className={styles.modalFoot}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>
-            Отмена
-          </button>
-          <button
-            type="button"
-            className={styles.saveBtn}
-            disabled={!form.name.trim()}
-            onClick={() => onSave(payload())}
-          >
-            Сохранить
-          </button>
-        </div>
       </div>
-    </div>
+
+      <div className={styles.modalFoot}>
+        <Button variant="secondary" onClick={onClose}>
+          Отмена
+        </Button>
+        <Button
+          disabled={!form.name.trim()}
+          onClick={() => onSave(payload())}
+        >
+          Сохранить
+        </Button>
+      </div>
+    </Modal>
   );
 }

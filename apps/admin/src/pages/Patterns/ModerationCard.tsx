@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Button } from "../../components/Button/Button";
 import { AdminDraft } from "../../api/admin-drafts";
 import { API_URL } from "../../api/config";
 import styles from "./ModerationCard.module.css";
@@ -125,16 +126,16 @@ export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabe
         </div>
 
         <div className={styles.actions}>
-          <button className={styles.approveBtn} onClick={() => onApprove(draft.id)}>
+          <Button onClick={() => onApprove(draft.id)}>
             {approveLabel}
-          </button>
-          <button className={styles.rejectBtn} onClick={() => onReject(draft)}>
+          </Button>
+          <Button variant="danger" onClick={() => onReject(draft)}>
             {rejectLabel}
-          </button>
+          </Button>
           {onEdit && (
-            <button className={styles.editBtn} onClick={() => onEdit(draft)}>
+            <Button variant="secondary" onClick={() => onEdit(draft)}>
               Редактировать
-            </button>
+            </Button>
           )}
         </div>
       </div>

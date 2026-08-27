@@ -4,17 +4,17 @@ import { DictionaryItem } from "../../api/patterns";
 export const MAX_CATEGORIES = 2;
 export const MAX_TAGS = 4;
 
-export const labelStyle: React.CSSProperties = { fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "#1D1C1C" };
-export const optionalStyle: React.CSSProperties = { color: "#9B9A9A", fontSize: 13 };
+export const labelStyle: React.CSSProperties = { fontFamily: "Mulish", fontSize: 15, fontWeight: 400, color: "var(--text)" };
+export const optionalStyle: React.CSSProperties = { color: "var(--text-placeholder)", fontSize: 13 };
 export const inputStyle: React.CSSProperties = {
   width: "100%", height: 45, padding: "12px 16px",
-  background: "#F3F3F3", border: "none", borderRadius: 2,
-  fontFamily: "Mulish", fontSize: 15, color: "#1D1C1C", boxSizing: "border-box",
+  background: "var(--surface-gray)", border: "none", borderRadius: 2,
+  fontFamily: "Mulish", fontSize: 15, color: "var(--text)", boxSizing: "border-box",
 };
 export const selectStyles = {
-  control: (base: any) => ({ ...base, minHeight: 45, background: "#F3F3F3", border: "none", borderRadius: 2, boxShadow: "none", fontFamily: "Mulish", fontSize: 15, cursor: "pointer" }),
+  control: (base: any) => ({ ...base, minHeight: 45, background: "var(--surface-gray)", border: "none", borderRadius: 2, boxShadow: "none", fontFamily: "Mulish", fontSize: 15, cursor: "pointer" }),
   valueContainer: (base: any) => ({ ...base, padding: "0 15px" }),
-  placeholder: (base: any) => ({ ...base, color: "#9B9A9A" }),
+  placeholder: (base: any) => ({ ...base, color: "var(--text-placeholder)" }),
   menu: (base: any) => ({ ...base, fontFamily: "Mulish", fontSize: 15 }),
 };
 export const btnStyle = (bg: string, color: string): React.CSSProperties => ({
@@ -45,7 +45,7 @@ export function ModalCheckbox({ checked, onChange, label }: { checked: boolean; 
       </button>
       <span
         onClick={() => onChange(!checked)}
-        style={{ fontFamily: "Mulish", fontSize: 15, color: "#1D1C1C", cursor: "pointer", userSelect: "none" }}
+        style={{ fontFamily: "Mulish", fontSize: 15, color: "var(--text)", cursor: "pointer", userSelect: "none" }}
       >
         {label}
       </span>

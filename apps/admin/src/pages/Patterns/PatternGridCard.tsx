@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Button } from "../../components/Button/Button";
 import { AdminPatternItem } from "../../api/patterns";
 import { API_URL } from "../../api/config";
 import styles from "./ModerationCard.module.css";
@@ -77,12 +78,12 @@ export function PatternGridCard({ item, onEdit, actionLabel, onAction }: Pattern
         </div>
 
         <div className={styles.actions}>
-          <button className={styles.approveBtn} onClick={() => onAction(item.id)}>
+          <Button onClick={() => onAction(item.id)}>
             {actionLabel}
-          </button>
-          <button className={styles.editBtn} onClick={() => onEdit(item.id)}>
+          </Button>
+          <Button variant="secondary" onClick={() => onEdit(item.id)}>
             Редактировать
-          </button>
+          </Button>
         </div>
       </div>
     </div>

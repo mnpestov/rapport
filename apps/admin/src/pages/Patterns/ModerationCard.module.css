@@ -1,7 +1,7 @@
 .card {
   display: flex;
   gap: 16px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid #e5e5e5;
   border-radius: 2px;
   padding: 16px;
@@ -19,7 +19,7 @@
   height: 224px;
   border-radius: 2px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--surface-alt);
   flex-shrink: 0;
 }
 
@@ -35,13 +35,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9b9a9a;
+  color: var(--text-placeholder);
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
 }
 
 .authorName {
-  color: #1D1C1C;
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 700;
@@ -72,7 +72,7 @@
 }
 
 .label {
-  color: #1D1C1C;
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 400;
@@ -81,7 +81,7 @@
 }
 
 .value {
-  color: #1D1C1C;
+  color: var(--text);
   text-align: right;
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
@@ -143,60 +143,6 @@
   justify-content: space-between;
 }
 
-.approveBtn {
-  min-height: 32px;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 2px;
-  background: #bec1f4;
-  color: #1d1c1c;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.approveBtn:hover {
-  opacity: 0.9;
-}
-
-.editBtn {
-  min-height: 32px;
-  padding: 5px 5px;
-  border: 1px solid #d1d5db;
-  border-radius: 2px;
-  background: #ffffff;
-  color: #1d1c1c;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.editBtn:hover {
-  background: #f3f3f3;
-}
-
-.rejectBtn {
-  min-height: 32px;
-  padding: 5px 5px;
-  border: 1px solid #d8520f;
-  border-radius: 2px;
-  background: #d8520f;
-  color: #ffffff;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.rejectBtn:hover {
-  /* background: #fff5f0; */
-}
-
 @media (max-width: 768px) {
   .card {
     flex-direction: column;
@@ -255,8 +201,8 @@
 }
 
 .yarnChip {
-  background: #f3f4f6;
-  color: #1d1c1c;
+  background: var(--surface-alt);
+  color: var(--text);
 }
 
 .yarnMention {

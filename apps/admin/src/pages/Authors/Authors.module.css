@@ -10,7 +10,7 @@
   justify-content: space-between;
   align-items: flex-end;
   border-radius: 2px;
-  background: #FFF;
+  background: var(--surface);
 }
 
 .leftControls {
@@ -25,8 +25,8 @@
   height: 32px;
   padding: 0 12px;
   border-radius: 2px;
-  /* background: #F3F3F3; */
-  color: #1D1C1C;
+  /* background: var(--surface-gray); */
+  color: var(--text);
   font-family: 'Mulish', sans-serif;
   font-size: 12.64px;
 }
@@ -36,103 +36,22 @@
   margin: 0 4px;
 }
 
-.tabsContainer {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.tab {
-  height: 32px;
-  padding: 0 12px;
-  background: transparent;
-  color: #4b5563;
-  border: none;
-  border-radius: 2px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  cursor: pointer;
-}
-
-.tabActive {
-  height: 32px;
-  padding: 0 12px;
-  background: #83942C;
-  color: #FFF;
-  border: none;
-  border-radius: 2px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  cursor: pointer;
-}
-
 .rightControls {
   display: flex;
   gap: 16px;
   align-items: center;
 }
 
-.btnDelete {
-  display: flex;
-  width: 100px;
-  height: 32px;
-  padding: 8px 26px 9px 26px;
-  justify-content: center;
-  align-items: center;
-  border-radius: 2px;
-  background: #F3F3F3;
-  color: #1D1C1C;
-  text-align: center;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btnDelete:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btnAdd {
-  display: flex;
-  height: 32px;
-  padding: 0 10px;
-  align-items: center;
-  gap: 10px;
-  border-radius: 2px;
-  background: #A9AE36;
-  color: #1D1C1C;
-  text-align: center;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btnAdd:hover,
-.btnDelete:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
 .tableWrapper {
   border-radius: 2px;
-  background: #FFF;
+  background: var(--surface);
   overflow: hidden;
 }
 
 .centerState {
   padding: 48px;
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 15px;
   font-family: 'Mulish', sans-serif;
 }
@@ -158,16 +77,16 @@
 
 .input {
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 14px;
-  color: #111827;
+  color: var(--text-strong);
   outline: none;
   transition: border-color 0.2s;
 }
 
 .input:focus {
-  border-color: #111827;
+  border-color: var(--text-strong);
 }
 
 .formActions {
@@ -175,49 +94,6 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 8px;
-}
-
-.btnPrimary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #111827;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btnPrimary:hover:not(:disabled) {
-  background-color: #374151;
-}
-
-.btnPrimary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.btnSecondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background-color: white;
-  color: #374151;
-  padding: 8px 16px;
-  border-radius: 2px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid #d1d5db;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btnSecondary:hover:not(:disabled) {
-  background-color: #f9fafb;
 }
 
 @media (max-width: 768px) {

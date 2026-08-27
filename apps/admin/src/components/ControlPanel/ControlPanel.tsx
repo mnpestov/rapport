@@ -1,14 +1,10 @@
-import { ButtonHTMLAttributes, ReactNode, useState, useEffect } from "react";
+import { ReactNode } from "react";
 import { List, LayoutGrid } from "lucide-react";
+import { Tabs, Tab } from "../Tabs/Tabs";
 import styles from "./ControlPanel.module.css";
 
-export interface ControlPanelTab {
-  value: string;
-  label: string;
-  prefix?: ReactNode;
-  prefixColor?: string;
-  count?: number;
-}
+/** Оставлено для совместимости: раньше тип вкладки жил здесь. */
+export type ControlPanelTab = Tab;
 
 interface ControlPanelProps {
   tabs?: ControlPanelTab[];
@@ -18,76 +14,11 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({ tabs, activeTab, onTabChange, actions }: ControlPanelProps) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   return (
     <div className={styles.panel}>
-      {tabs && (
-        isMobile ? (
-          <select 
-            className={styles.mobileSelect} 
-            value={activeTab} 
-            onChange={(e) => onTabChange?.(e.target.value)}
-          >
-            {tabs.map((tab) => (
-              <option key={tab.value} value={tab.value}>
-                {tab.label} {tab.count !== undefined ? `(${tab.count})` : ""}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className={styles.tabs}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.value}
-                className={`${styles.tab} ${activeTab === tab.value ? styles.tabActive : ""}`}
-                onClick={() => onTabChange?.(tab.value)}
-              >
-                {tab.prefix && (
-                  <span
-                    className={styles.tabPrefix}
-                    style={tab.prefixColor ? { background: tab.prefixColor } : undefined}
-                  >
-                    {tab.prefix}
-                  </span>
-                )}
-                {tab.label}
-                {tab.count !== undefined && <span className={styles.badge}>{tab.count}</span>}
-              </button>
-            ))}
-          </div>
-        )
-      )}
+      {tabs && <Tabs tabs={tabs} value={activeTab} onChange={onTabChange} />}
       {actions && <div className={styles.actions}>{actions}</div>}
     </div>
-  );
-}
-
-const VARIANT_CLASS: Record<"add" | "neutral" | "danger", string> = {
-  add: styles.btnAdd,
-  neutral: styles.btnNeutral,
-  danger: styles.btnDanger,
-};
-
-interface ControlPanelBtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant: "add" | "neutral" | "danger";
-  icon?: ReactNode;
-}
-
-export function ControlPanelBtn({ variant, icon, children, className, ...props }: ControlPanelBtnProps) {
-  return (
-    <button
-      className={[styles.btn, VARIANT_CLASS[variant], className].filter(Boolean).join(" ")}
-      {...props}
-    >
-      {icon}
-      {children}
-    </button>
   );
 }
 

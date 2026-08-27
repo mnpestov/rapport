@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, SquarePen, ShieldCheck, Bug, Signal, Bot } from "lucide-react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { Button, IconButton } from "../../components/Button/Button";
 import {
   getWhitelist,
   createWhitelistEntry,
@@ -207,11 +208,11 @@ export function Whitelist() {
 
   if (error && entries.length === 0) {
     return (
-      <div className={styles.centerState} style={{ color: "#ef4444" }}>
+      <div className={styles.centerState} style={{ color: "var(--danger)" }}>
         {error}
-        <button className={styles.btnSecondary} onClick={loadEntries} style={{ marginTop: 12 }}>
+        <Button variant="secondary" onClick={loadEntries} style={{ marginTop: 12 }}>
           Попробовать снова
-        </button>
+        </Button>
       </div>
     );
   }
@@ -226,10 +227,9 @@ export function Whitelist() {
       <div className={styles.controlsPanel}>
         <div />
         <div className={styles.rightControls}>
-          <button className={styles.btnAdd} onClick={handleOpenCreate}>
-            <Plus size={16} />
+          <Button icon={<Plus size={16} />} onClick={handleOpenCreate}>
             Добавить пользователя
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -299,30 +299,27 @@ export function Whitelist() {
                 </td>
                 <td>
                   <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className={styles.iconBtn}
+                    <IconButton
                       title="Проверить подписку"
                       disabled={checkingSubId === entry.id}
                       onClick={(e) => handleCheckSubscription(e, entry)}
                       style={{ color: "#6366f1" }}
                     >
                       <Signal size={16} />
-                    </button>
-                    <button
-                      className={styles.iconBtn}
+                    </IconButton>
+                    <IconButton
                       title="Редактировать"
                       onClick={() => handleOpenEdit(entry)}
                     >
                       <SquarePen size={16} />
-                    </button>
-                    <button
-                      className={styles.iconBtn}
+                    </IconButton>
+                    <IconButton
                       title="Удалить"
                       onClick={() => handleDelete(entry)}
-                      style={{ color: "#ef4444" }}
+                      style={{ color: "var(--danger)" }}
                     >
                       <Trash2 size={16} />
-                    </button>
+                    </IconButton>
                   </div>
                 </td>
               </tr>
@@ -449,10 +446,9 @@ export function Whitelist() {
           </div>
           {editingEntry?.contactedViaBot && (
             <div style={{ marginBottom: 12 }}>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                style={{ width: "100%" }}
+              <Button
+                variant="secondary"
+                block
                 disabled={isNotifying}
                 onClick={async () => {
                   if (!editingEntry) return;
@@ -468,30 +464,28 @@ export function Whitelist() {
                 }}
               >
                 {isNotifying ? "Отправка..." : "📩 Уведомить об исправлении"}
-              </button>
+              </Button>
             </div>
           )}
           <div className={styles.formActions}>
-            <button type="button" className={styles.btnSecondary} onClick={() => setIsModalOpen(false)}>
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
               Отмена
-            </button>
+            </Button>
             {editingEntry?.needsInvestigation && (
-              <button
-                type="button"
-                className={styles.btnClearInvestigation}
+              <Button
+                variant="neutral"
                 onClick={handleClearInvestigation}
                 disabled={isSaving}
               >
                 ✓ Расследовано
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="submit"
-              className={styles.btnPrimary}
               disabled={isSaving || !formData.telegramId.trim()}
             >
               {isSaving ? "Сохранение..." : "Сохранить"}
-            </button>
+            </Button>
           </div>
         </form>
         </div>

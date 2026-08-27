@@ -26,41 +26,11 @@
   align-items: center;
 }
 
-.tab {
-  height: 32px;
-  padding: 0 14px;
-  background: transparent;
-  color: #4b5563;
-  border: none;
-  border-radius: 2px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.tab:hover {
-  background: #f3f3f3;
-}
-
-.tabActive {
-  height: 32px;
-  padding: 0 14px;
-  background: #83942C;
-  color: #FFF;
-  border: none;
-  border-radius: 2px;
-  font-family: 'Mulish', sans-serif;
-  font-size: 12.64px;
-  cursor: pointer;
-}
-
-
 .dateLabel {
   font-family: 'Mulish', sans-serif;
   font-size: 17px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 /* ── Stat cards ──────────────────────────── */
@@ -69,10 +39,10 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0;
-  background: #fff;
+  background: var(--surface);
   border-radius: 2px;
   overflow: hidden;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--border);
 }
 
 .statCard {
@@ -80,8 +50,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-right: 1px solid #E5E7EB;
-  border-bottom: 1px solid #E5E7EB;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .statCard:nth-child(3n) {
@@ -98,21 +68,21 @@
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 400;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .statValue {
   font-family: 'Mulish', sans-serif;
   font-size: 36px;
   font-weight: 700;
-  color: #83942C;
+  color: var(--brand);
   line-height: 1;
 }
 
 .statSub {
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
-  color: #83942C;
+  color: var(--brand);
 }
 
 /* ── Top tables ──────────────────────────── */
@@ -124,9 +94,9 @@
 }
 
 .topCard {
-  background: #fff;
+  background: var(--surface);
   border-radius: 2px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--border);
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
@@ -143,7 +113,7 @@
   font-family: 'Mulish', sans-serif;
   font-size: 15px;
   font-weight: 700;
-  color: #1D1C1C;
+  color: var(--text);
 }
 
 .topList {
@@ -164,7 +134,7 @@
 .topIndex {
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
-  color: #9B9A9A;
+  color: var(--text-placeholder);
   min-width: 20px;
   flex-shrink: 0;
   padding-top: 1px;
@@ -181,7 +151,7 @@
 .topName {
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
-  color: #1D1C1C;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,14 +160,14 @@
 .topSubtitle {
   font-family: 'Mulish', sans-serif;
   font-size: 12px;
-  color: #9B9A9A;
+  color: var(--text-placeholder);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .topLink {
-  color: #83942C;
+  color: var(--brand);
   text-decoration: none;
 }
 
@@ -209,7 +179,7 @@
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   font-weight: 700;
-  color: #83942C;
+  color: var(--brand);
   flex-shrink: 0;
   padding-top: 1px;
 }
@@ -217,7 +187,7 @@
 .topEmpty {
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
-  color: #9B9A9A;
+  color: var(--text-placeholder);
   padding: 8px 0;
 }
 
@@ -226,7 +196,7 @@
 .centerState {
   padding: 48px;
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 15px;
   font-family: 'Mulish', sans-serif;
 }
@@ -236,10 +206,10 @@
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
   padding: 8px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
-  color: #1D1C1C;
+  background: var(--surface);
+  color: var(--text);
   width: 100%;
 }
 
@@ -259,7 +229,7 @@
   }
   .statCard {
     border-right: none;
-    border-bottom: 1px solid #E5E7EB;
+    border-bottom: 1px solid var(--border);
   }
   .statCard:last-child {
     border-bottom: none;

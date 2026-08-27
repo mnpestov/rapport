@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, Search, Trash2, Plus, Merge } from "lucide-react";
+import { SquarePen, Trash2, Plus, Merge } from "lucide-react";
 import toast from "react-hot-toast";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { Button, IconButton } from "../../components/Button/Button";
+import { ControlPanel } from "../../components/ControlPanel/ControlPanel";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import {
   YarnItem,
@@ -112,35 +114,35 @@ export function Yarns() {
 
   return (
     <div className={styles.page}>
-      <PageHeader title="Артикулы пряжи" />
+      <PageHeader
+        title="Артикулы пряжи"
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Название, бренд или написание автора",
+        }}
+        // Пока идёт запрос счётчика нет: PageHeader скрывает его при null,
+        // и это честнее, чем показывать число от прошлого запроса.
+        totalCount={{ label: "артикулов", value: loading ? null : total }}
+      />
 
-      <div className={styles.toolbar}>
-        <div className={styles.searchBox}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            className={styles.searchInput}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Название, бренд или написание автора"
-          />
-        </div>
-        <label className={styles.checkbox}>
-          <input type="checkbox" checked={noMetrage} onChange={(e) => setNoMetrage(e.target.checked)} />
-          Без метража
-        </label>
-        <label className={styles.checkbox}>
-          <input type="checkbox" checked={genericOnly} onChange={(e) => setGenericOnly(e.target.checked)} />
-          Родовые
-        </label>
-        <button type="button" className={styles.addBtn} onClick={() => setEditing("new")}>
-          <Plus size={15} /> Добавить
-        </button>
-      </div>
-
-      <div className={styles.count}>
-        {loading ? <Loader2 size={13} className={styles.spinner} /> : null}
-        Найдено: {total}
-      </div>
+      <ControlPanel
+        actions={
+          <>
+            <label className={styles.checkbox}>
+              <input type="checkbox" checked={noMetrage} onChange={(e) => setNoMetrage(e.target.checked)} />
+              Без метража
+            </label>
+            <label className={styles.checkbox}>
+              <input type="checkbox" checked={genericOnly} onChange={(e) => setGenericOnly(e.target.checked)} />
+              Родовые
+            </label>
+            <Button icon={<Plus size={15} />} onClick={() => setEditing("new")}>
+              Добавить
+            </Button>
+          </>
+        }
+      />
 
       <div className={styles.table}>
         <div className={styles.headRow}>
@@ -169,15 +171,19 @@ export function Yarns() {
             <span>{y.needleSizeRaw || "—"}</span>
             <span>{y._count.patterns || "—"}</span>
             <span className={styles.actions}>
-              <button type="button" onClick={() => setEditing(y)} title="Редактировать">
-                <Pencil size={15} />
-              </button>
-              <button type="button" onClick={() => setMerging(y)} title="Слить с другим артикулом">
-                <Merge size={15} />
-              </button>
-              <button type="button" onClick={() => setDeletingItem(y)} title="Удалить">
-                <Trash2 size={15} />
-              </button>
+              <IconButton onClick={() => setEditing(y)} title="Редактировать">
+                <SquarePen size={16} />
+              </IconButton>
+              <IconButton onClick={() => setMerging(y)} title="Слить с другим артикулом">
+                <Merge size={16} />
+              </IconButton>
+              <IconButton
+                onClick={() => setDeletingItem(y)}
+                title="Удалить"
+                style={{ color: "var(--danger)" }}
+              >
+                <Trash2 size={16} />
+              </IconButton>
             </span>
           </div>
         ))}
@@ -186,15 +192,15 @@ export function Yarns() {
 
       {totalPages > 1 && (
         <div className={styles.pager}>
-          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             Назад
-          </button>
+          </Button>
           <span>
             {page} из {totalPages}
           </span>
-          <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+          <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
             Вперёд
-          </button>
+          </Button>
         </div>
       )}
 

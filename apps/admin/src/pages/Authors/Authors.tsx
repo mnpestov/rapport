@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { AuthorRow, AuthorRowHeader } from "./AuthorRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { Button } from "../../components/Button/Button";
 import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem, getSyncStatus, checkPendingAuthors, startSync, startAuthorSync } from "../../api/authors";
 import { getPendingReports } from "../../api/authors";
 import { Modal } from "../../components/Modal/Modal";
@@ -222,11 +223,11 @@ export function Authors() {
 
   if (error && authors.length === 0) {
     return (
-      <div className={styles.centerState} style={{ color: "#ef4444" }}>
+      <div className={styles.centerState} style={{ color: "var(--danger)" }}>
         {error}
-        <button className={styles.btnSecondary} onClick={loadAuthors}>
+        <Button variant="secondary" onClick={loadAuthors}>
           Попробовать снова
-        </button>
+        </Button>
       </div>
     );
   }
@@ -248,18 +249,17 @@ export function Authors() {
           )}
         </div>
         <div className={styles.rightControls}>
-          <button 
-            className={styles.btnSecondary} 
+          <Button
+            variant="secondary"
             onClick={handleCheckNew}
             disabled={isSyncing}
-            style={{ marginRight: "12px", opacity: isSyncing ? 0.6 : 1 }}
+            style={{ marginRight: "12px" }}
           >
             {isSyncing ? "Синхронизация..." : "Проверить новинки"}
-          </button>
-          <button className={styles.btnAdd} onClick={handleOpenCreate}>
-            <Plus size={16} />
+          </Button>
+          <Button icon={<Plus size={16} />} onClick={handleOpenCreate}>
             Добавить автора
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -320,12 +320,12 @@ export function Authors() {
             />
           </div>
           <div className={styles.formActions}>
-            <button type="button" className={styles.btnSecondary} onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal}>
               Отмена
-            </button>
-            <button type="submit" className={styles.btnPrimary} disabled={isSaving || !formData.name.trim()}>
+            </Button>
+            <Button type="submit" disabled={isSaving || !formData.name.trim()}>
               {isSaving ? "Сохранение..." : "Сохранить"}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

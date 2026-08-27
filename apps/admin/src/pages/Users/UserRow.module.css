@@ -76,17 +76,6 @@
   gap: clamp(3px, 0.24vw, 6px);
 }
 
-.editBtn {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--c-text);
-}
-
 @media (max-width: 768px) {
   .colAuthor,
   .colFav {

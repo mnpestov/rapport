@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { Button } from "../Button/Button";
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { Upload } from "lucide-react";
@@ -167,17 +168,16 @@ export function ImageCropper({ onImageUploaded, currentUrl, customButtonProps, c
           </div>
 
           <div className={styles.cropActions}>
-            <button type="button" className={styles.btnSecondary} onClick={handleCancel}>
+            <Button variant="secondary" size="lg" onClick={handleCancel}>
               Отмена
-            </button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
+            </Button>
+            <Button
+              size="lg"
               onClick={handleSave}
               disabled={isUploading || !completedCrop?.width}
             >
               {isUploading ? "Сохранение..." : "Сохранить"}
-            </button>
+            </Button>
           </div>
         </div>
       )}

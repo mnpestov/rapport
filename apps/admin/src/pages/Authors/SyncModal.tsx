@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "../../components/Button/Button";
 import { Modal } from "../../components/Modal/Modal";
 import { getReportById, processSyncBatch, rejectSyncItem, clearSyncReport, SyncReport, SyncReportItem } from "../../api/authors";
 import toast from "react-hot-toast";
@@ -157,13 +158,13 @@ export function SyncModal({ isOpen, onClose, reportId, authorName, onSuccess }: 
         ) : (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-              <button 
-                className={styles.btnSecondary} 
+              <Button
+                variant="secondary"
                 onClick={() => setConfirmClearOpen(true)}
-                style={{ color: "#ef4444", borderColor: "#ef4444" }}
+                style={{ color: "var(--danger)" }}
               >
                 Очистить новинки
-              </button>
+              </Button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 400px), 1fr))", gap: "16px" }}>
             {report.items.map(item => {

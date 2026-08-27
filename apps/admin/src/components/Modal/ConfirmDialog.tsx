@@ -1,6 +1,7 @@
 import React from 'react';
 import styles from './Modal.module.css';
 import confirmStyles from './ConfirmDialog.module.css';
+import { Button } from '../Button/Button';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -31,15 +32,12 @@ export function ConfirmDialog({
         <h3 className={confirmStyles.title}>{title}</h3>
         <p className={confirmStyles.message}>{message}</p>
         <div className={confirmStyles.actions}>
-          <button className={confirmStyles.cancelBtn} onClick={onCancel}>
+          <Button variant="secondary" size="lg" onClick={onCancel}>
             {cancelText}
-          </button>
-          <button
-            className={variant === 'danger' ? confirmStyles.dangerBtn : confirmStyles.confirmBtn}
-            onClick={onConfirm}
-          >
+          </Button>
+          <Button variant={variant === 'danger' ? 'danger' : 'primary'} size="lg" onClick={onConfirm}>
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

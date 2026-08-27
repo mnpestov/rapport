@@ -1,4 +1,5 @@
 import { Heart, ChevronUp, ChevronDown, SquarePen } from "lucide-react";
+import { IconButton } from "../../components/Button/Button";
 import { AdminUser, UserRole, SortField, SortOrder } from "../../api/users";
 import styles from "./UserRow.module.css";
 
@@ -91,12 +92,12 @@ export function UserRow({ user, onClick, onEdit }: UserRowProps) {
         )}
       </span>
       <span className={styles.colEdit}>
-        <button
-          className={styles.editBtn}
+        <IconButton
+          title="Редактировать"
           onClick={(e) => { e.stopPropagation(); onEdit(user); }}
         >
           <SquarePen size={18} strokeWidth={1} />
-        </button>
+        </IconButton>
       </span>
     </div>
   );

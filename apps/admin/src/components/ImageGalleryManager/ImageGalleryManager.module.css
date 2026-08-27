@@ -34,7 +34,7 @@
   padding: 2px 0;
   text-align: center;
   background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  color: var(--surface);
   font-family: "Mulish", sans-serif;
   font-size: 10px;
   pointer-events: none;
@@ -49,7 +49,7 @@
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,10 +70,10 @@
 .addBtn {
   width: 100%;
   height: 100%;
-  border: 1px dashed #9b9a9a;
+  border: 1px dashed var(--text-placeholder);
   border-radius: 4px;
   background: #fafafa;
-  color: #9b9a9a;
+  color: var(--text-placeholder);
   font-size: 22px;
   display: flex;
   align-items: center;
@@ -84,7 +84,7 @@
 }
 
 .addBtn:hover {
-  background: #f3f3f3;
+  background: var(--surface-gray);
 }
 
 .addTileDisabled {
@@ -105,5 +105,5 @@
   flex-basis: 100%;
   font-family: "Mulish", sans-serif;
   font-size: 12px;
-  color: #9b9a9a;
+  color: var(--text-placeholder);
 }

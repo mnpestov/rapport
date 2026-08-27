@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, X, Shield, Pen, ShieldX, Check } from "lucide-react";
 import { ModerationCard } from "./ModerationCard";
 import { PatternGridCard } from "./PatternGridCard";
-import { ControlPanel, ControlPanelBtn, ViewToggle, ViewMode } from "../../components/ControlPanel/ControlPanel";
+import { ControlPanel, ViewToggle, ViewMode } from "../../components/ControlPanel/ControlPanel";
+import { Button } from "../../components/Button/Button";
 import { YarnPicker, PickedYarn } from "../../components/YarnPicker/YarnPicker";
 import { getPatternYarns, setPatternYarns, resolveMention, createYarn, PatternYarnMentionItem } from "../../api/yarns";
 import { YarnEditModal } from "../Yarns/YarnEditModal";
@@ -815,7 +816,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             value: "published",
             label: "Опубликовано",
             prefix: <Check size={12} strokeWidth={1} color="#ffffffff" />,
-            prefixColor: "#A9AE36",
+            prefixColor: "var(--brand-bright)",
             count: cabinetCounts.published
           },
           {
@@ -836,7 +837,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             value: "rejected",
             label: "Отклонено",
             prefix: <ShieldX size={12} strokeWidth={1} color="#ffffffff" />,
-            prefixColor: "#D8520F",
+            prefixColor: "var(--warning)",
             count: cabinetCounts.rejected
           },
         ] : [
@@ -863,54 +864,54 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         actions={
           isAuthor ? (
             <>
-              <ControlPanelBtn
-                variant="add"
+              <Button
+                variant="primary"
                 icon={<Plus size={24} strokeWidth={1} />}
                 onClick={handleOpenCreate}
               >
                 Добавить описание
-              </ControlPanelBtn>
-              <ControlPanelBtn
+              </Button>
+              <Button
                 variant="neutral"
                 disabled={selectedIds.size === 0}
                 onClick={handleAuthorPublishSelected}
               >
                 Отправить на модерацию
-              </ControlPanelBtn>
-              <ControlPanelBtn
+              </Button>
+              <Button
                 variant="danger"
                 disabled={selectedIds.size === 0}
                 onClick={handleDeleteSelected}
               >
                 Удалить
-              </ControlPanelBtn>
+              </Button>
             </>
           ) : (
             <>
-              <ControlPanelBtn
-                variant="add"
+              <Button
+                variant="primary"
                 icon={<Plus size={24} strokeWidth={1} />}
                 onClick={handleOpenCreate}
               >
                 Добавить описание
-              </ControlPanelBtn>
+              </Button>
               {effectiveViewMode === "list" && status === "archive" && (
-                <ControlPanelBtn
+                <Button
                   variant="neutral"
                   disabled={selectedIds.size === 0}
                   onClick={handleRestoreSelected}
                 >
                   Опубликовать
-                </ControlPanelBtn>
+                </Button>
               )}
               {effectiveViewMode === "list" && (
-                <ControlPanelBtn
+                <Button
                   variant="danger"
                   disabled={selectedIds.size === 0}
                   onClick={handleDeleteSelected}
                 >
                   Удалить
-                </ControlPanelBtn>
+                </Button>
               )}
               {status !== "moderation" && !isMobile && (
                 <ViewToggle value={viewMode} onChange={setViewMode} />
@@ -946,7 +947,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               {isLoading && <div className={styles.centerState}>Загрузка...</div>}
 
               {!isLoading && error && (
-                <div className={styles.centerState} style={{ color: "#ef4444" }}>{error}</div>
+                <div className={styles.centerState} style={{ color: "var(--danger)" }}>{error}</div>
               )}
 
               {!isLoading && !error && data.length === 0 && (
@@ -964,7 +965,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               ))}
 
               {page < totalPages && (
-                <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "#6b7280", gridColumn: "1 / -1" }}>
+                <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", gridColumn: "1 / -1" }}>
                   Загрузка...
                 </div>
               )}
@@ -1013,7 +1014,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   )}
 
                   {!isLoading && error && (
-                    <div className={styles.centerState} style={{ color: "#ef4444" }}>{error}</div>
+                    <div className={styles.centerState} style={{ color: "var(--danger)" }}>{error}</div>
                   )}
 
                   {!isLoading && !error && data.length === 0 && (
@@ -1031,7 +1032,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   ))}
 
                   {page < totalPages && (
-                    <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>
+                    <div ref={observerTarget} style={{ padding: 20, textAlign: "center", color: "var(--text-muted)" }}>
                       Загрузка...
                     </div>
                   )}
@@ -1053,7 +1054,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Название */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Название <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={labelStyle}>Название <span style={{ color: "var(--danger)" }}>*</span></label>
                   <input
                     type="text"
                     value={formData.title}
@@ -1067,7 +1068,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Категория */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Категория <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={labelStyle}>Категория <span style={{ color: "var(--danger)" }}>*</span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
@@ -1129,7 +1130,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Автор */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Автор <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={labelStyle}>Автор <span style={{ color: "var(--danger)" }}>*</span></label>
                   <CreatableSelect
                     isClearable
                     isDisabled={isAuthor || formReadonly}
@@ -1143,7 +1144,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Ссылка */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Ссылка <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={labelStyle}>Ссылка <span style={{ color: "var(--danger)" }}>*</span></label>
                   <input
                     type="url"
                     value={formData.url}
@@ -1157,7 +1158,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
                 {/* Инструмент */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Инструмент <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={labelStyle}>Инструмент <span style={{ color: "var(--danger)" }}>*</span></label>
                   <CreatableSelect
                     isMulti
                     isDisabled={formReadonly}
@@ -1205,7 +1206,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       />
                       {yarnMentions.length > 0 && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 12, color: "#9ca3af" }}>
+                          <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 12, color: "var(--text-subtle)" }}>
                             Разбор нашёл в подробностях, но артикул не опознал:
                           </span>
                           {yarnMentions.map((m) => (
@@ -1220,7 +1221,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                               <span style={{ flex: 1 }}>
                                 {m.rawText}
                                 {m.metrageInText && (
-                                  <span style={{ color: "#9ca3af" }}> · {m.metrageInText}</span>
+                                  <span style={{ color: "var(--text-subtle)" }}> · {m.metrageInText}</span>
                                 )}
                               </span>
                               <span style={{ fontSize: 11, color: "#b45309" }}>
@@ -1231,8 +1232,8 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                                 disabled={formReadonly}
                                 onClick={() => setCreatingYarnName(m.rawText)}
                                 style={{
-                                  padding: "3px 8px", border: "1px solid #d1d5db", borderRadius: 5,
-                                  background: "#fff", fontSize: 12, cursor: "pointer",
+                                  padding: "3px 8px", border: "1px solid var(--border-strong)", borderRadius: 5,
+                                  background: "var(--surface)", fontSize: 12, cursor: "pointer",
                                 }}
                               >
                                 Завести артикул
@@ -1250,7 +1251,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                                 }}
                                 style={{
                                   padding: "3px 8px", border: "none", borderRadius: 5,
-                                  background: "transparent", color: "#9ca3af", fontSize: 12, cursor: "pointer",
+                                  background: "transparent", color: "var(--text-subtle)", fontSize: 12, cursor: "pointer",
                                 }}
                               >
                                 Не пряжа
@@ -1261,7 +1262,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       )}
                     </>
                   ) : (
-                    <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 13, color: "#9ca3af" }}>
+                    <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 13, color: "var(--text-subtle)" }}>
                       Появится после сохранения описания
                     </span>
                   )}
@@ -1281,7 +1282,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       step="any"
                       disabled={formReadonly}
                     />
-                    <span style={{ fontFamily: "Mulish", fontSize: 14, color: "#1d1c1c", flexShrink: 0 }}>×</span>
+                    <span style={{ fontFamily: "Mulish", fontSize: 14, color: "var(--text)", flexShrink: 0 }}>×</span>
                     <input
                       type="number"
                       value={formData.densityRows}
@@ -1294,9 +1295,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                     />
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Петли</span>
+                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Петли</span>
                     <span style={{ width: 16 }} />
-                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Ряды</span>
+                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Ряды</span>
                   </div>
                 </div>
 
@@ -1325,16 +1326,16 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                     />
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Текущая</span>
+                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Текущая</span>
                     <span style={{ width: 16 }} />
-                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "#9b9a9a" }}>Старая (если скидка)</span>
+                    <span style={{ width: "calc(50% - 16px)", fontFamily: "Mulish", fontSize: 12, color: "var(--text-placeholder)" }}>Старая (если скидка)</span>
                   </div>
                 </div>
 
                 {/* Фото (до 5, первое — обложка) */}
                 {!formReadonly && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <label style={labelStyle}>Фото <span style={{ color: "#ef4444" }}>*</span></label>
+                    <label style={labelStyle}>Фото <span style={{ color: "var(--danger)" }}>*</span></label>
                     <ImageGalleryManager
                       images={formData.images}
                       onChange={(images) => setFormData({ ...formData, images })}
@@ -1361,7 +1362,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  style={btnStyle("#f3f3f3", "#1d1c1c")}
+                  style={btnStyle("var(--surface-gray)", "var(--text)")}
                 >
                   Закрыть
                 </button>
@@ -1371,7 +1372,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       type="button"
                       disabled={isSaving}
                       onClick={(e) => handleSubmit(e as any, false)}
-                      style={btnStyle("#bec1f4", "#1d1c1c")}
+                      style={btnStyle("#bec1f4", "var(--text)")}
                     >
                       {isSaving ? "Сохранение..." : "Сохранить"}
                     </button>
@@ -1379,7 +1380,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       type="button"
                       disabled={isSaving}
                       onClick={(e) => handleSubmit(e as any, true)}
-                      style={btnStyle("#a9ae36", "#ffffff")}
+                      style={btnStyle("var(--brand-bright)", "var(--surface)")}
                     >
                       {isAuthor ? "Отправить на модерацию" : "Опубликовать"}
                     </button>
@@ -1410,14 +1411,14 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
       {rejectingDraft && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: 440, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: "var(--surface)", borderRadius: 12, width: 440, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <span style={{ fontFamily: "Mulish", fontWeight: 700, fontSize: 18, color: "#1a1a1a" }}>Причина отклонения</span>
-              <button onClick={() => setRejectingDraft(null)} style={{ border: "none", background: "#f3f4f6", borderRadius: 6, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={() => setRejectingDraft(null)} style={{ border: "none", background: "var(--surface-alt)", borderRadius: 6, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <X size={16} color="#6b7280" />
               </button>
             </div>
-            <p style={{ fontFamily: "Mulish", fontSize: 14, color: "#6b7280", margin: "0 0 12px" }}>
+            <p style={{ fontFamily: "Mulish", fontSize: 14, color: "var(--text-muted)", margin: "0 0 12px" }}>
               {rejectingDraft.title}
             </p>
             <textarea
@@ -1426,12 +1427,12 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               placeholder="Укажите причину отклонения..."
               value={rejectComment}
               onChange={(e) => setRejectComment(e.target.value)}
-              style={{ width: "100%", padding: 12, border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "Mulish", fontSize: 14, resize: "vertical", outline: "none", boxSizing: "border-box" }}
+              style={{ width: "100%", padding: 12, border: "1px solid var(--border)", borderRadius: 8, fontFamily: "Mulish", fontSize: 14, resize: "vertical", outline: "none", boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
               <button
                 onClick={() => setRejectingDraft(null)}
-                style={{ height: 38, padding: "0 16px", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff", fontFamily: "Mulish", fontSize: 14, cursor: "pointer" }}
+                style={{ height: 38, padding: "0 16px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", fontFamily: "Mulish", fontSize: 14, cursor: "pointer" }}
               >
                 Закрыть
               </button>
@@ -1451,7 +1452,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                     setIsRejecting(false);
                   }
                 }}
-                style={{ height: 38, padding: "0 20px", border: "none", borderRadius: 8, background: "#ef4444", color: "#fff", fontFamily: "Mulish", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: !rejectComment.trim() || isRejecting ? 0.5 : 1 }}
+                style={{ height: 38, padding: "0 20px", border: "none", borderRadius: 8, background: "var(--danger)", color: "var(--surface)", fontFamily: "Mulish", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: !rejectComment.trim() || isRejecting ? 0.5 : 1 }}
               >
                 {isRejecting ? "Отклонение..." : "Отклонить"}
               </button>

@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { X } from "lucide-react";
+import { Button } from "../../components/Button/Button";
+import {  } from "lucide-react";
 import { UserRow, UserRowHeader } from "./UserRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { Modal } from "../../components/Modal/Modal";
 import { getUsers, getUserSubscription, updateUser, syncPermission, AdminUser, AdminUserDetail, UserRole, SortField, SortOrder } from "../../api/users";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import toast from "react-hot-toast";
@@ -199,9 +201,9 @@ function PermissionsSection({
       )}
 
       {isDirty && (
-        <button className={styles.savePermBtn} onClick={handleSave} disabled={isSaving}>
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? "Сохранение..." : "Сохранить"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -229,19 +231,9 @@ function UserModal({
     );
   }, [initialUser.id, initialUser.telegramId]);
 
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   return (
-    <div className={styles.overlay} onClick={handleOverlayClick}>
-      <div className={styles.modal}>
-        <div className={styles.modalHeader}>
-          <span className={styles.modalName}>{fullName(initialUser)}</span>
-          <button className={styles.closeBtn} onClick={onClose}><X size={16} /></button>
-        </div>
-
-        <div className={styles.modalBody}>
+    <Modal isOpen onClose={onClose} title={fullName(initialUser)} maxWidth={560}>
+      <div className={styles.modalBody}>
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Основное</div>
             <div className={styles.row}>
@@ -336,10 +328,9 @@ function UserModal({
               <div className={styles.sectionTitle}>Разрешения</div>
               <div className={styles.rowValueMuted} style={{ fontSize: 13 }}>Загрузка...</div>
             </div>
-          )}
-        </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -417,10 +408,10 @@ export function Users() {
       <div className={styles.tableWrapper}>
         <UserRowHeader sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
         {isLoading && (
-          <div style={{ textAlign: "center", color: "#9ca3af", padding: "32px" }}>Загрузка...</div>
+          <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "32px" }}>Загрузка...</div>
         )}
         {!isLoading && users.length === 0 && (
-          <div style={{ textAlign: "center", color: "#9ca3af", padding: "32px" }}>Пользователи не найдены</div>
+          <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "32px" }}>Пользователи не найдены</div>
         )}
         {!isLoading && users.map((u) => (
           <UserRow key={u.id} user={u} onClick={setSelected} onEdit={setSelected} />
@@ -430,21 +421,21 @@ export function Users() {
       {totalPages > 1 && (
         <div className={styles.pagination}>
           <span>{total} пользователей</span>
-          <button
-            className={styles.pageBtn}
+          <Button
+            variant="secondary"
             disabled={offset === 0}
             onClick={() => setOffset(Math.max(0, offset - LIMIT))}
           >
             ← Назад
-          </button>
+          </Button>
           <span>{currentPage} / {totalPages}</span>
-          <button
-            className={styles.pageBtn}
+          <Button
+            variant="secondary"
             disabled={offset + LIMIT >= total}
             onClick={() => setOffset(offset + LIMIT)}
           >
             Вперёд →
-          </button>
+          </Button>
         </div>
       )}
 
