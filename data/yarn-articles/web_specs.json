@@ -4,7 +4,8 @@
   "search",
   "astra-premium.ru — сохранённая страница каталога, разбор заголовков карточек",
   "pryazha.online — марка ArtLand: 376 расцветок схлопнуты по полю «Коллекция» с карточек",
-  "ili-ili.com — 18 страниц каталога пряжи, характеристики из JSON-LD карточек; вес мотка в исходнике в килограммах; плотность и диапазон спиц из блока «Детали», который опознаётся по иконкам"
+  "ili-ili.com — 18 страниц каталога пряжи, характеристики из JSON-LD карточек; вес мотка в исходнике в килограммах; плотность и диапазон спиц из блока «Детали», который опознаётся по иконкам",
+  "greenline24.com — раздел «Пряжа на бобинах» целиком: листинг с sort=name (сортировка по умолчанию теряет позиции), характеристики с карточек товара"
  ],
  "items": [
   {
@@ -14818,7 +14819,7 @@
    "m": 220,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/alpaka-53-poliamid-40-len-7-bv-2423-1-_piterskoe-nebo-2423-1_220-m-100-gr_18-06-2026-15-38-24",
+   "url": "https://greenline24.com/product/alpaka-53-poliamid-40-len-7-bv/019fbd4e-9c4a-7463-9044-b9e6a4380ddd",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14829,7 +14830,7 @@
    "m": 700,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/alpaka-75-poliamid-25-bv-5014-2611_chernyy-5014_700-m-100-gr_24-03-2025-1-05-36",
+   "url": "https://greenline24.com/product/alpaka-75-poliamid-25-bv/019fbd4e-9bba-7f46-92cb-12db1c4bddae",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14840,7 +14841,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/alpaka-bebi-37-super-kid-moher-37-poliamid-26-bv-154-0524_verblyud-154_1500-m-100-gr_17-11-2025-3-03-39",
+   "url": "https://greenline24.com/product/alpaka-bebi-37-super-kid-moher-37-poliamid-26-bv/019fbd4e-9b4d-7149-b9b3-cbceb5c8661c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14851,7 +14852,7 @@
    "m": 750,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/angora-40-shyolk-40-merinos-20-arianna-bv-acqua_voda-acqua_750-m-100-gr_17-03-2025-1-29-58",
+   "url": "https://greenline24.com/product/angora-40-shyolk-40-merinos-20-arianna-bv/019fbd4e-9b59-7a8e-934f-5dd01235d5fd",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14862,7 +14863,7 @@
    "m": 500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/angora-70-merinos-10-pa-20-premium-bv-553_lazur-553_500-m-100-gr_31-01-2024-13-43-25",
+   "url": "https://greenline24.com/product/angora-70-merinos-10-pa-20-premium-bv/019fbd4e-9cb1-7c65-aaef-9b5856aa7fa9",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14873,7 +14874,7 @@
    "m": 450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/angora-80-pa-20-filati-biagioli-modesto-bv-707564_olivkovoe-maslo-707564_450-m-100-gr_18-05-2025-20-22-15",
+   "url": "https://greenline24.com/product/angora-80-pa-20-filati-biagioli-modesto-bv/019fbd4e-9cd9-7bec-8c37-60e0d601efa9",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14884,7 +14885,7 @@
    "m": 450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/angora-dlinnovorsovaya-80-poliamid-20-chiara-bv-glicine_gliciniya-glicine_450-m-100-gr_16-01-2024-2-10-21",
+   "url": "https://greenline24.com/product/angora-dlinnovorsovaya-80-poliamid-20-chiara-bv/019fbd4e-9b6e-7d42-ac1a-f2912c6de560",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14895,7 +14896,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/geelong-100-merinos-bv-13-03-26-1-_pustota-13-03-26-1_1500-m-100-gr_13-03-2026-13-47-22",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/019fbd4e-9c9f-7e30-a48d-37f88e779790",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14906,7 +14907,7 @@
    "m": 750,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/geelong-100-merinos-bv-2845_shelkovica-2845_750-m-100-gr_17-12-2025-15-12-29",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/019fbd4e-9c9f-72cc-a48d-37f88d68135c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14917,7 +14918,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/geelong-100-merinos-bv-64159_solnechnyy-poceluy-64159_1500-m-100-gr_18-12-2025-14-24-29",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/019fbd4e-9c9f-7898-a48d-37f88d855dbd",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14928,7 +14929,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/geelong-100-merinos-bv-711031_zagadka-711031_1500-m-100-gr_11-08-2026-13-28-53",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/019fbd4e-9c9b-7d84-be3f-edccb22f51df",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14939,7 +14940,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/geelong-100-merinos-bv-785870_glubokovode-785870_1400-m-100-gr_14-08-2026-15-33-56",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/01a01990-0391-75ca-b93f-c235aed056f2",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14950,7 +14951,7 @@
    "m": 1600,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/geelong-90-angora-10-bv-9867_krokodil-9867_1600-m-100-gr_18-05-2025-20-38-12",
+   "url": "https://greenline24.com/product/geelong-90-angora-10-bv/019fbd4e-99d3-7667-b18d-312909a13b48",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14961,7 +14962,7 @@
    "m": 1800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-1517_ovsyanka-1517_1800-m-100-gr_16-04-2026-10-58-40",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c5c-77ad-af02-f94c15464132",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -14972,7 +14973,7 @@
    "m": 640,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-170510-1-_kamenistyy-bereg-170510-1_640-m-100-gr_15-04-2026-10-51-17",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c5b-7271-9343-c9fdac769dea",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15005,7 +15006,7 @@
    "m": 1600,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-502183_glubokiy-kolodec-502183_1600-m-100-gr_19-04-2024-14-42-50",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c5a-7542-a9bb-f03e46d73f17",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15016,7 +15017,7 @@
    "m": 320,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-562-_yarko-rozovyy_320-m-100-gr_02-04-2026-14-19-44",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c5a-7bba-a9bb-f03e4786fab2",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15027,7 +15028,7 @@
    "m": 310,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-87017_korallovyy-rif-87017_310-m-100-gr_22-04-2026-12-29-05",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c62-7233-9141-0bd6c972deb4",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15038,7 +15039,7 @@
    "m": 625,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-955_apelsinka-955_625-m-100-gr_27-03-2025-16-35-36",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c59-7e94-836a-840360a155be",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15049,7 +15050,7 @@
    "m": 677,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-ambra-_yantar-ambra_677-m-100-gr_22-04-2026-11-58-23",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c61-7b95-a6f7-a6a6649b9335",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15060,7 +15061,7 @@
    "m": 120,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-b2701-1-_edinorog-b2701-1_120-m-100-gr_16-04-2026-11-24-42",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c5e-72d9-b6c0-d593875acf1c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15071,7 +15072,7 @@
    "m": 950,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-100-bv-mosto-1_purpurnyy-trilistnik-mosto-1_950-m-100-gr_22-04-2026-12-44-08",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c62-7837-9141-0bd6c9f24414",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15082,7 +15083,7 @@
    "m": 200,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-52-poliamid-48-bv-111376_bambukovaya-roshcha-111376_200-m-100-gr_18-06-2026-11-00-39",
+   "url": "https://greenline24.com/product/hlopok-52-poliamid-48-bv/019fbd4e-9c31-7a24-a75f-e5227c0fba5c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15093,7 +15094,7 @@
    "m": 360,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-62-poliamid-38-bv-s6036-1_mahagon-s6036-1_360-m-100-gr_26-05-2026-13-15-29",
+   "url": "https://greenline24.com/product/hlopok-62-poliamid-38-bv/019fbd4e-9988-774b-838a-cfc87d8f9965",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15104,7 +15105,7 @@
    "m": 250,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-64-poliamid-36-bv-13687-1_provans-13687-1_250-m-100-gr_16-04-2026-14-14-41",
+   "url": "https://greenline24.com/product/hlopok-64-poliamid-36-bv/019fbd4e-9c2b-7e25-9cdc-cbcbb777c2ab",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15115,7 +15116,7 @@
    "m": 510,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-74-poliamid-26-bv-0l2_pelena-0l2_510-m-100-gr_19-06-2026-11-30-47",
+   "url": "https://greenline24.com/product/hlopok-74-poliamid-26-bv/019fbd4e-9915-7de9-8908-63909fa1ec46",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15126,7 +15127,7 @@
    "m": 250,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-75-shyolk-25-bv-20984-1_letnyaya-noch-20984-1_250-m-100-gr_18-06-2026-12-01-07",
+   "url": "https://greenline24.com/product/hlopok-75-shyolk-25-bv/019fbd4e-99b4-7b48-b37e-8a99914036ff",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15137,7 +15138,7 @@
    "m": 340,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-76-len-24-bv-19-_yagel-19_340-m-100-gr_18-06-2026-16-10-31",
+   "url": "https://greenline24.com/product/hlopok-76-len-24-bv/019fbd4e-9c35-7bd7-a140-e305d66abae5",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15148,7 +15149,7 @@
    "m": 230,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-76-neylon-24-bv-14603-1-_persikovyy-desert-14603-1_230-m-100-gr_15-04-2026-13-18-44",
+   "url": "https://greenline24.com/product/hlopok-76-neylon-24-bv/019fbd4e-9c22-79ab-8084-3c983eb80a39",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15159,7 +15160,7 @@
    "m": 110,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-76-neylon-24-bv-508173-_solnechnyy-zaychik-508173_110-m-100-gr_11-04-2026-15-28-11",
+   "url": "https://greenline24.com/product/hlopok-76-neylon-24-bv/019fbd4e-9c21-7b83-b3c4-0ada144935a0",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15170,7 +15171,7 @@
    "m": 2800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-80-shyolk-20-bv-verde-mi_zelenyy-verde-mi_2800-m-100-gr_05-07-2025-8-04-05",
+   "url": "https://greenline24.com/product/hlopok-80-shyolk-20-bv/019fbd4e-9bd1-7603-961f-83d05b7c453a",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15181,7 +15182,7 @@
    "m": 2000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-85-kashemir-15-bv-1323_spelaya-sliva-1323_2000-m-100-gr_22-05-2026-12-04-29",
+   "url": "https://greenline24.com/product/hlopok-85-kashemir-15-bv/019fbd4e-9991-7ee7-99ad-70c03466249e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15192,7 +15193,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-85-kashemir-15-bv-542blu_nochnoy-okean-542blu_2400-m-100-gr_04-07-2025-4-29-55",
+   "url": "https://greenline24.com/product/hlopok-85-kashemir-15-bv/019fbd4e-9991-72df-99ad-70c03371a34f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15203,7 +15204,7 @@
    "m": 2500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/hlopok-85-kashemir-15-bv-black_nochnoe-nebo-img_e5966_2500-m-100-gr_11-03-2026-11-59-53",
+   "url": "https://greenline24.com/product/hlopok-85-kashemir-15-bv/019fbd4e-9991-7907-99ad-70c033c5dc9a",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15214,7 +15215,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-dark-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-21975_kardinal-mazarini-21975_1400-m-100-gr_26-11-2025-6-08-02",
+   "url": "https://greenline24.com/product/kashemir-100-premium-dark-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ad8-7d01-9119-8c85cf752d42",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15225,7 +15226,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-dark-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-f22-0323_drevniy-okean-f22_1400-m-100-gr_18-11-2024-1-34-02",
+   "url": "https://greenline24.com/product/kashemir-100-premium-dark-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ada-7b93-b019-91c4571909e7",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15236,7 +15237,7 @@
    "m": 2300,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-10318_romashka-10318_2300-m-100-gr_05-08-2022-8-20-08",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae0-7754-a6b9-3693bb8a8b9a",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15247,7 +15248,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-11594-7101_vecherniy-les-11594_1400-m-100-gr_10-01-2025-13-21-08",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae4-7c2d-823b-370c41aafdfa",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15258,7 +15259,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-201473-_nochnoe-nebo-201473_1400-m-100-gr_16-01-2026-17-53-20",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae6-73be-8faf-b9f3bfbde75d",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15269,7 +15270,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-20642_avrora-20642_1400-m-100-gr_30-01-2024-9-20-48",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae3-75bf-a9f1-2caa2a79cb88",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15280,7 +15281,7 @@
    "m": 2300,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-21550_gorchica-21550_2300-m-100-gr_09-06-2022-14-22-13",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae0-712c-a6b9-3693bab97c2f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15302,7 +15303,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-7488_vechernyaya-step-7488_1400-m-100-gr_05-09-2023-7-10-55",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae1-7e49-9ce0-a727eb8bd183",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15313,7 +15314,7 @@
    "m": 2666,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv-81800701-0507_madzhenta-81800701_2666-m-100-gr_21-11-2024-16-11-26",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae4-76c9-823b-370c411486db",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15324,7 +15325,7 @@
    "m": 666,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-plus-dark-bv-3382r-0920_navi-3382r_666-m-100-gr_18-11-2024-1-34-19",
+   "url": "https://greenline24.com/product/kashemir-100-premium-plus-dark-bv/019fbd4e-9af4-76e5-9671-7f3b1c6a7b58",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15335,7 +15336,7 @@
    "m": 650,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-plus-dark-bv-blue-vintage-0421_sinyaya-starina-blue-vintage_650-m-100-gr_18-11-2024-1-34-23",
+   "url": "https://greenline24.com/product/kashemir-100-premium-plus-dark-bv/019fbd4e-9af4-7039-9671-7f3b1baf4daf",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15346,7 +15347,7 @@
    "m": 666,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-plus-light-bv-26857_fioletovyy-vecher-26857_666-m-100-gr_27-11-2025-1-15-02",
+   "url": "https://greenline24.com/product/kashemir-100-premium-plus-light-bv/019fbd4e-9afa-79bd-8c1b-7b9f500d1a57",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15357,7 +15358,7 @@
    "m": 850,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-plus-light-bv-35590_fioletovyy-35590_850-m-100-gr_26-07-2022-8-41-16",
+   "url": "https://greenline24.com/product/kashemir-100-premium-plus-light-bv/019fbd4e-9afa-73f5-8c1b-7b9f4fe7091b",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15368,7 +15369,7 @@
    "m": 600,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-100-premium-plus-light-bv-716272_fuksiya-716272_600-m-100-gr_27-11-2025-1-13-24",
+   "url": "https://greenline24.com/product/kashemir-100-premium-plus-light-bv/019fbd4e-9afa-7f6d-8c1b-7b9f505ba210",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15379,7 +15380,7 @@
    "m": 400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-43-poliamid-40-solvron-14-merinos-3-bv-22673-2-_holodnyy-veter-22673-2_400-m-100-gr_18-02-2026-16-07-24",
+   "url": "https://greenline24.com/product/kashemir-43-poliamid-40-solvron-14-merinos-3-bv/019fbd4e-9be6-7e63-84a2-99e8bf2374be",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15390,7 +15391,7 @@
    "m": 900,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-50-hlopok-50-bv-92340-_kosmicheskie-dali-92340_900-m-100-gr_21-04-2026-13-57-04",
+   "url": "https://greenline24.com/product/kashemir-50-hlopok-50-bv/019fbd4e-9908-7280-a600-37b0b166ff21",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15401,7 +15402,7 @@
    "m": 1050,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-50-merinos-50-bv-10175-1301_ranun-10175_1050-m-100-gr_21-02-2026-16-33-07",
+   "url": "https://greenline24.com/product/kashemir-50-merinos-50-bv/019fbd4e-9b03-7ba4-9a74-a6779490713d",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15412,7 +15413,7 @@
    "m": 2500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-50-shyolk-50-bv-2s-oran-man-he-_yarko-oranzhevyy-2s-oran-man-he_2500-m-100-gr_04-02-2026-13-13-56",
+   "url": "https://greenline24.com/product/kashemir-50-shyolk-50-bv/019fbd4e-99a9-76f4-8c9e-299e8f0ce9dd",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15423,7 +15424,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-200123-0422_nochnaya-furiya-200123_3000-m-100-gr_24-09-2024-23-30-33",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cb8-7c79-9c48-8ae693586668",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15434,7 +15435,7 @@
    "m": 2900,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-215_sekvoyya-215_2900-m-100-gr_27-05-2026-10-40-04",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cbc-785c-b0b6-017001cbc94b",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15445,7 +15446,7 @@
    "m": 2666,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-219005_armeyskaya-zelen-219005_2666-m-100-gr_10-02-2024-18-38-02",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cb8-76d9-9c48-8ae692c17689",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15456,7 +15457,7 @@
    "m": 2800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-30060_temnaya-noch-30060_2800-m-100-gr_18-12-2025-16-06-54",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cb6-7847-9991-c669f18d08df",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15467,7 +15468,7 @@
    "m": 2666,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-4865_margaritka-4865_2666-m-100-gr_05-09-2023-10-04-47",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cb8-70f9-9c48-8ae6926ca705",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15478,7 +15479,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-60454_haki-60454_2400-m-100-gr_14-06-2022-10-01-09",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cb7-7a91-9195-d6779361fea7",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15489,7 +15490,7 @@
    "m": 2900,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv-acqua-fluo_akvamarin-acqua-fluo_2900-m-100-gr_21-04-2026-15-49-05",
+   "url": "https://greenline24.com/product/kashemir-70-shelk-30-bv/019fbd4e-9cb9-7df4-9bf7-4c3f27da9423",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15511,7 +15512,7 @@
    "m": 950,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/kid-moher-30-poliamid-32-akril-38-bv-9022-7630_zelenyy-9022_950-m-100-gr_21-01-2025-6-30-48",
+   "url": "https://greenline24.com/product/kid-moher-30-poliamid-32-akril-38-bv/019fbd4e-9b14-7044-a9af-52e8d6237b5e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15522,7 +15523,7 @@
    "m": 700,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/len-58-hlopok-42-bv-27270_alpy-27270_700-m-100-gr_19-06-2026-11-17-52",
+   "url": "https://greenline24.com/product/len-58-hlopok-42-bv/019fbd4e-9c46-75eb-96f9-1a392ec46f1e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15533,7 +15534,7 @@
    "m": 330,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/lyon-100-bv-63161-_dzhins-63161_330-m-100-gr_02-06-2026-15-47-09",
+   "url": "https://greenline24.com/product/lyon-100-bv/019fbd4e-9953-71d2-8c89-58ae38c8a841",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15544,7 +15545,7 @@
    "m": 660,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/lyon-100-bv-86_zelen-86_660-m-100-gr_13-03-2023-4-18-57",
+   "url": "https://greenline24.com/product/lyon-100-bv/019fbd4e-9951-79a4-baee-dfe0e65f49b2",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15555,7 +15556,7 @@
    "m": 2000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/lyon-100-bv-935-_tishina-935_2000-m-100-gr_11-06-2026-13-16-51",
+   "url": "https://greenline24.com/product/lyon-100-bv/019fbd4e-9953-771e-8c89-58ae38f39a4a",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15566,7 +15567,7 @@
    "m": 400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/lyon-100-bv-f475_morkov-f475_400-m-100-gr_06-03-2026-13-16-20",
+   "url": "https://greenline24.com/product/lyon-100-bv/019fbd4e-9952-7c24-9a85-6bc0c827afe0",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15577,7 +15578,7 @@
    "m": 950,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/lyon-55-poliester-45-bv-15-1054_kupavnica-15-1054_950-m-100-gr_19-03-2024-16-25-44",
+   "url": "https://greenline24.com/product/lyon-55-poliester-45-bv/019fbd4e-99b9-76ab-ab60-ca7fd6af036d",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15588,7 +15589,7 @@
    "m": 350,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-000-_bezlunnaya-noch-000_350-m-100-gr_18-03-2026-15-07-26",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-99eb-7876-b8cf-c52249fac4f1",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15599,7 +15600,7 @@
    "m": 300,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-000527-1-_krasnyy-vinograd-000527-1_300-m-100-gr_16-06-2026-13-53-58",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-9a10-71e8-8d2c-253faffdbbdd",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15610,7 +15611,7 @@
    "m": 800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-0132_fioletovaya-fantaziya-0132_800-m-100-gr_24-06-2024-16-20-19",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-99ed-7660-a662-57e3b5dc505e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15621,7 +15622,7 @@
    "m": 100,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-104235-1_drevniy-krasnyy-104235_100-m-100-gr_28-03-2024-15-23-06",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-99ee-72a4-a316-da490be5df87",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15643,7 +15644,7 @@
    "m": 300,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-20214-1_seryy-kot-20214-1_300-m-100-gr_16-06-2026-14-56-27",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-9a1f-7db5-a8ef-461763382ba0",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15654,7 +15655,7 @@
    "m": 165,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-2277-1_milori-2277-1_165-m-100-gr_11-06-2026-12-59-05",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-9a0f-70c0-8808-eb9c6174d665",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15665,7 +15666,7 @@
    "m": 165,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-25_akapulko-25_165-m-100-gr_18-11-2022-8-48-55",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-99ec-74b3-9278-8a0cce5288ed",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15676,7 +15677,7 @@
    "m": 460,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-420942_glubokiy-taup-420942_460-m-100-gr_17-06-2026-13-52-46",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-9a20-7a1b-b5bd-652c7c153240",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15687,7 +15688,7 @@
    "m": 800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv-81561_krasnyy-mandarin-81561_800-m-100-gr_20-04-2023-4-11-56",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-99ed-708c-a662-57e3b50abba4",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15698,7 +15699,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-027046-1113_antracit-027046_2400-m-100-gr_30-11-2024-16-09-57",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a57-77cf-a0a5-38bfab669d9d",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15709,7 +15710,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-027218-0917_nochnaya-tayga-027218_1500-m-100-gr_03-10-2024-7-15-01",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a59-7a7c-92e7-89d3dd2a28b3",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15720,7 +15721,7 @@
    "m": 1800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-63746_atart-63746_1800-m-100-gr_08-02-2024-16-52-56",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a58-7943-9934-426e3abb8028",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15731,7 +15732,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-6m0979-6018_skazochnaya-tayga-6m0979_1500-m-100-gr_30-11-2024-16-33-12",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a5a-7c0b-a546-0b03de684098",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15742,7 +15743,7 @@
    "m": 1330,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-723481-2_duh-taygi-723481_1330-m-100-gr_20-07-2024-14-32-56",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a59-74ec-92e7-89d3dc97571e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15753,7 +15754,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-7965a_nochnoy-les-7965a_1500-m-100-gr_30-11-2024-15-47-52",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a5a-70b7-a546-0b03dd1d18d8",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15764,7 +15765,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv-9242_nochnaya-el-9242_2400-m-100-gr_21-12-2022-5-08-43",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-dark-bv/019fbd4e-9a57-7d7f-a0a5-38bfabf3ab98",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15775,7 +15776,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-001205_belyy-001205_3000-m-100-gr_26-11-2025-6-19-58",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a65-796f-a4d3-987125302cd0",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15786,7 +15787,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-027993-280116_ohra-027993_1500-m-100-gr_03-07-2024-16-42-29",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a7b-738e-8dd4-c2d815b81992",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15797,7 +15798,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-031023-12_bronzovyy-kotl-031023-12_1500-m-100-gr_03-10-2023-14-20-50",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a70-7098-8e9e-6846320202c9",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15808,7 +15809,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-031024-1_shokoladnaya-karamel-031024_1500-m-100-gr_03-10-2024-6-42-37",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a73-7b64-9847-066af7a2746a",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15819,7 +15820,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-0504231-1_sever-0504231_1500-m-100-gr_05-04-2024-18-09-41",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a76-7033-ac7c-2989332b2d5f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15830,7 +15831,7 @@
    "m": 1850,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-064014_fioletovaya-fantaziya-064014_1850-m-100-gr_08-12-2023-8-18-36",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a6c-74df-9aab-9cac9ec325d7",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15841,7 +15842,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-100424-6_eos-100424-6_1500-m-100-gr_10-04-2024-14-49-32",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a77-724b-9168-64523dfed3b4",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15852,7 +15853,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-100424-9_gigeya-100424-9_1500-m-100-gr_10-04-2024-15-05-21",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a78-73fa-bf07-bb67625678ac",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15863,7 +15864,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-1154-_voda-1154_1500-m-100-gr_11-03-2026-13-22-17",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a68-7182-9067-5bae9e64d77f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15874,7 +15875,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-1250-0908_oblachnyy-1250_1500-m-100-gr_06-04-2025-21-33-01",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a8e-760c-9534-bbc647f1247c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15885,7 +15886,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-13820_bronza-13820_3000-m-100-gr_25-03-2025-10-53-10",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a68-7cd2-9067-5bae9f8b1ce5",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15896,7 +15897,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-160823-10_rozovyy-mel-160823-10_2400-m-100-gr_16-08-2023-9-31-22",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a6d-7c5d-bdd7-68f4c7a1a687",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15907,7 +15908,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-1f9_zheltyy-1f9_2400-m-100-gr_22-08-2022-13-11-17",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a67-7bb6-9bb7-62030ce5f4d7",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15918,7 +15919,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-22247-_sled-easy-care_1500-m-100-gr_11-03-2026-13-18-26",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a97-764a-a6a1-486b025c658e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15929,7 +15930,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-28-1015_zheltyy-28_2400-m-100-gr_24-03-2025-1-36-56",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a8c-7dd3-9e8f-411b4117dc41",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15940,7 +15941,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-30001-0521_snezhnyy-feniks-30001_2400-m-100-gr_03-10-2024-6-57-50",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a84-7467-937e-f6bc8aeff33e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15951,7 +15952,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-30001-0822_snezhnyy-feniks-30001_3000-m-100-gr_17-03-2025-1-05-15",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a89-7d3e-8835-28be8b5127a3",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15962,7 +15963,7 @@
    "m": 2250,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-35132_solnechnyy-35132_2250-m-100-gr_08-12-2023-7-34-14",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a73-700c-9847-066af5df1925",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15973,7 +15974,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-442191-0609_korichnevyy-442191_2400-m-100-gr_08-07-2026-12-30-24",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a86-7d43-a96d-cb2576149a47",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15984,7 +15985,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-4i-vert-treiil_stepnoy-veter-4i-vert-treiil_2400-m-100-gr_21-12-2023-17-51-38",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a6e-7279-afae-0c53f0755f72",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -15995,7 +15996,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-548399-0122_lisa-548399_2400-m-100-gr_17-01-2026-16-52-39",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a86-77e7-a96d-cb257609efca",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16006,7 +16007,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-6036026_poceluy-solnca-6036026_2400-m-100-gr_18-05-2024-15-53-35",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a67-7072-9bb7-62030c2856bb",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16017,7 +16018,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-6326_shokoladnaya-kosmeya-6326_2400-m-100-gr_25-03-2025-10-53-47",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a72-7a02-9697-c49d08988934",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16028,7 +16029,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-87122_chernichnyy-desert-87122_2400-m-100-gr_20-11-2023-19-00-02",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a71-7d89-a4f1-71bac8c6a6db",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16039,7 +16040,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-910ochre_pe18_ohra-910ochre_pe18_2400-m-100-gr_15-11-2022-8-46-09",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a69-72ec-8f1d-a24d2a3c2db4",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16050,7 +16051,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-s5f73069-_lazur-s5f73069_2400-m-100-gr_22-11-2025-14-01-16",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a95-7cde-a5cc-f85f84c03e82",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16061,7 +16062,7 @@
    "m": 1800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv-variante-80_sirenevyy-sad-variante-80_1800-m-100-gr_09-03-2023-5-07-16",
+   "url": "https://greenline24.com/product/merinos-100-ot-1500-m-100-gr-do-3000-m-100-gr-light-bv/019fbd4e-9a6d-70d1-bdd7-68f4c6e90b29",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16072,7 +16073,7 @@
    "m": 1450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-25-kashemir-5-angora-5-poliamid-25-viskoza-40-bv-123301_sirenevyy-123301_1450-m-100-gr_24-08-2022-0-33-47",
+   "url": "https://greenline24.com/product/merinos-25-kashemir-5-angora-5-poliamid-25-viskoza-40-bv/019fbd4e-998c-744d-ad78-57396a94b3ec",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16083,7 +16084,7 @@
    "m": 1450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-30-poliamid-35-viskoza-30-kashemir-5-bv-624_vecher-624_1450-m-100-gr_04-09-2025-2-27-11",
+   "url": "https://greenline24.com/product/merinos-30-poliamid-35-viskoza-30-kashemir-5-bv/019fbd4e-9b0c-7f6b-8817-0af5bd3486ce",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16094,7 +16095,7 @@
    "m": 1450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-40-viskoza-25-poliamid-25-kashemir-10-bv-10001_suhoe-moloko-10001_1450-m-100-gr_09-06-2026-10-45-27",
+   "url": "https://greenline24.com/product/merinos-40-viskoza-25-poliamid-25-kashemir-10-bv/019fbd4e-9bdb-7103-81c0-1181f5c94ad9",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16105,7 +16106,7 @@
    "m": 483,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-40-viskoza-28-poliamid-15-kashemir-10-angora-7-bv-94827_citrusovyy-sad-94827_483-m-100-gr_11-02-2026-13-20-42",
+   "url": "https://greenline24.com/product/merinos-40-viskoza-28-poliamid-15-kashemir-10-angora-7-bv/019fbd4e-99e5-763d-981b-0c230839271e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16116,7 +16117,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-40-viskoza-30-poliamid-20-kashemir-10-bv-1857_lavanda-1857_1500-m-100-gr_02-07-2026-10-02-34",
+   "url": "https://greenline24.com/product/merinos-40-viskoza-30-poliamid-20-kashemir-10-bv/019fbd4e-990d-7019-b634-361bbc1a53d6",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16127,7 +16128,7 @@
    "m": 1450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-40-viskoza-30-poliamid-20-kashemir-10-bv-2107-3374_siniy-2107_1450-m-100-gr_10-03-2025-2-25-48",
+   "url": "https://greenline24.com/product/merinos-40-viskoza-30-poliamid-20-kashemir-10-bv/019fbd4e-990d-7651-b634-361bbc701e10",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16138,7 +16139,7 @@
    "m": 2200,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-akril-50-bv-00836_bezlunnaya-noch-00836_2200-m-100-gr_29-12-2023-15-41-57",
+   "url": "https://greenline24.com/product/merinos-50-akril-50-bv/019fbd4e-9c8f-73f0-b8e0-f2cd1d70e330",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16149,7 +16150,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-akril-50-bv-090300_tayga-090300_1400-m-100-gr_24-02-2025-17-13-23",
+   "url": "https://greenline24.com/product/merinos-50-akril-50-bv/019fbd4e-9c90-76a2-925e-2d3683823e3d",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16157,10 +16158,10 @@
    "line": "FOLCO",
    "comp": "Акрил 50% Меринос 50%",
    "g": 100,
-   "m": 1250,
+   "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-akril-50-bv-18242_bereza-18242_1250-m-100-gr_01-07-2025-15-59-10",
+   "url": "https://greenline24.com/product/merinos-50-akril-50-bv/019fbd4e-9c8e-712a-bde1-5a73f1a2a51c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16171,7 +16172,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-hlopok-50-bv-1560-_utrenniy-tuman-1560_2400-m-100-gr_04-04-2026-13-36-03",
+   "url": "https://greenline24.com/product/merinos-50-hlopok-50-bv/019fbd4e-995c-7860-afd8-532daf07424b",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16182,7 +16183,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-hlopok-50-bv-555-1-_yarkaya-vesna-555-1_1500-m-100-gr_04-04-2026-17-07-04",
+   "url": "https://greenline24.com/product/merinos-50-hlopok-50-bv/019fbd4e-995f-725c-bf5b-caf3762983c4",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16193,7 +16194,7 @@
    "m": 270,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-hlopok-50-bv-611-1_vecher-611_270-m-100-gr_15-03-2024-16-57-41",
+   "url": "https://greenline24.com/product/merinos-50-hlopok-50-bv/019fbd4e-995c-7f6c-afd8-532daf67fb57",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16204,7 +16205,7 @@
    "m": 500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-50-neylon-50-vspushennyy-shnurok-bv-nero-unito-2_chernyy-nero-unito_500-m-100-gr_17-03-2025-0-28-39",
+   "url": "https://greenline24.com/product/merinos-50-neylon-50-vspushennyy-shnurok-bv/019fbd4e-9bb6-7ceb-a10f-cfeac542d25c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16215,7 +16216,7 @@
    "m": 160,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-61-alpaka-35-pliamid-4-bukle-bv-620060-1-_vechnyy-mrak-620060-1_160-m-100-gr_18-02-2026-14-56-39",
+   "url": "https://greenline24.com/product/merinos-61-alpaka-35-pliamid-4-bukle-bv/019fbd4e-9be1-737d-9f89-46e05f5a6a8b",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16226,7 +16227,7 @@
    "m": 340,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-65-poliamid-25-alpaka-10-shnurok-bv-2-2_tucha-2_340-m-100-gr_08-07-2026-9-15-59",
+   "url": "https://greenline24.com/product/merinos-65-poliamid-25-alpaka-10-shnurok-bv/019fbd4e-9bc1-7b3e-ba17-5b8ece95203f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16248,7 +16249,7 @@
    "m": 750,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-70-kashemir-30-ot-300-m-100-gr-bv-400008-_temnoe-more-400008_750-m-100-gr_04-02-2026-13-20-55",
+   "url": "https://greenline24.com/product/merinos-70-kashemir-30-ot-300-m-100-gr-bv/019fbd4e-9c54-7f44-ba52-acb83e9d51b0",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16259,7 +16260,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-70-shelk-30-bv-008800-0823_navi-008800_2400-m-100-gr_20-08-2024-7-49-13",
+   "url": "https://greenline24.com/product/merinos-70-shelk-30-bv/019fbd4e-9919-7f59-8e70-465335a4ec84",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16270,7 +16271,7 @@
    "m": 466,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-70-shelk-30-bv-4524-1_chernaya-dyra-4524-1_466-m-100-gr_19-06-2026-13-32-57",
+   "url": "https://greenline24.com/product/merinos-70-shelk-30-bv/019fbd4e-991a-7593-a312-8e9785e4d577",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16281,7 +16282,7 @@
    "m": 1900,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-76-kashemir-14-solvron-10-bv-2945_ryzhiy-lis-2945_1900-m-100-gr_21-02-2026-9-06-49",
+   "url": "https://greenline24.com/product/merinos-76-kashemir-14-solvron-10-bv/019fbd4e-9b49-735c-a58f-fc3178d8a5f3",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16292,7 +16293,7 @@
    "m": 230,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-76-poliamid-24-shnurok-bv-4925-1-_shepot-glubin-4925-1_230-m-100-gr_18-02-2026-14-40-14",
+   "url": "https://greenline24.com/product/merinos-76-poliamid-24-shnurok-bv/019fbd4e-9bef-7b10-bdf9-cb5f73185286",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16303,7 +16304,7 @@
    "m": 2000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-80-kashemir-20-bv-1940-_noch-v-lesu-1940_2000-m-100-gr_14-04-2026-15-01-36",
+   "url": "https://greenline24.com/product/merinos-80-kashemir-20-bv/019fbd4e-9ce2-7bd2-937a-98e1ac2907d3",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16314,7 +16315,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-80-kashemir-20-bv-716-_kosmos-716_1500-m-100-gr_11-02-2026-12-56-23",
+   "url": "https://greenline24.com/product/merinos-80-kashemir-20-bv/019fbd4e-9ce3-7d28-b52e-be527914e243",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16325,7 +16326,7 @@
    "m": 2400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-80-kashemir-20-bv-71667-0719_okean-71667_2400-m-100-gr_05-11-2024-7-55-36",
+   "url": "https://greenline24.com/product/merinos-80-kashemir-20-bv/019fbd4e-9ce3-77a8-b52e-be5278f07b66",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16336,7 +16337,7 @@
    "m": 800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-80-poliamid-20-bukle-bv-71810-_ryzhiy-kot-71810_800-m-100-gr_06-02-2026-10-50-07",
+   "url": "https://greenline24.com/product/merinos-80-poliamid-20-bukle-bv/019fbd4e-9cd6-72f1-8d21-b48d68b5f226",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16347,7 +16348,7 @@
    "m": 1550,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv-1186_plyazh-1186_1550-m-100-gr_19-02-2026-15-12-24",
+   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv/019fbd4e-999c-7671-b920-836a7574e965",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16358,7 +16359,7 @@
    "m": 1600,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv-1202-0721_temnaya-noch-1202_1600-m-100-gr_08-07-2026-13-04-41",
+   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv/019fbd4e-999b-742f-a8ef-fca53284ec66",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16369,7 +16370,7 @@
    "m": 1800,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv-126774_gazel-126774_1800-m-100-gr_08-11-2023-17-01-25",
+   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv/019fbd4e-999a-7dfb-959b-c71b15e09fdb",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16380,7 +16381,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv-202_okean-202_1500-m-100-gr_24-08-2025-20-14-44",
+   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv/019fbd4e-999b-79cf-a8ef-fca532c941aa",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16391,7 +16392,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv-454_plamya-454_1500-m-100-gr_22-05-2026-14-32-58",
+   "url": "https://greenline24.com/product/merinos-90-kashemir-10-bv/019fbd4e-999d-7d03-acf2-e9de662a1beb",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16402,7 +16403,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinos-92-kashemir-8-bv-311_sled-pantery-311_1500-m-100-gr_22-05-2026-14-49-19",
+   "url": "https://greenline24.com/product/merinos-92-kashemir-8-bv/019fbd4e-99bf-7893-be62-722ac39efcef",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16413,7 +16414,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv-0532_zelenyy-ostrov-0532_1500-m-100-gr_10-04-2024-14-28-36",
+   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv/019fbd4e-9942-7d60-ad6a-613d7db471e7",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16424,7 +16425,7 @@
    "m": 700,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv-23554_vodovorot-23554_700-m-100-gr_21-10-2025-7-22-44",
+   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv/019fbd4e-9945-751f-9511-e35b0daedab4",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16435,7 +16436,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv-4677_yarkaya-polnoch-4677_1500-m-100-gr_29-12-2023-15-24-32",
+   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv/019fbd4e-9945-7c0b-9511-e35b0e544e4d",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16446,7 +16447,7 @@
    "m": 900,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv-784027-0321_oranzhevyy-784027_900-m-100-gr_07-07-2026-15-09-23",
+   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv/019fbd4e-9944-7714-8935-3853e19d26be",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16457,7 +16458,7 @@
    "m": 120,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/miks-na-osnove-shersti-viskozy-sinteticheskih-volokon-2-stampato_rassvet-2-stampato_120-m-100-gr_10-08-2023-11-54-41",
+   "url": "https://greenline24.com/product/miks-na-osnove-shersti-viskozy-sinteticheskih-volokon/019fbd4e-9ceb-78f9-949e-50616e27e978",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16468,7 +16469,7 @@
    "m": 650,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/moher-23-poliamid-45-akril-32-s-payetkami-bv-greggio_zvezdnyy-dozhd-greggio_650-m-100-gr_15-04-2026-14-57-27",
+   "url": "https://greenline24.com/product/moher-23-poliamid-45-akril-32-s-payetkami-bv/019fbd4e-9c28-7808-9c28-1e087a397f1c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16479,7 +16480,7 @@
    "m": 50,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/neylonovaya-plenka-14-viskoza-73-yaponskaya-bumaga-13-21-09-21-1_zoloto-21-09-21-1_50-m-100-gr_28-09-2021-14-59-58",
+   "url": "https://greenline24.com/product/neylonovaya-plenka-14-viskoza-73-yaponskaya-bumaga-13/019fbd4e-9ecb-7ad0-bb4a-fb472f955dea",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16490,7 +16491,7 @@
    "m": 350,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/pererabotannyy-hlopok-65-poliester-31-drugie-volokna-4-bv-4760-_prazdnik-sakury-4760_350-m-100-gr_02-04-2026-14-35-39",
+   "url": "https://greenline24.com/product/pererabotannyy-hlopok-65-poliester-31-drugie-volokna-4-bv/019fbd4e-9bfc-7b74-9104-e367f64e0242",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16501,7 +16502,7 @@
    "m": 350,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/poliester-59-hlopok-35-inye-volokna-3-payetki-3-bv-51-1-_blesk-51-1_350-m-100-gr_04-04-2026-15-00-25",
+   "url": "https://greenline24.com/product/poliester-59-hlopok-35-inye-volokna-3-payetki-3-bv/019fbd4e-9c00-7596-991c-da77902f3e09",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16512,7 +16513,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-0b_pralayn-0b_3000-m-100-gr_11-03-2026-10-33-29",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c77-77e1-92d0-d9231c3142fc",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16523,7 +16524,7 @@
    "m": 6000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-1357_marigold-1357_6000-m-100-gr_30-03-2024-17-42-14",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c77-7e19-92d0-d9231c6ca6e9",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16534,7 +16535,7 @@
    "m": 2500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-38431_klever-38431_2500-m-100-gr_11-03-2026-10-31-58",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c78-74cb-b9be-e418bc06a1a8",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16545,7 +16546,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-80_grifel-80_3000-m-100-gr_29-05-2026-16-18-12",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c7a-749b-a53f-4ea7dc657ea0",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16556,7 +16557,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-a0416_zheltyy-a0416_3000-m-100-gr_09-12-2021-17-12-45",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c76-7a9e-a23a-87ca1959c9ab",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16567,7 +16568,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-nero-0124_chernyy-nero_3000-m-100-gr_21-04-2025-3-41-03",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c79-7159-93b3-bab6602be79c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16578,7 +16579,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-nero-0721_chernyy-nero_3000-m-100-gr_21-04-2025-3-39-18",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c78-7aeb-b9be-e418bcf6d534",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16589,7 +16590,7 @@
    "m": 3000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-bv-nero_zagadka-nero_3000-m-100-gr_29-05-2026-16-11-34",
+   "url": "https://greenline24.com/product/shelk-100-bv/019fbd4e-9c79-7dc1-93b3-bab6612ebbd5",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16600,7 +16601,7 @@
    "m": 1016,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shelk-100-premium-bv-196r_kelli-196r_1016-m-100-gr_31-10-2025-17-44-02",
+   "url": "https://greenline24.com/product/shelk-100-premium-bv/019fbd4e-9ccb-7857-81bc-1915eb45513f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16611,7 +16612,7 @@
    "m": 1400,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/sherst-80-pa-20-bv-26640_yagoda-26640_1400-m-100-gr_08-07-2026-12-55-28",
+   "url": "https://greenline24.com/product/sherst-80-pa-20-bv/019fbd4e-9cae-751f-a765-dbcd389db10e",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16622,7 +16623,7 @@
    "m": 1000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/sherst-yagnyonka-95-kashemir-5-bv-linen_ovsyanka-linen_1000-m-100-gr_22-05-2026-15-57-50",
+   "url": "https://greenline24.com/product/sherst-yagnyonka-95-kashemir-5-bv/019fbd4e-9bcc-7ba2-87f7-445d3164550f",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16633,7 +16634,7 @@
    "m": 3500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shyolk-59-hlopok-41-bv-219395-0723_roza-219395_3500-m-100-gr_05-07-2025-7-36-53",
+   "url": "https://greenline24.com/product/shyolk-59-hlopok-41-bv/019fbd4e-9caa-7783-a163-2504fb61c155",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16644,7 +16645,7 @@
    "m": 550,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/shyolk-80-kashemir-20-monica-bv-albicocca_abrikos-albicocca_550-m-100-gr_18-02-2025-3-57-57",
+   "url": "https://greenline24.com/product/shyolk-80-kashemir-20-monica-bv/019fbd4e-9b50-7ead-badf-d52df0aaa632",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16655,7 +16656,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-46-poliamid-50-merinos-4-bv-158620423_dzhungli-158620423_1500-m-100-gr_27-11-2025-1-24-55",
+   "url": "https://greenline24.com/product/super-kid-moher-46-poliamid-50-merinos-4-bv/019fbd4e-99d7-7737-acc8-a303379cd474",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16666,7 +16667,7 @@
    "m": 1000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-50-poliamid-32-merinos-18-bv-8901_romashkovyy-chay-8901_1000-m-100-gr_25-11-2025-5-28-06",
+   "url": "https://greenline24.com/product/super-kid-moher-50-poliamid-32-merinos-18-bv/019fbd4e-99c5-7d0e-bc4d-7bdb6976c9fe",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16677,7 +16678,7 @@
    "m": 1000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-50-poliamid-32-merinos-18-bv-9082-55718_pryanyy-aromat-9082_1000-m-100-gr_03-10-2025-9-54-02",
+   "url": "https://greenline24.com/product/super-kid-moher-50-poliamid-32-merinos-18-bv/019fbd4e-99c9-74dd-b75d-421e470047dc",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16688,7 +16689,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-58-pa-32-merinos-10-bv-7181-315_verblyud-7181-315_1500-m-100-gr_17-11-2025-3-01-00",
+   "url": "https://greenline24.com/product/super-kid-moher-58-pa-32-merinos-10-bv/019fbd4e-98d7-72ea-bc51-269dffedbe7c",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16699,7 +16700,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-58-poliamid-37-sherst-5-bv-1584_zelenyy-luk-1584_1500-m-100-gr_21-04-2025-2-25-12",
+   "url": "https://greenline24.com/product/super-kid-moher-58-poliamid-37-sherst-5-bv/019fbd4e-99da-7f4f-a12d-7a9d78076ba2",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16710,7 +16711,7 @@
    "m": 500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-65-poliamid-35-bv-006125-431_zelenyy-006125_500-m-100-gr_28-08-2024-10-27-35",
+   "url": "https://greenline24.com/product/super-kid-moher-65-poliamid-35-bv/019fbd4e-99b1-7507-8a26-b3d2917cd678",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16721,7 +16722,7 @@
    "m": 1000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-66-merinos-4-poliamid-30-bv-147_zheltyy-147_1000-m-100-gr_27-11-2025-1-32-49",
+   "url": "https://greenline24.com/product/super-kid-moher-66-merinos-4-poliamid-30-bv/019fbd4e-99ad-7b79-875a-e1e95b540b36",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16732,7 +16733,7 @@
    "m": 1000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-67-merinos-3-poliamid-30-bv-1029_pryanost-1029_1000-m-100-gr_11-03-2026-15-21-54",
+   "url": "https://greenline24.com/product/super-kid-moher-67-merinos-3-poliamid-30-bv/019fbd4e-98dd-72c8-97f2-b865d6602c95",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16743,7 +16744,7 @@
    "m": 1000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-67-merinos-5-poliamid-28-bv-000055_oliva-000055_1000-m-100-gr_20-12-2023-13-11-13",
+   "url": "https://greenline24.com/product/super-kid-moher-67-merinos-5-poliamid-28-bv/019fbd4e-98e2-773d-b58b-5fafa067fcab",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16754,7 +16755,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-67-merinos-5-poliamid-28-bv-005044-6992_teddi-005044_1500-m-100-gr_29-01-2025-16-16-15",
+   "url": "https://greenline24.com/product/super-kid-moher-67-merinos-5-poliamid-28-bv/019fbd4e-98eb-77cd-a7b1-ec1949089845",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16765,7 +16766,7 @@
    "m": 850,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/super-kid-moher-75-shyolk-25-tramonto-3002_ahul-3002_850-m-100-gr_24-07-2025-23-39-46",
+   "url": "https://greenline24.com/product/super-kid-moher-75-shyolk-25-tramonto/019fbd4e-9b7d-7d96-8fc7-6ecfcd0358e5",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16776,7 +16777,7 @@
    "m": 1500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/tvid-merinos-90-shelk-10-bv-100_mramor-100_1500-m-100-gr_18-06-2026-14-03-53",
+   "url": "https://greenline24.com/product/tvid-merinos-90-shelk-10-bv/019fbd4e-9c39-76d8-9123-173ed898a147",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16787,7 +16788,7 @@
    "m": 210,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-63-akril-23-sherst-7-moher-7-bv-4210_nochnoe-serebro-4210_210-m-100-gr_08-07-2026-10-50-02",
+   "url": "https://greenline24.com/product/viskoza-63-akril-23-sherst-7-moher-7-bv/019fbd4e-9b27-7957-9f34-df8b1beef1d8",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16798,7 +16799,7 @@
    "m": 540,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-67-merinos-33-shnurok-bv-999-1_noch-999_540-m-100-gr_10-03-2025-3-52-25",
+   "url": "https://greenline24.com/product/viskoza-67-merinos-33-shnurok-bv/019fbd4e-9bc8-71ce-bc23-0e232225d8c8",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16809,7 +16810,7 @@
    "m": 1450,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-73-pliamid-27-s-shishechkami-bv-122199_otrazhenie-na-vode-122199_1450-m-100-gr_03-04-2026-11-59-51",
+   "url": "https://greenline24.com/product/viskoza-73-pliamid-27-s-shishechkami-bv/019fbd4e-9bf7-7385-b2b2-e780564af760",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16820,7 +16821,7 @@
    "m": 340,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-80-lyureks-20-bv-bk16-2_mamba-bk16_340-m-100-gr_13-04-2024-16-15-14",
+   "url": "https://greenline24.com/product/viskoza-80-lyureks-20-bv/019fbd4e-9b77-7aaa-a1dc-6c620cfb1235",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16831,7 +16832,7 @@
    "m": 1580,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv-103_siyanie-zvezdy-103_1580-m-100-gr_26-05-2026-12-55-27",
+   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv/019fbd4e-997d-7ec4-9575-09b3d8d7e6b2",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16842,7 +16843,7 @@
    "m": 2000,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv-7021-3_hadar-7021_2000-m-100-gr_08-07-2026-10-54-06",
+   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv/019fbd4e-997a-7f6c-ab3c-889eb1bc4290",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16853,7 +16854,7 @@
    "m": 3700,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv-9749_fioletovyy-son-9749_3700-m-100-gr_11-07-2025-14-51-35",
+   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv/019fbd4e-997b-7ba8-9bc7-57a538f2ed4b",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16864,7 +16865,7 @@
    "m": 7500,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv-f048-2_festival-f048_3500-m-100-gr_14-04-2025-1-40-50",
+   "url": "https://greenline24.com/product/viskoza-s-lyureksom-bv/019fbd4e-997b-7558-9bc7-57a538cc8aa3",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16875,7 +16876,7 @@
    "m": 225,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/viskoza-s-payetkami-bv-7633-1_zolotoe-yabloko-7633_225-m-100-gr_21-11-2024-16-15-06",
+   "url": "https://greenline24.com/product/viskoza-s-payetkami-bv/019fbd4e-996c-741d-8ccc-abdf35ef9b79",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16886,7 +16887,7 @@
    "m": 1200,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/vspushennyy-merinos-56-vspushennyy-kashemir-24-poliamid-20-bv-20755_oblepiha-20755_1200-m-100-gr_21-10-2025-7-39-05",
+   "url": "https://greenline24.com/product/vspushennyy-merinos-56-vspushennyy-kashemir-24-poliamid-20-bv/019fbd4e-9bd6-73c7-b946-71b9e8535011",
    "src": "greenline24.com (бобинная пряжа)"
   },
   {
@@ -16897,7 +16898,7 @@
    "m": 1550,
    "needle": null,
    "gauge": null,
-   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv-abbai_polet-abbai_1550-m-100-gr_15-08-2026-17-09-57",
+   "url": "https://greenline24.com/product/merinosovaya-sherst-100-bv/01a03da9-68df-7c25-9588-4b9ce5708842",
    "src": "greenline24.com (карточка проданного товара)"
   },
   {
@@ -33463,6 +33464,127 @@
    "gauge": "15 п. x 20 р.",
    "src": "ili-ili.com (разбор карточек)",
    "url": "https://ili-ili.com/catalog/pryazha/lana-grossa_3/lana-grossa-alta-moda-cashmere-16/2142213/"
+  },
+  {
+   "brand": "Botto Poala",
+   "line": "Альпака 20% Меринос 80%",
+   "comp": "Альпака 20% Меринос 80%",
+   "g": 100,
+   "m": 1000,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/merinos-80-alpaka-20-bv/019fbd4e-9b10-71de-8060-db5e32d9426d"
+  },
+  {
+   "brand": "Exte",
+   "line": "Эластан 100%",
+   "comp": "Эластан 100%",
+   "g": 100,
+   "m": 8000,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/rezinka-tonkaya-bv/019fbd4e-9935-7889-a111-35e4ee43dfa6"
+  },
+  {
+   "brand": "Fullonica snc",
+   "line": "Меринос 100%",
+   "comp": "Меринос 100%",
+   "g": 100,
+   "m": 3000,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/merinos-100-lt-1500-m-100-gr-light-bv/019fbd4e-99f2-7113-a48d-17ac6d54647f"
+  },
+  {
+   "brand": "Gruppo Filpucci",
+   "line": "Rainbow",
+   "comp": "Меринос 100%",
+   "g": 100,
+   "m": 500,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/01a03da9-6ddb-7b02-8d83-856c2cb4d5b5"
+  },
+  {
+   "brand": "Pucci Enrico & Riccardo",
+   "line": "Kid Mohair",
+   "comp": "Кид мохер 30% Полиакрил 40% Полиамид 30%",
+   "g": 100,
+   "m": 950,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/kid-moher-30-poliakril-40-poliamid-30-bv/019fbd4e-9b1f-7ce8-8b4b-a14e36b3a6c1"
+  },
+  {
+   "brand": "Sesia",
+   "line": "Cable'5",
+   "comp": "Хлопок 100%",
+   "g": 100,
+   "m": 430,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c59-77c4-836a-8403603aef2c"
+  },
+  {
+   "brand": "Sesia",
+   "line": "Cable'8",
+   "comp": "Хлопок 100%",
+   "g": 100,
+   "m": 670,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/hlopok-100-bv/019fbd4e-9c59-70c8-836a-84035f3d9ed6"
+  },
+  {
+   "brand": "Todd&Duncan",
+   "line": "Cashmere 100%",
+   "comp": "Кашемир 100%",
+   "g": 100,
+   "m": null,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/kashemir-100-premium-light-cariaggi-todd-amp-dunkan-loro-piana-2-27-2-28-bv/019fbd4e-9ae1-72e9-9ce0-a727ea05ffc7"
+  },
+  {
+   "brand": "Zegna Baruffa",
+   "line": "Bigne'/x",
+   "comp": "Кашемир 30% Меринос 70%",
+   "g": 100,
+   "m": 1500,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/merinos-70-kashemir-30-ot-1300-m-100-gr-bv/019fbd4e-9c87-7a9a-874e-71dc5f232767"
+  },
+  {
+   "brand": "Zegna Baruffa",
+   "line": "Supergeelong multi",
+   "comp": "Меринос 100%",
+   "g": 100,
+   "m": 300,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/01a03da9-6de0-7bf9-ad85-eeff50be7fa8"
+  },
+  {
+   "brand": "Zegna Baruffa",
+   "line": "Supergeelong rws",
+   "comp": "Меринос 100%",
+   "g": 100,
+   "m": 1500,
+   "needle": null,
+   "gauge": null,
+   "src": "greenline24.com (бобинная пряжа)",
+   "url": "https://greenline24.com/product/geelong-100-merinos-bv/01a03da9-6dbe-7c85-bca8-b1fcbaa85f66"
   }
  ]
 }
