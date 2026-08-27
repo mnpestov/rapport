@@ -17,8 +17,17 @@
 # чек-лист): для check_price_updates.py это неважно — он читает только цену, —
 # а generate_prod_backfill_sql.py этих авторов пропускает, у них нет
 # забэкфиленных строк в локальной БД.
+#
+# 2026-08-27 — добавлена Anastasiia Stupa (anastasiiastupa.ru, InSales).
+# Цена и подробности проверены живьём на всех 6 товарах сайта: на каждой
+# странице ровно по одному .product-price-container и .product-description,
+# цена извлекается механизмом _extract_insales_price. Локальных строк у неё
+# нет (её вообще нет в локальной БД), поэтому generate_prod_backfill_sql.py
+# её пропустит с предупреждением — как и 16 авторов от 2026-08-23.
+# Скидка живьём НЕ подтверждена: ни у одного из 6 товаров её сейчас нет.
 
 CONFIRMED_AUTHORS = [
+    "Anastasiia Stupa",
     "Annetta-handmade",
     "Анастасия Романова",
     "asyaknit",
