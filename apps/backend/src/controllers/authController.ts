@@ -8,6 +8,14 @@ import { checkTelegramSubscriptionDetailed, SubscriptionCheckResult } from "../u
 import { checkWhitelistAccess } from "../services/whitelistService";
 import { logWhitelistCheck, logAuthDebug } from "../utils/whitelistLogger";
 
+// Пошаговый трейсинг — оставлен от расследования конкретного инцидента с
+// авторизацией, но не нужен в постоянной работе и не должен литься
+// безусловно в prod-логи. Включается явно, никогда не по умолчанию.
+const AUTH_DEBUG_LOGGING = process.env.AUTH_DEBUG_LOGGING === "true";
+const debugLog = (...args: unknown[]) => {
+  if (AUTH_DEBUG_LOGGING) console.log(...args);
+};
+
 export const telegramAuth = async (req: Request, res: Response) => {
   // ── Preamble ───────────────────────────────────────────────────────────────
   const requestId = crypto.randomUUID();
@@ -15,32 +23,32 @@ export const telegramAuth = async (req: Request, res: Response) => {
   const gatewayRequestId = requestId;
   const authStart = Date.now();
 
-  console.log(`[AUTH] [${requestId}] Step 1: Request started`);
-  console.log(`[AUTH] [${requestId}] Step 1: content-type=${req.headers["content-type"] ?? "(none)"} method=${req.method} url=${req.url}`);
+  debugLog(`[AUTH] [${requestId}] Step 1: Request started`);
+  debugLog(`[AUTH] [${requestId}] Step 1: content-type=${req.headers["content-type"] ?? "(none)"} method=${req.method} url=${req.url}`);
 
-  console.log(`[AUTH] [${requestId}] Step 2: req.body available`);
-  console.log(`[AUTH] [${requestId}] Step 2: typeof req.body=${typeof req.body} req.body===undefined=${req.body === undefined}`);
+  debugLog(`[AUTH] [${requestId}] Step 2: req.body available`);
+  debugLog(`[AUTH] [${requestId}] Step 2: typeof req.body=${typeof req.body} req.body===undefined=${req.body === undefined}`);
   if (req.body !== undefined && req.body !== null && typeof req.body === "object") {
-    console.log(`[AUTH] [${requestId}] Step 2: Object.keys(req.body)=${JSON.stringify(Object.keys(req.body))}`);
+    debugLog(`[AUTH] [${requestId}] Step 2: Object.keys(req.body)=${JSON.stringify(Object.keys(req.body))}`);
   }
 
   let initData: string | undefined;
   try {
-    console.log(`[AUTH] [${requestId}] Step 3: initData extracted`);
+    debugLog(`[AUTH] [${requestId}] Step 3: initData extracted`);
     initData = req.body?.initData;
   } catch (bodyErr) {
     console.error(`[AUTH] [${requestId}] Step 3: EXCEPTION accessing req.body.initData`, bodyErr);
     throw bodyErr;
   }
 
-  console.log(`[AUTH] [${requestId}] Step 4: initData length=${initData != null ? String(initData).length : "n/a"} type=${typeof initData}`);
+  debugLog(`[AUTH] [${requestId}] Step 4: initData length=${initData != null ? String(initData).length : "n/a"} type=${typeof initData}`);
 
   if (!initData) {
     return res.status(400).json({ error: "initData is required" });
   }
 
   const initDataLength = String(initData).length;
-  console.log(`[AUTH] [${requestId}] initData received, length=${initDataLength}`);
+  debugLog(`[AUTH] [${requestId}] initData received, length=${initDataLength}`);
 
   const allowDevAuth = process.env.ALLOW_DEV_AUTH === "true";
 
@@ -60,8 +68,8 @@ export const telegramAuth = async (req: Request, res: Response) => {
     username = "devuser";
     languageCode = "ru";
     subResult = { isSubscriber: true, gatewayStatusCode: null, gatewayResponse: null, errorName: null, gatewayDurationMs: null, isParticipantIdInvalid: false };
-    console.log(`[AUTH] [${requestId}] Telegram validation OK (dev mock)`);
-    console.log(`[AUTH] [${requestId}] telegramId=${telegramId} username=${username} firstName=${firstName} lastName=${lastName}`);
+    debugLog(`[AUTH] [${requestId}] Telegram validation OK (dev mock)`);
+    debugLog(`[AUTH] [${requestId}] telegramId=${telegramId} username=${username} firstName=${firstName} lastName=${lastName}`);
   } else {
     const botToken = process.env.BOT_TOKEN;
     if (!botToken) {
@@ -69,15 +77,15 @@ export const telegramAuth = async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Server configuration error" });
     }
 
-    console.log(`[AUTH] [${requestId}] Step 5: validateTelegramWebAppData() start`);
+    debugLog(`[AUTH] [${requestId}] Step 5: validateTelegramWebAppData() start`);
     const { isValid, user } = validateTelegramWebAppData(initData, botToken);
-    console.log(`[AUTH] [${requestId}] Step 6: validateTelegramWebAppData() done isValid=${isValid} hasUser=${!!user}`);
+    debugLog(`[AUTH] [${requestId}] Step 6: validateTelegramWebAppData() done isValid=${isValid} hasUser=${!!user}`);
     if (!isValid || !user) {
       console.error(`[AUTH] [${requestId}] Telegram validation FAILED`);
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    console.log(`[AUTH] [${requestId}] Telegram validation OK`);
+    debugLog(`[AUTH] [${requestId}] Telegram validation OK`);
 
     telegramId = user.id;
     firstName = user.first_name;
@@ -90,14 +98,14 @@ export const telegramAuth = async (req: Request, res: Response) => {
       if (raw) authDate = parseInt(raw, 10);
     } catch {}
 
-    console.log(`[AUTH] [${requestId}] telegramId=${telegramId} username=${username ?? null} firstName=${firstName} lastName=${lastName ?? null} authDate=${authDate}`);
+    debugLog(`[AUTH] [${requestId}] telegramId=${telegramId} username=${username ?? null} firstName=${firstName} lastName=${lastName ?? null} authDate=${authDate}`);
 
     // ── Subscription check ──────────────────────────────────────────────────
-    console.log(`[AUTH] [${requestId}] Checking subscription telegramId=${telegramId}`);
+    debugLog(`[AUTH] [${requestId}] Checking subscription telegramId=${telegramId}`);
 
     subResult = await checkTelegramSubscriptionDetailed(telegramId, gatewayRequestId);
 
-    console.log(`[AUTH] [${requestId}] Subscription result isSubscriber=${subResult.isSubscriber} gatewayDurationMs=${subResult.gatewayDurationMs}`);
+    debugLog(`[AUTH] [${requestId}] Subscription result isSubscriber=${subResult.isSubscriber} gatewayDurationMs=${subResult.gatewayDurationMs}`);
   }
 
   try {
@@ -114,7 +122,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
       include: { permissions: { select: { permission: true } } },
     });
 
-    console.log(`[AUTH] [${requestId}] User upsert completed dbUserId=${userRecord.id}`);
+    debugLog(`[AUTH] [${requestId}] User upsert completed dbUserId=${userRecord.id}`);
 
     // Здесь до публичного запуска платной подписки стоял временный
     // auto-grant PREMIUM_CORE каждому новому пользователю — чтобы на этапе
@@ -132,7 +140,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     const whitelistResult = await checkWhitelistAccess({ telegramId, username, firstName, lastName, subResult });
     const { effectiveIsSubscriber, whitelistEntry, finalDecision, shouldWriteWhitelistLog, shouldWriteDebugLog } = whitelistResult;
 
-    console.log(`[AUTH] [${requestId}] Final decision: ${finalDecision}`);
+    debugLog(`[AUTH] [${requestId}] Final decision: ${finalDecision}`);
 
     // ── Paywall banner gate ──────────────────────────────────────────────────
     // See PAYWALL_BANNER_PLAN.md §4/§5.1 — never shown to anyone with the
@@ -213,7 +221,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
       telegramId: telegramId.toString(),
     });
 
-    console.log(`[AUTH] [${requestId}] JWT generated`);
+    debugLog(`[AUTH] [${requestId}] JWT generated`);
 
     const authDurationMs = Date.now() - authStart;
     const ip = req.ip ?? req.socket?.remoteAddress ?? null;
@@ -303,8 +311,8 @@ export const telegramAuth = async (req: Request, res: Response) => {
       },
     };
 
-    console.log(`[AUTH] [${requestId}] Response isSubscriber=${effectiveIsSubscriber} authDurationMs=${authDurationMs}`);
-    console.dir(responseBody, { depth: null });
+    // Не логировать responseBody целиком — оно содержит выданный JWT (token).
+    debugLog(`[AUTH] [${requestId}] Response isSubscriber=${effectiveIsSubscriber} authDurationMs=${authDurationMs}`);
 
     res.json(responseBody);
 

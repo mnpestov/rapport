@@ -48,6 +48,18 @@ const allowedOrigins = (process.env.ADMIN_CORS_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 
+// Fail fast in production if ADMIN_CORS_ORIGINS is missing/empty — the cors
+// fallback below (`origin: true`) reflects ANY Origin, and combined with
+// `credentials: true` that turns cookie-based auth (POST /auth/refresh) into
+// a same-site CSRF vector for any origin sharing this deploy's registrable
+// domain. Same pattern as the DEV_BYPASS_ADMIN_AUTH/ALLOW_DEV_AUTH guard
+// above — silently permissive is worse than refusing to start.
+if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
+  throw new Error(
+    "[FATAL] ADMIN_CORS_ORIGINS must be set in production (comma-separated allowed origins). Refusing to start with an open CORS fallback."
+  );
+}
+
 app.use(
   cors({
     origin: allowedOrigins.length > 0 ? allowedOrigins : true,
@@ -96,6 +108,28 @@ app.use("/author", authorRouter);
 app.use("/internal", internalRouter);
 app.use("/diag", diagRouter);
 app.use("/payments", paymentsRouter);
+
+// Global error handler — must be registered after all routes. Catches
+// anything passed to next(err) and any synchronous throw inside a route
+// handler (Express 4 already funnels those here; only a rejected Promise
+// from an async handler bypasses this and needs the unhandledRejection
+// listener below instead).
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[UnhandledError]', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Last-resort net for a rejected Promise inside an async route handler with
+// no try/catch of its own (Express 4 does not await handlers, so such a
+// rejection never reaches the error-handling middleware above). On Node >=15
+// an unhandled rejection crashes the process by default — logging instead
+// keeps one bad request from taking down the whole backend. This is a
+// safety net, not a substitute for fixing the underlying missing try/catch.
+process.on('unhandledRejection', (reason) => {
+  console.error('[UnhandledRejection]', reason);
+});
 
 startExpireNewPatternsJob();
 startPopularityJob();

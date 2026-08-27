@@ -112,6 +112,7 @@ apps/backend/src/scripts/run_batch_6_fix.py
 apps/backend/src/scripts/DETAILS_PRICE_PARSING_PROCESS.md
 apps/backend/src/scripts/prod_details_price_backfill.sql
 apps/backend/src/scripts/prod_eiwi_details_fix.sql
+apps/backend/src/scripts/sync_stats.md
 
 # Raw source docs for oferta.html/privacy.html — content already
 # transcribed, not meant to be tracked (see public/oferta.html, privacy.html).
@@ -122,6 +123,7 @@ privacy_policy_410116038191.docx
 PAYWALL_BANNER_PLAN.md
 BACKLOG.md
 SECURITY_FIXES_PLAN.md
+CODE_REVIEW_BACKLOG.md
 
 # Сохранённые страницы чужих сайтов, из которых собирался справочник
 # (Malabrigo, Астра Премиум, ARTLAND). В репозитории им не место: это
