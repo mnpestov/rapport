@@ -24,21 +24,58 @@
   transition: opacity 0.2s;
 }
 
-.btn:hover:not(:disabled) { opacity: 0.9; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
 
 /* размеры */
-.md { height: 32px; padding: 0 12px; font-size: 12px; }
-.lg { height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; }
+.md {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.lg {
+  height: 40px;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
 
 /* виды */
-.primary   { background: var(--brand-bright); color: var(--surface); }
-.secondary { background: var(--surface-gray); color: var(--text); }
-.neutral   { background: #BEC1F4; color: var(--text); }
-.danger    { background: var(--warning); color: var(--surface); }
+.primary {
+  background: var(--brand-bright);
+  color: var(--surface);
+}
 
-.block { width: 100%; }
+.secondary {
+  background: var(--surface-gray);
+  color: var(--text);
+}
+
+.neutral {
+  background: #BEC1F4;
+  color: var(--text);
+}
+
+.danger {
+  background: var(--warning);
+  color: var(--surface);
+}
+
+.block {
+  width: 100%;
+}
 
 /* ── кнопка-иконка ────────────────────────────────────────────
    Две разновидности, обе встречались в коде: прозрачная в строках
@@ -53,8 +90,15 @@
   transition: background 0.15s, opacity 0.2s;
 }
 
-.icon:disabled { opacity: 0.5; cursor: not-allowed; }
-.icon:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
 
 .ghost {
   padding: 4px;
@@ -62,7 +106,10 @@
   color: var(--text);
   border-radius: 2px;
 }
-.ghost:hover:not(:disabled) { background: var(--surface-gray); }
+
+.ghost:hover:not(:disabled) {
+  background: var(--surface-gray);
+}
 
 .filled {
   width: 28px;
@@ -70,8 +117,19 @@
   border-radius: 4px;
   color: var(--surface);
 }
-.filled:hover:not(:disabled) { opacity: 0.85; }
 
-.toneBrand   { background: var(--brand); }
-.toneNeutral { background: var(--text-subtle); }
-.toneDanger  { background: var(--danger); }
+.filled:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.toneBrand {
+  background: var(--brand);
+}
+
+.toneNeutral {
+  background: var(--text-subtle);
+}
+
+.toneDanger {
+  background: var(--danger);
+}

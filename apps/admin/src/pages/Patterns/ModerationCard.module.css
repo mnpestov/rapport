@@ -139,6 +139,7 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
 }
@@ -183,7 +184,16 @@
     flex-direction: column;
     gap: 8px;
   }
-  .approveBtn, .editBtn, .rejectBtn {
+  /* .approveBtn/.editBtn/.rejectBtn were the buttons' own classes before
+     they were unified onto the shared Button component (see
+     CODE_REVIEW_BACKLOG.md-adjacent admin button unification) — those
+     class names no longer exist here, so this rule silently stopped
+     applying and a button (most visibly "Редактировать") could overflow
+     the card in the stacked mobile layout. Target any direct button
+     child of .actions instead, so it stays correct regardless of which
+     component renders the button.
+  */
+  .actions > button {
     width: 100%;
     padding: 10px;
     font-size: 14px;
