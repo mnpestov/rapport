@@ -86,17 +86,30 @@
 }
 
 @media (max-width: 768px) {
+  .header {
+    gap: 5px;
+  }
   .title {
     order: 1;
     margin-right: auto;
+    font-size: 20px;
   }
   .count {
     order: 2;
     margin-left: 0;
+    gap: 5px;
+  }
+  .countLabel {
+    font-size: 13px;
+    font-weight: 400;
+  }
+  .countValue {
+    font-size: 13px;
+    font-weight: 400;
   }
   .search {
     order: 3;
     width: 100%;
-    margin-top: 12px;
+    margin-top: 5px;
   }
 }

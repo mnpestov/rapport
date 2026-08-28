@@ -4,6 +4,12 @@
   gap: 24px;
 }
 
+@media (max-width: 768px) {
+  .container {
+    gap: 10px;
+  }
+}
+
 
 .tableWrapper {
   border-radius: 2px;
@@ -31,7 +37,8 @@
 
 @media (max-width: 768px) {
   .moderationGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 }
 
