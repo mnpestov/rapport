@@ -991,6 +991,79 @@ def _hollywool_exclude_product(href):
     facet_roots = {'izdelie', 'brend_pryazhi'}
     return len(segments) != 1 or segments[0] in facet_roots
 
+def _hollywool_extract_details(soup):
+    # hollywool.ru's .hw-rich-description container mixes real <p> blocks
+    # (section headers like "<p><b>Рекомендованная пряжа и расход:</b></p>")
+    # with the actual section BODY sitting as loose sibling nodes right
+    # after that <p> — plain text, <span>, <b>, <u>, <a>, <br> — never
+    # themselves wrapped in a <p>/<li>/<tr>. The shared _extract_details_text
+    # only collects container.find_all(['p','li','tr']), so every one of
+    # those loose-sibling bodies (yarn list, skills list, tools list — all
+    # of them, confirmed live on a real PENDING sync item: "Рекомендованная
+    # пряжа и расход:" followed by nothing, same for "Необходимые навыки:"
+    # and "Необходимые инструменты:") was silently dropped — the yarn-list
+    # text extract_brand_hits/extract_art_hits need to find Kremke/Drops/
+    # Performance/etc. never made it into Pattern.details at all, so no
+    # amount of fixing the regex side would have helped.
+    #
+    # Walked as a flat sequence of the container's own children (not
+    # find_all, which would also descend into nodes already claimed by a
+    # previous block) — <p> starts a new text block, everything else
+    # (NavigableString or tag) accumulates into the CURRENT block. <ul>/
+    # <table> are still walked via .find_all(['p','li','tr']) inside
+    # _extract_details_text-style handling below since some hollywool
+    # products also use those (see _extract_details_text's own hollywool
+    # comment) — reuse _block_text so <br> still becomes a real newline
+    # inside one block, same as every other paragraph on this site.
+    container = soup.select_one('.hw-rich-description')
+    if not container:
+        return None
+
+    blocks, current = [], []
+
+    def flush():
+        if not current:
+            return
+        # Wrap the accumulated loose nodes in a throwaway <p> so _block_text
+        # (which expects a single tag) can run its <br>-aware extraction
+        # over them exactly as it would for a real <p>.
+        wrapper = soup.new_tag('p')
+        for node in current:
+            wrapper.append(copy.copy(node))
+        text = _block_text(wrapper)
+        if text:
+            blocks.append(text)
+        current.clear()
+
+    for child in list(container.children):
+        if getattr(child, 'name', None) in ('ul', 'table'):
+            flush()
+            if child.name == 'ul':
+                for li in child.find_all('li'):
+                    t = _block_text(li)
+                    if t:
+                        blocks.append(t)
+            else:
+                for tr in child.find_all('tr'):
+                    cells = [c.get_text(separator=' ', strip=True) for c in tr.find_all(['td', 'th'])]
+                    t = ' | '.join(c for c in cells if c)
+                    if t:
+                        blocks.append(t)
+        elif getattr(child, 'name', None) == 'p':
+            flush()
+            t = _block_text(child)
+            if t:
+                blocks.append(t)
+        else:
+            # NavigableString or an inline tag (span/b/u/a/br/...) sitting
+            # directly under the container, not wrapped in its own <p>.
+            if str(child).strip():
+                current.append(child)
+    flush()
+
+    texts = [t for t in blocks if not _hollywool_exclude_details_paragraph(t)]
+    return '\n\n'.join(texts) or None
+
 def _hollywool_extract_gallery(soup, raw_html=None, url=None):
     # Product detail pages carry their own gallery block
     # ("hw-lab-gallery" — a Bitrix-based custom theme), one <figure> per
@@ -1168,6 +1241,7 @@ DOMAIN_CRAWL_HOOKS = {
         'exclude_product': _hollywool_exclude_product,
         'extract_gallery': _hollywool_extract_gallery,
         'exclude_details_paragraph': _hollywool_exclude_details_paragraph,
+        'extract_details': _hollywool_extract_details,
     },
     'eiwi.ru': {
         'extract_gallery': _eiwi_extract_gallery,
