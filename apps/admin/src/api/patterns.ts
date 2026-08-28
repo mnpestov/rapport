@@ -272,15 +272,6 @@ export const deleteInstrument = async (id: string): Promise<void> => {
   if (!response.ok) throw new Error("Failed to delete instrument");
 };
 
-export const fixArchiveQuotes = async (): Promise<{ updated: number }> => {
-  const response = await fetchWithAuth(
-    `${API_URL}/admin/patterns/fix-archive-quotes`,
-    { method: "POST" }
-  );
-  if (!response.ok) throw new Error("Failed to fix quotes");
-  return response.json();
-};
-
 export const uploadImage = async (file: File): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append("image", file);

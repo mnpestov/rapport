@@ -21,7 +21,6 @@ import {
   createPattern,
   deletePattern,
   resetAllIsNew,
-  fixArchiveQuotes,
 } from "../controllers/adminPatternsController";
 import {
   getAuthors,
@@ -205,7 +204,6 @@ router.get("/yarn-stats", getYarnStats);
 router.get("/patterns", getPatternsList);
 router.get("/patterns/:id", getPatternById);
 router.post("/patterns/reset-new", resetAllIsNew);
-router.post("/patterns/fix-archive-quotes", fixArchiveQuotes);
 router.post("/patterns", createPattern);
 router.patch("/patterns/:id", updatePattern);
 router.delete("/patterns/:id", deletePattern);

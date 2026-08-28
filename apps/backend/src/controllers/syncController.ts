@@ -12,7 +12,7 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import { spawn } from "child_process";
-import { syncCategories, syncTags, syncInstruments } from "../utils/adminShared";
+import { syncCategories, syncTags, syncInstruments, normalizeQuotes } from "../utils/adminShared";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, MAX_PATTERN_IMAGES } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
 
@@ -227,7 +227,7 @@ export const updateSyncItem = async (req: Request, res: Response) => {
   };
 
   const data: any = { parsedData };
-  if (title !== undefined && String(title).trim()) data.title = String(title).trim();
+  if (title !== undefined && String(title).trim()) data.title = normalizeQuotes(String(title).trim());
   if (url !== undefined && String(url).trim()) data.url = String(url).trim();
 
   const updated = await prisma.authorSyncItem.update({ where: { id: itemId }, data });
@@ -315,7 +315,7 @@ export const processSyncBatch = async (req: Request, res: Response) => {
 
         const createdPattern = await tx.pattern.create({
           data: {
-            title: dbItem.title,
+            title: normalizeQuotes(dbItem.title),
             slug: finalPatternSlug,
             url: dbItem.url,
             images,

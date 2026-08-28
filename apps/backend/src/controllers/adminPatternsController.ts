@@ -5,7 +5,7 @@ import path from "path";
 import { generateSlug } from "../utils/slug";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, isOwnUpload } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
-import { normalizeUrl, syncAuthor, syncTags, syncCategories, syncInstruments } from "../utils/adminShared";
+import { normalizeUrl, normalizeQuotes, syncAuthor, syncTags, syncCategories, syncInstruments } from "../utils/adminShared";
 
 /**
  * Admin patterns CRUD. All handlers are reached only through requireAuth + requireAdmin.
@@ -205,7 +205,7 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
     }
 
     const data: any = {};
-    if (title !== undefined) data.title = title;
+    if (title !== undefined) data.title = normalizeQuotes(title);
     if (details !== undefined) data.details = details;
     if (isFree !== undefined) data.isFree = isFree;
     if (isNew !== undefined) data.isNew = isNew;
@@ -332,7 +332,7 @@ export const createPattern = async (req: Request, res: Response): Promise<void> 
     const finalAuthorId = authorId ?? await syncAuthor(authorName);
 
     const data: any = {
-      title,
+      title: normalizeQuotes(title),
       url: normUrl,
       images: imagesValidation.images,
       imageUrl: deriveImageUrl(imagesValidation.images),
@@ -434,35 +434,3 @@ export const deletePattern = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-function fixQuotes(title: string): string {
-  let isOpen = true;
-  return title.replace(/"/g, () => {
-    const q = isOpen ? '«' : '»';
-    isOpen = !isOpen;
-    return q;
-  });
-}
-
-export const fixArchiveQuotes = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const patterns = await prisma.pattern.findMany({
-      where: { title: { contains: '"' } },
-      select: { id: true, title: true },
-    });
-
-    if (patterns.length === 0) {
-      res.json({ updated: 0 });
-      return;
-    }
-
-    await Promise.all(
-      patterns.map((p) =>
-        prisma.pattern.update({ where: { id: p.id }, data: { title: fixQuotes(p.title) } })
-      )
-    );
-
-    res.json({ updated: patterns.length });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-};

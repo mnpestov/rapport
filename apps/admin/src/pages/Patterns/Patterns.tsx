@@ -9,7 +9,7 @@ import { YarnPicker, PickedYarn } from "../../components/YarnPicker/YarnPicker";
 import { getPatternYarns, setPatternYarns, resolveMention, createYarn, PatternYarnMentionItem } from "../../api/yarns";
 import { YarnEditModal } from "../Yarns/YarnEditModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
-import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById, fixArchiveQuotes } from "../../api/patterns";
+import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById } from "../../api/patterns";
 import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader, PatternStatus } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
@@ -180,11 +180,6 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  useEffect(() => {
-    if (isAuthor) return;
-    fixArchiveQuotes().catch(() => { });
-  }, [isAuthor]);
 
   // Once the ?search= param has seeded the initial query above, drop it
   // from the URL — otherwise it lingers and looks like the search box is

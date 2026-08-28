@@ -3,6 +3,7 @@ import { DraftStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
+import { normalizeQuotes } from "../utils/adminShared";
 
 // ---------------------------------------------------------------------------
 // Rate limiter — in-memory, per userId.
@@ -151,7 +152,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
     const draft = await prisma.draft.create({
       data: {
         authorId,
-        title,
+        title: normalizeQuotes(title),
         url,
         images: imagesValidation.images,
         imageUrl: deriveImageUrl(imagesValidation.images),
@@ -321,7 +322,7 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
     const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
 
     const data: any = {};
-    if (title !== undefined) data.title = title;
+    if (title !== undefined) data.title = normalizeQuotes(title);
     if (url !== undefined) data.url = url;
     if (details !== undefined) data.details = details;
 

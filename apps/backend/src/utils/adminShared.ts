@@ -1,5 +1,25 @@
 import { prisma } from "../prismaClient";
 
+// Straight ASCII quotes (") in a title get typeset as Russian angle quotes
+// («») instead — applied at every write point (admin create/update, author
+// cabinet drafts, moderation's scraper-item → Pattern conversion) so this is
+// the ONE place titles ever get this treatment, not a periodic sweep. Was
+// previously a standalone /admin/patterns/fix-archive-quotes endpoint that
+// re-scanned every Pattern on each admin page load — replaced by fixing the
+// source at write time instead (see CODE_REVIEW_BACKLOG.md finding #1).
+// Alternates open/close on each straight quote encountered, left to right —
+// correct for the common "single pair per title" case; a title with an odd
+// number of quotes or unbalanced nesting will still alternate mechanically,
+// same limitation the original sweep had.
+export function normalizeQuotes(title: string): string {
+  let isOpen = true;
+  return title.replace(/"/g, () => {
+    const q = isOpen ? '«' : '»';
+    isOpen = !isOpen;
+    return q;
+  });
+}
+
 // Shared by every admin controller that touches Pattern.url — normalizes
 // scheme/host/trailing-slash so the same product page always maps to one
 // canonical URL regardless of how it was pasted or scraped.
