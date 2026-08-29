@@ -6,6 +6,7 @@ import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Modal } from "../../components/Modal/Modal";
 import { Button } from "../../components/Button/Button";
 import { getPriceCheckRuns, getPriceCheckStatus, triggerPriceCheck, getConfirmedAuthors, PriceCheckRun } from "../../api/priceCheck";
+import { findPatternByUrl, deletePattern } from "../../api/patterns";
 import styles from "./PriceCheck.module.css";
 
 function formatDateTime(iso: string): string {
@@ -25,6 +26,39 @@ function formatPrice(v: number | null): string {
 function PatternSearchLink({ title }: { title: string | null }) {
   if (!title) return <>—</>;
   return <Link to={`/patterns?search=${encodeURIComponent(title)}`}>{title}</Link>;
+}
+
+// Позволяет сразу отправить в архив описание, на котором проверка цены упала
+// с ошибкой — например, если страница у автора пропала или разметка сломалась
+// настолько, что чинить её не имеет смысла. url — единственное, что несёт с
+// собой строка ошибки (см. PriceCheckError), поэтому id ищем на бэкенде по
+// нему в момент клика, а не заранее для каждой строки — errors может быть
+// длинным списком, а архивируют обычно единицы.
+function ArchiveErrorButton({ url }: { url: string }) {
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  const handleArchive = async () => {
+    setIsArchiving(true);
+    try {
+      const pattern = await findPatternByUrl(url);
+      if (!pattern.isVisible) {
+        toast.success("Уже в архиве");
+        return;
+      }
+      await deletePattern(pattern.id);
+      toast.success("Описание перемещено в архив");
+    } catch (err: any) {
+      toast.error(err.message || "Не удалось отправить в архив");
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  return (
+    <Button variant="secondary" onClick={handleArchive} disabled={isArchiving}>
+      {isArchiving ? "..." : "В архив"}
+    </Button>
+  );
 }
 
 function RunRow({ run }: { run: PriceCheckRun }) {
@@ -96,6 +130,7 @@ function RunRow({ run }: { run: PriceCheckRun }) {
                     <th>Название</th>
                     <th>Ссылка</th>
                     <th>Ошибка</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -107,6 +142,10 @@ function RunRow({ run }: { run: PriceCheckRun }) {
                         {e.url ? <a href={e.url} target="_blank" rel="noreferrer">ссылка</a> : "—"}
                       </td>
                       <td>{e.error}</td>
+                      {/* Без url это авторская ошибка (автор не найден,
+                          хендлер магазина упал) — не привязана к одному
+                          описанию, архивировать нечего. */}
+                      <td>{e.url && <ArchiveErrorButton url={e.url} />}</td>
                     </tr>
                   ))}
                 </tbody>

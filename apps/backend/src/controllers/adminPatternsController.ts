@@ -393,6 +393,41 @@ export const resetAllIsNew = async (_req: Request, res: Response): Promise<void>
 };
 
 // DELETE /admin/patterns/:id (Soft delete - hide pattern)
+// GET /admin/patterns/find-by-url?url=... — resolves a Pattern.url (e.g. from
+// a price-check run's error/change row, which only ever carries the URL, not
+// an id — see PriceCheckRun.errors' shape comment in schema.prisma) to its
+// id, so the frontend can archive it via the existing deletePattern(id)
+// instead of duplicating that logic here. url is NOT @unique in the schema
+// (a handful of legacy duplicate rows share one url — see
+// generate_prod_backfill_sql.py's own comment on the same fact) — findFirst
+// picks whichever row matches first rather than erroring on ambiguity; an
+// admin archiving from a price-check error only needs SOME matching row
+// gone, not a guarantee of which duplicate.
+export const findPatternByUrl = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawUrl = req.query.url;
+    if (typeof rawUrl !== "string" || !rawUrl.trim()) {
+      res.status(400).json({ error: "url is required" });
+      return;
+    }
+
+    const pattern = await prisma.pattern.findFirst({
+      where: { url: normalizeUrl(rawUrl) },
+      select: { id: true, isVisible: true },
+    });
+
+    if (!pattern) {
+      res.status(404).json({ error: "Pattern not found" });
+      return;
+    }
+
+    res.json(pattern);
+  } catch (error) {
+    console.error("[Admin] findPatternByUrl failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const deletePattern = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

@@ -171,6 +171,18 @@ export const resetAllIsNew = async (): Promise<{ success: boolean; updated: numb
   return response.json();
 };
 
+// Resolves a Pattern.url (e.g. from a price-check run's error row, which
+// only ever carries the URL — see PriceCheckError) to its id, so callers can
+// then archive it via deletePattern(id) below.
+export const findPatternByUrl = async (url: string): Promise<{ id: string; isVisible: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/patterns/find-by-url?url=${encodeURIComponent(url)}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to find pattern by url: ${response.statusText}`);
+  }
+  return response.json();
+};
+
 export const deletePattern = async (id: string): Promise<{ success: boolean }> => {
   const response = await fetchWithAuth(`${API_URL}/admin/patterns/${id}`, {
     method: "DELETE",

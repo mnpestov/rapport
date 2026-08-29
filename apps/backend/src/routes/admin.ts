@@ -21,6 +21,7 @@ import {
   createPattern,
   deletePattern,
   resetAllIsNew,
+  findPatternByUrl,
 } from "../controllers/adminPatternsController";
 import {
   getAuthors,
@@ -202,6 +203,9 @@ router.post("/yarn-mentions/:id/resolve", resolveMention);
 router.get("/yarn-stats", getYarnStats);
 
 router.get("/patterns", getPatternsList);
+// Static route before the /patterns/:id wildcard below — same reasoning as
+// /yarns/suggest above (declared here, it'd be swallowed as :id="find-by-url").
+router.get("/patterns/find-by-url", findPatternByUrl);
 router.get("/patterns/:id", getPatternById);
 router.post("/patterns/reset-new", resetAllIsNew);
 router.post("/patterns", createPattern);
