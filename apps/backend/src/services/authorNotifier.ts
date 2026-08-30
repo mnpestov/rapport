@@ -3,29 +3,45 @@
  * (implementation_plan.md §5). Uses the same external telegram-gateway as
  * loginCodeSender.ts, for the same reason: avoids ETIMEDOUT issues calling
  * the Telegram API directly from the production server.
+ *
+ * Goes through the gateway's generic `/bot:token/:method` proxy (a
+ * pass-through to api.telegram.org/bot<token>/<method>) rather than its
+ * custom `/send-message` endpoint — same pattern as
+ * whitelistController.ts's notifyWhitelistUser. The custom endpoint only
+ * forwards {chatId, text, parseMode} and drops everything else, so it
+ * cannot carry an inline keyboard; the generic proxy passes the body
+ * through untouched, so reply_markup (needed by sendNeedsInfo below) works.
  */
 
-async function sendMessage(telegramId: bigint, text: string): Promise<void> {
-  const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
-  const apiKey = process.env.TELEGRAM_GATEWAY_API_KEY;
+interface InlineKeyboardButton {
+  text: string;
+  callback_data?: string;
+  url?: string;
+}
 
-  if (!baseUrl || !apiKey) {
+async function sendMessage(
+  telegramId: bigint,
+  text: string,
+  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] }
+): Promise<void> {
+  const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
+  const botToken = process.env.BOT_TOKEN;
+
+  if (!baseUrl || !botToken) {
     console.log(`[AuthorNotifier] Gateway not configured — message for ${telegramId}:\n${text}`);
     return;
   }
 
   try {
-    const response = await fetch(`${baseUrl}/send-message`, {
+    const response = await fetch(`${baseUrl}/bot${botToken}/sendMessage`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gateway-Key": apiKey,
-      },
+      headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
-        chatId: telegramId.toString(),
+        chat_id: telegramId.toString(),
         text,
-        parseMode: "Markdown",
+        parse_mode: "Markdown",
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }),
     });
 
@@ -65,7 +81,14 @@ export async function sendNeedsInfo(telegramId: bigint, comment: string): Promis
   await sendMessage(
     telegramId,
     `По вашей заявке на авторский кабинет требуется уточнение:\n\n${comment}\n\n` +
-      `Подайте заявку повторно, когда будете готовы.`
+      `Нажмите «Ответить» ниже, чтобы дополнить заявку текстом или новыми ссылками — ` +
+      `отвечать нужно в этой кнопке, а не отдельным сообщением в чат.`,
+    {
+      inline_keyboard: [
+        [{ text: "Ответить", callback_data: "author_app:respond_start" }],
+        [{ text: "Отмена", callback_data: "author_app:cancel" }],
+      ],
+    }
   );
 }
 

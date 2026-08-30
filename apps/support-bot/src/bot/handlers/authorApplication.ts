@@ -18,6 +18,21 @@ const RESOURCES_KEYBOARD = new InlineKeyboard()
   .text('Готово ✓', 'author_app:submit').row()
   .text('Отмена', 'author_app:cancel');
 
+// Backend error strings are a stable API contract, not user-facing copy —
+// deliberately in English (see authorApplicationController.ts). Map the
+// ones a user can actually hit; anything unrecognized falls back to a
+// generic Russian message rather than showing raw English.
+const KNOWN_ERROR_TRANSLATIONS: Record<string, string> = {
+  "No application awaiting your response": "Заявка уже не ждёт ответа — возможно, она уже была обработана. Проверьте статус: /become_author",
+  "You already have a pending application": "У вас уже есть заявка на рассмотрении.",
+  "You already have author cabinet access": "У вас уже есть доступ к кабинету автора.",
+  "Please wait 24h before reapplying": "Повторно подать можно через 24 часа после отклонения.",
+};
+
+function translateError(message: string): string {
+  return KNOWN_ERROR_TRANSLATIONS[message] ?? 'Не удалось выполнить действие. Попробуйте ещё раз позже.';
+}
+
 const NEEDS_INFO_KEYBOARD = new InlineKeyboard()
   .text('Ответить', 'author_app:respond_start').row()
   .text('Отмена', 'author_app:cancel');
@@ -205,7 +220,7 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
         status: err.status,
         error: err.message,
       });
-      await ctx.reply(err.message);
+      await ctx.reply(translateError(err.message));
     } else {
       logEvent({
         event: 'AUTHOR_APP_SUBMIT_ERROR',
@@ -273,7 +288,7 @@ export async function handleAuthorAppRespondSubmit(ctx: CallbackCtx): Promise<vo
         status: err.status,
         error: err.message,
       });
-      await ctx.reply(err.message);
+      await ctx.reply(translateError(err.message));
     } else {
       logEvent({
         event: 'AUTHOR_APP_RESPOND_ERROR',
