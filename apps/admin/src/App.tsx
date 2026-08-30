@@ -6,9 +6,12 @@ import { RequireAuth } from './routes/RequireAuth';
 import { RequireAuthor } from './routes/RequireAuthor';
 import { AdminLayout } from './layouts/AdminLayout';
 import { Login } from './pages/Login/Login';
+import { ChangePassword } from './pages/Login/ChangePassword';
+import { ForgotPassword } from './pages/Login/ForgotPassword';
 import { Dashboard } from './pages/Dashboard/Dashboard';
 import { Patterns } from './pages/Patterns/Patterns';
 import { Authors } from './pages/Authors/Authors';
+import { AuthorApplications } from './pages/AuthorApplications/AuthorApplications';
 import { Whitelist } from './pages/Whitelist/Whitelist';
 import { Requests } from './pages/Requests/Requests';
 import { Users } from './pages/Users/Users';
@@ -59,12 +62,24 @@ function AppRoutes() {
         path="/login"
         element={isAuthenticated ? <Navigate to="/patterns" replace /> : <Login />}
       />
+      {/* Both reachable while logged out: change-password from the
+          mustChangePassword branch of author-login (no token yet), and
+          forgot-password from the login screen's "Забыли пароль?" link. */}
+      <Route
+        path="/change-password"
+        element={isAuthenticated ? <Navigate to="/patterns" replace /> : <ChangePassword />}
+      />
+      <Route
+        path="/forgot-password"
+        element={isAuthenticated ? <Navigate to="/patterns" replace /> : <ForgotPassword />}
+      />
 
       <Route element={<RequireAuth />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="/patterns" replace />} />
           <Route path="patterns" element={<Patterns variant="admin" />} />
           <Route path="authors" element={<Authors />} />
+          <Route path="author-applications" element={<AuthorApplications />} />
           <Route path="stats" element={<Dashboard />} />
           <Route path="requests" element={<Requests />} />
           <Route path="whitelist" element={<Whitelist />} />

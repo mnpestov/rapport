@@ -13,7 +13,18 @@ export const getAuthors = async (req: Request, res: Response): Promise<void> => 
       include: {
         _count: {
           select: { patterns: true }
-        }
+        },
+        // Powers the "Кабинет" section in the edit modal
+        // (implementation_plan.md §8): whether this author has a linked
+        // User at all, and whether that User has password-auth set up.
+        user: {
+          select: {
+            id: true,
+            credential: {
+              select: { login: true, lastLoginAt: true, mustChangePassword: true, lockedUntil: true },
+            },
+          },
+        },
       },
       orderBy: { name: 'asc' }
     });
@@ -22,7 +33,20 @@ export const getAuthors = async (req: Request, res: Response): Promise<void> => 
       id: a.id,
       name: a.name,
       site: a.site,
-      patternsCount: a._count.patterns
+      patternsCount: a._count.patterns,
+      cabinet: a.user
+        ? {
+            userId: a.user.id,
+            credential: a.user.credential
+              ? {
+                  login: a.user.credential.login,
+                  lastLoginAt: a.user.credential.lastLoginAt?.toISOString() ?? null,
+                  mustChangePassword: a.user.credential.mustChangePassword,
+                  locked: !!a.user.credential.lockedUntil && a.user.credential.lockedUntil > new Date(),
+                }
+              : null,
+          }
+        : null,
     }));
 
     res.json(mapped);

@@ -54,6 +54,18 @@ import {
   revokePermission,
 } from "../controllers/adminPermissionsController";
 import {
+  getAuthorApplications,
+  approveAuthorApplication,
+  requestApplicationInfo,
+  rejectAuthorApplication,
+} from "../controllers/authorApplicationController";
+import {
+  grantAuthorCredentials,
+  revokePassword,
+  resendCredentials,
+  revokeAccess,
+} from "../controllers/authorCredentialController";
+import {
   getPendingReports,
   getReportById,
   processSyncBatch,
@@ -268,5 +280,17 @@ router.get("/sync-status", getSyncStatus);
 router.get("/sync-pending", checkPendingAuthors);
 router.post("/sync-start", startSync);
 router.post("/authors/:id/sync-start", startAuthorSync);
+
+// Author applications (login/password + applications feature)
+router.get("/author-applications", getAuthorApplications);
+router.post("/author-applications/:id/approve", approveAuthorApplication);
+router.post("/author-applications/:id/needs-info", requestApplicationInfo);
+router.post("/author-applications/:id/reject", rejectAuthorApplication);
+
+// Author credentials — grant/revoke login+password access
+router.post("/author-credentials", grantAuthorCredentials);
+router.delete("/author-credentials/:userId", revokePassword);
+router.post("/author-credentials/:userId/resend-credentials", resendCredentials);
+router.post("/author-credentials/:userId/revoke-access", revokeAccess);
 
 export default router;

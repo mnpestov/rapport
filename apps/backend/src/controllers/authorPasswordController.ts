@@ -1,0 +1,473 @@
+import { Request, Response } from "express";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { LoginCodePurpose, Permission } from "@prisma/client";
+import { prisma } from "../prismaClient";
+import { generateToken, generateRefreshToken } from "../utils/jwt";
+import { sendForgotPassword } from "../services/authorNotifier";
+
+/**
+ * Login/password authentication for the author cabinet — an alternative to
+ * the Telegram OTP flow in webAuthController.ts, not a replacement. Both
+ * lead to the same User and the same /cabinet. See implementation_plan.md.
+ */
+
+const BCRYPT_COST = 12;
+const LOGIN_LOCK_MS = 15 * 60 * 1_000;
+const MAX_LOGIN_ATTEMPTS = 5;
+const RESET_CODE_TTL_MS = 5 * 60 * 1_000;
+const FORGOT_PASSWORD_COOLDOWN_MS = 60 * 1_000;
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 3_600 * 1_000; // 30 days
+
+// bcrypt truncates its input at 72 BYTES silently — no error, no signal to
+// the caller. Checking password.length (JS UTF-16 code units) is not the
+// same guard: Cyrillic characters are 2 bytes each in UTF-8, so a ~36+
+// character Cyrillic password can already exceed 72 bytes while its
+// .length still reads under 64. Without a byte-accurate check here, such a
+// password would silently have its tail ignored by bcrypt.hash — two
+// different passwords sharing the same 72-byte prefix would then compare as
+// equal, and the user would have no way to know why. See
+// implementation_plan.md §2.
+const MAX_PASSWORD_BYTES = 72;
+
+function passwordTooLong(password: string): boolean {
+  return Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES;
+}
+
+// ---------------------------------------------------------------------------
+// Three independent in-memory counters (see implementation_plan.md §3.1):
+//   1. verifyAttempts — already exists in webAuthController.ts, per-telegramId, for OTP.
+//   2. loginFailedAttempts — per-login, for password-auth (this file).
+//   3. resetAttempts — per-telegramId, for password reset (this file).
+// Kept separate rather than sharing one Map: each guards a different attack
+// surface (OTP code guessing vs. password guessing vs. reset-code guessing),
+// and merging them would let exhausting one lock out the other unrelated flow.
+// ---------------------------------------------------------------------------
+
+const loginFailedAttempts = new Map<string, { count: number; expiresAt: number }>();
+
+// Called ONLY after a credential has been found in the DB for this login —
+// otherwise the Map would grow from arbitrary login strings an attacker
+// sends, with no eviction (a public, unauthenticated endpoint).
+function registerLoginFailure(login: string): boolean {
+  const now = Date.now();
+  const entry = loginFailedAttempts.get(login);
+  if (!entry || entry.expiresAt <= now) {
+    loginFailedAttempts.set(login, { count: 1, expiresAt: now + LOGIN_LOCK_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function clearLoginFailures(login: string): void {
+  loginFailedAttempts.delete(login);
+}
+
+const resetAttempts = new Map<string, { count: number; expiresAt: number }>();
+
+function registerResetFailure(telegramId: bigint): boolean {
+  const key = telegramId.toString();
+  const now = Date.now();
+  const entry = resetAttempts.get(key);
+  if (!entry || entry.expiresAt <= now) {
+    resetAttempts.set(key, { count: 1, expiresAt: now + RESET_CODE_TTL_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function clearResetAttempts(telegramId: bigint): void {
+  resetAttempts.delete(telegramId.toString());
+}
+
+// forgot-password cooldown — same "only for found credentials" reasoning as
+// loginFailedAttempts above.
+const forgotPasswordCooldown = new Map<string, number>();
+
+function generateCode(): string {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+function hashCode(code: string): string {
+  return crypto.createHash("sha256").update(code).digest("hex");
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie("refresh_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/auth",
+    maxAge: REFRESH_TOKEN_TTL_MS,
+  });
+}
+
+async function hasAuthorCabinetAccess(userId: string): Promise<boolean> {
+  const entry = await prisma.userPermission.findUnique({
+    where: { userId_permission: { userId, permission: Permission.AUTHOR_CABINET } },
+  });
+  return !!entry;
+}
+
+async function issueSessionResponse(res: Response, user: { id: string; telegramId: bigint; firstName: string; role: any; authorId: string | null }): Promise<void> {
+  const accessToken = generateToken({
+    userId: user.id,
+    telegramId: user.telegramId.toString(),
+    role: user.role,
+  });
+
+  const rawRefreshToken = generateRefreshToken({ userId: user.id });
+  await prisma.refreshToken.create({
+    data: {
+      token: hashToken(rawRefreshToken),
+      userId: user.id,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+    },
+  });
+  setRefreshCookie(res, rawRefreshToken);
+
+  const userPermissions = await prisma.userPermission.findMany({
+    where: { userId: user.id },
+    select: { permission: true },
+  });
+
+  res.json({
+    token: accessToken,
+    user: {
+      id: user.id,
+      telegramId: user.telegramId.toString(),
+      firstName: user.firstName,
+      role: user.role,
+      authorId: user.authorId,
+      permissions: userPermissions.map((p) => p.permission),
+    },
+  });
+}
+
+// POST /auth/author-login
+export const authorLogin = async (req: Request, res: Response): Promise<void> => {
+  const { login, password } = req.body ?? {};
+  if (typeof login !== "string" || typeof password !== "string" || !login || !password) {
+    res.status(400).json({ error: "login and password are required" });
+    return;
+  }
+
+  try {
+    const credential = await prisma.authorCredential.findUnique({
+      where: { login },
+      include: { user: true },
+    });
+
+    if (!credential) {
+      // loginFailedAttempts is NOT touched — no credential was found, so
+      // there is nothing to key a counter on without letting an attacker
+      // grow the Map with arbitrary strings.
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+
+    if (passwordTooLong(password)) {
+      res.status(400).json({ error: "Password is too long" });
+      return;
+    }
+
+    const now = Date.now();
+    if (credential.lockedUntil && credential.lockedUntil.getTime() > now) {
+      const retryAfterSeconds = Math.ceil((credential.lockedUntil.getTime() - now) / 1000);
+      res.set("Retry-After", String(retryAfterSeconds));
+      res.status(429).json({ error: "Too many failed attempts, try again later" });
+      return;
+    }
+
+    const passwordMatches = await bcrypt.compare(password, credential.passwordHash);
+    if (!passwordMatches) {
+      const exhausted = registerLoginFailure(login);
+      if (exhausted) {
+        await prisma.authorCredential.update({
+          where: { userId: credential.userId },
+          data: { lockedUntil: new Date(now + LOGIN_LOCK_MS) },
+        });
+      }
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+
+    clearLoginFailures(login);
+    await prisma.authorCredential.update({
+      where: { userId: credential.userId },
+      data: { lockedUntil: null, lastLoginAt: new Date() },
+    });
+
+    const hasCabinetAccess = await hasAuthorCabinetAccess(credential.userId);
+    if (!hasCabinetAccess) {
+      res.status(403).json({ error: "Author cabinet access not granted" });
+      return;
+    }
+
+    if (credential.mustChangePassword) {
+      res.json({ mustChangePassword: true, login });
+      return;
+    }
+
+    await issueSessionResponse(res, credential.user);
+  } catch (error) {
+    console.error("[AuthorPassword] authorLogin failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /auth/author-change-password — takes { login, currentPassword,
+// newPassword } directly, without requireAuth: the mustChangePassword
+// response from author-login carries no token to authenticate with. Uses
+// the SAME rate limit and lockedUntil as author-login (§3.3) — otherwise
+// this endpoint would let an attacker bypass the login lockout entirely.
+export const authorChangePassword = async (req: Request, res: Response): Promise<void> => {
+  const { login, currentPassword, newPassword } = req.body ?? {};
+  if (
+    typeof login !== "string" || typeof currentPassword !== "string" || typeof newPassword !== "string" ||
+    !login || !currentPassword || !newPassword
+  ) {
+    res.status(400).json({ error: "login, currentPassword and newPassword are required" });
+    return;
+  }
+
+  try {
+    const credential = await prisma.authorCredential.findUnique({
+      where: { login },
+      include: { user: true },
+    });
+
+    if (!credential) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+
+    if (passwordTooLong(currentPassword)) {
+      res.status(400).json({ error: "Password is too long" });
+      return;
+    }
+
+    const now = Date.now();
+    if (credential.lockedUntil && credential.lockedUntil.getTime() > now) {
+      const retryAfterSeconds = Math.ceil((credential.lockedUntil.getTime() - now) / 1000);
+      res.set("Retry-After", String(retryAfterSeconds));
+      res.status(429).json({ error: "Too many failed attempts, try again later" });
+      return;
+    }
+
+    const currentMatches = await bcrypt.compare(currentPassword, credential.passwordHash);
+    if (!currentMatches) {
+      const exhausted = registerLoginFailure(login);
+      if (exhausted) {
+        await prisma.authorCredential.update({
+          where: { userId: credential.userId },
+          data: { lockedUntil: new Date(now + LOGIN_LOCK_MS) },
+        });
+      }
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+
+    clearLoginFailures(login);
+    await prisma.authorCredential.update({
+      where: { userId: credential.userId },
+      data: { lockedUntil: null },
+    });
+
+    // Checked AFTER the current-password check, before hashing the new one:
+    // if access was revoked, there is no point writing a fresh hash for a
+    // now-disowned account.
+    const hasCabinetAccess = await hasAuthorCabinetAccess(credential.userId);
+    if (!hasCabinetAccess) {
+      res.status(403).json({ error: "Author cabinet access not granted" });
+      return;
+    }
+
+    if (passwordTooLong(newPassword) || newPassword.length < 10) {
+      res.status(400).json({ error: "Password must be 10-64 characters" });
+      return;
+    }
+    if (newPassword === login) {
+      res.status(400).json({ error: "Password must not match the login" });
+      return;
+    }
+    const sameAsCurrent = await bcrypt.compare(newPassword, credential.passwordHash);
+    if (sameAsCurrent) {
+      res.status(400).json({ error: "New password must differ from the current one" });
+      return;
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+
+    await prisma.$transaction([
+      prisma.authorCredential.update({
+        where: { userId: credential.userId },
+        data: { passwordHash: newPasswordHash, mustChangePassword: false, lockedUntil: null },
+      }),
+      prisma.refreshToken.updateMany({
+        where: { userId: credential.userId, revoked: false },
+        data: { revoked: true, revokedAt: new Date() },
+      }),
+    ]);
+
+    await issueSessionResponse(res, credential.user);
+  } catch (error) {
+    console.error("[AuthorPassword] authorChangePassword failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /auth/forgot-password
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const { login } = req.body ?? {};
+  if (typeof login !== "string" || !login) {
+    res.status(400).json({ error: "login is required" });
+    return;
+  }
+
+  try {
+    const credential = await prisma.authorCredential.findUnique({ where: { login } });
+    if (!credential) {
+      // Generic response — do not reveal whether the login exists.
+      // Cooldown map is NOT touched (same "only for found credentials"
+      // reasoning as loginFailedAttempts).
+      res.json({ ok: true });
+      return;
+    }
+
+    const now = Date.now();
+    const lastSent = forgotPasswordCooldown.get(login);
+    if (lastSent && now - lastSent < FORGOT_PASSWORD_COOLDOWN_MS) {
+      res.json({ ok: true }); // silent — same generic response as "not found"
+      return;
+    }
+    forgotPasswordCooldown.set(login, now);
+
+    const telegramId = (await prisma.user.findUnique({
+      where: { id: credential.userId },
+      select: { telegramId: true },
+    }))?.telegramId;
+    if (!telegramId) {
+      res.json({ ok: true });
+      return;
+    }
+
+    const code = generateCode();
+    await prisma.loginCode.create({
+      data: {
+        telegramId,
+        code: hashCode(code),
+        purpose: LoginCodePurpose.PASSWORD_RESET,
+        expiresAt: new Date(now + RESET_CODE_TTL_MS),
+      },
+    });
+
+    sendForgotPassword(telegramId, code).catch(console.error);
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("[AuthorPassword] forgotPassword failed:", error);
+    // Even on internal failure, don't leak existence — but do surface a
+    // generic 500 so the client doesn't think a code was actually sent.
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /auth/reset-password
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const { login, code, newPassword } = req.body ?? {};
+  if (
+    typeof login !== "string" || typeof code !== "string" || typeof newPassword !== "string" ||
+    !login || !code || !newPassword
+  ) {
+    res.status(400).json({ error: "login, code and newPassword are required" });
+    return;
+  }
+
+  try {
+    const credential = await prisma.authorCredential.findUnique({
+      where: { login },
+      include: { user: true },
+    });
+
+    // Conscious tradeoff — same class as author-login (§3.2): a
+    // non-existent login always 401s immediately; an existing one proceeds
+    // to check the code. Logins aren't public and the author base is small.
+    if (!credential) {
+      res.status(401).json({ error: "Invalid or expired code" });
+      return;
+    }
+
+    const telegramId = credential.user.telegramId;
+
+    const record = await prisma.loginCode.findFirst({
+      where: {
+        telegramId,
+        code: hashCode(code),
+        purpose: LoginCodePurpose.PASSWORD_RESET,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!record) {
+      const exhausted = registerResetFailure(telegramId);
+      if (exhausted) {
+        // purpose-scoped burn — never touches a LOGIN code for the same
+        // telegramId (see LoginCodePurpose comment in schema.prisma).
+        await prisma.loginCode.updateMany({
+          where: { telegramId, purpose: LoginCodePurpose.PASSWORD_RESET, usedAt: null },
+          data: { usedAt: new Date() },
+        });
+      }
+      res.status(401).json({ error: "Invalid or expired code" });
+      return;
+    }
+
+    const burned = await prisma.loginCode.updateMany({
+      where: { id: record.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (burned.count === 0) {
+      registerResetFailure(telegramId);
+      res.status(401).json({ error: "Invalid or expired code" });
+      return;
+    }
+
+    clearResetAttempts(telegramId);
+
+    if (passwordTooLong(newPassword) || newPassword.length < 10) {
+      res.status(400).json({ error: "Password must be 10-64 characters" });
+      return;
+    }
+    if (newPassword === login) {
+      res.status(400).json({ error: "Password must not match the login" });
+      return;
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+
+    await prisma.$transaction([
+      prisma.authorCredential.update({
+        where: { userId: credential.userId },
+        data: { passwordHash: newPasswordHash, mustChangePassword: false, lockedUntil: null },
+      }),
+      prisma.refreshToken.updateMany({
+        where: { userId: credential.userId, revoked: false },
+        data: { revoked: true, revokedAt: new Date() },
+      }),
+    ]);
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("[AuthorPassword] resetPassword failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

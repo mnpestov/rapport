@@ -8,6 +8,7 @@ import { getPendingReports } from "../../api/authors";
 import { Modal } from "../../components/Modal/Modal";
 import { SyncModal } from "./SyncModal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
+import { CabinetSection } from "./CabinetSection";
 import toast from "react-hot-toast";
 import { useUnread } from "../../contexts/UnreadContext";
 import styles from "./Authors.module.css";
@@ -147,6 +148,10 @@ export function Authors() {
 
       setAuthors(data);
       setSyncReports(reports);
+      // Keep the open edit modal's CabinetSection in sync — it reads
+      // `cabinet` off a snapshot in editingAuthor, which a fresh fetch
+      // otherwise leaves stale (e.g. after granting/revoking access).
+      setEditingAuthor((prev) => (prev ? data.find((a) => a.id === prev.id) ?? prev : prev));
     } catch (err: any) {
       setError(err.message || "Failed to load authors");
     } finally {
@@ -328,6 +333,10 @@ export function Authors() {
             </Button>
           </div>
         </form>
+
+        {editingAuthor && (
+          <CabinetSection author={editingAuthor} onChanged={loadAuthors} />
+        )}
       </Modal>
 
       <ConfirmDialog

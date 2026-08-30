@@ -1,11 +1,27 @@
 import { API_URL } from "./config";
 import { fetchWithAuth } from "./fetchWithAuth";
 
+// implementation_plan.md §8 — drives the "Кабинет" section of the author
+// edit modal. null cabinet = no linked User (can't grant access at all,
+// see checkCanApply in the backend — a User must exist first, e.g. via an
+// approved application or by using the mini app). Non-null with
+// credential: null = User exists but has no password-auth yet ("Выдать доступ").
+export interface AuthorCabinetInfo {
+  userId: string;
+  credential: {
+    login: string;
+    lastLoginAt: string | null;
+    mustChangePassword: boolean;
+    locked: boolean;
+  } | null;
+}
+
 export interface AuthorItem {
   id: string;
   name: string;
   site: string | null;
   patternsCount: number;
+  cabinet: AuthorCabinetInfo | null;
 }
 
 export interface AuthorInput {

@@ -1,6 +1,21 @@
-import type { DiagnosticResponse } from '@knitting/shared';
+import type { DiagnosticResponse, AuthorApplicationStatusResponse } from '@knitting/shared';
 
 const TIMEOUT_MS = 10_000;
+
+// Thrown by submitAuthorApplication on a 4xx so the handler can show the
+// backend's specific reason (e.g. "already pending", "24h cooldown") instead
+// of a generic failure message — these are expected outcomes of a
+// check-then-act race (status was checked when /become_author opened the
+// dialog, but can change before submission), not backend bugs.
+export class AuthorApplicationError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AuthorApplicationError';
+  }
+}
 
 export class BackendClient {
   private readonly baseUrl: string;
@@ -111,5 +126,79 @@ export class BackendClient {
       const text = await response.text().catch(() => '');
       throw new Error(`[BackendClient] escalate ${response.status}: ${text}`);
     }
+  }
+
+  // implementation_plan.md §4.2/§6 — telegramId in the body, not query
+  // (query strings can end up in proxy access logs).
+  async submitAuthorApplication(params: {
+    telegramId: number;
+    authorName: string;
+    resources: string[];
+  }): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/author-application`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] submitAuthorApplication timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}) as { error?: string });
+      throw new AuthorApplicationError(
+        response.status,
+        data.error || `submitAuthorApplication failed with ${response.status}`,
+      );
+    }
+  }
+
+  async getApplicationStatus(telegramId: number): Promise<AuthorApplicationStatusResponse> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/author-application/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] getApplicationStatus timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (response.status === 404) {
+      // User record not found for this telegramId — shouldn't happen for a
+      // user already talking to the bot, but treat like "never applied"
+      // rather than throwing.
+      return { status: null };
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`[BackendClient] getApplicationStatus ${response.status}: ${text}`);
+    }
+
+    // { status: null } (never applied) or the full record — both valid,
+    // never an empty/error response here.
+    return (await response.json()) as AuthorApplicationStatusResponse;
   }
 }

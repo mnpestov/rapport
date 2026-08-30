@@ -40,3 +40,37 @@ export const telegramAuthLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later" },
 });
+
+// POST /auth/author-login and /auth/author-change-password — same limiter
+// shared between both (see implementation_plan.md §3.3: change-password must
+// use the SAME rate limit as login, or it becomes a way to bypass the
+// lockout entirely). Defense-in-depth by IP; the real brute-force defense is
+// loginFailedAttempts in authorPasswordController.ts, keyed by login.
+export const authorLoginLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});
+
+// POST /auth/forgot-password — always responds 200 regardless of outcome, so
+// this IP limit is the only thing bounding how many Telegram messages one
+// requester can trigger across different logins.
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});
+
+// POST /auth/reset-password — analogous to verifyCodeLimiter above, for the
+// password-reset OTP instead of the web-login OTP.
+export const resetPasswordLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});

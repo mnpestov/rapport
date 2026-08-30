@@ -419,6 +419,9 @@ model User {
   permissions   UserPermission[]
   closedDrafts  Draft[]          @relation("DraftClosedBy")
   refreshTokens RefreshToken[]
+
+  authorApplications AuthorApplication[]
+  credential         AuthorCredential?
 }
 
 model UserFavorite {
@@ -437,6 +440,17 @@ model UserFavorite {
   @@index([patternId])
 }
 
+// Which flow a LoginCode was issued for — webAuthController's /verify-code
+// (web/admin OTP login) and /reset-password (author password reset) both
+// draw from this same table, keyed by the same telegramId. Without this
+// field a code minted for one flow could be redeemed by the other (OTP
+// scope confusion) — every read/burn of LoginCode filters on purpose too,
+// see implementation_plan.md §3.5/§3.6.
+enum LoginCodePurpose {
+  LOGIN
+  PASSWORD_RESET
+}
+
 // ---------------------------------------------------------------------------
 // Web / admin authentication — one-time login codes delivered via Telegram.
 // Decoupled from the Mini App auth flow (which stays as telegramAuth).
@@ -448,6 +462,10 @@ model LoginCode {
   code      String
   expiresAt DateTime
   usedAt    DateTime?
+  // Default LOGIN so every existing/pre-migration code (all minted by the
+  // web-login OTP flow before password-reset existed) keeps working exactly
+  // as before — see implementation_plan.md §10.
+  purpose   LoginCodePurpose @default(LOGIN)
 
   createdAt DateTime @default(now())
 
@@ -587,6 +605,91 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// Status of a regular user's request to become an author (login/password +
+// AuthorApplication implementation_plan.md). Submitted from the mini app or
+// the support bot, reviewed by an admin.
+enum ApplicationStatus {
+  PENDING
+  NEEDS_INFO
+  APPROVED
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// A user's request to become an author. At most one PENDING application per
+// user — enforced by a partial unique index Prisma can't express in schema
+// syntax; add it manually to the generated migration SQL (same pattern as
+// Draft_active_patternId_key below):
+//
+//   CREATE UNIQUE INDEX "AuthorApplication_pending_userId_key"
+//     ON "AuthorApplication"("userId")
+//     WHERE status = 'PENDING';
+//
+// NEEDS_INFO and REJECTED applications are NOT covered by that index (the
+// user can freely resubmit once out of NEEDS_INFO, and REJECTED has its own
+// 24h cooldown enforced in application code via processedAt, not the DB) —
+// only one application can ever be "awaiting a decision" at a time.
+// ---------------------------------------------------------------------------
+model AuthorApplication {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  authorName String   @db.VarChar(120)
+  // Max 10 URLs, each max 500 chars — enforced in authorApplicationController,
+  // not at the DB level (Postgres text[] has no per-element length constraint).
+  resources  String[]
+
+  status ApplicationStatus @default(PENDING)
+  // Set by an admin on needs-info/reject; explains what's missing or why.
+  adminComment String?
+
+  // Who/when this application was last moved out of PENDING/NEEDS_INFO.
+  // processedAt (not updatedAt) anchors the 24h reapply cooldown after
+  // REJECTED — updatedAt would also move on an unrelated adminComment edit.
+  processedById String?
+  processedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Login/password credentials for the author cabinet — an alternative to the
+// Telegram OTP flow (webAuthController.ts), not a replacement. Both lead to
+// the same User and the same /cabinet; see implementation_plan.md's
+// architecture diagram. One credential per user (1:1, enforced by
+// userId @unique below).
+// ---------------------------------------------------------------------------
+model AuthorCredential {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Slug, max 60 chars (see generateSlug in utils/slug.ts + resolveUniqueLogin).
+  login        String @unique
+  passwordHash String
+
+  // True on every credential issuance (approve, direct grant, resend) —
+  // forces a change before the temp password can be used for anything past
+  // /change-password. See implementation_plan.md §3.2 step 8.
+  mustChangePassword Boolean @default(true)
+  // Set after MAX_LOGIN_ATTEMPTS consecutive failures; cleared on success or
+  // on a password change/reset. Not the same as a permanent ban — this is a
+  // rolling lockout window (see webAuthController.ts's LOGIN_LOCK_MS).
+  lockedUntil DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+  // Admin userId who issued this credential (approve or direct grant) —
+  // audit trail only, no FK (admin accounts can be deleted independently).
+  createdById String?
 }
 
 // ---------------------------------------------------------------------------

@@ -1,12 +1,46 @@
 import { useState } from 'react';
 import { Button } from '../../components/Button/Button';
-import { useNavigate } from 'react-router-dom';
-import { requestCode, verifyCode } from '../../api/auth';
+import { useNavigate, Link } from 'react-router-dom';
+import { requestCode, verifyCode, authorLogin } from '../../api/auth';
 import { useAuth } from '../../contexts/AuthContext';
+import { passwordTooLong } from '../../utils/password';
 import toast from 'react-hot-toast';
 import styles from './Login.module.css';
 
+type Tab = 'telegram' | 'password';
+
 export function Login() {
+  const [tab, setTab] = useState<Tab>('telegram');
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Rapport Admin</h1>
+
+        <div className={styles.tabs}>
+          <button
+            type="button"
+            className={[styles.tab, tab === 'telegram' ? styles.tabActive : ''].join(' ')}
+            onClick={() => setTab('telegram')}
+          >
+            Telegram
+          </button>
+          <button
+            type="button"
+            className={[styles.tab, tab === 'password' ? styles.tabActive : ''].join(' ')}
+            onClick={() => setTab('password')}
+          >
+            Логин и пароль
+          </button>
+        </div>
+
+        {tab === 'telegram' ? <TelegramLoginForm /> : <PasswordLoginForm />}
+      </div>
+    </div>
+  );
+}
+
+function TelegramLoginForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [username, setUsername] = useState('');
   const [code, setCode] = useState('');
@@ -75,65 +109,142 @@ export function Login() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Rapport Admin</h1>
-        <p className={styles.subtitle}>
-          {step === 1
-            ? 'Введите ваш Telegram username для входа'
-            : 'Введите 6-значный код, отправленный ботом'}
-        </p>
+    <>
+      <p className={styles.subtitle}>
+        {step === 1
+          ? 'Введите ваш Telegram username для входа'
+          : 'Введите 6-значный код, отправленный ботом'}
+      </p>
 
-        {step === 1 ? (
-          <form className={styles.form} onSubmit={handleRequestCode}>
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>Username</label>
-              <input
-                type="text"
-                className={styles.input}
-                placeholder="Например, @durov"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={isLoading}
-                autoFocus
-              />
-            </div>
-            <Button type="submit" size="lg" block disabled={isLoading || !username.trim()}>
-              {isLoading ? 'Отправка...' : 'Получить код'}
-            </Button>
-          </form>
-        ) : (
-          <form className={styles.form} onSubmit={handleVerifyCode}>
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>Код подтверждения</label>
-              <input
-                type="text"
-                className={styles.input}
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                disabled={isLoading}
-                autoFocus
-              />
-            </div>
-            <Button type="submit" size="lg" block disabled={isLoading || code.length !== 6}>
-              {isLoading ? 'Проверка...' : 'Войти'}
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              block
-              onClick={() => {
-                setStep(1);
-                setCode('');
-              }}
+      {step === 1 ? (
+        <form className={styles.form} onSubmit={handleRequestCode}>
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Username</label>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="Например, @durov"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               disabled={isLoading}
-            >
-              Вернуться назад
-            </Button>
-          </form>
-        )}
-      </div>
-    </div>
+              autoFocus
+            />
+          </div>
+          <Button type="submit" size="lg" block disabled={isLoading || !username.trim()}>
+            {isLoading ? 'Отправка...' : 'Получить код'}
+          </Button>
+        </form>
+      ) : (
+        <form className={styles.form} onSubmit={handleVerifyCode}>
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Код подтверждения</label>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              disabled={isLoading}
+              autoFocus
+            />
+          </div>
+          <Button type="submit" size="lg" block disabled={isLoading || code.length !== 6}>
+            {isLoading ? 'Проверка...' : 'Войти'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            block
+            onClick={() => {
+              setStep(1);
+              setCode('');
+            }}
+            disabled={isLoading}
+          >
+            Вернуться назад
+          </Button>
+        </form>
+      )}
+    </>
+  );
+}
+
+function PasswordLoginForm() {
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { setToken, setUser, setIsAuthenticated } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!login.trim() || !password) return;
+
+    if (passwordTooLong(password)) {
+      toast.error('Пароль слишком длинный');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const result = await authorLogin(login.trim(), password);
+
+      if (result.mustChangePassword) {
+        // No token issued on this branch — the cabinet stays locked until
+        // the temp password is replaced (implementation_plan.md §3.2/§8).
+        navigate('/change-password', { state: { login: result.login } });
+        return;
+      }
+
+      setToken(result.token);
+      setUser(result.user);
+      setIsAuthenticated(true);
+      toast.success('Успешный вход');
+      navigate(result.user.role === 'ADMIN' ? '/patterns' : '/cabinet/', { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || 'Неверный логин или пароль');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <p className={styles.subtitle}>Введите логин и пароль от кабинета автора</p>
+
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>Логин</label>
+          <input
+            type="text"
+            className={styles.input}
+            placeholder="Логин"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            disabled={isLoading}
+            autoComplete="username"
+            autoFocus
+          />
+        </div>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>Пароль</label>
+          <input
+            type="password"
+            className={styles.input}
+            placeholder="Пароль"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+            autoComplete="current-password"
+          />
+        </div>
+        <Button type="submit" size="lg" block disabled={isLoading || !login.trim() || !password}>
+          {isLoading ? 'Вход...' : 'Войти'}
+        </Button>
+        <Link to="/forgot-password" className={styles.link}>
+          Забыли пароль?
+        </Link>
+      </form>
+    </>
   );
 }

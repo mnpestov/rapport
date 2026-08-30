@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText, X, Spool } from "lucide-react";
+import { LayoutList, UserRound, ChartColumnStacked, MessageCircleCheck, FileUser, BookUser, Info, LogOut, BarChart2, BookMarked, ReceiptText, X, Spool, UserPlus } from "lucide-react";
 import styles from "./Sidebar.module.css";
 import { useUnread } from "../../contexts/UnreadContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -15,7 +15,7 @@ interface SidebarProps {
 
 export function Sidebar({ variant = "admin", subtitle, isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
-  const { whitelistTotal, allTotal, syncReportsCount } = useUnread();
+  const { whitelistTotal, allTotal, syncReportsCount, pendingApplicationsCount } = useUnread();
   const { clearToken } = useAuth();
 
   const handleLogout = async () => {
@@ -121,6 +121,18 @@ export function Sidebar({ variant = "admin", subtitle, isOpen, onClose }: Sideba
               <FileUser size={24} strokeWidth={1} className={styles.icon} />
               <span className={styles.label}>Белый список</span>
               {whitelistTotal > 0 && <span className={styles.badge}>{whitelistTotal}</span>}
+            </NavLink>
+
+            <NavLink
+              to="/author-applications"
+              onClick={onClose}
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              <UserPlus size={24} strokeWidth={1} className={styles.icon} />
+              <span className={styles.label}>Заявки авторов</span>
+              {pendingApplicationsCount > 0 && <span className={styles.badge}>{pendingApplicationsCount}</span>}
             </NavLink>
 
             <NavLink

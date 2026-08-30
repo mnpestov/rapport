@@ -1,7 +1,11 @@
 .container {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  /* flex-start, not center — .card carries its own margin-top to anchor its
+     top edge in place; centering here would re-center the growing/shrinking
+     card around the middle instead, moving that top edge on every tab
+     switch. */
+  align-items: flex-start;
   justify-content: center;
   background-color: #F8F9FA;
   font-family: 'Mulish', sans-serif;
@@ -9,6 +13,13 @@
 }
 
 .card {
+  /* Anchored to the viewport's vertical center via margin, not flex
+     align-items on .container — so the card's TOP edge stays put as its
+     height changes when switching tabs (Telegram vs. password form have a
+     different field count). If it grew from a flex-centered position it
+     would shift both up and down around the middle; margin-based
+     positioning only grows downward from a fixed top. */
+  margin: min(20vh, 160px) auto 0;
   background: var(--surface);
   border-radius: 16px;
   padding: 48px;
@@ -33,6 +44,48 @@
   font-size: 15px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.tabs {
+  display: flex;
+  width: 100%;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 24px 0;
+  background: #F8F9FA;
+  border-radius: 10px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tabActive {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.link {
+  align-self: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
 }
 
 .form {

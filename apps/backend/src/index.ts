@@ -33,6 +33,7 @@ import channelRouter from "./routes/channel";
 import analyticsRouter from "./routes/analytics";
 import adminRouter from "./routes/admin";
 import authorRouter from "./routes/author";
+import authorApplicationsRouter from "./routes/authorApplications";
 import internalRouter from "./routes/internal";
 import diagRouter from "./routes/diag";
 import paymentsRouter from "./routes/payments";
@@ -44,6 +45,17 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Prerequisite for every IP-based rate limiter (express-rate-limit reads
+// req.ip, which without this always resolves to nginx's own loopback
+// address — every client would share one rate-limit bucket). Set to 1 hop,
+// not `true`: prod nginx proxies directly to 127.0.0.1:3000 with no
+// Cloudflare/CDN layer in front of it (verified against the live nginx
+// config — a single proxy_pass, no real_ip/X-Forwarded-For rewriting) — so
+// there is exactly one hop to trust. If that topology ever changes (e.g. a
+// CDN added in front of nginx), this number must be revisited together with
+// it, or every visitor behind the CDN gets rate-limited as a single client.
+app.set("trust proxy", 1);
 
 // Fail fast in production if ADMIN_CORS_ORIGINS is missing/empty — the cors
 // fallback below (`origin: true`) reflects ANY Origin, and combined with
@@ -125,6 +137,7 @@ app.use("/channel", channelRouter);
 app.use("/analytics", analyticsRouter);
 app.use("/admin", adminRouter);
 app.use("/author", authorRouter);
+app.use("/author-applications", authorApplicationsRouter);
 app.use("/internal", internalRouter);
 app.use("/diag", diagRouter);
 app.use("/payments", paymentsRouter);

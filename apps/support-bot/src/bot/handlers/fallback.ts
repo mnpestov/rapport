@@ -3,6 +3,7 @@ import { logEvent } from '../../logger';
 import type { CustomContext } from '../context';
 import { BackendClient } from '../../services/backendClient';
 import { notifyAdmin } from '../admin';
+import { handleAuthorApplicationStep } from './authorApplication';
 
 const backendClient = new BackendClient();
 
@@ -23,6 +24,14 @@ function detectMessageType(ctx: CustomContext): { messageType: string; fileId?: 
 export async function handleFallback(ctx: CustomContext): Promise<void> {
   // Only handle private messages — ignore channel discussion groups and group chats
   if (ctx.chat?.type !== 'private') return;
+
+  // Author-application dialog (implementation_plan.md §6) takes priority
+  // over the default "saved for support" handling below, for as long as
+  // ctx.session.authorAppStep is set.
+  if (ctx.session.authorAppStep) {
+    const consumed = await handleAuthorApplicationStep(ctx);
+    if (consumed) return;
+  }
 
   const telegramId = ctx.from?.id ?? null;
   const { messageType, fileId } = detectMessageType(ctx);

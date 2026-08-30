@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
+import { LoginCodePurpose } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { generateToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import { sendLoginCode } from "../services/loginCodeSender";
@@ -178,6 +179,11 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
       where: {
         telegramId: user.telegramId,
         code: hashCode(code),
+        // purpose: LoginCode is shared with /reset-password (see
+        // authorPasswordController.ts) — without this filter a code minted
+        // for one flow could be redeemed by the other. See
+        // implementation_plan.md §3.6.
+        purpose: LoginCodePurpose.LOGIN,
         usedAt: null,
         expiresAt: { gt: new Date() },
       },
@@ -190,8 +196,10 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
         // Too many wrong guesses against this user's active code — burn it
         // outright rather than let a brute-force loop keep spending its
         // remaining TTL. A fresh code has to be requested from scratch.
+        // purpose-scoped: never touches a PASSWORD_RESET code for the same
+        // telegramId.
         await prisma.loginCode.updateMany({
-          where: { telegramId: user.telegramId, usedAt: null },
+          where: { telegramId: user.telegramId, purpose: LoginCodePurpose.LOGIN, usedAt: null },
           data: { usedAt: new Date() },
         });
       }
