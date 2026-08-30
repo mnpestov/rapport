@@ -12,6 +12,7 @@ const MAX_RESOURCES = 10;
 const MAX_RESOURCE_LENGTH = 500;
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 120;
+const MAX_USER_RESPONSE_LENGTH = 1000;
 
 interface ApplicationInput {
   authorName: string;
@@ -206,6 +207,94 @@ export const submitBotAuthorApplication = async (req: Request, res: Response): P
   }
 };
 
+// POST /internal/bot/author-application/respond — bot, requireBotApiKey.
+// Lets an applicant reply to a NEEDS_INFO application without spawning a
+// duplicate PENDING one (the original bug: the bot's old "Подать повторно"
+// button called submitBotAuthorApplication, which only guards against an
+// existing PENDING/recent-REJECTED application — NEEDS_INFO fell through
+// unguarded, so a "reapply" silently left the NEEDS_INFO application
+// abandoned instead of updating it). Updates the existing application
+// in place and moves it back to PENDING.
+export const respondToApplication = async (req: Request, res: Response): Promise<void> => {
+  const { telegramId, userResponse: rawResponse, additionalResources } = req.body ?? {};
+  if (telegramId === undefined || telegramId === null) {
+    res.status(400).json({ error: "telegramId is required" });
+    return;
+  }
+
+  let telegramIdBig: bigint;
+  try {
+    telegramIdBig = BigInt(telegramId);
+  } catch {
+    res.status(400).json({ error: "telegramId must be numeric" });
+    return;
+  }
+
+  const userResponse = typeof rawResponse === "string" ? rawResponse.trim() : "";
+  const newResources: string[] = [];
+  if (additionalResources !== undefined) {
+    if (!Array.isArray(additionalResources)) {
+      res.status(400).json({ error: "additionalResources must be an array" });
+      return;
+    }
+    for (const raw of additionalResources) {
+      if (typeof raw !== "string") {
+        res.status(400).json({ error: "Each resource must be a string" });
+        return;
+      }
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (trimmed.length > MAX_RESOURCE_LENGTH) {
+        res.status(400).json({ error: `Each resource must be at most ${MAX_RESOURCE_LENGTH} characters` });
+        return;
+      }
+      newResources.push(trimmed);
+    }
+  }
+
+  if (!userResponse && newResources.length === 0) {
+    res.status(400).json({ error: "Provide userResponse and/or additionalResources" });
+    return;
+  }
+  if (userResponse.length > MAX_USER_RESPONSE_LENGTH) {
+    res.status(400).json({ error: `userResponse must be at most ${MAX_USER_RESPONSE_LENGTH} characters` });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { telegramId: telegramIdBig } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const application = await prisma.authorApplication.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!application || application.status !== ApplicationStatus.NEEDS_INFO) {
+      res.status(409).json({ error: "No application awaiting your response" });
+      return;
+    }
+
+    const combinedResources = [...application.resources, ...newResources].slice(0, MAX_RESOURCES);
+
+    const updated = await prisma.authorApplication.update({
+      where: { id: application.id },
+      data: {
+        resources: combinedResources,
+        userResponse: userResponse || application.userResponse,
+        status: ApplicationStatus.PENDING,
+      },
+    });
+
+    res.json({ id: updated.id, status: updated.status });
+  } catch (error) {
+    console.error("[AuthorApplication] respondToApplication failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // POST /internal/bot/author-application/status — bot, requireBotApiKey (§4.2)
 export const getBotApplicationStatus = async (req: Request, res: Response): Promise<void> => {
   const { telegramId } = req.body ?? {};
@@ -280,6 +369,10 @@ export const getAuthorApplications = async (req: Request, res: Response): Promis
         resources: a.resources,
         status: a.status,
         adminComment: a.adminComment,
+        // The applicant's reply to adminComment (see POST
+        // /internal/bot/author-application/respond) — surfaced here so the
+        // admin sees it without a separate lookup.
+        userResponse: a.userResponse,
         createdAt: a.createdAt.toISOString(),
         processedAt: a.processedAt?.toISOString() ?? null,
         user: {

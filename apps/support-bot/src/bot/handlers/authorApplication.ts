@@ -19,13 +19,18 @@ const RESOURCES_KEYBOARD = new InlineKeyboard()
   .text('Отмена', 'author_app:cancel');
 
 const NEEDS_INFO_KEYBOARD = new InlineKeyboard()
-  .text('Подать повторно', 'author_app:restart').row()
+  .text('Ответить', 'author_app:respond_start').row()
+  .text('Отмена', 'author_app:cancel');
+
+const RESPOND_KEYBOARD = new InlineKeyboard()
+  .text('Отправить ✓', 'author_app:respond_submit').row()
   .text('Отмена', 'author_app:cancel');
 
 function resetSession(ctx: CustomContext): void {
   ctx.session.authorAppStep = undefined;
   ctx.session.authorAppName = undefined;
   ctx.session.authorAppResources = [];
+  ctx.session.authorAppResponseText = undefined;
 }
 
 function startDialog(ctx: CustomContext): Promise<unknown> {
@@ -70,7 +75,10 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
       return;
     case 'NEEDS_INFO':
       await ctx.reply(
-        `Требуется уточнение: ${result.adminComment ?? 'администратор запросил дополнительную информацию.'}`,
+        `По вашей заявке на авторский кабинет требуется уточнение:\n\n` +
+          `${result.adminComment ?? 'администратор запросил дополнительную информацию.'}\n\n` +
+          `Нажмите «Ответить», чтобы дополнить заявку текстом или новыми ссылками — ` +
+          `отвечать нужно здесь, в этом диалоге, а не отдельным сообщением в чат.`,
         { reply_markup: NEEDS_INFO_KEYBOARD },
       );
       return;
@@ -118,24 +126,42 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
     return true;
   }
 
-  // step === 'resources'
-  if (ctx.session.authorAppResources.length >= MAX_RESOURCES) {
-    await ctx.reply('Максимум 10 ресурсов. Нажмите «Готово ✓», чтобы отправить заявку.', {
-      reply_markup: RESOURCES_KEYBOARD,
+  if (step === 'resources') {
+    if (ctx.session.authorAppResources.length >= MAX_RESOURCES) {
+      await ctx.reply('Максимум 10 ресурсов. Нажмите «Готово ✓», чтобы отправить заявку.', {
+        reply_markup: RESOURCES_KEYBOARD,
+      });
+      return true;
+    }
+    if (text.length === 0 || text.length > MAX_RESOURCE_LENGTH) {
+      await ctx.reply(`Ссылка должна быть не длиннее ${MAX_RESOURCE_LENGTH} символов. Попробуйте ещё раз.`, {
+        reply_markup: RESOURCES_KEYBOARD,
+      });
+      return true;
+    }
+    ctx.session.authorAppResources.push(text);
+    await ctx.reply(
+      `Добавлено (${ctx.session.authorAppResources.length}/${MAX_RESOURCES}). Пришлите ещё ссылку или нажмите «Готово ✓».`,
+      { reply_markup: RESOURCES_KEYBOARD },
+    );
+    return true;
+  }
+
+  // step === 'respond' — every message (text and/or links) is appended as
+  // one line into a single free-text reply; the backend doesn't try to
+  // parse structure out of it, it's shown to the admin as-is.
+  if (text.length > MAX_RESOURCE_LENGTH) {
+    await ctx.reply(`Сообщение должно быть не длиннее ${MAX_RESOURCE_LENGTH} символов.`, {
+      reply_markup: RESPOND_KEYBOARD,
     });
     return true;
   }
-  if (text.length === 0 || text.length > MAX_RESOURCE_LENGTH) {
-    await ctx.reply(`Ссылка должна быть не длиннее ${MAX_RESOURCE_LENGTH} символов. Попробуйте ещё раз.`, {
-      reply_markup: RESOURCES_KEYBOARD,
-    });
-    return true;
-  }
-  ctx.session.authorAppResources.push(text);
-  await ctx.reply(
-    `Добавлено (${ctx.session.authorAppResources.length}/${MAX_RESOURCES}). Пришлите ещё ссылку или нажмите «Готово ✓».`,
-    { reply_markup: RESOURCES_KEYBOARD },
-  );
+  ctx.session.authorAppResponseText = ctx.session.authorAppResponseText
+    ? `${ctx.session.authorAppResponseText}\n${text}`
+    : text;
+  await ctx.reply('Добавлено. Можете написать ещё или нажать «Отправить ✓».', {
+    reply_markup: RESPOND_KEYBOARD,
+  });
   return true;
 }
 
@@ -189,10 +215,67 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
 export async function handleAuthorAppCancel(ctx: CallbackCtx): Promise<void> {
   await ctx.answerCallbackQuery();
   resetSession(ctx);
-  await ctx.reply('Заявка отменена.');
+  await ctx.reply('Отменено.');
 }
 
-export async function handleAuthorAppRestart(ctx: CallbackCtx): Promise<void> {
+// "Ответить" on a NEEDS_INFO application — starts the respond sub-flow
+// instead of restarting the whole name+resources dialog (the old
+// "Подать повторно" button called startDialog here, which fed into
+// submitAuthorApplication and silently created a second application while
+// the original NEEDS_INFO one sat abandoned).
+export async function handleAuthorAppRespondStart(ctx: CallbackCtx): Promise<void> {
   await ctx.answerCallbackQuery();
-  await startDialog(ctx);
+  ctx.session.authorAppStep = 'respond';
+  ctx.session.authorAppResponseText = undefined;
+  await ctx.reply(
+    'Напишите пояснение текстом и/или пришлите новые ссылки — можно несколькими сообщениями. ' +
+      'Когда закончите — нажмите «Отправить ✓».',
+    { reply_markup: RESPOND_KEYBOARD },
+  );
+}
+
+export async function handleAuthorAppRespondSubmit(ctx: CallbackCtx): Promise<void> {
+  await ctx.answerCallbackQuery();
+
+  const telegramId = ctx.from.id;
+  const userResponse = ctx.session.authorAppResponseText;
+
+  if (ctx.session.authorAppStep !== 'respond') {
+    await ctx.reply('Сессия ответа устарела. Начните заново: /become_author');
+    return;
+  }
+
+  if (!userResponse) {
+    await ctx.reply('Напишите хотя бы одно сообщение перед отправкой.', {
+      reply_markup: RESPOND_KEYBOARD,
+    });
+    return;
+  }
+
+  try {
+    await backendClient.respondToApplication({ telegramId, userResponse });
+  } catch (err) {
+    if (err instanceof AuthorApplicationError) {
+      logEvent({
+        event: 'AUTHOR_APP_RESPOND_REJECTED',
+        requestId: ctx.requestId,
+        telegramId,
+        status: err.status,
+        error: err.message,
+      });
+      await ctx.reply(err.message);
+    } else {
+      logEvent({
+        event: 'AUTHOR_APP_RESPOND_ERROR',
+        requestId: ctx.requestId,
+        telegramId,
+        error: (err as Error).message,
+      });
+      await ctx.reply('Не удалось отправить ответ. Попробуйте ещё раз позже.');
+    }
+    return;
+  }
+
+  resetSession(ctx);
+  await ctx.reply('Ответ отправлен ✅. Заявка снова на рассмотрении.');
 }

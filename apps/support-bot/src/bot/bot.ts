@@ -9,7 +9,8 @@ import {
   handleBecomeAuthor,
   handleAuthorAppSubmit,
   handleAuthorAppCancel,
-  handleAuthorAppRestart,
+  handleAuthorAppRespondStart,
+  handleAuthorAppRespondSubmit,
 } from './handlers/authorApplication';
 
 export function createBot(): Bot<CustomContext> {
@@ -18,7 +19,12 @@ export function createBot(): Bot<CustomContext> {
   });
 
   bot.use(updateLogger);
-  bot.use(session({ initial: (): SessionData => ({ awaitingScreenshot: false, authorAppResources: [] }) }));
+  bot.use(session({
+    initial: (): SessionData => ({
+      awaitingScreenshot: false,
+      authorAppResources: [],
+    }),
+  }));
 
   bot.command('start', handleStart);
   bot.command('become_author', handleBecomeAuthor);
@@ -28,7 +34,8 @@ export function createBot(): Bot<CustomContext> {
   bot.callbackQuery('support:cache_failed', handleCacheFailed);
   bot.callbackQuery('author_app:submit', handleAuthorAppSubmit);
   bot.callbackQuery('author_app:cancel', handleAuthorAppCancel);
-  bot.callbackQuery('author_app:restart', handleAuthorAppRestart);
+  bot.callbackQuery('author_app:respond_start', handleAuthorAppRespondStart);
+  bot.callbackQuery('author_app:respond_submit', handleAuthorAppRespondSubmit);
   bot.on('message', handleFallback);
 
   return bot;

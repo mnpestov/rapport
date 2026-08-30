@@ -8,6 +8,9 @@ export interface AuthorApplication {
   resources: string[];
   status: ApplicationStatus;
   adminComment: string | null;
+  // The applicant's reply to adminComment, sent via the bot's "Ответить"
+  // flow — set only after a NEEDS_INFO round, null otherwise.
+  userResponse: string | null;
   createdAt: string;
   processedAt: string | null;
   user: {

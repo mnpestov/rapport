@@ -201,4 +201,40 @@ export class BackendClient {
     // never an empty/error response here.
     return (await response.json()) as AuthorApplicationStatusResponse;
   }
+
+  // Replies to an existing NEEDS_INFO application in place (moves it back
+  // to PENDING) instead of creating a duplicate one — see
+  // authorApplicationController.ts's respondToApplication. The backend also
+  // accepts additionalResources as a separate field, but the bot folds
+  // everything (text and links alike) into one free-text reply, so it's
+  // never sent from here.
+  async respondToApplication(params: { telegramId: number; userResponse: string }): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/author-application/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] respondToApplication timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}) as { error?: string });
+      throw new AuthorApplicationError(
+        response.status,
+        data.error || `respondToApplication failed with ${response.status}`,
+      );
+    }
+  }
 }

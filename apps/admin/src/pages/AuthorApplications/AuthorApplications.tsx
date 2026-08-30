@@ -123,9 +123,18 @@ export function AuthorApplications() {
                   <span className={[styles.statusBadge, styles[`status${app.status}`]].join(" ")}>
                     {STATUS_LABELS[app.status]}
                   </span>
-                  {app.adminComment && (app.status === "NEEDS_INFO" || app.status === "REJECTED") && (
+                  {/* Shown regardless of the current status — a PENDING
+                      application can carry a NEEDS_INFO round's history
+                      (admin's question + the applicant's reply) after the
+                      bot's "Ответить" flow moved it back to PENDING. */}
+                  {app.adminComment && (
                     <div className={styles.tdMuted} title={app.adminComment}>
-                      {app.adminComment}
+                      Админ: {app.adminComment}
+                    </div>
+                  )}
+                  {app.userResponse && (
+                    <div className={styles.tdMuted} title={app.userResponse}>
+                      Ответ: {app.userResponse}
                     </div>
                   )}
                 </td>

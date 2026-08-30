@@ -645,6 +645,12 @@ model AuthorApplication {
   status ApplicationStatus @default(PENDING)
   // Set by an admin on needs-info/reject; explains what's missing or why.
   adminComment String?
+  // The applicant's free-text reply to adminComment, submitted via the bot's
+  // "Ответить" flow (see /internal/bot/author-application/respond). Overwritten
+  // on each reply — no history kept; a second NEEDS_INFO round on the same
+  // application clobbers the previous response, which is an accepted gap for
+  // now (rare case).
+  userResponse String?
 
   // Who/when this application was last moved out of PENDING/NEEDS_INFO.
   // processedAt (not updatedAt) anchors the 24h reapply cooldown after
