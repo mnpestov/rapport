@@ -2,7 +2,7 @@ import 'dotenv/config';
 import http from 'http';
 import { config } from './config';
 import { logEvent } from './logger';
-import { createBot } from './bot/bot';
+import { createBot, registerBotCommands } from './bot/bot';
 
 function startHealthServer(): http.Server {
   const server = http.createServer((req, res) => {
@@ -31,6 +31,19 @@ async function main(): Promise<void> {
 
   const healthServer = startHealthServer();
   const bot = createBot();
+
+  // Best-effort — a transient Telegram API error here shouldn't stop the
+  // bot from starting long-polling; the command menu is a discoverability
+  // aid, not something the bot depends on functionally.
+  try {
+    await registerBotCommands(bot);
+    logEvent({ event: 'BOT_COMMANDS_REGISTERED' });
+  } catch (err) {
+    logEvent({
+      event: 'BOT_COMMANDS_REGISTER_ERROR',
+      error: (err as Error).message,
+    });
+  }
 
   process.once('SIGINT', () => {
     logEvent({ event: 'SHUTDOWN', signal: 'SIGINT' });

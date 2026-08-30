@@ -101,6 +101,16 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
   }
 }
 
+// "Стать автором" button in /start (handlers/start.ts) — same entry point
+// as the /become_author command, just reached via a button tap instead of
+// typing the command. CallbackCtx is a CustomContext, so handleBecomeAuthor
+// works unchanged; this wrapper only adds the answerCallbackQuery() a
+// callback_query update requires (a command update doesn't have one).
+export async function handleAuthorAppBegin(ctx: CallbackCtx): Promise<void> {
+  await ctx.answerCallbackQuery();
+  await handleBecomeAuthor(ctx);
+}
+
 // Called from fallback.ts before its default handling, only while
 // ctx.session.authorAppStep is set. Returns true if it consumed the
 // message (fallback.ts must then return without further processing).

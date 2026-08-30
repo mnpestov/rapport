@@ -19,10 +19,12 @@ export async function handleStart(ctx: CustomContext): Promise<void> {
 
   const keyboard = new InlineKeyboard()
     .text('Запустить диагностику', 'diagnostic:start').row()
+    .text('Стать автором', 'author_app:begin').row()
     .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
   await ctx.reply(
     'Привет! Это служба поддержки Rapport. 🛠\n\n' +
-      'Если вы не можете войти в приложение — запустите диагностику, и мы всё починим.',
+      'Если вы не можете войти в приложение — запустите диагностику, и мы всё починим.\n' +
+      'Хотите разместить свои описания в Rapport — подайте заявку на авторский кабинет.',
     { reply_markup: keyboard },
   );
 
