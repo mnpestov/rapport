@@ -22,7 +22,7 @@ export async function handleStart(ctx: CustomContext): Promise<void> {
     .text('Стать автором', 'author_app:begin').row()
     .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
   await ctx.reply(
-    'Привет! Это служба поддержки Раппорта 🛠\n\n' +
+    'Привет!\nЭто служба поддержки Раппорта 🛠\n\n' +
     'Если вы не можете войти в приложение — запустите диагностику, и мы всё починим.\n\n' +
     'Хотите разместить свои описания в Раппорте — подайте заявку на авторский кабинет.',
     { reply_markup: keyboard },
