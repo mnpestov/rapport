@@ -119,6 +119,18 @@ export async function refreshWebSession(): Promise<string | null> {
       }
       const data = await res.json();
       webAccessToken = data.token ?? null;
+
+      if (webAccessToken) {
+        // /auth/refresh отдаёт только токен. Профиль (права, paywall-поля)
+        // подтягиваем отдельно и кладём в localStorage: usePremiumAccess
+        // читает его именно оттуда, а FavoritesContext ждёт auth:ready,
+        // чтобы начать синхронизацию.
+        //
+        // Без этого блока тихое восстановление сессии по cookie оставляло
+        // приложение без избранного и без платного UI — событие слал
+        // только явный вход (acceptSession в webAuthApi).
+        await loadProfile();
+      }
       return webAccessToken;
     } catch {
       // Сеть отвалилась — токен не трогаем: возможно, он ещё живой, и
@@ -130,6 +142,36 @@ export async function refreshWebSession(): Promise<string | null> {
   })();
 
   return refreshPromise;
+}
+
+/**
+ * Догрузка профиля после тихого восстановления сессии.
+ *
+ * Ошибки намеренно проглатываются: сессия уже поднята, и падать из-за
+ * недоступного профиля незачем — премиум-UI просто не отрисуется до
+ * следующей попытки.
+ */
+async function loadProfile(): Promise<void> {
+  try {
+    const res = await fetch(`${API_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${webAccessToken}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.user) {
+      try {
+        localStorage.setItem('user_data', JSON.stringify(data.user));
+      } catch {
+        // приватный режим / заблокированное хранилище
+      }
+    }
+  } catch {
+    // сеть — молча
+  } finally {
+    // Событие шлём в любом случае: оно означает «сессия готова», и
+    // FavoritesContext ждёт именно его, чтобы загрузить избранное.
+    window.dispatchEvent(new CustomEvent('auth:ready'));
+  }
 }
 
 export async function logoutWeb(): Promise<void> {

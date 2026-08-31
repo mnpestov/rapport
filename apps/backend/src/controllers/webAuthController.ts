@@ -6,6 +6,7 @@ import { generateToken, generateRefreshToken, verifyRefreshToken } from "../util
 import { sendLoginCode } from "../services/loginCodeSender";
 import { allowedOrigins } from "../utils/allowedOrigins";
 import {
+  buildPaywallState,
   createWebSession,
   hashToken,
   hasWebAccess,
@@ -293,6 +294,10 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         role: true,
         authorId: true,
         permissions: { select: { permission: true } },
+        // Нужны для paywall-полей ниже — та же форма, что читает
+        // buildPaywallState в Mini App-флоу.
+        lastPaywallShownAt: true,
+        premiumExpiresAt: true,
       },
     });
 
@@ -301,7 +306,38 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const permissions = user.permissions.map((p) => p.permission as string);
+
+    // Подписка на канал у веб-сессии уже проверена и лежит на WebSession —
+    // повторно дёргать telegram-gateway здесь незачем (BROWSER_ACCESS_PLAN.md
+    // §4.8). Для Mini App-токена (нет sessionId) считаем, что раз запрос
+    // дошёл сюда, вход был успешным.
+    //
+    // Оговорка: для whitelisted-неподписчика значение может разойтись с
+    // реальностью до следующей перепроверки — whitelist-пользователей мало
+    // и они известны, это принято осознанно.
+    let effectiveIsSubscriber = true;
+    if (req.user!.sessionId) {
+      const session = await prisma.webSession.findUnique({
+        where: { id: req.user!.sessionId },
+        select: { subscriptionOk: true },
+      });
+      effectiveIsSubscriber = session?.subscriptionOk ?? false;
+    }
+
+    // Те же paywall-поля, что отдаёт /auth/telegram: без них браузерная
+    // версия не знала бы, показывать ли кнопку подписки и баннер —
+    // usePremiumAccess читает их из localStorage.user_data.
+    const { showPaywallBanner, subscriptionWarning, paywallUiEnabled } = buildPaywallState({
+      user,
+      permissions,
+      effectiveIsSubscriber,
+      // Дев-обход кулдауна баннера здесь не нужен: это не точка входа.
+      allowDevAuth: false,
+    });
+
     res.json({
+      isSubscriber: effectiveIsSubscriber,
       user: {
         id: user.id,
         telegramId: user.telegramId.toString(),
@@ -310,7 +346,11 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         username: user.username,
         role: user.role,
         authorId: user.authorId,
-        permissions: user.permissions.map((p) => p.permission),
+        permissions,
+        showPaywallBanner,
+        subscriptionWarning,
+        paywallUiEnabled,
+        premiumExpiresAt: user.premiumExpiresAt?.toISOString() ?? null,
       },
     });
   } catch (error) {

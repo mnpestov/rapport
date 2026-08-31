@@ -5,7 +5,7 @@ import { LoginCodePurpose, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { sendForgotPassword } from "../services/authorNotifier";
 import { normalizeLogin } from "../utils/authorCredentialHelpers";
-import { createWebSession, hasWebAccess } from "../services/authSession";
+import { buildPaywallState, createWebSession, hasWebAccess } from "../services/authSession";
 import { clearSessionCache } from "../middlewares/enforceWebSubscription";
 
 /**
@@ -164,6 +164,22 @@ async function issueSessionResponse(
     where: { userId: user.id },
     select: { permission: true },
   });
+  const permissions = userPermissions.map((p) => p.permission as string);
+
+  // Paywall-поля обязаны быть и здесь: usePremiumAccess читает их из
+  // localStorage.user_data, и без них браузерная версия не показывала бы
+  // ни кнопку подписки, ни баннер (BROWSER_ACCESS_PLAN.md §4.3).
+  // Подписка на канал только что проверена при создании сессии.
+  const paywallSource = await prisma.user.findUniqueOrThrow({
+    where: { id: user.id },
+    select: { role: true, lastPaywallShownAt: true, premiumExpiresAt: true },
+  });
+  const { showPaywallBanner, subscriptionWarning, paywallUiEnabled } = buildPaywallState({
+    user: paywallSource,
+    permissions,
+    effectiveIsSubscriber: true,
+    allowDevAuth: false,
+  });
 
   res.json({
     token: accessToken,
@@ -173,7 +189,11 @@ async function issueSessionResponse(
       firstName: user.firstName,
       role: user.role,
       authorId: user.authorId,
-      permissions: userPermissions.map((p) => p.permission),
+      permissions,
+      showPaywallBanner,
+      subscriptionWarning,
+      paywallUiEnabled,
+      premiumExpiresAt: paywallSource.premiumExpiresAt?.toISOString() ?? null,
     },
   });
 }

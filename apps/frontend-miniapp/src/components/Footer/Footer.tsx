@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { openExternalLink } from '../../utils/telegram';
+import { isWebMode, logoutWeb } from '../../api/authSession';
 import { ReportErrorModal } from '../ReportErrorModal/ReportErrorModal';
 import './Footer.css';
 
@@ -57,6 +58,21 @@ export const Footer: React.FC<FooterProps> = ({ sourceUrl }) => {
             <button type="button" className="footer-link footer-link--button" onClick={() => setIsReportModalOpen(true)}>
               Сообщить об ошибке
             </button>
+            {/* Выход — только в браузере: в Telegram аккаунт задаёт сам
+                мессенджер, выходить некуда. Подвал выбран потому, что он
+                есть на всех страницах, а отдельного меню в приложении нет. */}
+            {isWebMode() && (
+              <button
+                type="button"
+                className="footer-link footer-link--button"
+                onClick={async () => {
+                  await logoutWeb();
+                  window.location.reload();
+                }}
+              >
+                Выйти
+              </button>
+            )}
           </div>
           <p className="footer-copyright">© {new Date().getFullYear()} Раппорт</p>
         </div>
