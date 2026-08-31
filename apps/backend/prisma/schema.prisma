@@ -435,6 +435,7 @@ model User {
 
   authorApplications AuthorApplication[]
   credential         UserCredential?
+  webSessions        WebSession[]
 }
 
 model UserFavorite {
@@ -617,6 +618,62 @@ model RefreshToken {
   revokedAt DateTime?
   createdAt DateTime  @default(now())
 
+  // Веб-сессия, внутри которой этот токен ротируется (BROWSER_ACCESS_PLAN.md
+  // §3.11). Nullable: токены, выданные до внедрения WebSession, и админские
+  // сессии её не имеют — код обязан работать с обоими вариантами.
+  //
+  // onDelete: Cascade НЕ ставим: сессии не удаляются, а помечаются
+  // revoked — история токенов внутри сессии остаётся для reuse-detection.
+  sessionId String?
+  session   WebSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([userId])
+  // Ротация и отзыв идут в пределах одной сессии (см. reuse-detection в
+  // webAuthController.refresh — он скоупится на sessionId, а не на userId).
+  @@index([sessionId])
+}
+
+// ---------------------------------------------------------------------------
+// Браузерная сессия (BROWSER_ACCESS_PLAN.md §3.11, решение D).
+//
+// Долгоживущее состояние сессии НЕ вешается на RefreshToken: тот
+// короткоживущий и ротируется каждые несколько минут, и переносить на новую
+// запись subscriptionOk/lastSubscriptionCheckAt при каждой ротации — лишняя
+// работа и лишний источник рассинхрона. Токены ротируют ВНУТРИ сессии,
+// метаданные живут на ней.
+//
+// Только для веба. Mini App сессий не создаёт: там нет refresh-токена,
+// приложение переавторизуется через /auth/telegram при каждом открытии.
+// ---------------------------------------------------------------------------
+model WebSession {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  // Кэш проверки подписки на канал. Обновляется enforceWebSubscription и
+  // /auth/subscription-recheck не чаще раза в WEB_SUBSCRIPTION_RECHECK_HOURS
+  // (дефолт 24) — именно этот кэш не даёт каждому запросу к каталогу бить в
+  // telegram-gateway. Дефолт true: сессия создаётся только после успешного
+  // входа, где подписка уже проверена.
+  subscriptionOk          Boolean   @default(true)
+  lastSubscriptionCheckAt DateTime?
+
+  // Метаданные для будущего экрана «активные сессии / выйти везде» — UI в
+  // первой версии не делаем, но поля заводим сразу, чтобы не городить
+  // вторую миграцию.
+  userAgent String?
+  ip        String?
+
+  revoked   Boolean   @default(false)
+  revokedAt DateTime?
+
+  refreshTokens RefreshToken[]
+
+  // Отзыв всех сессий пользователя: logout-everywhere, revokeAccess,
+  // снятие WEB_ACCESS.
   @@index([userId])
 }
 
