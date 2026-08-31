@@ -15,7 +15,7 @@ interface SidebarProps {
 
 export function Sidebar({ variant = "admin", subtitle, isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
-  const { whitelistTotal, allTotal, syncReportsCount, pendingApplicationsCount } = useUnread();
+  const { whitelistTotal, allTotal, syncReportsCount, pendingApplicationsCount, pendingYarnsCount } = useUnread();
   const { clearToken } = useAuth();
 
   const handleLogout = async () => {
@@ -192,6 +192,7 @@ export function Sidebar({ variant = "admin", subtitle, isOpen, onClose }: Sideba
             >
               <Spool size={24} strokeWidth={1} className={styles.icon} />
               <span className={styles.label}>Артикулы пряжи</span>
+              {pendingYarnsCount > 0 && <span className={styles.badge}>{pendingYarnsCount}</span>}
             </NavLink>
           </>
         )}

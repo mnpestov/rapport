@@ -3,6 +3,7 @@ import { getUnreadMessages } from "../api/chat";
 
 import { getPendingReports } from "../api/authors";
 import { getAuthorApplications } from "../api/authorApplications";
+import { getYarns } from "../api/yarns";
 
 interface UnreadContextValue {
   whitelistTotal: number;
@@ -11,6 +12,7 @@ interface UnreadContextValue {
   allUsers: Set<string>;
   syncReportsCount: number;
   pendingApplicationsCount: number;
+  pendingYarnsCount: number;
   refresh: () => void;
 }
 
@@ -21,6 +23,7 @@ const UnreadContext = createContext<UnreadContextValue>({
   allUsers: new Set(),
   syncReportsCount: 0,
   pendingApplicationsCount: 0,
+  pendingYarnsCount: 0,
   refresh: () => {},
 });
 
@@ -31,6 +34,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const [allUsers, setAllUsers] = useState<Set<string>>(new Set());
   const [syncReportsCount, setSyncReportsCount] = useState(0);
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
+  const [pendingYarnsCount, setPendingYarnsCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
@@ -46,6 +50,12 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
 
       const applications = await getAuthorApplications("PENDING");
       setPendingApplicationsCount(applications.length);
+
+      // Очередь модерации артикулов пряжи, созданных авторами
+      // (implementation_plan_moderation_yarns_articles.md) — та же getYarns,
+      // что использует Yarns.tsx для вкладки «На проверке».
+      const yarns = await getYarns({ pending: true });
+      setPendingYarnsCount(yarns.total);
     } catch {
       // silent
     }
@@ -72,6 +82,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
         allUsers,
         syncReportsCount,
         pendingApplicationsCount,
+        pendingYarnsCount,
         refresh: poll,
       }}
     >
