@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { PaywallEventType, PaywallSource } from "@prisma/client";
 import { prisma } from "../prismaClient";
+import { requestPlatform } from "../utils/requestPlatform";
 
 // POST /analytics/paywall-impression — marks "shown now" for the 7-day gate
 // (PAYWALL_BANNER_PLAN.md §4/§5.2). Оставлен как есть: это НЕ аналитика, а
@@ -52,6 +53,8 @@ export const submitPaywallEvent = async (req: Request, res: Response): Promise<v
         userId,
         type: type as PaywallEventType,
         source: source as PaywallSource,
+        // Откуда пришло событие — из браузера или Mini App (§4.5, P2).
+        platform: requestPlatform(req),
       },
     });
     res.status(204).end();

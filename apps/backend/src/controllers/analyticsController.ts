@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { AnalyticsService } from "../services/analyticsService";
+import { requestPlatform } from "../utils/requestPlatform";
 
 /**
  * Analytics HTTP layer. userId comes from the JWT (req.user), never the body.
@@ -16,7 +17,7 @@ export const recordPatternView = async (req: Request, res: Response): Promise<vo
   }
 
   try {
-    await AnalyticsService.recordPatternView(userId, patternId);
+    await AnalyticsService.recordPatternView(userId, patternId, requestPlatform(req));
     res.status(201).json({ ok: true });
   } catch (error) {
     console.error("[Analytics] recordPatternView failed:", error);
@@ -34,7 +35,7 @@ export const recordPatternLinkClick = async (req: Request, res: Response): Promi
   }
 
   try {
-    await AnalyticsService.recordPatternLinkClick(userId, patternId);
+    await AnalyticsService.recordPatternLinkClick(userId, patternId, requestPlatform(req));
     res.status(201).json({ ok: true });
   } catch (error) {
     console.error("[Analytics] recordPatternLinkClick failed:", error);
@@ -47,7 +48,7 @@ export const recordSubscribeClick = async (req: Request, res: Response): Promise
   const userId = req.user!.userId;
 
   try {
-    await AnalyticsService.recordSubscribeClick(userId);
+    await AnalyticsService.recordSubscribeClick(userId, requestPlatform(req));
     res.status(201).json({ ok: true });
   } catch (error) {
     console.error("[Analytics] recordSubscribeClick failed:", error);
@@ -69,7 +70,7 @@ export const recordSearchQuery = async (req: Request, res: Response): Promise<vo
   }
 
   try {
-    await AnalyticsService.recordSearchQuery(userId, query, resultsCount);
+    await AnalyticsService.recordSearchQuery(userId, query, resultsCount, requestPlatform(req));
     res.status(201).json({ ok: true });
   } catch (error) {
     console.error("[Analytics] recordSearchQuery failed:", error);

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
+import { revokeAllWebSessions } from "../services/authSession";
+import { clearSessionCache } from "../middlewares/enforceWebSubscription";
 
 // GET /admin/permissions?userId=xxx
 export const getPermissions = async (req: Request, res: Response): Promise<void> => {
@@ -59,6 +61,18 @@ export const revokePermission = async (req: Request, res: Response): Promise<voi
     await prisma.userPermission.delete({
       where: { userId_permission: { userId, permission: permission as Permission } },
     });
+
+    // Снятие WEB_ACCESS обязано завершить и браузерные сессии
+    // (BROWSER_ACCESS_PLAN.md §3.5). Иначе отзыв не вступал бы в силу до
+    // истечения токенов: access живёт до 24 часов, refresh — 30 дней, а
+    // enforceWebSubscription смотрит на WebSession.revoked, а не на права.
+    //
+    // Проверка гейта на входе тут не помогает: она отрабатывает только при
+    // логине, а у отозванного пользователя сессия уже выдана.
+    if (permission === Permission.WEB_ACCESS) {
+      await revokeAllWebSessions(userId);
+      clearSessionCache();
+    }
 
     res.json({ success: true });
   } catch (error: any) {

@@ -504,6 +504,10 @@ model PatternView {
   id        String   @id @default(uuid())
   userId    String
   patternId String
+  // Откуда пришло событие: 'miniapp' (Telegram) или 'web' (браузер).
+  // Nullable — события до появления браузерной версии платформы не знают,
+  // все они фактически из Mini App (BROWSER_ACCESS_PLAN.md §4.5, P2).
+  platform  String?
   createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -517,6 +521,10 @@ model PatternLinkClick {
   id        String   @id @default(uuid())
   userId    String
   patternId String
+  // Откуда пришло событие: 'miniapp' (Telegram) или 'web' (браузер).
+  // Nullable — события до появления браузерной версии платформы не знают,
+  // все они фактически из Mini App (BROWSER_ACCESS_PLAN.md §4.5, P2).
+  platform  String?
   createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -529,6 +537,10 @@ model PatternLinkClick {
 model SubscribeClick {
   id        String   @id @default(uuid())
   userId    String
+  // Откуда пришло событие: 'miniapp' (Telegram) или 'web' (браузер).
+  // Nullable — события до появления браузерной версии платформы не знают,
+  // все они фактически из Mini App (BROWSER_ACCESS_PLAN.md §4.5, P2).
+  platform  String?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -545,6 +557,10 @@ model SearchQuery {
   userId       String
   query        String
   resultsCount Int
+  // Откуда пришло событие: 'miniapp' (Telegram) или 'web' (браузер).
+  // Nullable — события до появления браузерной версии платформы не знают,
+  // все они фактически из Mini App (BROWSER_ACCESS_PLAN.md §4.5, P2).
+  platform  String?
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -979,6 +995,10 @@ model PaywallEvent {
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      PaywallEventType
   source    PaywallSource
+  // Откуда пришло событие: 'miniapp' (Telegram) или 'web' (браузер).
+  // Nullable — события до появления браузерной версии платформы не знают,
+  // все они фактически из Mini App (BROWSER_ACCESS_PLAN.md §4.5, P2).
+  platform  String?
   createdAt DateTime         @default(now())
 
   // Воронка группирует по (type, source) в границах периода — этим
