@@ -3,9 +3,9 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { LoginCodePurpose, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
-import { generateToken, generateRefreshToken } from "../utils/jwt";
 import { sendForgotPassword } from "../services/authorNotifier";
 import { normalizeLogin } from "../utils/authorCredentialHelpers";
+import { createWebSession } from "../services/authSession";
 
 /**
  * Login/password authentication for the author cabinet — an alternative to
@@ -18,7 +18,6 @@ const LOGIN_LOCK_MS = 15 * 60 * 1_000;
 const MAX_LOGIN_ATTEMPTS = 5;
 const RESET_CODE_TTL_MS = 5 * 60 * 1_000;
 const FORGOT_PASSWORD_COOLDOWN_MS = 60 * 1_000;
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 3_600 * 1_000; // 30 days
 
 // bcrypt truncates its input at 72 BYTES silently — no error, no signal to
 // the caller. Checking password.length (JS UTF-16 code units) is not the
@@ -95,19 +94,11 @@ function hashCode(code: string): string {
   return crypto.createHash("sha256").update(code).digest("hex");
 }
 
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-function setRefreshCookie(res: Response, token: string): void {
-  res.cookie("refresh_token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/auth",
-    maxAge: REFRESH_TOKEN_TTL_MS,
-  });
-}
+// hashToken / setRefreshCookie / REFRESH_TOKEN_TTL_MS жили здесь своими
+// копиями — теперь единственные версии в services/authSession.ts, куда
+// переехало создание веб-сессии (createWebSession). Две копии cookie-опций
+// разъезжались бы молча: расхождение в path или sameSite ломает refresh, но
+// не падает.
 
 async function hasAuthorCabinetAccess(userId: string): Promise<boolean> {
   const entry = await prisma.userPermission.findUnique({
@@ -116,22 +107,15 @@ async function hasAuthorCabinetAccess(userId: string): Promise<boolean> {
   return !!entry;
 }
 
-async function issueSessionResponse(res: Response, user: { id: string; telegramId: bigint; firstName: string; role: any; authorId: string | null }): Promise<void> {
-  const accessToken = generateToken({
-    userId: user.id,
-    telegramId: user.telegramId.toString(),
-    role: user.role,
-  });
-
-  const rawRefreshToken = generateRefreshToken({ userId: user.id });
-  await prisma.refreshToken.create({
-    data: {
-      token: hashToken(rawRefreshToken),
-      userId: user.id,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-    },
-  });
-  setRefreshCookie(res, rawRefreshToken);
+async function issueSessionResponse(
+  req: Request,
+  res: Response,
+  user: { id: string; telegramId: bigint; firstName: string; role: any; authorId: string | null },
+): Promise<void> {
+  // Создание WebSession + пары токенов вынесено в общий слой: та же
+  // процедура нужна verify-code и будущим веб-эндпоинтам, и расходиться им
+  // нельзя (BROWSER_ACCESS_PLAN.md §3.11).
+  const { accessToken } = await createWebSession(req, res, user);
 
   const userPermissions = await prisma.userPermission.findMany({
     where: { userId: user.id },
@@ -222,7 +206,7 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    await issueSessionResponse(res, credential.user);
+    await issueSessionResponse(req, res, credential.user);
   } catch (error) {
     console.error("[AuthorPassword] authorLogin failed:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -325,9 +309,16 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
         where: { userId: credential.userId, revoked: false },
         data: { revoked: true, revokedAt: new Date() },
       }),
+      // Вместе с токенами отзываем и сами веб-сессии: enforceWebSubscription
+      // смотрит на WebSession.revoked, и живая сессия пережила бы смену
+      // пароля, продолжая пускать по ещё не истёкшему access-токену.
+      prisma.webSession.updateMany({
+        where: { userId: credential.userId, revoked: false },
+        data: { revoked: true, revokedAt: new Date() },
+      }),
     ]);
 
-    await issueSessionResponse(res, credential.user);
+    await issueSessionResponse(req, res, credential.user);
   } catch (error) {
     console.error("[AuthorPassword] authorChangePassword failed:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -475,6 +466,13 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
         data: { passwordHash: newPasswordHash, mustChangePassword: false, lockedUntil: null },
       }),
       prisma.refreshToken.updateMany({
+        where: { userId: credential.userId, revoked: false },
+        data: { revoked: true, revokedAt: new Date() },
+      }),
+      // Вместе с токенами отзываем и сами веб-сессии: enforceWebSubscription
+      // смотрит на WebSession.revoked, и живая сессия пережила бы смену
+      // пароля, продолжая пускать по ещё не истёкшему access-токену.
+      prisma.webSession.updateMany({
         where: { userId: credential.userId, revoked: false },
         data: { revoked: true, revokedAt: new Date() },
       }),

@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import type { UserRole } from '@prisma/client';
 
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -17,9 +16,18 @@ const REFRESH_EXPIRES_IN = '30d';
 export interface JwtPayload {
   userId: string;
   telegramId: string;
-  // Present on tokens issued by the web/admin login flow (verify-code).
-  // Optional so existing Mini App tokens (userId + telegramId only) stay valid.
-  role?: UserRole;
+  // Веб-сессия, которой принадлежит токен (BROWSER_ACCESS_PLAN.md §3.3 п.2).
+  // Присутствует ТОЛЬКО у токенов браузерного входа. По нему
+  // enforceWebSubscription отличает веб-запрос от Mini App (там claim'а нет
+  // — middleware такие пропускает) и находит WebSession, чтобы проверить
+  // отзыв и свежесть проверки подписки.
+  //
+  // Роли здесь СОЗНАТЕЛЬНО нет. Раньше веб-пути клали в токен `role`, а
+  // Mini App — нет; читал его при этом никто (requireAdmin и
+  // requirePermission перечитывают роль из БД — см. комментарий в
+  // authController про "NOT a JWT claim"). Claim, живущий 24 часа, устаревал
+  // бы при выдаче/отзыве прав, поэтому единый ответ — не класть его вовсе.
+  sessionId?: string;
 }
 
 export const generateToken = (payload: JwtPayload): string => {

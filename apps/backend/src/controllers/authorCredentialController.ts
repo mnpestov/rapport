@@ -265,6 +265,9 @@ export const revokeAccess = async (req: Request, res: Response): Promise<void> =
       await tx.userCredential.deleteMany({ where: { userId } });
       await tx.userPermission.deleteMany({ where: { userId, permission: Permission.AUTHOR_CABINET } });
       await tx.refreshToken.updateMany({ where: { userId, revoked: false }, data: { revoked: true, revokedAt: new Date() } });
+      // Вместе с токенами гасим и веб-сессии: enforceWebSubscription смотрит
+      // на WebSession.revoked, и живая сессия пережила бы отзыв доступа.
+      await tx.webSession.updateMany({ where: { userId, revoked: false }, data: { revoked: true, revokedAt: new Date() } });
     });
 
     res.json({ success: true });

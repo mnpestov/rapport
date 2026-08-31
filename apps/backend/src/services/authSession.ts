@@ -1,4 +1,8 @@
+import crypto from "crypto";
+import { Request, Response } from "express";
 import { Permission, UserRole } from "@prisma/client";
+import { prisma } from "../prismaClient";
+import { generateToken, generateRefreshToken } from "../utils/jwt";
 
 /**
  * Общий post-auth слой: всё, что считается ОДИНАКОВО после любого успешного
@@ -119,4 +123,97 @@ export function buildPaywallState(params: {
   }
 
   return { isAdmin, paywallUiEnabled, showPaywallBanner, subscriptionWarning };
+}
+
+// ---------------------------------------------------------------------------
+// Веб-сессия: создание и выдача пары токенов
+// ---------------------------------------------------------------------------
+
+export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 3_600 * 1_000; // 30 days
+
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export function setRefreshCookie(res: Response, token: string): void {
+  res.cookie("refresh_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/auth",
+    maxAge: REFRESH_TOKEN_TTL_MS,
+  });
+}
+
+/**
+ * Создаёт WebSession + первый RefreshToken в ней, ставит cookie и возвращает
+ * access-токен с claim'ом sessionId (BROWSER_ACCESS_PLAN.md §3.11).
+ *
+ * Единая точка для ВСЕХ веб-входов (verify-code, user-login,
+ * user-change-password): раньше каждый из них сам собирал пару токенов, и
+ * разъехаться им было нечему помешать.
+ *
+ * Mini App сюда не заходит — там нет ни cookie, ни refresh-токена, ни сессии.
+ */
+export async function createWebSession(
+  req: Request,
+  res: Response,
+  user: { id: string; telegramId: bigint },
+): Promise<{ accessToken: string; sessionId: string }> {
+  const session = await prisma.webSession.create({
+    data: {
+      userId: user.id,
+      // Метаданные для будущего экрана «активные сессии». Обрезаем UA: поле
+      // приходит от клиента и ничем не ограничено по длине.
+      userAgent: req.headers["user-agent"]?.slice(0, 512) ?? null,
+      ip: req.ip ?? req.socket?.remoteAddress ?? null,
+      // Подписка только что проверена на входе — сессия стартует "свежей",
+      // иначе первый же запрос к каталогу зря сходил бы в gateway.
+      subscriptionOk: true,
+      lastSubscriptionCheckAt: new Date(),
+    },
+    select: { id: true },
+  });
+
+  const rawRefreshToken = generateRefreshToken({ userId: user.id });
+  await prisma.refreshToken.create({
+    data: {
+      token: hashToken(rawRefreshToken),
+      userId: user.id,
+      sessionId: session.id,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+    },
+  });
+  setRefreshCookie(res, rawRefreshToken);
+
+  const accessToken = generateToken({
+    userId: user.id,
+    telegramId: user.telegramId.toString(),
+    sessionId: session.id,
+  });
+
+  return { accessToken, sessionId: session.id };
+}
+
+/**
+ * Отзыв всех веб-сессий пользователя и всех живых токенов в них.
+ *
+ * Вызывается там, где доступ отбирают целиком: revokeAccess (админ), снятие
+ * WEB_ACCESS, смена пароля. Отзыв WebSession — единственный механизм,
+ * который действительно завершает браузерную сессию: access-токен живёт
+ * до 24 часов, и просто снять permission недостаточно
+ * (BROWSER_ACCESS_PLAN.md §3.5).
+ */
+export async function revokeAllWebSessions(userId: string): Promise<void> {
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.webSession.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true, revokedAt: now },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true, revokedAt: now },
+    }),
+  ]);
 }

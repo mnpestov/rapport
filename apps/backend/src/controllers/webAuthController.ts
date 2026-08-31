@@ -5,6 +5,12 @@ import { prisma } from "../prismaClient";
 import { generateToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import { sendLoginCode } from "../services/loginCodeSender";
 import { allowedOrigins } from "../utils/allowedOrigins";
+import {
+  createWebSession,
+  hashToken,
+  setRefreshCookie,
+  REFRESH_TOKEN_TTL_MS,
+} from "../services/authSession";
 
 /**
  * Web / admin authentication via one-time Telegram codes.
@@ -19,8 +25,11 @@ import { allowedOrigins } from "../utils/allowedOrigins";
 
 const CODE_TTL_MS = 5 * 60 * 1_000;           // 5 minutes
 const RESEND_COOLDOWN_MS = 60 * 1_000;          // min interval between codes
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 3_600 * 1_000; // 30 days
 const GRACE_PERIOD_MS = 15 * 1_000;             // concurrent-refresh grace window
+// REFRESH_TOKEN_TTL_MS, hashToken и setRefreshCookie переехали в
+// services/authSession.ts — там же создаётся веб-сессия, и держать вторую
+// копию cookie-опций опасно: расхождение в path/sameSite ломает refresh
+// молча, без падения.
 
 // Failed-attempt counter for verify-code, keyed by telegramId (not IP — an
 // IP-based limit alone is trivially bypassed via CGNAT/botnets, and this is
@@ -56,20 +65,6 @@ function hashCode(code: string): string {
   return crypto.createHash("sha256").update(code).digest("hex");
 }
 
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-function setRefreshCookie(res: Response, token: string): void {
-  res.cookie("refresh_token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/auth",
-    maxAge: REFRESH_TOKEN_TTL_MS,
-  });
-}
-
 function normalizeUsername(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const cleaned = value.trim().replace(/^@/, "");
@@ -77,10 +72,26 @@ function normalizeUsername(value: unknown): string | null {
 }
 
 // Telegram usernames are case-insensitive; match accordingly.
-function findUserByUsername(username: string) {
-  return prisma.user.findFirst({
-    where: { username: { equals: username, mode: "insensitive" } },
-  });
+//
+// Через $queryRaw, а не findFirst({ mode: "insensitive" }): Prisma
+// компилирует insensitive-сравнение в ILIKE, а ILIKE не может
+// воспользоваться функциональным индексом User_username_lower_idx —
+// резолв шёл сиквентальным сканом по всей таблице. Здесь предикат
+// записан ровно так, как объявлен индекс: lower("username") = lower($1).
+//
+// orderBy lastSeenAt DESC: два разных User могут исторически иметь один и
+// тот же username (Telegram переиспользует освобождённые), и findFirst
+// возвращал произвольного из них. Берём того, кто заходил последним, —
+// почти наверняка это нынешний владелец имени.
+async function findUserByUsername(username: string) {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM "User"
+    WHERE lower("username") = lower(${username})
+    ORDER BY "lastSeenAt" DESC NULLS LAST
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return prisma.user.findUnique({ where: { id: rows[0].id } });
 }
 
 // POST /auth/request-code — body: { username }. Resolves the user, then issues
@@ -219,22 +230,10 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
 
     clearFailedAttempts(user.telegramId);
 
-    const accessToken = generateToken({
-      userId: user.id,
-      telegramId: user.telegramId.toString(),
-      role: user.role,
-    });
-
-    const rawRefreshToken = generateRefreshToken({ userId: user.id });
-    await prisma.refreshToken.create({
-      data: {
-        token: hashToken(rawRefreshToken),
-        userId: user.id,
-        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-      },
-    });
-
-    setRefreshCookie(res, rawRefreshToken);
+    // Создание WebSession + пары токенов — общий слой (см. authSession.ts):
+    // токен получает claim sessionId, по которому enforceWebSubscription
+    // отличает веб-сессию от Mini App и находит запись сессии.
+    const { accessToken } = await createWebSession(req, res, user);
 
     // Probabilistic GC — fire-and-forget, no await.
     if (Math.random() < 0.05) {
@@ -364,10 +363,20 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
     const record = await prisma.refreshToken.findUnique({
       where: { token: tokenHash },
-      include: { user: true },
+      include: { user: true, session: true },
     });
 
     if (!record || record.expiresAt < new Date()) {
+      res.clearCookie("refresh_token", { path: "/auth" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    // Сессия отозвана («выйти везде», revokeAccess, снятие WEB_ACCESS, смена
+    // пароля) — новый токен не выдаём. Без этой проверки отзыв не вступал бы
+    // в силу до истечения текущего access-токена: ротация продолжала бы
+    // молча продлевать сессию ещё на 30 дней (BROWSER_ACCESS_PLAN.md §3.11).
+    if (record.session?.revoked) {
       res.clearCookie("refresh_token", { path: "/auth" });
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -379,16 +388,37 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
         const accessToken = generateToken({
           userId: record.user.id,
           telegramId: record.user.telegramId.toString(),
-          role: record.user.role,
+          sessionId: record.sessionId ?? undefined,
         });
         res.json({ token: accessToken });
         return;
       }
-      // Token reuse outside grace period — revoke all user tokens.
-      await prisma.refreshToken.updateMany({
-        where: { userId: record.userId, revoked: false },
-        data: { revoked: true, revokedAt: new Date() },
-      });
+      // Повторное использование токена вне grace-окна — отзываем сессию.
+      //
+      // Скоуп: одна СЕССИЯ, а не все токены пользователя. Раньше здесь стоял
+      // updateMany по userId, и один replay (например, флапнула сеть и
+      // клиент повторил запрос уже за пределами 15-секундного окна)
+      // разлогинивал человека на всех устройствах сразу. Токены
+      // sessionId-less (админские, выданные до внедрения WebSession) сессии
+      // не имеют — для них сохраняем прежнее поведение по userId.
+      const revokedAt = new Date();
+      if (record.sessionId) {
+        await prisma.$transaction([
+          prisma.refreshToken.updateMany({
+            where: { sessionId: record.sessionId, revoked: false },
+            data: { revoked: true, revokedAt },
+          }),
+          prisma.webSession.updateMany({
+            where: { id: record.sessionId, revoked: false },
+            data: { revoked: true, revokedAt },
+          }),
+        ]);
+      } else {
+        await prisma.refreshToken.updateMany({
+          where: { userId: record.userId, revoked: false },
+          data: { revoked: true, revokedAt },
+        });
+      }
       res.clearCookie("refresh_token", { path: "/auth" });
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -416,20 +446,31 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       const accessToken = generateToken({
         userId: record.user.id,
         telegramId: record.user.telegramId.toString(),
-        role: record.user.role,
+        sessionId: record.sessionId ?? undefined,
       });
       res.json({ token: accessToken });
       return;
     }
 
+    // Новый токен остаётся в ТОЙ ЖЕ сессии — метаданные (subscriptionOk,
+    // lastSubscriptionCheckAt) переживают ротацию, ради чего WebSession и
+    // заведена отдельной моделью.
     const newRawToken = generateRefreshToken({ userId: record.userId });
     await prisma.refreshToken.create({
       data: {
         token: hashToken(newRawToken),
         userId: record.userId,
+        sessionId: record.sessionId,
         expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
       },
     });
+
+    if (record.sessionId) {
+      await prisma.webSession.update({
+        where: { id: record.sessionId },
+        data: { lastActiveAt: new Date() },
+      });
+    }
 
     // Probabilistic GC — clean up expired and old revoked records.
     if (Math.random() < 0.05) {
@@ -448,7 +489,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     const accessToken = generateToken({
       userId: record.user.id,
       telegramId: record.user.telegramId.toString(),
-      role: record.user.role,
+      sessionId: record.sessionId ?? undefined,
     });
 
     res.json({ token: accessToken });
@@ -471,10 +512,34 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
   if (rawToken) {
     try {
-      await prisma.refreshToken.updateMany({
-        where: { token: hashToken(rawToken), revoked: false },
-        data: { revoked: true, revokedAt: new Date() },
+      // Отзываем не только сам токен, но и его сессию со всеми токенами
+      // внутри: иначе выданный access-токен продолжал бы работать до 24
+      // часов, а enforceWebSubscription (смотрит на WebSession.revoked) не
+      // увидел бы выхода.
+      const record = await prisma.refreshToken.findUnique({
+        where: { token: hashToken(rawToken) },
+        select: { id: true, sessionId: true },
       });
+      const revokedAt = new Date();
+      if (record?.sessionId) {
+        await prisma.$transaction([
+          prisma.refreshToken.updateMany({
+            where: { sessionId: record.sessionId, revoked: false },
+            data: { revoked: true, revokedAt },
+          }),
+          prisma.webSession.updateMany({
+            where: { id: record.sessionId, revoked: false },
+            data: { revoked: true, revokedAt },
+          }),
+        ]);
+      } else if (record) {
+        // Токен без сессии (админский, выдан до внедрения WebSession) —
+        // прежнее поведение: гасим только его.
+        await prisma.refreshToken.updateMany({
+          where: { id: record.id, revoked: false },
+          data: { revoked: true, revokedAt },
+        });
+      }
     } catch (error) {
       console.error("[Auth] logout revoke failed:", error);
     }
