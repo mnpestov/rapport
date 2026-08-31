@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchChannelInfo, ChannelInfo } from '../../api/channelApi';
+import { isWebMode, logoutWeb } from '../../api/authSession';
 import { trackSubscribeClick } from '../../api/analyticsApi';
 import avatarPlaceholder from '../../assets/avatar.png';
 import './SubscriptionRequired.css';
@@ -88,6 +89,20 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
       <button className="subscription-link-support" onClick={handleSupportBot}>
         Я подписана, но не могу войти в приложение
       </button>
+      {/* Браузерная версия: без выхода отписавшийся оказался бы заперт на
+          этом экране — сменить аккаунт было бы нечем (в Telegram такой
+          проблемы нет, там аккаунт задаёт сам мессенджер). */}
+      {isWebMode() && (
+        <button
+          className="subscription-link-support"
+          onClick={async () => {
+            await logoutWeb();
+            window.location.reload();
+          }}
+        >
+          Выйти
+        </button>
+      )}
     </div>
   );
 };

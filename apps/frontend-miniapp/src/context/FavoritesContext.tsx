@@ -5,6 +5,7 @@ import {
   removeFavorite as apiRemoveFavorite,
   importFavorites,
 } from '../api/favoritesApi';
+import { hasSession } from '../api/authSession';
 
 const LS_KEY = 'favorites';
 const LS_SYNCED_KEY = 'favorites_synced';
@@ -77,7 +78,12 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // FIX 1: Run init() only after JWT is available.
     // If a token already exists (returning user / page reload), start immediately.
     // Otherwise, wait for the 'auth:ready' event dispatched by authApi.authenticate().
-    if (localStorage.getItem('jwt_token')) {
+    //
+    // hasSession(), а не прямое чтение localStorage: в браузерном режиме
+    // access-токен живёт в памяти, и проверка хранилища всегда давала бы
+    // false — избранное молча перестало бы синхронизироваться с сервером
+    // (BROWSER_ACCESS_PLAN.md §3.4).
+    if (hasSession()) {
       init();
     } else {
       const onAuthReady = () => { if (isMounted) init(); };

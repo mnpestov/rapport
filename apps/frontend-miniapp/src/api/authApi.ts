@@ -86,8 +86,9 @@ export const authenticate = async (initData: string): Promise<AuthResponse> => {
   }
 };
 
-// Helper to get auth headers for API calls
-export const getAuthHeaders = (): Record<string, string> => {
-  const token = localStorage.getItem("jwt_token");
-  return token ? { "Authorization": `Bearer ${token}` } : {};
-};
+// Helper to get auth headers for API calls.
+//
+// Делегирует в authSession: источник токена зависит от режима — в Mini App
+// это localStorage, в браузере переменная в памяти (BROWSER_ACCESS_PLAN.md
+// §3.4). Реэкспорт оставлен, чтобы не переписывать все точки вызова разом.
+export { getAuthHeaders } from "./authSession";

@@ -110,7 +110,7 @@ export interface FiltersResponse {
 
 import { API_URL } from "./config";
 import { fetchWithTimeout } from "./fetchWithTimeout";
-import { getAuthHeaders } from "./authApi";
+import { authorizedFetch } from "./authSession";
 
 export interface FetchPatternsResponse {
   data: Pattern[];
@@ -155,7 +155,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetchWithTimeout(`${API_URL}/patterns${queryString}`, { signal: options.signal, headers: getAuthHeaders() }, 10000);
+  const response = await authorizedFetch(`${API_URL}/patterns${queryString}`, { signal: options.signal }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch patterns: ${response.status}`);
   }
@@ -173,7 +173,7 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
 };
 
 export const fetchPatternById = async (id: string): Promise<Pattern> => {
-  const response = await fetchWithTimeout(`${API_URL}/patterns/${id}`, { headers: getAuthHeaders() }, 10000);
+  const response = await authorizedFetch(`${API_URL}/patterns/${id}`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch pattern ${id}: ${response.status}`);
   }
@@ -222,7 +222,7 @@ export const fetchFilters = async (options: FetchFiltersOptions = {}): Promise<F
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetchWithTimeout(`${API_URL}/filters${queryString}`, { signal: options.signal, headers: getAuthHeaders() }, 10000);
+  const response = await authorizedFetch(`${API_URL}/filters${queryString}`, { signal: options.signal }, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch filters: ${response.status}`);
   }
@@ -242,9 +242,9 @@ const BATCH_CHUNK_SIZE = 500;
 const fetchPatternsByIdsSingleBatch = async (ids: string[]): Promise<Pattern[]> => {
   if (ids.length === 0) return [];
 
-  const response = await fetchWithTimeout(`${API_URL}/patterns/batch`, {
+  const response = await authorizedFetch(`${API_URL}/patterns/batch`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),
   }, 10000);
 
@@ -282,7 +282,7 @@ export const fetchPatternsByIds = async (ids: string[]): Promise<Pattern[]> => {
 // "Похожие описания" on the detail page — server-side tiered matching by
 // category + characteristics (see patternsController.getSimilarPatterns).
 export const fetchSimilarPatterns = async (id: string): Promise<Pattern[]> => {
-  const response = await fetchWithTimeout(`${API_URL}/patterns/${id}/similar`, { headers: getAuthHeaders() }, 10000);
+  const response = await authorizedFetch(`${API_URL}/patterns/${id}/similar`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch similar patterns: ${response.status}`);
   }

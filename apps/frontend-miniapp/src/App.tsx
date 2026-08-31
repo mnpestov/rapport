@@ -13,6 +13,15 @@ import { LoadError } from './pages/LoadError/LoadError';
 import { PaymentSuccess } from './pages/PaymentSuccess/PaymentSuccess';
 import { PaymentFail } from './pages/PaymentFail/PaymentFail';
 import { PaywallModal, PaywallVariant } from './components/PaywallModal/PaywallModal';
+import { WebLogin } from './pages/WebLogin/WebLogin';
+import {
+  initAuthSession,
+  refreshWebSession,
+  isWebMode,
+  SUBSCRIPTION_REQUIRED_EVENT,
+  SESSION_EXPIRED_EVENT,
+} from './api/authSession';
+import { subscriptionRecheck } from './api/webAuthApi';
 import { submitPaywallImpression, PaywallSource } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
@@ -29,7 +38,9 @@ import { useNavigationDepthTracker } from './hooks/useNavigationDepth';
 
 const MAINTENANCE_MODE = false;
 
-type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" | "telegram_only" | "update_telegram" | "load_error";
+// web_login — экран входа браузерной версии. Отдельное состояние, а не
+// маршрут: до входа приложение вообще не должно рендерить каталог.
+type AppState = "loading" | "fetching_channel" | "unauthorized" | "authorized" | "telegram_only" | "update_telegram" | "load_error" | "web_login";
 
 function App() {
   // Считает глубину переходов внутри приложения — по ней кнопка «Назад» на
@@ -125,6 +136,35 @@ function App() {
           referrer: document.referrer || null,
         });
 
+        // Открыто в обычном браузере, не в Telegram. Раньше здесь безусловно
+        // показывался лендинг «только в Telegram»; теперь пробуем поднять
+        // браузерную сессию (BROWSER_ACCESS_PLAN.md §3.5).
+        const enterWebMode = async (): Promise<void> => {
+          initAuthSession('web');
+          // Тихое восстановление по httpOnly-cookie: access-токен живёт в
+          // памяти и теряется при перезагрузке вкладки, а refresh — нет.
+          const token = await refreshWebSession();
+          if (!isMounted) return;
+          if (!token) {
+            setAppState("web_login");
+            return;
+          }
+          // Сессия есть — но подписка могла отвалиться, пока вкладка была
+          // закрыта. Спрашиваем сервер; при отказе он же вернёт false.
+          const ok = await subscriptionRecheck();
+          if (!isMounted) return;
+          if (ok) {
+            setAppState("authorized");
+          } else {
+            setAppState("fetching_channel");
+            const info = await fetchChannelInfo();
+            if (isMounted) {
+              setChannelInfo(info);
+              setAppState("unauthorized");
+            }
+          }
+        };
+
         if (!import.meta.env.DEV) {
           if (!tg) {
             if (/Telegram/i.test(navigator.userAgent)) {
@@ -139,14 +179,14 @@ function App() {
               }
             } else {
               logFrontend('AUTH_BROWSER_ACCESS', {});
-              if (isMounted) setAppState("telegram_only");
+              await enterWebMode();
             }
             return;
           }
           if (tg.platform === 'unknown' && !initData) {
             // telegram-web-app.js загрузился, но открыто в браузере (не в Telegram)
             logFrontend('AUTH_BROWSER_ACCESS', {});
-            if (isMounted) setAppState("telegram_only");
+            await enterWebMode();
             return;
           }
         }
@@ -167,6 +207,9 @@ function App() {
           }
           logFrontend('AUTH_EMPTY_RETRY_OK', { telegramId, initDataLength: initData.length });
         }
+
+        // Telegram-режим: источник токена — localStorage, как и был.
+        initAuthSession('telegram');
 
         const response = await authenticate(initData);
         logFrontend('AUTH_RESULT', { telegramId, isSubscriber: response.isSubscriber });
@@ -211,6 +254,48 @@ function App() {
       window.removeEventListener("auth:recheck", checkAccess);
     };
   }, []);
+
+  // Реакция на серверный энфорсмент подписки (BROWSER_ACCESS_PLAN.md §4.4).
+  //
+  // authorizedFetch диспатчит эти события, поймав 403/401 на ЛЮБОМ запросе:
+  // ловить их в каждом вызове api невозможно, а обработать должен один
+  // App.tsx — он и владеет appState.
+  useEffect(() => {
+    const onSubscriptionRequired = async () => {
+      setAppState("fetching_channel");
+      const info = await fetchChannelInfo();
+      setChannelInfo(info);
+      setAppState("unauthorized");
+    };
+    const onSessionExpired = () => {
+      // Только веб: в Mini App сессия восстанавливается перезаходом через
+      // Telegram, а не экраном логина.
+      if (isWebMode()) setAppState("web_login");
+    };
+
+    window.addEventListener(SUBSCRIPTION_REQUIRED_EVENT, onSubscriptionRequired);
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => {
+      window.removeEventListener(SUBSCRIPTION_REQUIRED_EVENT, onSubscriptionRequired);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    };
+  }, []);
+
+  // Суточная фоновая перепроверка подписки для открытой вкладки.
+  //
+  // Это UX, а не защита: сервер всё равно проверит сам (enforceWebSubscription),
+  // но вкладка может висеть открытой сутками, и без этого человек узнал бы
+  // об отписке только при следующем запросе к каталогу.
+  useEffect(() => {
+    if (appState !== "authorized" || !isWebMode()) return;
+    const RECHECK_MS = 24 * 60 * 60 * 1000;
+    const timer = setInterval(() => {
+      subscriptionRecheck().catch(() => {
+        // Молча: следующий запрос к каталогу всё равно упрётся в сервер.
+      });
+    }, RECHECK_MS);
+    return () => clearInterval(timer);
+  }, [appState]);
 
   // Paywall banner — at most once per session, gated server-side on "not
   // paid, not shown in the last 7 days" (authController.ts, see
@@ -302,6 +387,18 @@ function App() {
 
   if (MAINTENANCE_MODE) {
     return <Maintenance />;
+  }
+
+  if (appState === "web_login") {
+    return (
+      <WebLogin
+        onAuthenticated={() => {
+          // Вход прошёл: подписку проверит либо enforceWebSubscription на
+          // первом же запросе каталога, либо явная перепроверка ниже.
+          window.dispatchEvent(new CustomEvent("auth:recheck"));
+        }}
+      />
+    );
   }
 
   if (appState === "telegram_only") {
