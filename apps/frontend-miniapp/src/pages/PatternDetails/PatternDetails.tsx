@@ -223,7 +223,10 @@ export const PatternDetails: React.FC = () => {
 
         <div className="details-right">
           <div className="details-content">
-            <div className="details-row">
+            {/* Mobile: тип и цена в одну строку по краям, название на своей
+                строке ниже (перенос через flex-wrap + order на .details-title).
+                Desktop: колонка — тип → название → цена (см. media-query). */}
+            <div className="details-row details-row--head">
               <span className="details-product-type">{pattern.primaryProductType}</span>
               {hasVisiblePrice(pattern) && (
                 <div className="details-price-row">
@@ -233,9 +236,19 @@ export const PatternDetails: React.FC = () => {
                   )}
                 </div>
               )}
-            </div>
-            <div className="details-row">
               <h1 className="details-title">{pattern.title}</h1>
+            </div>
+
+            {/* Mobile: position:fixed bottom bar (DOM order irrelevant).
+                Desktop: static block right under the title/price, above the
+                spec rows — matches Figma node 1134:5825. */}
+            <div className="details-footer">
+              <button
+                className="btn btn--primary details-cta"
+                onClick={handleOpenLink}
+              >
+                Перейти к описанию
+              </button>
             </div>
 
             <div className="details-row-spaced">
@@ -285,52 +298,55 @@ export const PatternDetails: React.FC = () => {
               </div>
             )}
 
-            {pattern.details && (
-              <div className="details-col details-expandable">
-                <button
-                  type="button"
-                  className="details-expandable-header"
-                  onClick={() => setIsDetailsExpanded(v => !v)}
-                  aria-expanded={isDetailsExpanded}
-                >
-                  <span className="details-label">Подробности</span>
-                  {isDetailsExpanded ? <CustomChevronUp size={24} /> : <CustomChevronDown size={24} />}
-                </button>
-                {isDetailsExpanded && (
-                  <p className="details-expandable-body">{pattern.details}</p>
-                )}
-              </div>
-            )}
-
-            {similarPatterns.length > 0 && (
-              <div className="details-col">
-                <span className="details-similar-title">Похожие описания</span>
-                <div className="details-similar-row">
-                  {similarPatterns.map(similar => (
-                    <div className="details-similar-item" key={similar.id}>
-                      <PatternCard {...similar} preserveCatalogScroll={false} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="details-footer">
-            <button
-              className="btn btn--primary details-cta"
-              onClick={handleOpenLink}
-            >
-              Перейти к описанию
-            </button>
           </div>
         </div>
       </div>
 
+      {/* Mobile: display:contents — the children render in normal flow
+          exactly where they sit in the DOM (right after .details-content),
+          so the mobile layout is byte-for-byte unchanged. Desktop: a
+          full-width band below the two-column .details-body, so
+          "Подробности" and "Похожие описания" span the whole container
+          instead of being trapped in the narrow right column
+          (Figma node 1134:5825). Rendered only when it has content —
+          an empty wrapper would still shift the mobile footer spacing. */}
+      {(pattern.details || similarPatterns.length > 0) && (
+        <div className="details-below">
+          {pattern.details && (
+            <div className="details-col details-expandable">
+              <button
+                type="button"
+                className="details-expandable-header"
+                onClick={() => setIsDetailsExpanded(v => !v)}
+                aria-expanded={isDetailsExpanded}
+              >
+                <span className="details-label">Подробности</span>
+                {isDetailsExpanded ? <CustomChevronUp size={24} /> : <CustomChevronDown size={24} />}
+              </button>
+              {isDetailsExpanded && (
+                <p className="details-expandable-body">{pattern.details}</p>
+              )}
+            </div>
+          )}
+
+          {similarPatterns.length > 0 && (
+            <div className="details-col">
+              <span className="details-similar-title">Похожие описания</span>
+              <div className="details-similar-row">
+                {similarPatterns.map(similar => (
+                  <div className="details-similar-item" key={similar.id}>
+                    <PatternCard {...similar} preserveCatalogScroll={false} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Full-width, below both columns — distinct from .details-footer
-          above (that's just the CTA button's own wrapper, pre-existing,
-          not this page-wide component). Only page where sourceUrl is ever
-          passed — the "Источник информации" line. */}
+          above (that's just the CTA button's own wrapper). Only page where
+          sourceUrl is ever passed — the "Источник информации" line. */}
       <Footer sourceUrl={pattern.authorSite} />
     </div>
   );

@@ -103,3 +103,52 @@
   color: #ffffff;
   cursor: pointer;
 }
+
+/* === DESKTOP: выпадающий селект вместо шторки === */
+/* Позиционируется из JS (top/left от кнопки сортировки). Ведёт себя как
+   нативный select: клик по пункту применяет сортировку и закрывает список,
+   без кнопок «Применить»/«Сбросить». Появляется только на десктопе —
+   SortModal рендерит этот вариант по useIsDesktop, поэтому медиазапрос
+   здесь не нужен, но фон/тень заданы явно. */
+.sort-dropdown {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid #F3F3F3;
+  border-radius: 2px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.sort-dropdown-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #1D1C1C;
+  text-align: left;
+}
+
+.sort-dropdown-option:hover {
+  background: #F3F3F3;
+}
+
+/* Выбранный вариант — без радио-кнопки, выделяется только цветом текста. */
+.sort-dropdown-option--selected {
+  color: #A9AE36;
+  font-weight: 600;
+}
+
+.sort-dropdown-option-text {
+  min-width: 0;
+}

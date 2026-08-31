@@ -55,6 +55,9 @@ export const Catalog: React.FC = () => {
   // reset it when jumping to an author's page.
   const [sortValue, setSortValue] = useState<SortOption>(() => (sessionStorage.getItem('catalog_sort') as SortOption) || 'newest');
   const [isSortModalOpen, setIsSortModalOpen] = useState(false);
+  // Якорь для десктопного выпадающего селекта сортировки — сама кнопка
+  // живёт в SearchFilterBar, окно раскрывается в SortModal.
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filtersData, setFiltersData] = useState<FiltersResponse | null>(null);
@@ -317,7 +320,8 @@ export const Catalog: React.FC = () => {
         onToggleNew={() => setIsNewFilterActive(v => !v)}
         isDiscountActive={isDiscountFilterActive}
         onToggleDiscount={() => setIsDiscountFilterActive(v => !v)}
-        onOpenSortModal={() => setIsSortModalOpen(true)}
+        onOpenSortModal={() => setIsSortModalOpen(v => !v)}
+        sortButtonRef={sortButtonRef}
         totalFiltersCount={totalFiltersCount}
         onOpenFilterModal={() => setIsFilterModalOpen(true)}
         onClearFilters={clearFilters}
@@ -372,6 +376,7 @@ export const Catalog: React.FC = () => {
         onClose={() => setIsSortModalOpen(false)}
         value={sortValue}
         onApply={setSortValue}
+        anchorRef={sortButtonRef}
       />
     </div>
   );

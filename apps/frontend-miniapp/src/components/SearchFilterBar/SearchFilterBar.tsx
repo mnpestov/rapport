@@ -60,6 +60,9 @@ interface SearchFilterBarProps {
   // мешает, а открыть шторку можно из каталога, куда с этой страницы и так
   // есть переход. По умолчанию показывается (каталог проп не передаёт).
   showSubscriptionButton?: boolean;
+  // Ссылка на кнопку сортировки — нужна SortModal, чтобы на десктопе
+  // раскрыть окно сортировки как выпадающий селект под этой кнопкой.
+  sortButtonRef?: React.Ref<HTMLButtonElement>;
 }
 
 // Identical search+filter header used on Catalog and Favorites — see
@@ -87,6 +90,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   hasActiveQuery,
   toolbarRequiresExtra = false,
   showSubscriptionButton = true,
+  sortButtonRef,
 }) => {
   const { extra, paywallUiEnabled } = usePremiumAccess();
   // Один выключатель на всю панель: строку поиска, чипы и обе кнопки.
@@ -186,6 +190,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
         {showFilterButton && showSortButton && <div className="filter-separator" />}
         {showSortButton && (
           <button
+            ref={sortButtonRef}
             className="sort-settings-btn"
             aria-label="Сортировка"
             onClick={onOpenSortModal}

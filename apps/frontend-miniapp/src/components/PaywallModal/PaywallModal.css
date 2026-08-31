@@ -228,3 +228,41 @@
   line-height: 1.1;
   cursor: pointer;
 }
+
+/* === DESKTOP: центральный модал вместо нижней шторки === */
+@media (min-width: 768px) {
+  .paywall-modal-overlay {
+    justify-content: center;
+  }
+
+  .paywall-modal-content {
+    max-width: 700px;
+    margin: auto;
+    border-radius: 2px;
+  }
+
+  /* Список преимуществ в две колонки. */
+  .paywall-advantages-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    row-gap: 15px;
+    padding-left: 20px;
+  }
+
+  /* Кнопки в ряд: «Оформить подписку» справа, «Закрыть» слева и по высоте
+     вровень с ней. */
+  .paywall-modal-buttons {
+    flex-direction: row-reverse;
+  }
+
+  .paywall-subscribe-btn {
+    flex: 1;
+  }
+
+  .paywall-close-btn {
+    flex: 1;
+    width: auto;
+    height: 100%;
+  }
+}

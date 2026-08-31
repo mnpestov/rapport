@@ -18,8 +18,34 @@
 
 /* Mobile: wrappers are invisible — layout unchanged */
 .details-body,
-.details-right {
+.details-right,
+.details-below {
   display: contents;
+}
+
+/* Mobile: "Подробности" and "Похожие описания" used to be the last two
+   flex children of .details-content (10px flex gap between rows, then the
+   container's own 20px padding-bottom below the last one). Now they live
+   in .details-below (display:contents, so they're block-level children of
+   .details-container). Restore the exact spacing they had:
+   - .details-content keeps its 20px padding-bottom below "Плотность",
+     which becomes the gap before "Подробности" — pull 10px back so it
+     reads as the old 10px inter-row gap.
+   - 10px between "Подробности" and "Похожие описания" (was the flex gap). */
+.details-below > .details-col {
+  margin-top: -10px;
+}
+
+.details-below > .details-col + .details-col {
+  margin-top: 10px;
+}
+
+/* Was: "Похожие"/"Подробности" were inside .details-content, whose 20px
+   padding-bottom + the footer's own 10px padding-top gave a 30px gap
+   before the page footer. That padding-bottom now sits above .details-below,
+   so add the missing 20px back here. */
+.details-below + .app-footer {
+  margin-top: 20px;
 }
 
 .details-header {
@@ -130,6 +156,20 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+}
+
+/* Mobile: тип изделия + цена в первой строке (по краям), название
+   переносится на вторую строку целиком. Раньше это были две отдельные
+   .details-row с 10px flex-gap между ними — здесь тот же зазор задаёт
+   row-gap. Визуально идентично прежней вёрстке. */
+.details-row--head {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.details-row--head .details-title {
+  order: 1;
+  flex: 0 0 100%;
 }
 
 .details-row-spaced {
@@ -251,13 +291,13 @@
 .details-expandable-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   width: 100%;
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
   color: #1D1C1C;
+  gap: 10px;
 }
 
 .details-expandable-body {
@@ -309,6 +349,10 @@
   box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
   max-width: 600px;
   margin: 0 auto 10px;
+  /* CTA теперь стоит раньше в DOM (внутри .details-content, до блоков
+     «Похожие описания» и подвала), поэтому без z-index эти более поздние
+     элементы перекрывают фиксированную кнопку. */
+  z-index: 10;
 }
 
 .details-cta {
@@ -333,28 +377,32 @@
     padding: 24px 24px 16px;
   }
 
-  /* Активируем двухколоночный layout */
+  /* Активируем двухколоночный layout. Нижняя падинг убрана — теперь под
+     .details-body идёт отдельная полноширинная секция .details-below. */
   .details-body {
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 32px;
-    padding: 0 24px 40px;
+    padding: 0 24px 24px;
   }
 
   .details-image-wrapper {
-    flex: 0 0 45%;
+    flex: 0 0 48%;
     padding: 0;
     position: sticky;
     top: 24px;
   }
 
-  /* Правая колонка: content + footer */
+  /* Правая колонка: только основная информация + CTA + характеристики.
+     Всё выстраивается сверху вниз (не space-between) — CTA в Figma стоит
+     сразу под ценой, а не прижат к низу колонки. */
   .details-right {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    align-items: stretch;
     flex: 1;
     min-width: 0;
+    max-width: 350px;
   }
 
   .details-content {
@@ -367,14 +415,84 @@
     padding: 0;
   }
 
-  /* Footer становится статичным внутри правой колонки */
+  /* Тип изделия / название / цена — колонкой, слева, именно в таком
+     порядке (Figma node 1134:5825): тип сверху, под ним название (h1),
+     под ним цена. Порядок задаётся order, т.к. в DOM цена идёт раньше h1
+     (для мобильной раскладки «тип+цена в строке, название ниже»). */
+  .details-row--head {
+    flex-direction: column;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 12px;
+    row-gap: 12px;
+  }
+
+  .details-row--head .details-product-type {
+    order: 1;
+  }
+
+  .details-row--head .details-title {
+    order: 2;
+    flex: 0 0 auto;
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  .details-row--head .details-price-row {
+    order: 3;
+  }
+
+  .details-price-current {
+    font-size: 28px;
+    line-height: 1.1;
+  }
+
+  .details-price-old {
+    font-size: 20px;
+  }
+
+  /* CTA: обычный блок в потоке сразу под ценой/заголовком, над строками
+     характеристик. Ширина колонки, высота 50px — как в Figma. */
   .details-footer {
     position: static;
     max-width: none;
-    margin: 24px 0 0;
+    margin: 8px 0 16px;
     padding: 0;
     box-shadow: none;
     background: transparent;
+  }
+
+  /* Полноширинная секция под обеими колонками: «Подробности» и
+     «Похожие описания». Ширину/паддинги повторяет за .details-body. */
+  .details-below {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 0 24px 40px;
+  }
+
+  .details-below > .details-col,
+  .details-below > .details-col + .details-col {
+    margin-top: 0;
+  }
+
+  .details-below + .app-footer {
+    margin-top: 0;
+  }
+
+  /* .app-footer несёт собственный padding: 10px 20px (общий для всех
+     страниц). На десктопе остальной контент отбит на 24px — добавляем
+     недостающие 4px по бокам, чтобы подвал выровнялся по общей сетке.
+     Селектор через .details-container, чтобы работало и когда секции
+     .details-below нет (нет «Подробностей»/«Похожих»). */
+  .details-container > .app-footer {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .details-similar-item {
+    flex: 0 0 185px;
   }
 }
 
@@ -385,6 +503,15 @@
 
   .details-body {
     gap: 48px;
+    padding: 0 32px 24px;
+  }
+
+  .details-below {
     padding: 0 32px 48px;
+  }
+
+  .details-container > .app-footer {
+    padding-left: 32px;
+    padding-right: 32px;
   }
 }

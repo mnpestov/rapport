@@ -373,3 +373,60 @@
     transition: none;
   }
 }
+
+/* === DESKTOP: боковая панель слева === */
+/* На десктопе фильтр — не нижняя шторка, а панель, выезжающая слева
+   направо на всю высоту экрана. Переопределяем и раскладку оверлея, и
+   направление движения общей .sheet-panel (селектор с .filter-modal-content
+   специфичнее общего правила в styles/sheet.css, поэтому Сортировка,
+   баннер подписки и форма ошибки продолжают выезжать снизу). */
+@media (min-width: 768px) {
+  .filter-modal-overlay {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .filter-modal-content {
+    width: 100%;
+    max-width: 320px;
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .filter-modal-content.sheet-panel {
+    transform: translateX(-100%);
+  }
+
+  .sheet-overlay.sheet-open .filter-modal-content.sheet-panel {
+    transform: translateX(0);
+  }
+
+  /* Длинная раскрытая секция (например «Автор») скроллится внутри себя,
+     а не растягивает панель. Скролл висит на списке опций, а не на всей
+     .filter-section — иначе ползунок прокрутки ложится поверх стрелки
+     сворачивания в шапке секции. Шапка остаётся вне области прокрутки. */
+  .filter-collapsible--open .filter-collapsible-inner {
+    max-height: 375px;
+    overflow-y: auto;
+  }
+
+  /* Строка поиска внутри секции закреплена — опции прокручиваются под ней.
+     Белый фон и негативные margin'ы перекрывают gap списка (.filter-section-body
+     gap: 12px) и верхний padding, чтобы опции не проглядывали по краям. */
+  .filter-collapsible--open .filter-section-body > .filter-search-inline,
+  .filter-collapsible--open .filter-section-body > .filter-density-search-row {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #ffffff;
+    margin-top: -8px;
+    padding: 8px 0;
+  }
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+  .filter-modal-content.sheet-panel {
+    transform: none;
+  }
+}

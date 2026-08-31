@@ -57,6 +57,8 @@ export const Favorites: React.FC = () => {
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSortModalOpen, setIsSortModalOpen] = useState(false);
+  // Якорь для десктопного выпадающего селекта сортировки (см. Catalog).
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -250,7 +252,8 @@ export const Favorites: React.FC = () => {
             onToggleNew={() => setIsNewFilterActive(v => !v)}
             isDiscountActive={isDiscountFilterActive}
             onToggleDiscount={() => setIsDiscountFilterActive(v => !v)}
-            onOpenSortModal={() => setIsSortModalOpen(true)}
+            onOpenSortModal={() => setIsSortModalOpen(v => !v)}
+            sortButtonRef={sortButtonRef}
             totalFiltersCount={totalFiltersCount}
             onOpenFilterModal={() => setIsFilterModalOpen(true)}
             onClearFilters={clearFilters}
@@ -300,6 +303,7 @@ export const Favorites: React.FC = () => {
         onClose={() => setIsSortModalOpen(false)}
         value={sortValue}
         onApply={setSortValue}
+        anchorRef={sortButtonRef}
       />
     </div>
   );
