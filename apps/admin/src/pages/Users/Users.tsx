@@ -64,6 +64,7 @@ function PermissionsSection({
   const [premiumCore, setPremiumCore] = useState(user.permissions.includes("PREMIUM_CORE"));
   const [premiumDetails, setPremiumDetails] = useState(user.permissions.includes("PREMIUM_DETAILS"));
   const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
+  const [webAccess, setWebAccess] = useState(user.permissions.includes("WEB_ACCESS"));
   const [excludeFromStats, setExcludeFromStats] = useState(user.excludeFromStats);
   const [authorId, setAuthorId] = useState<string | null>(user.authorId);
   const [authorName, setAuthorName] = useState<string>(user.author?.name ?? "");
@@ -113,6 +114,9 @@ function PermissionsSection({
       await syncPermission(user.id, "PREMIUM_CORE", premiumCore, user.permissions.includes("PREMIUM_CORE"));
       await syncPermission(user.id, "PREMIUM_DETAILS", premiumDetails, user.permissions.includes("PREMIUM_DETAILS"));
       await syncPermission(user.id, "PREMIUM_EXTRA", premiumExtra, user.permissions.includes("PREMIUM_EXTRA"));
+      // Снятие WEB_ACCESS на бэкенде заодно завершает браузерные сессии
+      // пользователя — иначе он работал бы до истечения токена (до 30 дней).
+      await syncPermission(user.id, "WEB_ACCESS", webAccess, user.permissions.includes("WEB_ACCESS"));
       toast.success("Разрешения обновлены");
       onSaved(role, role === "AUTHOR" ? authorId : null, role === "AUTHOR" ? authorName : null);
     } catch (err: any) {
@@ -126,6 +130,7 @@ function PermissionsSection({
     || premiumCore !== user.permissions.includes("PREMIUM_CORE")
     || premiumDetails !== user.permissions.includes("PREMIUM_DETAILS")
     || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA")
+    || webAccess !== user.permissions.includes("WEB_ACCESS")
     || excludeFromStats !== user.excludeFromStats;
 
   return (
@@ -156,6 +161,15 @@ function PermissionsSection({
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Максимальный</span>
         <ToggleSwitch checked={premiumExtra} onChange={setPremiumExtra} />
+      </div>
+
+      {/* Вход в браузерную версию на rapport.su. Выдаётся автоматически,
+          когда человек получает логин в боте; здесь — ручное управление.
+          Выключение отзывает и активные браузерные сессии. Авторам доступ
+          даёт AUTHOR_CABINET, этот тумблер им не нужен. */}
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Доступ в браузере</span>
+        <ToggleSwitch checked={webAccess} onChange={setWebAccess} />
       </div>
 
       {/* Не разрешение, а отметка "это наш/тестовый аккаунт" — влияет
