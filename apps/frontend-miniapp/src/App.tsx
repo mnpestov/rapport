@@ -15,6 +15,7 @@ import { PaymentFail } from './pages/PaymentFail/PaymentFail';
 import { PaywallModal, PaywallVariant } from './components/PaywallModal/PaywallModal';
 import { WebLogin } from './pages/WebLogin/WebLogin';
 import {
+  detectMode,
   initAuthSession,
   refreshWebSession,
   isWebMode,
@@ -108,16 +109,29 @@ function App() {
       if (isMounted) setAppState("loading");
       try {
         const tg = (window as any).Telegram?.WebApp;
+
+        // Режим определяется ДО восстановления initData из sessionStorage.
+        // Иначе браузерная вкладка, в которой приложение когда-то
+        // открывали из Telegram, подхватывала бы оттуда ещё живой initData
+        // (он валиден 24 часа) и уходила в Telegram-ветку — то есть
+        // попадала прямо в каталог мимо экрана входа.
+        const mode = detectMode();
+
         let initData = tg?.initData || "";
         let restoredFromSession = false;
 
-        if (initData) {
-          sessionStorage.setItem('tg_initData', initData);
-        } else {
-          const stored = sessionStorage.getItem('tg_initData');
-          if (stored) {
-            initData = stored;
-            restoredFromSession = true;
+        // Восстановление из хранилища — только для Telegram-режима: там оно
+        // лечит реальную проблему (WebView иногда поднимает приложение
+        // заново уже без initData). В браузере восстанавливать нечего.
+        if (mode === 'telegram') {
+          if (initData) {
+            sessionStorage.setItem('tg_initData', initData);
+          } else {
+            const stored = sessionStorage.getItem('tg_initData');
+            if (stored) {
+              initData = stored;
+              restoredFromSession = true;
+            }
           }
         }
 
@@ -146,7 +160,11 @@ function App() {
           const token = await refreshWebSession();
           if (!isMounted) return;
           if (!token) {
-            setAppState("web_login");
+            // Сессии нет — показываем лендинг с кнопкой «Войти», а не сразу
+            // форму: до публичного запуска обычный посетитель не должен
+            // видеть призыв входить, а описание возможностей должно
+            // оставаться доступным (BROWSER_ACCESS_PLAN.md §3.5).
+            setAppState("telegram_only");
             return;
           }
           // Сессия есть — но подписка могла отвалиться, пока вкладка была
@@ -166,25 +184,22 @@ function App() {
         };
 
         if (!import.meta.env.DEV) {
-          if (!tg) {
-            if (/Telegram/i.test(navigator.userAgent)) {
-              const versionMatch = navigator.userAgent.match(/Telegram[^/]*\/(\d+)/i);
-              const majorVersion = versionMatch ? parseInt(versionMatch[1], 10) : 0;
-              if (majorVersion > 0 && majorVersion < 6) {
-                logFrontend('AUTH_OUTDATED_TELEGRAM', {});
-                if (isMounted) setAppState("update_telegram");
-              } else {
-                logFrontend('AUTH_SDK_LOAD_FAILED', {});
-                if (isMounted) setAppState("load_error");
-              }
+          // Устаревший клиент Telegram: SDK не загрузился, но UA говорит,
+          // что мы внутри Telegram — тогда это не браузер, а старая версия.
+          if (!tg && /Telegram/i.test(navigator.userAgent)) {
+            const versionMatch = navigator.userAgent.match(/Telegram[^/]*\/(\d+)/i);
+            const majorVersion = versionMatch ? parseInt(versionMatch[1], 10) : 0;
+            if (majorVersion > 0 && majorVersion < 6) {
+              logFrontend('AUTH_OUTDATED_TELEGRAM', {});
+              if (isMounted) setAppState("update_telegram");
             } else {
-              logFrontend('AUTH_BROWSER_ACCESS', {});
-              await enterWebMode();
+              logFrontend('AUTH_SDK_LOAD_FAILED', {});
+              if (isMounted) setAppState("load_error");
             }
             return;
           }
-          if (tg.platform === 'unknown' && !initData) {
-            // telegram-web-app.js загрузился, но открыто в браузере (не в Telegram)
+
+          if (mode === 'web') {
             logFrontend('AUTH_BROWSER_ACCESS', {});
             await enterWebMode();
             return;
@@ -392,17 +407,33 @@ function App() {
   if (appState === "web_login") {
     return (
       <WebLogin
-        onAuthenticated={() => {
-          // Вход прошёл: подписку проверит либо enforceWebSubscription на
-          // первом же запросе каталога, либо явная перепроверка ниже.
-          window.dispatchEvent(new CustomEvent("auth:recheck"));
+        onAuthenticated={async () => {
+          // Вход прошёл — возвращаем человека туда, ради чего он входил:
+          // в каталог. Подписку спрашиваем сразу, чтобы не показывать
+          // каталог тому, кто отписался (сервер всё равно закроет его, но
+          // мигание пустым списком выглядело бы поломкой).
+          const ok = await subscriptionRecheck();
+          if (ok) {
+            setAppState("authorized");
+          } else {
+            setAppState("fetching_channel");
+            const info = await fetchChannelInfo();
+            setChannelInfo(info);
+            setAppState("unauthorized");
+          }
         }}
       />
     );
   }
 
   if (appState === "telegram_only") {
-    return <TelegramOnly />;
+    // Кнопка входа — только в браузере: внутри Telegram входить некуда,
+    // там аккаунт уже задан мессенджером.
+    return (
+      <TelegramOnly
+        onLoginClick={isWebMode() ? () => setAppState("web_login") : undefined}
+      />
+    );
   }
 
   if (appState === "update_telegram") {

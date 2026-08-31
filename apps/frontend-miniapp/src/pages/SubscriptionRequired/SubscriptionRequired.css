@@ -200,3 +200,21 @@
     bottom: 10px;
   }
 }
+/* Выход из браузерной сессии. Отдельный класс, а НЕ .subscription-link-support:
+   тот позиционирован fixed по bottom: 24px, и вторая кнопка с ним легла бы
+   ровно поверх первой. Здесь — обычный поток, но с отступом снизу, чтобы не
+   заезжать под ту самую fixed-ссылку. */
+.subscription-logout {
+  display: block;
+  margin: 24px auto 72px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 110%;
+  color: var(--dark_grey, #9B9A9A);
+  text-decoration: underline;
+}

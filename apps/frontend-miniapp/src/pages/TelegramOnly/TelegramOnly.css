@@ -333,3 +333,27 @@
     text-align: right;
   }
 }
+/* Кнопка входа в шапке лендинга (только браузерный режим).
+   Скромная по оформлению: пока веб открыт по приглашениям, звать в него
+   всех подряд рано — основной CTA страницы остаётся прежним. */
+.landing-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.landing-header-login {
+  padding: 8px 16px;
+  border: 1px solid #A9AE36;
+  border-radius: 2px;
+  background: transparent;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1D1C1C;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.landing-header-login:hover {
+  background: rgba(169, 174, 54, 0.1);
+}

@@ -48,13 +48,27 @@ const PAID_ADVANTAGES: Advantage[] = [
   { title: 'Фильтр по плотности', text: 'Находите описания, идеально подходящие под вашу плотность вязания. Никаких пересчётов.' },
 ];
 
-export const TelegramOnly: React.FC = () => {
+interface TelegramOnlyProps {
+  // Передаётся только в браузерном режиме: внутри Telegram входить некуда,
+  // аккаунт уже задан мессенджером. Пока веб-доступ открыт не для всех,
+  // кнопка намеренно скромная — не главный CTA страницы.
+  onLoginClick?: () => void;
+}
+
+export const TelegramOnly: React.FC<TelegramOnlyProps> = ({ onLoginClick }) => {
   return (
     <div className="landing">
       <header className="landing-header">
         <div className="landing-container landing-header-row">
           <img src={headerLogo} alt="Rapport" className="landing-header-logo" />
-          <a className="landing-header-bot" href={BOT_CHAT_LINK}>@rapportapp_bot</a>
+          <div className="landing-header-actions">
+            {onLoginClick && (
+              <button type="button" className="landing-header-login" onClick={onLoginClick}>
+                Войти
+              </button>
+            )}
+            <a className="landing-header-bot" href={BOT_CHAT_LINK}>@rapportapp_bot</a>
+          </div>
         </div>
       </header>
 

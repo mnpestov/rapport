@@ -22,6 +22,28 @@ import { fetchWithTimeout } from './fetchWithTimeout';
 
 export type AppMode = 'telegram' | 'web';
 
+/**
+ * Открыто ли приложение внутри Telegram.
+ *
+ * Проверяем ФАКТ наличия свежего initData у SDK, а не косвенные признаки:
+ *  - сам объект window.Telegram.WebApp есть ВСЕГДА (скрипт telegram-web-app.js
+ *    подключён в index.html), поэтому его наличие ничего не доказывает;
+ *  - initData из sessionStorage тоже не годится: он живёт 24 часа и
+ *    остаётся в браузерной вкладке после того, как приложение однажды
+ *    открывали из Telegram. Именно из-за него браузер попадал прямо в
+ *    каталог мимо экрана входа.
+ *
+ * platform === 'unknown' — как SDK помечает себя вне клиента Telegram.
+ */
+export function detectMode(): AppMode {
+  const tg = (window as any).Telegram?.WebApp;
+  if (!tg) return 'web';
+  if (tg.platform && tg.platform !== 'unknown') return 'telegram';
+  // Платформа неизвестна: доверяем только initData, полученному от SDK
+  // прямо сейчас (не восстановленному из хранилища).
+  return tg.initData ? 'telegram' : 'web';
+}
+
 // Режим определяется один раз при старте и дальше не меняется: он зависит
 // от того, где открыто приложение, а не от состояния сессии.
 let mode: AppMode = 'telegram';

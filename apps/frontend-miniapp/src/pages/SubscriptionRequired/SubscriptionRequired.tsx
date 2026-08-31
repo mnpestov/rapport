@@ -94,7 +94,7 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
           проблемы нет, там аккаунт задаёт сам мессенджер). */}
       {isWebMode() && (
         <button
-          className="subscription-link-support"
+          className="subscription-logout"
           onClick={async () => {
             await logoutWeb();
             window.location.reload();
