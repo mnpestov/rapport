@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // IP-based, in-memory (default MemoryStore) — fine for a single rapport-api
 // instance (pm2, no cluster mode; same assumption jobs/expireNewPatterns.ts
@@ -89,6 +89,12 @@ export const subscriptionRecheckLimiter = rateLimit({
   limit: 1,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.userId ?? req.ip ?? "anonymous",
+  // Ключ — userId (эндпоинт под requireAuth, так что он всегда есть).
+  // Fallback на IP оставлен на случай, если порядок middleware когда-нибудь
+  // изменится, и обязан идти через ipKeyGenerator: сырой req.ip для IPv6
+  // даёт отдельный ключ на каждый адрес из /64-подсети, а такую подсеть
+  // провайдер выдаёт одному абоненту — лимит обходился бы тривиально
+  // (ERR_ERL_KEY_GEN_IPV6).
+  keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? "") ?? "anonymous",
   message: { error: "Too many requests, please try again later" },
 });
