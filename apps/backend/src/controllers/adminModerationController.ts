@@ -29,10 +29,20 @@ export const getDraftsList = async (req: Request, res: Response): Promise<void> 
         categories: { select: { id: true, name: true } },
         instruments: { select: { id: true, name: true } },
         yarnRanges: { select: { id: true, label: true } },
+        // Author's manual YarnPicker choices (DraftYarn) — same shape
+        // ({id, name}) ModerationCard already expects for scraper-found
+        // yarns, so no frontend change needed to display these.
+        yarns: { select: { yarn: { select: { id: true, name: true } } } },
       },
     });
 
-    res.json(drafts.map((d) => ({ ...d, thumbnailUrl: d.thumbnailUrl || d.imageUrl })));
+    res.json(
+      drafts.map((d) => ({
+        ...d,
+        thumbnailUrl: d.thumbnailUrl || d.imageUrl,
+        yarns: d.yarns.map((link) => link.yarn),
+      }))
+    );
   } catch (error) {
     console.error("[Admin] getDraftsList failed:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -86,6 +96,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
           categories: { select: { id: true } },
           instruments: { select: { id: true } },
           yarnRanges: { select: { id: true } },
+          yarns: { select: { yarnId: true } },
         },
       });
 
@@ -111,6 +122,8 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
       // action, not a hot path.
       const thumbnailUrl = await generateThumbnailUrl(draft.images[0]);
 
+      let publishedPatternId: string;
+
       if (draft.patternId === null) {
         // New pattern — generate slug + check URL uniqueness
         let slug = generateSlug(draft.title);
@@ -121,7 +134,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
         const urlExists = await tx.pattern.findFirst({ where: { url: normUrl } });
         if (urlExists) throw Object.assign(new Error("URL_DUPLICATE"), { status: 409 });
 
-        await tx.pattern.create({
+        const created = await tx.pattern.create({
           data: {
             slug,
             title: draft.title,
@@ -145,6 +158,7 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             yarnRanges: { connect: yarnRangeConnect },
           },
         });
+        publishedPatternId = created.id;
       } else {
         // Edit existing pattern
         await tx.pattern.update({
@@ -167,6 +181,27 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
             instruments: { set: [], connect: instConnect },
             yarnRanges: { set: [], connect: yarnRangeConnect },
           },
+        });
+        publishedPatternId = draft.patternId;
+      }
+
+      // DraftYarn (author's manual YarnPicker choices) isn't an implicit
+      // M:N relation like tags/categories/instruments/yarnRanges above — it
+      // has its own model (like PatternYarn), so it needs its own
+      // create/replace step instead of a `connect` inside the writes above.
+      // ADMIN source/MANUAL rule matches what setPatternYarns already
+      // records for a moderator's manual pick — this is the same kind of
+      // action, just made by the author instead.
+      await tx.patternYarn.deleteMany({ where: { patternId: publishedPatternId, source: "ADMIN" } });
+      if (draft.yarns.length > 0) {
+        await tx.patternYarn.createMany({
+          data: draft.yarns.map((y) => ({
+            patternId: publishedPatternId,
+            yarnId: y.yarnId,
+            source: "ADMIN",
+            matchRule: "MANUAL",
+          })),
+          skipDuplicates: true,
         });
       }
 

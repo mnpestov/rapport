@@ -13,6 +13,7 @@ import {
   getDraft,
   archivePattern,
 } from "../controllers/authorController";
+import { createAuthorYarn } from "../controllers/yarnsController";
 
 const router = Router();
 
@@ -32,5 +33,7 @@ router.post("/drafts/:id/submit", submitDraft);
 // Create an edit draft for an already-published pattern
 router.post("/patterns/:id/edit", createEditDraft);
 router.post("/patterns/:id/archive", archivePattern);
+
+router.post("/yarns", createAuthorYarn);
 
 export default router;

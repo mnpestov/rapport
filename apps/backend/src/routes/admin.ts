@@ -95,6 +95,8 @@ import {
   updateYarn,
   deleteYarn,
   mergeYarn,
+  approveYarn,
+  rejectPendingYarn,
   getPatternYarns,
   setPatternYarns,
   resolveMention,
@@ -209,6 +211,8 @@ router.post("/yarns", createYarn);
 router.patch("/yarns/:id", updateYarn);
 router.delete("/yarns/:id", deleteYarn);
 router.post("/yarns/:id/merge", mergeYarn);
+router.patch("/yarns/:id/approve", approveYarn);
+router.patch("/yarns/:id/reject", rejectPendingYarn);
 router.get("/patterns/:id/yarns", getPatternYarns);
 router.put("/patterns/:id/yarns", setPatternYarns);
 router.post("/yarn-mentions/:id/resolve", resolveMention);

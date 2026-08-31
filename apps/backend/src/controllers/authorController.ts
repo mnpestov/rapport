@@ -57,6 +57,15 @@ function handleAuthorError(error: any, res: Response, context: string): void {
   res.status(500).json({ error: "Internal server error" });
 }
 
+// Flattens the DraftYarn/PatternYarn join-record shape ({ yarn: {...} }[])
+// returned by Prisma's `include` into the plain array the frontend expects
+// (same shape YarnPicker already consumes for the published-Pattern path).
+function flattenYarnLinks<T extends { yarn: { id: string; name: string; mPer100g: number | null; composition: string | null } }>(
+  links: T[]
+): { id: string; name: string; mPer100g: number | null; composition: string | null }[] {
+  return links.map((link) => link.yarn);
+}
+
 // ---------------------------------------------------------------------------
 // GET /author/me
 // ---------------------------------------------------------------------------
@@ -92,6 +101,7 @@ export const getAuthorPatterns = async (req: Request, res: Response): Promise<vo
           categories: { select: { id: true, name: true } },
           instruments: { select: { id: true, name: true } },
           yarnRanges: { select: { id: true, label: true } },
+          yarns: { select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } } },
           pattern: { select: { id: true, title: true } },
         },
       }),
@@ -103,13 +113,23 @@ export const getAuthorPatterns = async (req: Request, res: Response): Promise<vo
           categories: { select: { id: true, name: true } },
           instruments: { select: { id: true, name: true } },
           yarnRanges: { select: { id: true, label: true } },
+          yarns: {
+            where: { status: "ACTIVE" },
+            select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } },
+          },
         },
       }),
     ]);
 
     // Mark items by type so the frontend can apply different actions
-    const draftItems = drafts.map((d) => ({ ...d, thumbnailUrl: d.thumbnailUrl || d.imageUrl, _type: "draft" as const }));
-    const patternItems = patterns.map((p) => ({ ...p, thumbnailUrl: p.thumbnailUrl || p.imageUrl, _type: "pattern" as const }));
+    const draftItems = drafts.map((d) => ({
+      ...d, thumbnailUrl: d.thumbnailUrl || d.imageUrl, _type: "draft" as const,
+      yarns: flattenYarnLinks(d.yarns),
+    }));
+    const patternItems = patterns.map((p) => ({
+      ...p, thumbnailUrl: p.thumbnailUrl || p.imageUrl, _type: "pattern" as const,
+      yarns: flattenYarnLinks(p.yarns),
+    }));
 
     res.json({ drafts: draftItems, patterns: patternItems });
   } catch (error: any) {
@@ -131,7 +151,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
 
     const authorId = await resolveAuthorId(userId);
 
-    const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, yarnIds, densityStitches, densityRows } = req.body;
 
     if (!title || !url) {
       res.status(400).json({ error: "title, url, and images are required" });
@@ -149,44 +169,64 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const draft = await prisma.draft.create({
-      data: {
-        authorId,
-        title: normalizeQuotes(title),
-        url,
-        images: imagesValidation.images,
-        imageUrl: deriveImageUrl(imagesValidation.images),
-        thumbnailUrl: await generateThumbnailUrl(imagesValidation.images[0]),
-        details: details ?? null,
-        price: price === "" || price === undefined || price === null ? null : Number(price),
-        oldPrice: oldPrice === "" || oldPrice === undefined || oldPrice === null ? null : Number(oldPrice),
-        isFree: isFree ?? false,
-        isNew: isNew ?? false,
-        densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
-        densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
-        tags: Array.isArray(tags) && tags.length > 0
-          ? { connect: tags.map((id: string) => ({ id })) }
-          : undefined,
-        categories: Array.isArray(categories) && categories.length > 0
-          ? { connect: categories.map((id: string) => ({ id })) }
-          : undefined,
-        instruments: Array.isArray(instruments) && instruments.length > 0
-          ? { connect: instruments.map((id: string) => ({ id })) }
-          : undefined,
-        yarnRanges: Array.isArray(yarnRangeIds) && yarnRangeIds.length > 0
-          ? { connect: yarnRangeIds.map((id: string) => ({ id })) }
-          : undefined,
-      },
-      include: {
-        tags: { select: { id: true, name: true } },
-        categories: { select: { id: true, name: true } },
-        instruments: { select: { id: true, name: true } },
-        yarnRanges: { select: { id: true, label: true } },
-        pattern: { select: { id: true, title: true } },
-      },
+    const yarnIdList: string[] = Array.isArray(yarnIds) ? yarnIds.map(String) : [];
+
+    // DraftYarn isn't an implicit M:N relation (unlike tags/categories/
+    // instruments/yarnRanges) — it has its own model, so it can't be
+    // created via `connect` inside draft.create's data. A transaction
+    // keeps draft + its yarn picks atomic even though it's two statements.
+    const draft = await prisma.$transaction(async (tx) => {
+      const created = await tx.draft.create({
+        data: {
+          authorId,
+          title: normalizeQuotes(title),
+          url,
+          images: imagesValidation.images,
+          imageUrl: deriveImageUrl(imagesValidation.images),
+          thumbnailUrl: await generateThumbnailUrl(imagesValidation.images[0]),
+          details: details ?? null,
+          price: price === "" || price === undefined || price === null ? null : Number(price),
+          oldPrice: oldPrice === "" || oldPrice === undefined || oldPrice === null ? null : Number(oldPrice),
+          isFree: isFree ?? false,
+          isNew: isNew ?? false,
+          densityStitches: densityStitches === "" || densityStitches === undefined || densityStitches === null ? null : Number(densityStitches),
+          densityRows: densityRows === "" || densityRows === undefined || densityRows === null ? null : Number(densityRows),
+          tags: Array.isArray(tags) && tags.length > 0
+            ? { connect: tags.map((id: string) => ({ id })) }
+            : undefined,
+          categories: Array.isArray(categories) && categories.length > 0
+            ? { connect: categories.map((id: string) => ({ id })) }
+            : undefined,
+          instruments: Array.isArray(instruments) && instruments.length > 0
+            ? { connect: instruments.map((id: string) => ({ id })) }
+            : undefined,
+          yarnRanges: Array.isArray(yarnRangeIds) && yarnRangeIds.length > 0
+            ? { connect: yarnRangeIds.map((id: string) => ({ id })) }
+            : undefined,
+        },
+      });
+
+      if (yarnIdList.length > 0) {
+        await tx.draftYarn.createMany({
+          data: yarnIdList.map((yarnId) => ({ draftId: created.id, yarnId })),
+          skipDuplicates: true,
+        });
+      }
+
+      return tx.draft.findUniqueOrThrow({
+        where: { id: created.id },
+        include: {
+          tags: { select: { id: true, name: true } },
+          categories: { select: { id: true, name: true } },
+          instruments: { select: { id: true, name: true } },
+          yarnRanges: { select: { id: true, label: true } },
+          yarns: { select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } } },
+          pattern: { select: { id: true, title: true } },
+        },
+      });
     });
 
-    res.status(201).json({ ...draft, _type: "draft" as const });
+    res.status(201).json({ ...draft, _type: "draft" as const, yarns: flattenYarnLinks(draft.yarns) });
   } catch (error: any) {
     handleAuthorError(error, res, "createDraft");
   }
@@ -214,6 +254,9 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
         categories: { select: { id: true } },
         instruments: { select: { id: true } },
         yarnRanges: { select: { id: true } },
+        // Only ACTIVE links — a REJECTED PatternYarn tombstone (see
+        // setPatternYarns) shouldn't resurface as a pick in the new draft.
+        yarns: { where: { status: "ACTIVE" }, select: { yarnId: true } },
       },
     });
 
@@ -241,48 +284,62 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const draft = await prisma.draft.create({
-      data: {
-        patternId,
-        authorId,
-        title: pattern.title,
-        url: pattern.url,
-        images: pattern.images,
-        imageUrl: pattern.imageUrl,
-        // Cover unchanged at draft-creation time (just a snapshot of the
-        // existing pattern) — copy as-is, no regeneration needed, unlike
-        // the other write points where images[0] can actually change.
-        thumbnailUrl: pattern.thumbnailUrl,
-        details: pattern.details,
-        price: pattern.price,
-        oldPrice: pattern.oldPrice,
-        isFree: pattern.isFree,
-        isNew: pattern.isNew,
-        densityStitches: pattern.densityStitches,
-        densityRows: pattern.densityRows,
-        tags: pattern.tags.length > 0
-          ? { connect: pattern.tags.map((t) => ({ id: t.id })) }
-          : undefined,
-        categories: pattern.categories.length > 0
-          ? { connect: pattern.categories.map((c) => ({ id: c.id })) }
-          : undefined,
-        instruments: pattern.instruments.length > 0
-          ? { connect: pattern.instruments.map((i) => ({ id: i.id })) }
-          : undefined,
-        yarnRanges: pattern.yarnRanges.length > 0
-          ? { connect: pattern.yarnRanges.map((y) => ({ id: y.id })) }
-          : undefined,
-      },
-      include: {
-        tags: { select: { id: true, name: true } },
-        categories: { select: { id: true, name: true } },
-        instruments: { select: { id: true, name: true } },
-        yarnRanges: { select: { id: true, label: true } },
-        pattern: { select: { id: true, title: true } },
-      },
+    const draft = await prisma.$transaction(async (tx) => {
+      const created = await tx.draft.create({
+        data: {
+          patternId,
+          authorId,
+          title: pattern.title,
+          url: pattern.url,
+          images: pattern.images,
+          imageUrl: pattern.imageUrl,
+          // Cover unchanged at draft-creation time (just a snapshot of the
+          // existing pattern) — copy as-is, no regeneration needed, unlike
+          // the other write points where images[0] can actually change.
+          thumbnailUrl: pattern.thumbnailUrl,
+          details: pattern.details,
+          price: pattern.price,
+          oldPrice: pattern.oldPrice,
+          isFree: pattern.isFree,
+          isNew: pattern.isNew,
+          densityStitches: pattern.densityStitches,
+          densityRows: pattern.densityRows,
+          tags: pattern.tags.length > 0
+            ? { connect: pattern.tags.map((t) => ({ id: t.id })) }
+            : undefined,
+          categories: pattern.categories.length > 0
+            ? { connect: pattern.categories.map((c) => ({ id: c.id })) }
+            : undefined,
+          instruments: pattern.instruments.length > 0
+            ? { connect: pattern.instruments.map((i) => ({ id: i.id })) }
+            : undefined,
+          yarnRanges: pattern.yarnRanges.length > 0
+            ? { connect: pattern.yarnRanges.map((y) => ({ id: y.id })) }
+            : undefined,
+        },
+      });
+
+      if (pattern.yarns.length > 0) {
+        await tx.draftYarn.createMany({
+          data: pattern.yarns.map((y) => ({ draftId: created.id, yarnId: y.yarnId })),
+          skipDuplicates: true,
+        });
+      }
+
+      return tx.draft.findUniqueOrThrow({
+        where: { id: created.id },
+        include: {
+          tags: { select: { id: true, name: true } },
+          categories: { select: { id: true, name: true } },
+          instruments: { select: { id: true, name: true } },
+          yarnRanges: { select: { id: true, label: true } },
+          yarns: { select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } } },
+          pattern: { select: { id: true, title: true } },
+        },
+      });
     });
 
-    res.status(201).json({ ...draft, _type: "draft" as const });
+    res.status(201).json({ ...draft, _type: "draft" as const, yarns: flattenYarnLinks(draft.yarns) });
   } catch (error: any) {
     handleAuthorError(error, res, "createEditDraft");
   }
@@ -319,7 +376,7 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, densityStitches, densityRows } = req.body;
+    const { title, url, images, details, price, oldPrice, isFree, isNew, tags, categories, instruments, yarnRangeIds, yarnIds, densityStitches, densityRows } = req.body;
 
     const data: any = {};
     if (title !== undefined) data.title = normalizeQuotes(title);
@@ -364,19 +421,42 @@ export const updateDraft = async (req: Request, res: Response): Promise<void> =>
       data.yarnRanges = { set: yarnRangeIds.map((id: string) => ({ id })) };
     }
 
-    const updated = await prisma.draft.update({
-      where: { id },
-      data,
-      include: {
-        tags: { select: { id: true, name: true } },
-        categories: { select: { id: true, name: true } },
-        instruments: { select: { id: true, name: true } },
-        yarnRanges: { select: { id: true, label: true } },
-        pattern: { select: { id: true, title: true } },
-      },
+    // Same replace-all approach as setPatternYarns, minus the REJECTED
+    // tombstone dance — a draft's yarn picks aren't reconstructed by a
+    // background scraper the way a published Pattern's are, so there's
+    // nothing here worth resurrecting later. Plain delete+recreate.
+    const yarnIdList = Array.isArray(yarnIds) ? yarnIds.map(String) : null;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.draft.update({
+        where: { id },
+        data,
+      });
+
+      if (yarnIdList !== null) {
+        await tx.draftYarn.deleteMany({ where: { draftId: id } });
+        if (yarnIdList.length > 0) {
+          await tx.draftYarn.createMany({
+            data: yarnIdList.map((yarnId) => ({ draftId: id, yarnId })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.draft.findUniqueOrThrow({
+        where: { id },
+        include: {
+          tags: { select: { id: true, name: true } },
+          categories: { select: { id: true, name: true } },
+          instruments: { select: { id: true, name: true } },
+          yarnRanges: { select: { id: true, label: true } },
+          yarns: { select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } } },
+          pattern: { select: { id: true, title: true } },
+        },
+      });
     });
 
-    res.json({ ...updated, _type: "draft" as const });
+    res.json({ ...updated, _type: "draft" as const, yarns: flattenYarnLinks(updated.yarns) });
   } catch (error: any) {
     handleAuthorError(error, res, "updateDraft");
   }
@@ -472,6 +552,8 @@ export const getDraft = async (req: Request, res: Response): Promise<void> => {
         tags: { select: { id: true, name: true } },
         categories: { select: { id: true, name: true } },
         instruments: { select: { id: true, name: true } },
+        yarnRanges: { select: { id: true, label: true } },
+        yarns: { select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } } },
         pattern: { select: { id: true, title: true } },
       },
     });
@@ -486,7 +568,7 @@ export const getDraft = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json({ ...draft, thumbnailUrl: draft.thumbnailUrl || draft.imageUrl });
+    res.json({ ...draft, thumbnailUrl: draft.thumbnailUrl || draft.imageUrl, yarns: flattenYarnLinks(draft.yarns) });
   } catch (error: any) {
     handleAuthorError(error, res, "getDraft");
   }

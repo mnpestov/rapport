@@ -163,7 +163,13 @@ model Yarn {
 
   sourceName   String?
   sourceUrl    String?
-  isActive     Boolean @default(true)
+  isActive     Boolean    @default(true)
+  // PENDING — создан автором через POST /author/yarns, ждёт проверки, не
+  // виден в suggestYarns. APPROVED — прошёл проверку (или создан админом
+  // через POST /admin/yarns — default), виден в справочнике как сейчас.
+  // Не путать с YarnMentionStatus — тоже использует PENDING, но для
+  // PatternYarnMention, не связанная модель.
+  status       YarnStatus @default(APPROVED)
   // При слиянии дублей карточка не удаляется, а помечается ссылкой на
   // победителя: связи на неё уже могли разойтись по описаниям, и удаление
   // порвало бы их.
@@ -173,6 +179,7 @@ model Yarn {
 
   aliases      YarnAlias[]
   patterns     PatternYarn[]
+  drafts       DraftYarn[]
   suggestedFor PatternYarnMention[] @relation("YarnSuggested")
   resolvedFor  PatternYarnMention[] @relation("YarnResolved")
 
@@ -181,6 +188,7 @@ model Yarn {
 
   @@index([dedupKey])
   @@index([brand])
+  @@index([status])
 }
 
 // Как пряжу пишут люди: опечатки («Lana Gossa»), транслитерации («Сеам»),
@@ -197,6 +205,11 @@ model YarnAlias {
   createdAt DateTime @default(now())
 
   @@index([yarnId])
+}
+
+enum YarnStatus {
+  PENDING
+  APPROVED
 }
 
 enum YarnLinkSource {
@@ -757,10 +770,30 @@ model Draft {
   categories  ProductType[]
   instruments Instrument[]
   yarnRanges  YarnRange[]
+  yarns       DraftYarn[]
 
   @@index([patternId])
   @@index([authorId])
   @@index([status])
+}
+
+// Артикулы пряжи, выбранные автором в форме черновика — до approveDraft это
+// живёт отдельно от PatternYarn (которая существует только у опубликованного
+// Pattern). Упрощённая версия PatternYarn: нет source/matchRule/rawMention —
+// это всегда ручной выбор автора через YarnPicker, не результат разбора
+// скрапером/бэкофилом, разбирать тут нечего.
+model DraftYarn {
+  id      String @id @default(uuid())
+  draftId String
+  draft   Draft  @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  yarnId  String
+  yarn    Yarn   @relation(fields: [yarnId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([draftId, yarnId])
+  @@index([draftId])
+  @@index([yarnId])
 }
 
 // ---------------------------------------------------------------------------
