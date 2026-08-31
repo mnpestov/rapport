@@ -5,7 +5,7 @@ import { LoginCodePurpose, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { sendForgotPassword } from "../services/authorNotifier";
 import { normalizeLogin } from "../utils/authorCredentialHelpers";
-import { createWebSession } from "../services/authSession";
+import { createWebSession, hasWebAccess } from "../services/authSession";
 import { clearSessionCache } from "../middlewares/enforceWebSubscription";
 
 /**
@@ -108,6 +108,48 @@ async function hasAuthorCabinetAccess(userId: string): Promise<boolean> {
   return !!entry;
 }
 
+// ---------------------------------------------------------------------------
+// Два входа по логину/паролю — /auth/author-login (кабинет автора) и
+// /auth/user-login (браузерная версия) — отличаются РОВНО одним: какой
+// доступ требуется после успешной проверки пароля. Всё остальное (lockout,
+// byte-truncation bcrypt, mustChangePassword, выдача сессии) у них общее,
+// поэтому это параметр, а не форк файла: две копии этой логики разъехались
+// бы молча (BROWSER_ACCESS_PLAN.md §3.1, решение A1).
+// ---------------------------------------------------------------------------
+type LoginSurface = "cabinet" | "web";
+
+// Постоянный валидный bcrypt-хэш для выравнивания тайминга на ветках, где
+// пароль не проверяется (логина нет / доступа нет). Без него время ответа
+// выдавало бы существование логина: реальный bcrypt.compare ~100 мс, отказ
+// без него — единицы миллисекунд (BROWSER_ACCESS_PLAN.md §4.8, S6).
+const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO1MtvJEuJ7VoM0Vq1JQqVoZjHqRQKNvS";
+
+async function burnTiming(password: string): Promise<void> {
+  try {
+    await bcrypt.compare(password, DUMMY_HASH);
+  } catch {
+    // Форма хэша фиксированная и валидная; ошибка тут невозможна, но
+    // «сжигание времени» не должно ронять запрос.
+  }
+}
+
+/**
+ * Пускать ли на эту поверхность входа.
+ *
+ * Веб: WEB_ACCESS (или ADMIN / AUTHOR_CABINET / мастер-рубильник) —
+ * см. hasWebAccess. Кабинет: AUTHOR_CABINET, как и раньше.
+ */
+async function isAllowedOnSurface(surface: LoginSurface, userId: string): Promise<boolean> {
+  return surface === "web" ? hasWebAccess(userId) : hasAuthorCabinetAccess(userId);
+}
+
+// Единый отказ для веб-поверхности, пока доступ не открыт публично: и
+// «логина нет», и «логин есть, но доступа нет» отвечают ОДИНАКОВО и без
+// Retry-After. Иначе перебор логинов показывал бы, у кого доступ уже есть.
+function denyWebAccess(res: Response): void {
+  res.status(403).json({ error: "web_access_not_granted" });
+}
+
 async function issueSessionResponse(
   req: Request,
   res: Response,
@@ -136,8 +178,9 @@ async function issueSessionResponse(
   });
 }
 
-// POST /auth/author-login
-export const authorLogin = async (req: Request, res: Response): Promise<void> => {
+// Общая реализация входа по логину/паролю для обеих поверхностей.
+// Экспортируемые authorLogin / userLogin ниже — тонкие обёртки над ней.
+const loginHandler = (surface: LoginSurface) => async (req: Request, res: Response): Promise<void> => {
   const { login: rawLogin, password } = req.body ?? {};
   if (typeof rawLogin !== "string" || typeof password !== "string" || !rawLogin || !password) {
     res.status(400).json({ error: "login and password are required" });
@@ -160,12 +203,38 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
       // loginFailedAttempts is NOT touched — no credential was found, so
       // there is nothing to key a counter on without letting an attacker
       // grow the Map with arbitrary strings.
+      //
+      // Веб: сжигаем то же время, что заняла бы реальная проверка пароля, и
+      // отвечаем тем же 403, что и «доступа нет» — иначе перебор логинов
+      // отличал бы существующие от несуществующих (S6).
+      if (surface === "web") {
+        await burnTiming(password);
+        denyWebAccess(res);
+        return;
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
 
     if (passwordTooLong(password)) {
       res.status(400).json({ error: "Password is too long" });
+      return;
+    }
+
+    // Гейт доступа — ДО проверки пароля и ДО lockout-ветки (S6):
+    //  - lockout отдаёт 429 + Retry-After только для существующего логина,
+    //    то есть подтверждал бы его существование;
+    //  - ранний выход из mustChangePassword ниже отвечал бы 200 раньше,
+    //    чем сработал бы гейт.
+    // Так «логина нет» и «логин есть, доступа нет» становятся неотличимы.
+    const allowed = await isAllowedOnSurface(surface, credential.userId);
+    if (!allowed) {
+      if (surface === "web") {
+        await burnTiming(password);
+        denyWebAccess(res);
+        return;
+      }
+      res.status(403).json({ error: "Author cabinet access not granted" });
       return;
     }
 
@@ -196,12 +265,6 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
       data: { lockedUntil: null, lastLoginAt: new Date() },
     });
 
-    const hasCabinetAccess = await hasAuthorCabinetAccess(credential.userId);
-    if (!hasCabinetAccess) {
-      res.status(403).json({ error: "Author cabinet access not granted" });
-      return;
-    }
-
     if (credential.mustChangePassword) {
       res.json({ mustChangePassword: true, login });
       return;
@@ -209,17 +272,23 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
 
     await issueSessionResponse(req, res, credential.user);
   } catch (error) {
-    console.error("[AuthorPassword] authorLogin failed:", error);
+    console.error(`[AuthorPassword] login failed (${surface}):`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// POST /auth/author-login — вход в кабинет автора (требует AUTHOR_CABINET).
+export const authorLogin = loginHandler("cabinet");
+
+// POST /auth/user-login — вход в браузерную версию (требует WEB_ACCESS).
+export const userLogin = loginHandler("web");
 
 // POST /auth/author-change-password — takes { login, currentPassword,
 // newPassword } directly, without requireAuth: the mustChangePassword
 // response from author-login carries no token to authenticate with. Uses
 // the SAME rate limit and lockedUntil as author-login (§3.3) — otherwise
 // this endpoint would let an attacker bypass the login lockout entirely.
-export const authorChangePassword = async (req: Request, res: Response): Promise<void> => {
+const changePasswordHandler = (surface: LoginSurface) => async (req: Request, res: Response): Promise<void> => {
   const { login: rawLogin, currentPassword, newPassword } = req.body ?? {};
   if (
     typeof rawLogin !== "string" || typeof currentPassword !== "string" || typeof newPassword !== "string" ||
@@ -279,8 +348,12 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
     // Checked AFTER the current-password check, before hashing the new one:
     // if access was revoked, there is no point writing a fresh hash for a
     // now-disowned account.
-    const hasCabinetAccess = await hasAuthorCabinetAccess(credential.userId);
-    if (!hasCabinetAccess) {
+    const allowed = await isAllowedOnSurface(surface, credential.userId);
+    if (!allowed) {
+      if (surface === "web") {
+        denyWebAccess(res);
+        return;
+      }
       res.status(403).json({ error: "Author cabinet access not granted" });
       return;
     }
@@ -322,10 +395,16 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
 
     await issueSessionResponse(req, res, credential.user);
   } catch (error) {
-    console.error("[AuthorPassword] authorChangePassword failed:", error);
+    console.error(`[AuthorPassword] changePassword failed (${surface}):`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// POST /auth/author-change-password — смена временного пароля для кабинета.
+export const authorChangePassword = changePasswordHandler("cabinet");
+
+// POST /auth/user-change-password — то же для браузерной версии.
+export const userChangePassword = changePasswordHandler("web");
 
 // POST /auth/forgot-password
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {

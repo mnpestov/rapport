@@ -1,7 +1,14 @@
 import { Router } from "express";
 import { telegramAuth } from "../controllers/authController";
 import { requestCode, verifyCode, getMe, refresh, logout, subscriptionRecheck } from "../controllers/webAuthController";
-import { authorLogin, authorChangePassword, forgotPassword, resetPassword } from "../controllers/authorPasswordController";
+import {
+  authorLogin,
+  authorChangePassword,
+  userLogin,
+  userChangePassword,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/authorPasswordController";
 import { requireAuth } from "../middlewares/auth";
 import {
   verifyCodeLimiter,
@@ -34,6 +41,13 @@ router.post("/author-login", authorLoginLimiter, authorLogin);
 // Same limiter as author-login — a separate/looser one here would let an
 // attacker bypass the login lockout via this endpoint instead.
 router.post("/author-change-password", authorLoginLimiter, authorChangePassword);
+// Браузерная версия — та же реализация, что у кабинета, отличается только
+// требуемым доступом (WEB_ACCESS вместо AUTHOR_CABINET). Лимитер общий с
+// author-login: отдельный/более мягкий здесь дал бы обход lockout через
+// соседний эндпоинт.
+router.post("/user-login", authorLoginLimiter, userLogin);
+router.post("/user-change-password", authorLoginLimiter, userChangePassword);
+
 router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
 router.post("/reset-password", resetPasswordLimiter, resetPassword);
 
