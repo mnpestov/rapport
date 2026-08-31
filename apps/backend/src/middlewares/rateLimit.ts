@@ -74,3 +74,21 @@ export const resetPasswordLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many attempts, please try again later" },
 });
+
+// POST /auth/subscription-recheck — «форс»-путь: КАЖДЫЙ вызов идёт в
+// telegram-gateway, минуя кэш на WebSession. Поэтому лимит персональный, по
+// userId, а не по IP: сессия уже аутентифицирована, и ограничивать нужно
+// именно человека — иначе любой залогиненный превращает эндпоинт в
+// усилитель нагрузки на внешний шлюз.
+//
+// 1 запрос в минуту: столько нужно кнопке «Проверить подписку» (подписался
+// — нажал — зашёл), а суточную фоновую перепроверку клиента это не
+// стесняет.
+export const subscriptionRecheckLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 1,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.userId ?? req.ip ?? "anonymous",
+  message: { error: "Too many requests, please try again later" },
+});

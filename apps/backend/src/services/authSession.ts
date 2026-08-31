@@ -217,3 +217,43 @@ export async function revokeAllWebSessions(userId: string): Promise<void> {
     }),
   ]);
 }
+
+// ---------------------------------------------------------------------------
+// Гейт браузерного доступа
+// ---------------------------------------------------------------------------
+
+/**
+ * Пускать ли пользователя в браузерную версию (BROWSER_ACCESS_PLAN.md §3.5).
+ *
+ * До публичного запуска доступ раздаётся точечно — это позволяет пускать
+ * волнами, держать веб только для тестеров и при желании сделать его
+ * платным (WEB_ACCESS выдаётся тогда рядом с PREMIUM_*).
+ *
+ * НЕ заменяет проверку подписки на канал: та отдельный гейт поверх
+ * (enforceWebSubscription). WEB_ACCESS отвечает на вопрос «пущен ли человек
+ * в веб-версию вообще», подписка — «действует ли у него доступ сейчас».
+ */
+export async function hasWebAccess(userId: string): Promise<boolean> {
+  // Мастер-рубильник на день публичного запуска: открывает веб всем, не
+  // требуя массовой выдачи permission.
+  if (process.env.WEB_ACCESS_PUBLIC_LAUNCH === "true") return true;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      permissions: {
+        where: { permission: { in: [Permission.WEB_ACCESS, Permission.AUTHOR_CABINET] } },
+        select: { permission: true },
+      },
+    },
+  });
+  if (!user) return false;
+
+  // ADMIN — суперсет всех прав (та же семантика, что в resolveRole).
+  if (user.role === UserRole.ADMIN) return true;
+
+  // AUTHOR_CABINET даёт веб-доступ неявно: авторы и так работают с кабинетом
+  // через браузер, отдельный WEB_ACCESS им был бы лишней ручной операцией.
+  return user.permissions.length > 0;
+}

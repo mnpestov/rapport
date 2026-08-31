@@ -8,9 +8,11 @@ import { allowedOrigins } from "../utils/allowedOrigins";
 import {
   createWebSession,
   hashToken,
+  hasWebAccess,
   setRefreshCookie,
   REFRESH_TOKEN_TTL_MS,
 } from "../services/authSession";
+import { refreshSessionSubscription, clearSessionCache } from "../middlewares/enforceWebSubscription";
 
 /**
  * Web / admin authentication via one-time Telegram codes.
@@ -218,6 +220,18 @@ export const verifyCode = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Гейт браузерного доступа — ДО сжигания кода: иначе пользователь без
+    // WEB_ACCESS терял бы полученный код впустую и не мог бы повторить
+    // попытку после выдачи доступа (BROWSER_ACCESS_PLAN.md §3.5).
+    //
+    // Именно этот гейт закрывает уже существовавшую дыру: /auth/verify-code
+    // смонтирован давно и выдавал 30-дневную сессию вообще без проверок
+    // подписки, а такие токены принимают все requireAuth-роуты.
+    if (!(await hasWebAccess(user.id))) {
+      res.status(403).json({ error: "web_access_not_granted" });
+      return;
+    }
+
     const burned = await prisma.loginCode.updateMany({
       where: { id: record.id, usedAt: null },
       data: { usedAt: new Date() },
@@ -413,6 +427,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
             data: { revoked: true, revokedAt },
           }),
         ]);
+        clearSessionCache();
       } else {
         await prisma.refreshToken.updateMany({
           where: { userId: record.userId, revoked: false },
@@ -532,6 +547,9 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
             data: { revoked: true, revokedAt },
           }),
         ]);
+        // Иначе выход «дойдёт» до enforceWebSubscription только по
+        // истечении кэша сессии.
+        clearSessionCache();
       } else if (record) {
         // Токен без сессии (админский, выдан до внедрения WebSession) —
         // прежнее поведение: гасим только его.
@@ -546,4 +564,54 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   }
 
   res.json({ ok: true });
+};
+
+// POST /auth/subscription-recheck — явный «форс» проверки подписки для
+// браузерной сессии (BROWSER_ACCESS_PLAN.md §4.4).
+//
+// Это UX-путь, а не защита: защита — enforceWebSubscription, который
+// проверяет сам, независимо от того, дёрнул клиент этот эндпоинт или нет.
+// Нужен для кнопки «Проверить подписку» на экране SubscriptionRequired:
+// человек только что подписался и хочет продолжить, не дожидаясь
+// истечения кэша.
+//
+// Всегда ходит в telegram-gateway, поэтому обязан иметь свой персональный
+// лимитер по userId (см. routes/auth.ts) — иначе любой залогиненный мог бы
+// им амплифицировать нагрузку на шлюз.
+export const subscriptionRecheck = async (req: Request, res: Response): Promise<void> => {
+  const sessionId = req.user?.sessionId;
+  if (!sessionId) {
+    // Mini App сюда не ходит: там подписка проверяется на каждом
+    // /auth/telegram, отдельный эндпоинт не нужен.
+    res.status(400).json({ error: "web session required" });
+    return;
+  }
+
+  try {
+    const session = await prisma.webSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        revoked: true,
+        user: { select: { telegramId: true, username: true, firstName: true, lastName: true } },
+      },
+    });
+
+    if (!session || session.revoked) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const isSubscriber = await refreshSessionSubscription({
+      sessionId,
+      telegramId: session.user.telegramId,
+      username: session.user.username,
+      firstName: session.user.firstName,
+      lastName: session.user.lastName,
+    });
+
+    res.json({ isSubscriber });
+  } catch (error) {
+    console.error("[Auth] subscriptionRecheck failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };

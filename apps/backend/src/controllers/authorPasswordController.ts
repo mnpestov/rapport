@@ -6,6 +6,7 @@ import { prisma } from "../prismaClient";
 import { sendForgotPassword } from "../services/authorNotifier";
 import { normalizeLogin } from "../utils/authorCredentialHelpers";
 import { createWebSession } from "../services/authSession";
+import { clearSessionCache } from "../middlewares/enforceWebSubscription";
 
 /**
  * Login/password authentication for the author cabinet — an alternative to
@@ -317,6 +318,7 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
         data: { revoked: true, revokedAt: new Date() },
       }),
     ]);
+    clearSessionCache();
 
     await issueSessionResponse(req, res, credential.user);
   } catch (error) {
@@ -477,6 +479,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
         data: { revoked: true, revokedAt: new Date() },
       }),
     ]);
+    clearSessionCache();
 
     res.json({ ok: true });
   } catch (error) {

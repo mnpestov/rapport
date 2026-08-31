@@ -5,6 +5,7 @@ import { prisma } from "../prismaClient";
 import { generateSlug } from "../utils/slug";
 import { sendCredentials, sendResendCredentials } from "../services/authorNotifier";
 import { resolveUniqueLogin, generateTempPassword, normalizeP2002Target } from "../utils/authorCredentialHelpers";
+import { clearSessionCache } from "../middlewares/enforceWebSubscription";
 
 // ---------------------------------------------------------------------------
 // Shared write path for granting author-cabinet access — used by both
@@ -269,6 +270,7 @@ export const revokeAccess = async (req: Request, res: Response): Promise<void> =
       // на WebSession.revoked, и живая сессия пережила бы отзыв доступа.
       await tx.webSession.updateMany({ where: { userId, revoked: false }, data: { revoked: true, revokedAt: new Date() } });
     });
+    clearSessionCache();
 
     res.json({ success: true });
   } catch (error) {

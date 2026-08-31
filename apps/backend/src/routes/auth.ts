@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { telegramAuth } from "../controllers/authController";
-import { requestCode, verifyCode, getMe, refresh, logout } from "../controllers/webAuthController";
+import { requestCode, verifyCode, getMe, refresh, logout, subscriptionRecheck } from "../controllers/webAuthController";
 import { authorLogin, authorChangePassword, forgotPassword, resetPassword } from "../controllers/authorPasswordController";
 import { requireAuth } from "../middlewares/auth";
 import {
@@ -10,6 +10,7 @@ import {
   authorLoginLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
+  subscriptionRecheckLimiter,
 } from "../middlewares/rateLimit";
 
 const router = Router();
@@ -21,6 +22,11 @@ router.post("/telegram", telegramAuthLimiter, telegramAuth);
 router.post("/request-code", requestCodeLimiter, requestCode);
 router.post("/verify-code", verifyCodeLimiter, verifyCode);
 router.get("/me", requireAuth, getMe);
+
+// Явная перепроверка подписки для браузерной сессии (кнопка «Проверить
+// подписку» + суточный фоновый триггер). Лимитер персональный по userId —
+// эндпоинт всегда ходит в telegram-gateway, см. rateLimit.ts.
+router.post("/subscription-recheck", requireAuth, subscriptionRecheckLimiter, subscriptionRecheck);
 
 // Author cabinet — login/password alternative to the Telegram OTP flow
 // above (same User, same /cabinet). See implementation_plan.md.
