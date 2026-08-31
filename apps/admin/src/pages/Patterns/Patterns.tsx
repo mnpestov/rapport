@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, X, Shield, Pen, ShieldX, Check } from "lucide-react";
 import { ModerationCard } from "./ModerationCard";
 import { PatternGridCard } from "./PatternGridCard";
+import { AuthorGridCard } from "./AuthorGridCard";
 import { ControlPanel, ViewToggle, ViewMode } from "../../components/ControlPanel/ControlPanel";
 import { Button } from "../../components/Button/Button";
 import { YarnPicker, PickedYarn } from "../../components/YarnPicker/YarnPicker";
-import { getPatternYarns, setPatternYarns, resolveMention, createYarn, PatternYarnMentionItem } from "../../api/yarns";
+import { getPatternYarns, setPatternYarns, resolveMention, createYarn, createAuthorYarn, PatternYarnMentionItem } from "../../api/yarns";
 import { YarnEditModal } from "../Yarns/YarnEditModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { getPatterns, createPattern, deletePattern, AdminPatternItem, getCategories, getTags, getInstruments, getYarnRanges, DictionaryItem, YarnRange, getPatternById, updatePatternById } from "../../api/patterns";
@@ -165,6 +166,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [patternYarns, setPatternYarns_] = useState<PickedYarn[]>([]);
   const [yarnMentions, setYarnMentions] = useState<PatternYarnMentionItem[]>([]);
   const [creatingYarnName, setCreatingYarnName] = useState<string | null>(null);
+  // Снимок выбранных артикулов на момент открытия edit-черновика — то же
+  // назначение, что у originalFormDataRef, но отдельно: patternYarns не
+  // часть formData (см. комментарий выше).
+  const originalPatternYarnIdsRef = useRef<string[] | null>(null);
 
   // Форма переиспользуется между описаниями, и без сброса в новой карточке
   // осталась бы пряжа предыдущей.
@@ -453,7 +458,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   };
 
   const handleAuthorEditDraft = (draft: CabinetDraft) => {
-    setFormData({
+    const loaded = {
       title: draft.title,
       authorName: currentAuthorName,
       url: draft.url,
@@ -469,12 +474,29 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       yarnRangeIds: draft.yarnRanges.map((y) => y.id),
       densityStitches: draft.densityStitches != null ? String(draft.densityStitches) : "",
       densityRows: draft.densityRows != null ? String(draft.densityRows) : "",
-    });
+    };
+    setFormData(loaded);
+    // Snapshot for the dirty check below — only meaningful for an edit of
+    // an already-published pattern (draft.patternId set): opening it just
+    // to look and closing without changes shouldn't leave a stray draft or
+    // let "Сохранить"/"Отправить на модерацию" create a no-op one. A brand
+    // new draft (patternId === null) has no such concern — it starts empty
+    // and required-field validation already gates its submit.
+    originalFormDataRef.current = draft.patternId
+      ? { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] }
+      : null;
     setAuthorEditingDraft(draft);
     setEditingId(draft.id);
-    // У черновика кабинета связей ещё нет: описание в Pattern не создано,
-    // и вешать артикулы не на что.
-    resetYarns();
+    // Черновик может уже иметь выбранные артикулы — либо автор добавил их
+    // раньше через YarnPicker (DraftYarn), либо это edit-черновик
+    // опубликованного паттерна, куда createEditDraft скопировал его
+    // текущие PatternYarn-связи. yarnMentions здесь всегда пуст: разбор
+    // упоминаний из текста существует только для скрапнутых описаний, не
+    // для формы автора.
+    const initialYarns = draft.yarns.map((y) => ({ id: y.id, name: y.name, mPer100g: y.mPer100g, composition: y.composition }));
+    setPatternYarns_(initialYarns);
+    originalPatternYarnIdsRef.current = draft.patternId ? initialYarns.map((y) => y.id).sort() : null;
+    setYarnMentions([]);
     setIsModalOpen(true);
   };
 
@@ -517,6 +539,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         tags: mapNamesToIds(formData.tags, tagsList),
         instruments: mapNamesToIds(formData.instruments, instrumentsList),
         yarnRangeIds: formData.yarnRangeIds,
+        // patternYarns — the same state YarnPicker already edits above the
+        // form; without this it was collected in the UI and silently
+        // discarded on save (the bug this fixes).
+        yarnIds: patternYarns.map((y) => y.id),
         densityStitches: formData.densityStitches.trim(),
         densityRows: formData.densityRows.trim(),
       };
@@ -639,13 +665,21 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         }
         toast.success(isVisible && !editingIsVisibleRef.current ? "Описание опубликовано" : "Описание успешно обновлено");
       } else {
-        await createPattern({
+        const created = await createPattern({
           ...formData,
           details: formData.details.trim() || null,
           price: formData.price.trim() || null,
           oldPrice: formData.oldPrice.trim() || null,
           isVisible,
         });
+        // Сохраняем связи с артикулами пряжи, если они были выбраны
+        if (patternYarns.length > 0) {
+          try {
+            await setPatternYarns(created.id, patternYarns.map((y) => y.id));
+          } catch (e: any) {
+            toast.error(e.message || "Описание сохранено, но пряжу записать не удалось");
+          }
+        }
         toast.success(isVisible ? "Описание опубликовано" : "Описание сохранено как черновик");
         setPage(1);
         await loadPatterns(1);
@@ -785,6 +819,53 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const modalTitle = formReadonly
     ? "Описание (на модерации)"
     : editingId ? "Редактировать описание" : "Новое описание";
+
+  // Only meaningful when editing an already-published pattern (see
+  // originalFormDataRef assignment in handleAuthorEditDraft — null for a
+  // brand new draft, which has nothing to be "unchanged" from). Used both
+  // to gate the save/submit buttons and to decide whether closing the
+  // modal should discard the just-opened edit draft (handleCloseAuthorModal).
+  const isEditingPublishedUnchanged =
+    isAuthor &&
+    !!authorEditingDraft?.patternId &&
+    originalFormDataRef.current !== null &&
+    (() => {
+      const orig = originalFormDataRef.current!;
+      const formUnchanged =
+        formData.title === orig.title &&
+        formData.url === orig.url &&
+        formData.details === orig.details &&
+        formData.price === orig.price &&
+        formData.oldPrice === orig.oldPrice &&
+        formData.isFree === orig.isFree &&
+        formData.isNew === orig.isNew &&
+        formData.densityStitches === orig.densityStitches &&
+        formData.densityRows === orig.densityRows &&
+        JSON.stringify(formData.images) === JSON.stringify(orig.images) &&
+        JSON.stringify(formData.categories) === JSON.stringify(orig.categories) &&
+        JSON.stringify(formData.tags) === JSON.stringify(orig.tags) &&
+        JSON.stringify(formData.instruments) === JSON.stringify(orig.instruments) &&
+        JSON.stringify(formData.yarnRangeIds) === JSON.stringify(orig.yarnRangeIds);
+      const yarnsUnchanged =
+        JSON.stringify(patternYarns.map((y) => y.id).sort()) === JSON.stringify(originalPatternYarnIdsRef.current ?? []);
+      return formUnchanged && yarnsUnchanged;
+    })();
+
+  // Closing without changes shouldn't leave the stray edit draft that
+  // handleAuthorEditPattern already created via createEditDraft when the
+  // modal was opened — "I clicked Edit just to check, nothing to save".
+  const handleCloseAuthorModal = () => {
+    if (isEditingPublishedUnchanged && authorEditingDraft) {
+      const draftId = authorEditingDraft.id;
+      deleteCabinetDraft(draftId)
+        .then(() => setCabinetDrafts((prev) => prev.filter((d) => d.id !== draftId)))
+        .catch(() => {
+          // Best-effort cleanup — an orphaned empty draft is harmless
+          // clutter, not worth surfacing an error toast for a close action.
+        });
+    }
+    setIsModalOpen(false);
+  };
 
   const effectiveViewMode = isMobile ? "grid" : viewMode;
 
@@ -937,7 +1018,31 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
 
       {(isAuthor || status !== "moderation") && (
         <>
-          {!isAuthor && effectiveViewMode === "grid" ? (
+          {isAuthor && effectiveViewMode === "grid" ? (
+            <div className={styles.moderationGrid}>
+              {cabinetLoading && <div className={styles.centerState}>Загрузка...</div>}
+
+              {!cabinetLoading && filteredCabinetItems.length === 0 && (
+                <div className={styles.centerState}>Описаний пока нет</div>
+              )}
+
+              {!cabinetLoading && filteredCabinetItems.map((item) => (
+                <AuthorGridCard
+                  key={`${item._type}-${item.id}`}
+                  item={toRowItem(item, currentAuthorName)}
+                  status={statusOf(item)}
+                  isSelected={selectedIds.has(item.id)}
+                  onSelect={handleSelectRow}
+                  editDisabled={(item._type === "draft" && item.status === "PENDING") || creatingEditFor === item.id}
+                  onEdit={() =>
+                    item._type === "pattern"
+                      ? handleAuthorEditPattern(item.id)
+                      : handleAuthorEditDraft(item)
+                  }
+                />
+              ))}
+            </div>
+          ) : !isAuthor && effectiveViewMode === "grid" ? (
             <div className={styles.moderationGrid}>
               {isLoading && <div className={styles.centerState}>Загрузка...</div>}
 
@@ -1036,7 +1141,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
             </div>
           )}
 
-          <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle} maxWidth={760}>
+          <Modal isOpen={isModalOpen} onClose={handleCloseAuthorModal} title={modalTitle} maxWidth={760}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 30 }}>
 
               {isAuthor && authorEditingDraft?.status === "REJECTED" && authorEditingDraft.moderationComment && (
@@ -1191,76 +1296,70 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   <label style={labelStyle}>
                     Пряжа <span style={optionalStyle}>(необязательно)</span>
                   </label>
-                  {editingId ? (
-                    <>
-                      <YarnPicker
-                        value={patternYarns}
-                        onChange={setPatternYarns_}
-                        disabled={formReadonly}
-                        onCreateRequest={setCreatingYarnName}
-                      />
-                      {yarnMentions.length > 0 && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 12, color: "var(--text-subtle)" }}>
-                            Разбор нашёл в подробностях, но артикул не опознал:
-                          </span>
-                          {yarnMentions.map((m) => (
-                            <div
-                              key={m.id}
+                  <>
+                    <YarnPicker
+                      value={patternYarns}
+                      onChange={setPatternYarns_}
+                      disabled={formReadonly}
+                      onCreateRequest={setCreatingYarnName}
+                    />
+                    {yarnMentions.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 12, color: "var(--text-subtle)" }}>
+                          Разбор нашёл в подробностях, но артикул не опознал:
+                        </span>
+                        {yarnMentions.map((m) => (
+                          <div
+                            key={m.id}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
+                              border: "1px solid #fde68a", borderRadius: 6, background: "#fffbeb",
+                              fontFamily: "Mulish, sans-serif", fontSize: 13,
+                            }}
+                          >
+                            <span style={{ flex: 1 }}>
+                              {m.rawText}
+                              {m.metrageInText && (
+                                <span style={{ color: "var(--text-subtle)" }}> · {m.metrageInText}</span>
+                              )}
+                            </span>
+                            <span style={{ fontSize: 11, color: "#b45309" }}>
+                              {m.kind === "FAMILY" ? "семейство" : m.kind === "BRAND_ONLY" ? "только бренд" : "не найдено"}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={formReadonly}
+                              onClick={() => setCreatingYarnName(m.rawText)}
                               style={{
-                                display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
-                                border: "1px solid #fde68a", borderRadius: 6, background: "#fffbeb",
-                                fontFamily: "Mulish, sans-serif", fontSize: 13,
+                                padding: "3px 8px", border: "1px solid var(--border-strong)", borderRadius: 5,
+                                background: "var(--surface)", fontSize: 12, cursor: "pointer",
                               }}
                             >
-                              <span style={{ flex: 1 }}>
-                                {m.rawText}
-                                {m.metrageInText && (
-                                  <span style={{ color: "var(--text-subtle)" }}> · {m.metrageInText}</span>
-                                )}
-                              </span>
-                              <span style={{ fontSize: 11, color: "#b45309" }}>
-                                {m.kind === "FAMILY" ? "семейство" : m.kind === "BRAND_ONLY" ? "только бренд" : "не найдено"}
-                              </span>
-                              <button
-                                type="button"
-                                disabled={formReadonly}
-                                onClick={() => setCreatingYarnName(m.rawText)}
-                                style={{
-                                  padding: "3px 8px", border: "1px solid var(--border-strong)", borderRadius: 5,
-                                  background: "var(--surface)", fontSize: 12, cursor: "pointer",
-                                }}
-                              >
-                                Завести артикул
-                              </button>
-                              <button
-                                type="button"
-                                disabled={formReadonly}
-                                onClick={async () => {
-                                  try {
-                                    await resolveMention(m.id, null);
-                                    setYarnMentions((prev) => prev.filter((x) => x.id !== m.id));
-                                  } catch (e: any) {
-                                    toast.error(e.message || "Не удалось скрыть упоминание");
-                                  }
-                                }}
-                                style={{
-                                  padding: "3px 8px", border: "none", borderRadius: 5,
-                                  background: "transparent", color: "var(--text-subtle)", fontSize: 12, cursor: "pointer",
-                                }}
-                              >
-                                Не пряжа
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <span style={{ fontFamily: "Mulish, sans-serif", fontSize: 13, color: "var(--text-subtle)" }}>
-                      Появится после сохранения описания
-                    </span>
-                  )}
+                              Завести артикул
+                            </button>
+                            <button
+                              type="button"
+                              disabled={formReadonly}
+                              onClick={async () => {
+                                try {
+                                  await resolveMention(m.id, null);
+                                  setYarnMentions((prev) => prev.filter((x) => x.id !== m.id));
+                                } catch (e: any) {
+                                  toast.error(e.message || "Не удалось скрыть упоминание");
+                                }
+                              }}
+                              style={{
+                                padding: "3px 8px", border: "none", borderRadius: 5,
+                                background: "transparent", color: "var(--text-subtle)", fontSize: 12, cursor: "pointer",
+                              }}
+                            >
+                              Не пряжа
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 </div>
 
                 {/* Плотность */}
@@ -1356,7 +1455,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 20 }}>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseAuthorModal}
                   style={btnStyle("var(--surface-gray)", "var(--text)")}
                 >
                   Закрыть
@@ -1365,17 +1464,31 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   <>
                     <button
                       type="button"
-                      disabled={isSaving}
+                      disabled={isSaving || isEditingPublishedUnchanged}
                       onClick={(e) => handleSubmit(e as any, false)}
-                      style={btnStyle("#bec1f4", "var(--text)")}
+                      style={{
+                        ...btnStyle("#bec1f4", "var(--text)"),
+                        // btnStyle has no disabled styling of its own (every
+                        // other disabled button here is only ever disabled
+                        // for the split-second isSaving spinner) — without
+                        // this the button looked identical but silently
+                        // stopped responding to clicks, which read as broken
+                        // rather than intentionally blocked.
+                        ...(isEditingPublishedUnchanged ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                      }}
+                      title={isEditingPublishedUnchanged ? "Нет изменений для сохранения" : undefined}
                     >
                       {isSaving ? "Сохранение..." : "Сохранить"}
                     </button>
                     <button
                       type="button"
-                      disabled={isSaving}
+                      disabled={isSaving || isEditingPublishedUnchanged}
                       onClick={(e) => handleSubmit(e as any, true)}
-                      style={btnStyle("var(--brand-bright)", "var(--surface)")}
+                      style={{
+                        ...btnStyle("var(--brand-bright)", "var(--surface)"),
+                        ...(isEditingPublishedUnchanged ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                      }}
+                      title={isEditingPublishedUnchanged ? "Нет изменений для отправки" : undefined}
                     >
                       {isAuthor ? "Отправить на модерацию" : "Опубликовать"}
                     </button>
@@ -1462,7 +1575,13 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
           onClose={() => setCreatingYarnName(null)}
           onSave={async (data) => {
             try {
-              const created = await createYarn(data);
+              // Автор создаёт через отдельный роут — бэкенд жёстко ставит
+              // status: PENDING там независимо от переданных данных
+              // (implementation_plan_moderation_yarns_articles.md §3).
+              // Ничего не меняется визуально: артикул всё так же сразу
+              // привязывается, просто не появится в поиске для остальных
+              // до одобрения админом.
+              const created = isAuthor ? await createAuthorYarn(data) : await createYarn(data);
               // Созданный артикул сразу привязываем: модератор открывал
               // форму именно ради этого описания, и лишний шаг «теперь
               // найдите его в подсказке» ничего не даёт.

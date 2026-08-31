@@ -31,6 +31,7 @@ export interface CabinetDraft {
   categories: { id: string; name: string }[];
   instruments: { id: string; name: string }[];
   yarnRanges: { id: string; label: string }[];
+  yarns: { id: string; name: string; mPer100g: number | null; composition: string | null }[];
 }
 
 export interface CabinetPattern {
@@ -55,6 +56,7 @@ export interface CabinetPattern {
   categories: { id: string; name: string }[];
   instruments: { id: string; name: string }[];
   yarnRanges: { id: string; label: string }[];
+  yarns: { id: string; name: string; mPer100g: number | null; composition: string | null }[];
 }
 
 export type CabinetItem = CabinetDraft | CabinetPattern;
@@ -84,6 +86,7 @@ export const createCabinetDraft = async (data: {
   tags?: string[];
   instruments?: string[];
   yarnRangeIds?: string[];
+  yarnIds?: string[];
   densityStitches?: number | string;
   densityRows?: number | string;
 }): Promise<CabinetDraft> => {
@@ -114,6 +117,7 @@ export const updateCabinetDraft = async (
     tags?: string[];
     instruments?: string[];
     yarnRangeIds?: string[];
+    yarnIds?: string[];
     densityStitches?: number | string;
     densityRows?: number | string;
   }

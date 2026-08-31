@@ -28,8 +28,11 @@ export interface AdminDraft {
   categories: { id: string; name: string }[];
   instruments: { id: string; name: string }[];
   yarnRanges: { id: string; label: string }[];
-  /** Артикулы, найденные скрапером. У настоящих Draft из кабинета их нет —
-      скрапер туда не пишет, — поэтому поле необязательное. */
+  /** Артикулы пряжи — либо найденные скрапером (sync-модерация), либо
+      выбранные автором вручную через YarnPicker в кабинете (DraftYarn).
+      Оба случая рендерятся одинаково в ModerationCard, поэтому поле общее;
+      необязательное — старые sync-only черновики без этого поля тоже
+      валидны. */
   yarns?: { id: string; name: string; matchRule?: string | null }[];
   yarnMentions?: { rawText: string; kind: string; metrageInText?: string | null }[];
 }
