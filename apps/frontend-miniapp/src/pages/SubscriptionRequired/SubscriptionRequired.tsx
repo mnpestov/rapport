@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchChannelInfo, ChannelInfo } from '../../api/channelApi';
 import { isWebMode, logoutWeb } from '../../api/authSession';
+import { subscriptionRecheck } from '../../api/webAuthApi';
 import { trackSubscribeClick } from '../../api/analyticsApi';
 import avatarPlaceholder from '../../assets/avatar.png';
 import './SubscriptionRequired.css';
@@ -11,6 +12,7 @@ interface Props {
 
 export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) => {
   const [showToast, setShowToast] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const handleSubscribe = () => {
     trackSubscribeClick();
@@ -33,12 +35,27 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
     }
   };
 
-  const handleCheck = () => {
-    window.dispatchEvent(new CustomEvent("auth:recheck"));
+  const handleCheck = async () => {
     setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3000);
+    setTimeout(() => setShowToast(false), 3000);
+
+    // В браузере это единственное место, где перепроверка подписки нужна
+    // ПРИНУДИТЕЛЬНО: человек только что подписался и не должен ждать
+    // истечения серверного кэша. В Mini App — прежний путь через
+    // auth:recheck (там перезапрашивается вся авторизация).
+    if (isWebMode()) {
+      const ok = await subscriptionRecheck();
+      if (ok) {
+        window.location.reload();
+      } else if (ok === null) {
+        // Лимит 1/мин — не выдаём это за «вы не подписаны».
+        setCheckError('Проверяем не чаще раза в минуту. Попробуйте ещё раз чуть позже.');
+        setTimeout(() => setCheckError(null), 5000);
+      }
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("auth:recheck"));
   };
 
   return (
@@ -81,9 +98,14 @@ export const SubscriptionRequired: React.FC<Props> = ({ channelInfo: channel }) 
         </button>
       </div>
 
-      {showToast && (
+      {showToast && !checkError && (
         <div className="subscription-toast">
           Проверка подписки...
+        </div>
+      )}
+      {checkError && (
+        <div className="subscription-toast">
+          {checkError}
         </div>
       )}
       <button className="subscription-link-support" onClick={handleSupportBot}>

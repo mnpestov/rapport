@@ -128,12 +128,18 @@ export async function resetPassword(login: string, code: string, newPassword: st
  * защита в enforceWebSubscription на сервере; это способ не ждать
  * истечения серверного кэша, когда человек только что подписался.
  */
-export async function subscriptionRecheck(): Promise<boolean> {
+export async function subscriptionRecheck(): Promise<boolean | null> {
   const res = await authorizedFetch(`${API_URL}/auth/subscription-recheck`, {
     method: 'POST',
     credentials: 'include',
   });
-  if (!res.ok) return false;
+  // null — «спросить не удалось», это НЕ то же самое, что «не подписан».
+  // Эндпоинт лимитирован (1/мин, он всегда ходит в telegram-gateway), и
+  // при 429 раньше возвращался false — приложение показывало экран
+  // подписки подписанному человеку просто за то, что он дважды обновил
+  // страницу. Решение об отказе принимает сервер на защищённых роутах
+  // (enforceWebSubscription), а не этот вызов.
+  if (!res.ok) return null;
   const data = await res.json().catch(() => ({}));
   return data.isSubscriber === true;
 }

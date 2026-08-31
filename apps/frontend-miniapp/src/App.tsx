@@ -167,20 +167,17 @@ function App() {
             setAppState("telegram_only");
             return;
           }
-          // Сессия есть — но подписка могла отвалиться, пока вкладка была
-          // закрыта. Спрашиваем сервер; при отказе он же вернёт false.
-          const ok = await subscriptionRecheck();
-          if (!isMounted) return;
-          if (ok) {
-            setAppState("authorized");
-          } else {
-            setAppState("fetching_channel");
-            const info = await fetchChannelInfo();
-            if (isMounted) {
-              setChannelInfo(info);
-              setAppState("unauthorized");
-            }
-          }
+          // Сессия поднялась — пускаем в каталог. Подписку тут НЕ форсим:
+          // сервер проверит её сам на первом же запросе к каталогу
+          // (enforceWebSubscription) и, если она отвалилась, вернёт 403
+          // subscription_required — его поймает authorizedFetch и переключит
+          // экран.
+          //
+          // Раньше здесь стоял subscriptionRecheck(), и это ломало обычное
+          // обновление страницы: эндпоинт лимитирован 1 запросом в минуту
+          // (он всегда ходит в telegram-gateway), второе обновление подряд
+          // получало 429 и человека выкидывало на экран подписки.
+          setAppState("authorized");
         };
 
         if (!import.meta.env.DEV) {
@@ -413,13 +410,16 @@ function App() {
           // каталог тому, кто отписался (сервер всё равно закроет его, но
           // мигание пустым списком выглядело бы поломкой).
           const ok = await subscriptionRecheck();
-          if (ok) {
-            setAppState("authorized");
-          } else {
+          // null — спросить не удалось (например, сработал лимит). Это не
+          // повод показывать экран подписки: пускаем в каталог, а решение
+          // примет сервер на первом же запросе.
+          if (ok === false) {
             setAppState("fetching_channel");
             const info = await fetchChannelInfo();
             setChannelInfo(info);
             setAppState("unauthorized");
+          } else {
+            setAppState("authorized");
           }
         }}
       />
