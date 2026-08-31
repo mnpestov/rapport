@@ -13,6 +13,11 @@ import {
   handleAuthorAppRespondStart,
   handleAuthorAppRespondSubmit,
 } from './handlers/authorApplication';
+import {
+  handleWebAccessBegin,
+  handleWebAccessCancel,
+  handleWebAccessForgot,
+} from './handlers/webAccess';
 
 // Shown in Telegram's "Menu" button next to the message input — the only
 // UI surface where a user can discover /become_author without being told
@@ -21,6 +26,7 @@ import {
 const BOT_COMMANDS = [
   { command: 'start', description: 'Начать' },
   { command: 'become_author', description: 'Подать заявку на авторский кабинет' },
+  { command: 'login', description: 'Вход на сайт rapport.su' },
 ];
 
 export function createBot(): Bot<CustomContext> {
@@ -38,11 +44,15 @@ export function createBot(): Bot<CustomContext> {
 
   bot.command('start', handleStart);
   bot.command('become_author', handleBecomeAuthor);
+  bot.command('login', handleWebAccessBegin);
   bot.callbackQuery('diagnostic:start', handleDiagnosticStart);
   bot.callbackQuery('diagnostic:retry', handleDiagnosticRetry);
   bot.callbackQuery('support:escalate', handleEscalate);
   bot.callbackQuery('support:cache_failed', handleCacheFailed);
   bot.callbackQuery('author_app:begin', handleAuthorAppBegin);
+  bot.callbackQuery('web_access:begin', handleWebAccessBegin);
+  bot.callbackQuery('web_access:cancel', handleWebAccessCancel);
+  bot.callbackQuery('web_access:forgot', handleWebAccessForgot);
   bot.callbackQuery('author_app:submit', handleAuthorAppSubmit);
   bot.callbackQuery('author_app:cancel', handleAuthorAppCancel);
   bot.callbackQuery('author_app:respond_start', handleAuthorAppRespondStart);

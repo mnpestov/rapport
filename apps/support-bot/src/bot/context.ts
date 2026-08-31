@@ -16,6 +16,15 @@ export interface SessionData {
   // line — no attempt to separate "links" from "text", the backend stores
   // it as one free-text field), sent on "Отправить ✓".
   authorAppResponseText?: string;
+  // Диалог получения логина для входа на сайт (BROWSER_ACCESS_PLAN.md §3.6).
+  // Один шаг — пользователь присылает придуманный логин. fallback.ts обязан
+  // знать про него, иначе сообщение уйдёт в поддержку как обычное
+  // обращение вместо того, чтобы стать логином.
+  //
+  // Сессия in-memory без адаптера: незавершённый диалог теряется при
+  // рестарте бота (а деплой рестартит его всегда). Для одного шага это
+  // приемлемо — пользователь просто начнёт заново.
+  webAccessStep?: 'login';
 }
 
 export interface CustomContext extends Context, SessionFlavor<SessionData> {

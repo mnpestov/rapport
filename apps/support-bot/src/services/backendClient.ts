@@ -7,6 +7,20 @@ const TIMEOUT_MS = 10_000;
 // of a generic failure message — these are expected outcomes of a
 // check-then-act race (status was checked when /become_author opened the
 // dialog, but can change before submission), not backend bugs.
+// Ожидаемые 4xx от эндпоинтов веб-учётки: логин занят, учётка уже есть.
+// Отдельный класс, чтобы хендлер мог показать пользователю конкретную
+// причину и предложить действие, а не «что-то пошло не так».
+export class UserCredentialError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    public readonly login?: string,
+  ) {
+    super(code);
+    this.name = 'UserCredentialError';
+  }
+}
+
 export class AuthorApplicationError extends Error {
   constructor(
     public readonly status: number,
@@ -237,4 +251,73 @@ export class BackendClient {
       );
     }
   }
+
+  // POST /internal/bot/user-credentials — создать учётку для входа на сайт.
+  // Пароль приходит в ответе ОДИН раз: на бэкенде хранится только его хэш.
+  async createUserCredential(params: {
+    telegramId: number;
+    login: string;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  }): Promise<{ login: string; password: string }> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/user-credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] createUserCredential timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    const data = await response.json().catch(() => ({}) as any);
+    if (!response.ok) {
+      throw new UserCredentialError(response.status, data.error || 'unknown', data.login);
+    }
+    return data as { login: string; password: string };
+  }
+
+  // POST /internal/bot/user-credentials/lookup — «Мой логин».
+  // null, если учётки ещё нет.
+  async lookupUserCredential(
+    telegramId: number,
+  ): Promise<{ login: string; mustChangePassword: boolean } | null> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/user-credentials/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] lookupUserCredential timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`[BackendClient] lookupUserCredential failed with ${response.status}`);
+    }
+    return (await response.json()) as { login: string; mustChangePassword: boolean };
+  }
+
 }

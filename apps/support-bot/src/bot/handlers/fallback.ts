@@ -4,6 +4,7 @@ import type { CustomContext } from '../context';
 import { BackendClient } from '../../services/backendClient';
 import { notifyAdmin } from '../admin';
 import { handleAuthorApplicationStep } from './authorApplication';
+import { handleWebAccessStep } from './webAccess';
 
 const backendClient = new BackendClient();
 
@@ -30,6 +31,14 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
   // ctx.session.authorAppStep is set.
   if (ctx.session.authorAppStep) {
     const consumed = await handleAuthorApplicationStep(ctx);
+    if (consumed) return;
+  }
+
+  // Диалог логина для входа на сайт — та же логика приоритета, что и у
+  // заявки выше: пока шаг активен, текст это ответ на вопрос бота, а не
+  // обращение в поддержку.
+  if (ctx.session.webAccessStep) {
+    const consumed = await handleWebAccessStep(ctx);
     if (consumed) return;
   }
 
