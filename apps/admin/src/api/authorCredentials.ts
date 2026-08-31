@@ -11,7 +11,14 @@ async function parseError(response: Response, fallback: string): Promise<never> 
 export const grantAuthorCredentials = async (
   userId: string,
   authorId: string
-): Promise<{ success: true; login: string }> => {
+): Promise<{
+  success: true;
+  login: string;
+  // true — у пользователя уже была учётка для входа (он завёл её сам через
+  // бота), выдача авторства её не тронула: пароль прежний, сообщение с
+  // кредами НЕ отправлялось (BROWSER_ACCESS_PLAN.md §4.1).
+  credentialUnchanged: boolean;
+}> => {
   const response = await fetchWithAuth(`${API_URL}/admin/author-credentials`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

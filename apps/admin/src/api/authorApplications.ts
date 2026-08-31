@@ -45,7 +45,13 @@ export const getAuthorApplications = async (
 export const approveAuthorApplication = async (
   id: string,
   data: { authorId?: string; createAuthorName?: string; login?: string }
-): Promise<{ success: true; login: string }> => {
+): Promise<{
+  success: true;
+  login: string;
+  // См. grantAuthorCredentials: заявитель мог завести учётку сам через бота
+  // до подачи заявки — тогда пароль не менялся и креды не отправлялись.
+  credentialUnchanged: boolean;
+}> => {
   const response = await fetchWithAuth(`${API_URL}/admin/author-applications/${id}/approve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

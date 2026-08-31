@@ -5,6 +5,7 @@ import { LoginCodePurpose, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { generateToken, generateRefreshToken } from "../utils/jwt";
 import { sendForgotPassword } from "../services/authorNotifier";
+import { normalizeLogin } from "../utils/authorCredentialHelpers";
 
 /**
  * Login/password authentication for the author cabinet — an alternative to
@@ -152,14 +153,20 @@ async function issueSessionResponse(res: Response, user: { id: string; telegramI
 
 // POST /auth/author-login
 export const authorLogin = async (req: Request, res: Response): Promise<void> => {
-  const { login, password } = req.body ?? {};
-  if (typeof login !== "string" || typeof password !== "string" || !login || !password) {
+  const { login: rawLogin, password } = req.body ?? {};
+  if (typeof rawLogin !== "string" || typeof password !== "string" || !rawLogin || !password) {
     res.status(400).json({ error: "login and password are required" });
     return;
   }
+  // login хранится в БД всегда в нижнем регистре — нормализуем ввод, иначе
+  // пользователь, набравший логин с заглавной, не войдёт (§4.1 плана).
+  // Нормализованный вариант используется и дальше — как ключ счётчика
+  // неудачных попыток, иначе "Masha"/"masha" считались бы раздельно и
+  // обходили lockout.
+  const login = normalizeLogin(rawLogin);
 
   try {
-    const credential = await prisma.authorCredential.findUnique({
+    const credential = await prisma.userCredential.findUnique({
       where: { login },
       include: { user: true },
     });
@@ -189,7 +196,7 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
     if (!passwordMatches) {
       const exhausted = registerLoginFailure(login);
       if (exhausted) {
-        await prisma.authorCredential.update({
+        await prisma.userCredential.update({
           where: { userId: credential.userId },
           data: { lockedUntil: new Date(now + LOGIN_LOCK_MS) },
         });
@@ -199,7 +206,7 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
     }
 
     clearLoginFailures(login);
-    await prisma.authorCredential.update({
+    await prisma.userCredential.update({
       where: { userId: credential.userId },
       data: { lockedUntil: null, lastLoginAt: new Date() },
     });
@@ -228,17 +235,21 @@ export const authorLogin = async (req: Request, res: Response): Promise<void> =>
 // the SAME rate limit and lockedUntil as author-login (§3.3) — otherwise
 // this endpoint would let an attacker bypass the login lockout entirely.
 export const authorChangePassword = async (req: Request, res: Response): Promise<void> => {
-  const { login, currentPassword, newPassword } = req.body ?? {};
+  const { login: rawLogin, currentPassword, newPassword } = req.body ?? {};
   if (
-    typeof login !== "string" || typeof currentPassword !== "string" || typeof newPassword !== "string" ||
-    !login || !currentPassword || !newPassword
+    typeof rawLogin !== "string" || typeof currentPassword !== "string" || typeof newPassword !== "string" ||
+    !rawLogin || !currentPassword || !newPassword
   ) {
     res.status(400).json({ error: "login, currentPassword and newPassword are required" });
     return;
   }
+  // См. authorLogin: тот же lockout-счётчик по тому же ключу — логин обязан
+  // нормализоваться одинаково в обоих эндпоинтах, иначе смена пароля станет
+  // обходом блокировки.
+  const login = normalizeLogin(rawLogin);
 
   try {
-    const credential = await prisma.authorCredential.findUnique({
+    const credential = await prisma.userCredential.findUnique({
       where: { login },
       include: { user: true },
     });
@@ -265,7 +276,7 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
     if (!currentMatches) {
       const exhausted = registerLoginFailure(login);
       if (exhausted) {
-        await prisma.authorCredential.update({
+        await prisma.userCredential.update({
           where: { userId: credential.userId },
           data: { lockedUntil: new Date(now + LOGIN_LOCK_MS) },
         });
@@ -275,7 +286,7 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
     }
 
     clearLoginFailures(login);
-    await prisma.authorCredential.update({
+    await prisma.userCredential.update({
       where: { userId: credential.userId },
       data: { lockedUntil: null },
     });
@@ -306,7 +317,7 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
     const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
     await prisma.$transaction([
-      prisma.authorCredential.update({
+      prisma.userCredential.update({
         where: { userId: credential.userId },
         data: { passwordHash: newPasswordHash, mustChangePassword: false, lockedUntil: null },
       }),
@@ -325,14 +336,16 @@ export const authorChangePassword = async (req: Request, res: Response): Promise
 
 // POST /auth/forgot-password
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
-  const { login } = req.body ?? {};
-  if (typeof login !== "string" || !login) {
+  const { login: rawLogin } = req.body ?? {};
+  if (typeof rawLogin !== "string" || !rawLogin) {
     res.status(400).json({ error: "login is required" });
     return;
   }
+  // Нормализация — и для поиска, и как ключ forgotPasswordCooldown (§4.1).
+  const login = normalizeLogin(rawLogin);
 
   try {
-    const credential = await prisma.authorCredential.findUnique({ where: { login } });
+    const credential = await prisma.userCredential.findUnique({ where: { login } });
     if (!credential) {
       // Generic response — do not reveal whether the login exists.
       // Cooldown map is NOT touched (same "only for found credentials"
@@ -381,17 +394,19 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
 // POST /auth/reset-password
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
-  const { login, code, newPassword } = req.body ?? {};
+  const { login: rawLogin, code, newPassword } = req.body ?? {};
   if (
-    typeof login !== "string" || typeof code !== "string" || typeof newPassword !== "string" ||
-    !login || !code || !newPassword
+    typeof rawLogin !== "string" || typeof code !== "string" || typeof newPassword !== "string" ||
+    !rawLogin || !code || !newPassword
   ) {
     res.status(400).json({ error: "login, code and newPassword are required" });
     return;
   }
+  // Нормализация — и для поиска, и для сравнения newPassword === login ниже.
+  const login = normalizeLogin(rawLogin);
 
   try {
-    const credential = await prisma.authorCredential.findUnique({
+    const credential = await prisma.userCredential.findUnique({
       where: { login },
       include: { user: true },
     });
@@ -455,7 +470,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
     await prisma.$transaction([
-      prisma.authorCredential.update({
+      prisma.userCredential.update({
         where: { userId: credential.userId },
         data: { passwordHash: newPasswordHash, mustChangePassword: false, lockedUntil: null },
       }),

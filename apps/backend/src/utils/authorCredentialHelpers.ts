@@ -8,16 +8,25 @@ import { prisma } from "../prismaClient";
 
 const MAX_LOGIN_LENGTH = 60;
 
+// UserCredential.login хранится всегда в нижнем регистре (нормализация на
+// запись — BROWSER_ACCESS_PLAN.md §4.1). Здесь base приходит из generateSlug,
+// который и так отдаёт lowercase, но toLowerCase() оставлен явно: инвариант
+// должен держаться в самой функции, а не зависеть от того, что ей передали.
+export function normalizeLogin(login: string): string {
+  return login.trim().toLowerCase();
+}
+
 export async function resolveUniqueLogin(base: string): Promise<string> {
-  let candidate = base.slice(0, MAX_LOGIN_LENGTH);
+  const normalizedBase = normalizeLogin(base);
+  let candidate = normalizedBase.slice(0, MAX_LOGIN_LENGTH);
   let suffix = 1;
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const exists = await prisma.authorCredential.findUnique({ where: { login: candidate } });
+    const exists = await prisma.userCredential.findUnique({ where: { login: candidate } });
     if (!exists) return candidate;
     suffix += 1;
     const suffixStr = `-${suffix}`;
-    candidate = `${base.slice(0, MAX_LOGIN_LENGTH - suffixStr.length)}${suffixStr}`;
+    candidate = `${normalizedBase.slice(0, MAX_LOGIN_LENGTH - suffixStr.length)}${suffixStr}`;
   }
 }
 

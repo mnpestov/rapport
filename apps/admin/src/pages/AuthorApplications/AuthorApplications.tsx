@@ -275,7 +275,12 @@ function ApproveModal({
         createAuthorName: mode === "new" ? createAuthorName.trim() : undefined,
         login: login.trim(),
       });
-      toast.success(`Заявка одобрена. Логин: ${result.login}`, { duration: 6000 });
+      toast.success(
+        result.credentialUnchanged
+          ? `Заявка одобрена. Логин: ${result.login}. У пользователя уже была учётка для входа — пароль не менялся.`
+          : `Заявка одобрена. Логин: ${result.login}`,
+        { duration: 8000 },
+      );
       onDone();
     } catch (err: any) {
       toast.error(err.message || "Не удалось одобрить заявку");

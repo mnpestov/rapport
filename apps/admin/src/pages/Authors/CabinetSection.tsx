@@ -45,7 +45,12 @@ export function CabinetSection({
     try {
       setIsBusy(true);
       const result = await grantAuthorCredentials(cabinet.userId, author.id);
-      toast.success(`Доступ выдан. Логин: ${result.login}`, { duration: 6000 });
+      toast.success(
+        result.credentialUnchanged
+          ? `Доступ выдан. Логин: ${result.login}. У пользователя уже была учётка для входа — пароль не менялся.`
+          : `Доступ выдан. Логин: ${result.login}`,
+        { duration: 8000 },
+      );
       onChanged();
     } catch (err: any) {
       toast.error(err.message || "Не удалось выдать доступ");

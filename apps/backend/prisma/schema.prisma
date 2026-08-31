@@ -434,7 +434,7 @@ model User {
   refreshTokens RefreshToken[]
 
   authorApplications AuthorApplication[]
-  credential         AuthorCredential?
+  credential         UserCredential?
 }
 
 model UserFavorite {
@@ -679,18 +679,26 @@ model AuthorApplication {
 }
 
 // ---------------------------------------------------------------------------
-// Login/password credentials for the author cabinet — an alternative to the
-// Telegram OTP flow (webAuthController.ts), not a replacement. Both lead to
-// the same User and the same /cabinet; see implementation_plan.md's
-// architecture diagram. One credential per user (1:1, enforced by
-// userId @unique below).
+// Login/password credentials for web access — an alternative to the Telegram
+// OTP flow (webAuthController.ts), not a replacement. Both lead to the same
+// User. One credential per user (1:1, enforced by userId @unique below).
+//
+// Раньше называлась AuthorCredential и обслуживала только авторский кабинет.
+// Переименована при вводе браузерного доступа (BROWSER_ACCESS_PLAN.md §3.1,
+// решение A1): учётка для входа и доступ в кабинет — разные вещи. Кабинет —
+// это Permission.AUTHOR_CABINET ПОВЕРХ обычной учётки, а не отдельный вид
+// учётки; они были склеены исторически. Сама модель не изменилась, только имя.
 // ---------------------------------------------------------------------------
-model AuthorCredential {
+model UserCredential {
   id     String @id @default(uuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Slug, max 60 chars (see generateSlug in utils/slug.ts + resolveUniqueLogin).
+  // Хранится ВСЕГДА в нижнем регистре — нормализация на запись во всех
+  // контроллерах (BROWSER_ACCESS_PLAN.md §4.1). У авторских логинов это было
+  // не важно (машинный slug всегда lowercase), но пользователь придумывает
+  // логин сам, и без нормализации "Masha"/"masha" стали бы двумя аккаунтами.
+  // Max 60 chars (see generateSlug in utils/slug.ts + resolveUniqueLogin).
   login        String @unique
   passwordHash String
 
@@ -708,6 +716,8 @@ model AuthorCredential {
   lastLoginAt DateTime?
   // Admin userId who issued this credential (approve or direct grant) —
   // audit trail only, no FK (admin accounts can be deleted independently).
+  // Nullable и для self-serve: когда учётку создаёт сам пользователь через
+  // бота, выдавшего админа нет.
   createdById String?
 }
 

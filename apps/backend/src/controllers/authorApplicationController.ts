@@ -422,7 +422,7 @@ export const approveAuthorApplication = async (req: Request, res: Response): Pro
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const fresh = await tx.authorApplication.findUniqueOrThrow({ where: { id } });
       if (fresh.status !== ApplicationStatus.PENDING && fresh.status !== ApplicationStatus.NEEDS_INFO) {
         throw new AlreadyProcessedError();
@@ -436,7 +436,7 @@ export const approveAuthorApplication = async (req: Request, res: Response): Pro
         authorId = newAuthor.id;
       }
 
-      await issueCredentials(tx, {
+      const issued = await issueCredentials(tx, {
         userId: app.userId,
         authorId,
         login,
@@ -448,11 +448,18 @@ export const approveAuthorApplication = async (req: Request, res: Response): Pro
         where: { id },
         data: { status: ApplicationStatus.APPROVED, processedById: adminUserId, processedAt: new Date() },
       });
+
+      return issued;
     });
 
-    sendCredentials(app.user.telegramId, login, tempPassword).catch(console.error);
+    // Заявитель мог завести учётку сам через бота ещё до подачи заявки — тогда
+    // issueCredentials её не тронул, пароль остался прежним, и слать ему
+    // нечего (BROWSER_ACCESS_PLAN.md §4.1, I7).
+    if (!result.credentialUnchanged) {
+      sendCredentials(app.user.telegramId, result.login, tempPassword).catch(console.error);
+    }
 
-    res.json({ success: true, login });
+    res.json({ success: true, login: result.login, credentialUnchanged: result.credentialUnchanged });
   } catch (error: any) {
     if (error instanceof AlreadyProcessedError) {
       res.status(409).json({ error: "Application already processed" });
@@ -460,7 +467,7 @@ export const approveAuthorApplication = async (req: Request, res: Response): Pro
     }
     if (error.code === "P2002") {
       const target = normalizeP2002Target(error);
-      if (target.includes("login") || target.some((t) => t.includes("AuthorCredential"))) {
+      if (target.includes("login") || target.some((t) => t.includes("UserCredential"))) {
         res.status(409).json({ error: "Login conflict — adjust login and retry" });
         return;
       }

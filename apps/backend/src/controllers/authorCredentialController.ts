@@ -13,10 +13,21 @@ import { resolveUniqueLogin, generateTempPassword, normalizeP2002Target } from "
 // (no application involved). Kept as one function so the two callers can
 // never drift apart — see implementation_plan.md §4.5 note.
 // ---------------------------------------------------------------------------
+
+export interface IssueCredentialsResult {
+  // true — у пользователя УЖЕ была учётка (он завёл её сам через бота), и мы
+  // её не тронули. Вызывающий по этому флагу решает, слать ли пользователю
+  // сообщение с логином/паролем: слать нечего, пароль остался прежним и
+  // сервер его не знает (BROWSER_ACCESS_PLAN.md §4.1).
+  credentialUnchanged: boolean;
+  // Актуальный логин — существующий либо только что созданный. Возвращается,
+  // чтобы вызывающий мог показать его админу в ответе.
+  login: string;
+}
 export async function issueCredentials(
   tx: Prisma.TransactionClient,
   params: { userId: string; authorId: string; login: string; passwordHash: string; adminUserId: string }
-): Promise<void> {
+): Promise<IssueCredentialsResult> {
   const { userId, authorId, login, passwordHash, adminUserId } = params;
 
   await tx.user.update({
@@ -30,11 +41,30 @@ export async function issueCredentials(
     update: {},
   });
 
-  await tx.authorCredential.upsert({
+  // Раньше здесь был upsert с `update: { passwordHash, mustChangePassword: true }`
+  // — он молча перезатирал пароль. Пока учётки были только авторскими, это
+  // было безобидно (единственный путь их создания — эта же функция). С
+  // браузерным доступом пользователь заводит логин/пароль сам через бота
+  // ДО того, как его одобрят автором, и перезапись отобрала бы у него
+  // рабочий пароль, вернув временный (BROWSER_ACCESS_PLAN.md §4.1, I7).
+  //
+  // Поэтому: существующую учётку не трогаем вообще — ни passwordHash, ни
+  // login. Выдача авторства добавляет только права (AUTHOR_CABINET + роль +
+  // authorId), что и делают два вызова выше.
+  const existing = await tx.userCredential.findUnique({
     where: { userId },
-    create: { userId, login, passwordHash, mustChangePassword: true, createdById: adminUserId },
-    update: { passwordHash, mustChangePassword: true },
+    select: { login: true },
   });
+
+  if (existing) {
+    return { credentialUnchanged: true, login: existing.login };
+  }
+
+  await tx.userCredential.create({
+    data: { userId, login, passwordHash, mustChangePassword: true, createdById: adminUserId },
+  });
+
+  return { credentialUnchanged: false, login };
 }
 
 // POST /admin/author-credentials — grant access directly, without an
@@ -62,10 +92,18 @@ export const grantAuthorCredentials = async (req: Request, res: Response): Promi
       res.status(400).json({ error: "Cannot grant author cabinet access to an admin" });
       return;
     }
-    if (user.credential) {
-      res.status(409).json({ error: "credential already exists" });
-      return;
-    }
+    // Раньше здесь стоял 409 "credential already exists": пока учётки были
+    // только авторскими, наличие учётки означало, что авторство уже выдано,
+    // и повторная выдача была ошибкой. С браузерным доступом это перестало
+    // быть правдой — пользователь заводит логин сам через бота задолго до
+    // того, как подаст заявку на авторство (BROWSER_ACCESS_PLAN.md §4.1).
+    // Отбивать такого 409 значило бы, что самостоятельно заведённая учётка
+    // НАВСЕГДА закрывает путь в авторы.
+    //
+    // Теперь выдача авторства просто добавляет права поверх существующей
+    // учётки; issueCredentials её не трогает и сообщает об этом через
+    // credentialUnchanged (пароль остаётся тот, что пользователь уже знает,
+    // и слать ему нечего).
 
     // Exactly one source of the author name must be available.
     let resolvedAuthorName: string | undefined;
@@ -97,7 +135,7 @@ export const grantAuthorCredentials = async (req: Request, res: Response): Promi
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       let authorId = bodyAuthorId ?? user.authorId ?? null;
       if (!authorId && createAuthorName) {
         const newAuthor = await tx.author.create({ data: { name: createAuthorName.trim() } });
@@ -109,20 +147,29 @@ export const grantAuthorCredentials = async (req: Request, res: Response): Promi
         throw new Error("Unable to resolve authorId");
       }
 
-      await issueCredentials(tx, { userId, authorId, login, passwordHash, adminUserId });
+      return issueCredentials(tx, { userId, authorId, login, passwordHash, adminUserId });
     });
 
-    sendCredentials(user.telegramId, login, tempPassword).catch(console.error);
+    // Учётка уже была (пользователь завёл её сам через бота) — пароль не
+    // менялся, слать ему нечего. Админу возвращаем credentialUnchanged,
+    // чтобы карточка показала «пароль не менялся» вместо «креды отправлены».
+    if (!result.credentialUnchanged) {
+      sendCredentials(user.telegramId, result.login, tempPassword).catch(console.error);
+    }
 
-    res.status(201).json({ success: true, login });
+    res.status(201).json({
+      success: true,
+      login: result.login,
+      credentialUnchanged: result.credentialUnchanged,
+    });
   } catch (error: any) {
     if (error.code === "P2002") {
       const target = normalizeP2002Target(error);
-      if (target.includes("login") || target.some((t) => t.includes("AuthorCredential"))) {
+      if (target.includes("login") || target.some((t) => t.includes("UserCredential"))) {
         res.status(409).json({ error: "Login conflict — adjust login and retry" });
         return;
       }
-      if (target.includes("userId") || target.some((t) => t.includes("AuthorCredential_userId"))) {
+      if (target.includes("userId") || target.some((t) => t.includes("UserCredential_userId"))) {
         // TOCTOU: two concurrent grant requests for the same user.
         res.status(409).json({ error: "credential already exists" });
         return;
@@ -147,7 +194,7 @@ export const grantAuthorCredentials = async (req: Request, res: Response): Promi
 export const revokePassword = async (req: Request, res: Response): Promise<void> => {
   const { userId } = req.params;
   try {
-    await prisma.authorCredential.delete({ where: { userId } });
+    await prisma.userCredential.delete({ where: { userId } });
     res.json({ success: true });
   } catch (error: any) {
     if (error.code === "P2025") {
@@ -166,7 +213,7 @@ export const revokePassword = async (req: Request, res: Response): Promise<void>
 export const resendCredentials = async (req: Request, res: Response): Promise<void> => {
   const { userId } = req.params;
   try {
-    const existing = await prisma.authorCredential.findUnique({ where: { userId } });
+    const existing = await prisma.userCredential.findUnique({ where: { userId } });
     if (!existing) {
       res.status(404).json({ error: "credential not found" });
       return;
@@ -181,7 +228,7 @@ export const resendCredentials = async (req: Request, res: Response): Promise<vo
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
-    await prisma.authorCredential.update({
+    await prisma.userCredential.update({
       where: { userId },
       data: { passwordHash, mustChangePassword: true, lockedUntil: null },
     });
@@ -215,7 +262,7 @@ export const revokeAccess = async (req: Request, res: Response): Promise<void> =
       }
       // deleteMany rather than delete — no-op (not P2025) if credential was
       // already removed, e.g. by a previous "Отозвать пароль" call.
-      await tx.authorCredential.deleteMany({ where: { userId } });
+      await tx.userCredential.deleteMany({ where: { userId } });
       await tx.userPermission.deleteMany({ where: { userId, permission: Permission.AUTHOR_CABINET } });
       await tx.refreshToken.updateMany({ where: { userId, revoked: false }, data: { revoked: true, revokedAt: new Date() } });
     });
