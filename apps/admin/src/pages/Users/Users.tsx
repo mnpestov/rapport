@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "../../components/Button/Button";
-import {  } from "lucide-react";
+import { } from "lucide-react";
 import { UserRow, UserRowHeader } from "./UserRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Modal } from "../../components/Modal/Modal";
@@ -76,7 +76,7 @@ function PermissionsSection({
 
   useEffect(() => {
     if (role === "AUTHOR") {
-      getAuthors().then(setAllAuthors).catch(() => {});
+      getAuthors().then(setAllAuthors).catch(() => { });
     }
   }, [role]);
 
@@ -242,107 +242,107 @@ function UserModal({
     getUserSubscription(initialUser.telegramId).then(setSubStatus);
     // Load full user detail for permissions section
     import("../../api/users").then(({ getUserById }) =>
-      getUserById(initialUser.id).then(setDetail).catch(() => {})
+      getUserById(initialUser.id).then(setDetail).catch(() => { })
     );
   }, [initialUser.id, initialUser.telegramId]);
 
   return (
     <Modal isOpen onClose={onClose} title={fullName(initialUser)} maxWidth={560}>
       <div className={styles.modalBody}>
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Основное</div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Telegram ID</span>
-              <span className={styles.rowValue}>{initialUser.telegramId}</span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Username</span>
-              <span className={initialUser.username ? styles.rowValue : styles.rowValueMuted}>
-                {initialUser.username ? `@${initialUser.username}` : "—"}
-              </span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Язык</span>
-              <span className={initialUser.languageCode ? styles.rowValue : styles.rowValueMuted}>
-                {initialUser.languageCode ?? "—"}
-              </span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Telegram Premium</span>
-              <span className={styles.rowValue}>{initialUser.isPremium ? "Да" : "Нет"}</span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Зарегистрирован</span>
-              <span className={styles.rowValue}>{formatDate(initialUser.createdAt)}</span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Последний вход</span>
-              <span className={initialUser.lastSeenAt ? styles.rowValue : styles.rowValueMuted}>
-                {formatDate(initialUser.lastSeenAt)}
-              </span>
-            </div>
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Основное</div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Telegram ID</span>
+            <span className={styles.rowValue}>{initialUser.telegramId}</span>
           </div>
-
-          <div className={styles.divider} />
-
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Устройство</div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Платформа</span>
-              <span className={initialUser.platform ? styles.rowValue : styles.rowValueMuted}>
-                {platformLabel(initialUser.platform)}
-              </span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Версия Telegram</span>
-              <span className={initialUser.tgVersion ? styles.rowValue : styles.rowValueMuted}>
-                {initialUser.tgVersion ?? "—"}
-              </span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>User Agent</span>
-              <span className={initialUser.userAgent ? styles.rowValue : styles.rowValueMuted}>
-                {initialUser.userAgent ?? "—"}
-              </span>
-            </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Username</span>
+            <span className={initialUser.username ? styles.rowValue : styles.rowValueMuted}>
+              {initialUser.username ? `@${initialUser.username}` : "—"}
+            </span>
           </div>
-
-          <div className={styles.divider} />
-
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Каталог</div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Избранное</span>
-              <span className={styles.rowValue}>{initialUser.favoritesCount}</span>
-            </div>
-            <div className={styles.row}>
-              <span className={styles.rowLabel}>Подписка на канал</span>
-              {subStatus === "loading" ? (
-                <span className={styles.subStatusLoading}>Проверяем...</span>
-              ) : subStatus === true ? (
-                <span className={styles.subStatusYes}>✓ Подписан</span>
-              ) : subStatus === false ? (
-                <span className={styles.subStatusNo}>✗ Не подписан</span>
-              ) : (
-                <span className={styles.rowValueMuted}>Не удалось проверить</span>
-              )}
-            </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Язык</span>
+            <span className={initialUser.languageCode ? styles.rowValue : styles.rowValueMuted}>
+              {initialUser.languageCode ?? "—"}
+            </span>
           </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Telegram Premium</span>
+            <span className={styles.rowValue}>{initialUser.isPremium ? "Да" : "Нет"}</span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Зарегистрирован</span>
+            <span className={styles.rowValue}>{formatDate(initialUser.createdAt)}</span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Последний вход</span>
+            <span className={initialUser.lastSeenAt ? styles.rowValue : styles.rowValueMuted}>
+              {formatDate(initialUser.lastSeenAt)}
+            </span>
+          </div>
+        </div>
 
-          <div className={styles.divider} />
+        <div className={styles.divider} />
 
-          {detail ? (
-            <PermissionsSection
-              user={detail}
-              onSaved={(role, authorId, authorName) => {
-                onUserUpdated(initialUser.id, role, authorId, authorName);
-              }}
-            />
-          ) : (
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Разрешения</div>
-              <div className={styles.rowValueMuted} style={{ fontSize: 13 }}>Загрузка...</div>
-            </div>
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Устройство</div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Платформа</span>
+            <span className={initialUser.platform ? styles.rowValue : styles.rowValueMuted}>
+              {platformLabel(initialUser.platform)}
+            </span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Версия Telegram</span>
+            <span className={initialUser.tgVersion ? styles.rowValue : styles.rowValueMuted}>
+              {initialUser.tgVersion ?? "—"}
+            </span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>User Agent</span>
+            <span className={initialUser.userAgent ? styles.rowValue : styles.rowValueMuted}>
+              {initialUser.userAgent ?? "—"}
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.divider} />
+
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Каталог</div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Избранное</span>
+            <span className={styles.rowValue}>{initialUser.favoritesCount}</span>
+          </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Подписка на канал</span>
+            {subStatus === "loading" ? (
+              <span className={styles.subStatusLoading}>Проверяем...</span>
+            ) : subStatus === true ? (
+              <span className={styles.subStatusYes}>✓ Подписан</span>
+            ) : subStatus === false ? (
+              <span className={styles.subStatusNo}>✗ Не подписан</span>
+            ) : (
+              <span className={styles.rowValueMuted}>Не удалось проверить</span>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.divider} />
+
+        {detail ? (
+          <PermissionsSection
+            user={detail}
+            onSaved={(role, authorId, authorName) => {
+              onUserUpdated(initialUser.id, role, authorId, authorName);
+            }}
+          />
+        ) : (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Разрешения</div>
+            <div className={styles.rowValueMuted} style={{ fontSize: 13 }}>Загрузка...</div>
+          </div>
         )}
       </div>
     </Modal>
@@ -352,7 +352,7 @@ function UserModal({
 export function Users() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
-  const [counts, setCounts] = useState<{ all: number; paid: number }>({ all: 0, paid: 0 });
+  const [counts, setCounts] = useState<{ all: number; paid: number; web: number }>({ all: 0, paid: 0, web: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -418,11 +418,11 @@ export function Users() {
         u.id !== id
           ? u
           : {
-              ...u,
-              role,
-              authorId,
-              author: authorId && authorName ? { id: authorId, name: authorName } : null,
-            }
+            ...u,
+            role,
+            authorId,
+            author: authorId && authorName ? { id: authorId, name: authorName } : null,
+          }
       )
     );
   };
@@ -442,6 +442,7 @@ export function Users() {
         tabs={[
           { value: "all", label: "Все", count: counts.all },
           { value: "paid", label: "Платные", count: counts.paid },
+          { value: "web", label: "Доступ в веб", count: counts.web },
         ]}
         activeTab={filter}
         onTabChange={handleFilterChange}
@@ -490,11 +491,11 @@ export function Users() {
             setSelected((prev) =>
               prev && prev.id === id
                 ? {
-                    ...prev,
-                    role,
-                    authorId,
-                    author: authorId && authorName ? { id: authorId, name: authorName } : null,
-                  }
+                  ...prev,
+                  role,
+                  authorId,
+                  author: authorId && authorName ? { id: authorId, name: authorName } : null,
+                }
                 : prev
             );
           }}

@@ -30,13 +30,15 @@ export interface AdminUserDetail extends AdminUser {
   excludeFromStats: boolean;
 }
 
-// Вкладки списка пользователей. "paid" = есть любой PREMIUM_* permission.
-export type UserFilter = "all" | "paid";
+// Вкладки списка пользователей.
+//   "paid" — есть любой PREMIUM_* permission.
+//   "web"  — есть WEB_ACCESS permission (тумблер «Доступ в браузере»).
+export type UserFilter = "all" | "paid" | "web";
 
 export interface UsersResponse {
   data: AdminUser[];
   total: number;
-  counts: { all: number; paid: number };
+  counts: { all: number; paid: number; web: number };
 }
 
 export type SortField = "firstName" | "lastSeenAt" | "createdAt" | "favoritesCount";

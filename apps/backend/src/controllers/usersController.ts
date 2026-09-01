@@ -8,7 +8,7 @@ const SORT_ORDERS = ["asc", "desc"] as const;
 type SortField = typeof SORT_FIELDS[number];
 type SortOrder = typeof SORT_ORDERS[number];
 
-const USER_FILTERS = ["all", "paid"] as const;
+const USER_FILTERS = ["all", "paid", "web"] as const;
 type UserFilter = typeof USER_FILTERS[number];
 
 // «Платный» пользователь = есть любой из premium-permission. premiumExpiresAt
@@ -19,8 +19,15 @@ const PREMIUM_PERMISSIONS = [
   Permission.PREMIUM_DETAILS,
   Permission.PREMIUM_EXTRA,
 ];
-const PAID_WHERE = {
-  permissions: { some: { permission: { in: PREMIUM_PERMISSIONS } } },
+
+// where-условие каждой вкладки, поверх поиска. "all" — без доп. условия.
+// "web" смотрит на явно выданный WEB_ACCESS — ровно то, чем управляет
+// тумблер «Доступ в браузере» в карточке. Доступ в браузер дают ещё
+// AUTHOR_CABINET и мастер-флаг WEB_ACCESS_PUBLIC_LAUNCH (см. hasWebAccess),
+// но для вкладки нужен именно точечный список, а не «кто фактически войдёт».
+const FILTER_WHERE: Record<Exclude<UserFilter, "all">, any> = {
+  paid: { permissions: { some: { permission: { in: PREMIUM_PERMISSIONS } } } },
+  web: { permissions: { some: { permission: Permission.WEB_ACCESS } } },
 };
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
@@ -54,9 +61,11 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     searchWhere.OR = conditions;
   }
 
-  const where: any = activeFilter === "paid" ? { ...searchWhere, ...PAID_WHERE } : searchWhere;
+  const where: any = activeFilter === "all"
+    ? searchWhere
+    : { ...searchWhere, ...FILTER_WHERE[activeFilter] };
 
-  const [users, total, allCount, paidCount] = await Promise.all([
+  const [users, total, allCount, paidCount, webCount] = await Promise.all([
     prisma.user.findMany({
       where,
       take,
@@ -85,7 +94,8 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     // Счётчики вкладок — с учётом текущего поиска, но независимо от
     // выбранной вкладки (как на странице описаний).
     prisma.user.count({ where: searchWhere }),
-    prisma.user.count({ where: { ...searchWhere, ...PAID_WHERE } }),
+    prisma.user.count({ where: { ...searchWhere, ...FILTER_WHERE.paid } }),
+    prisma.user.count({ where: { ...searchWhere, ...FILTER_WHERE.web } }),
   ]);
 
   res.json({
@@ -95,7 +105,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
       favoritesCount: u._count.favorites,
     })),
     total,
-    counts: { all: allCount, paid: paidCount },
+    counts: { all: allCount, paid: paidCount, web: webCount },
   });
 };
 
