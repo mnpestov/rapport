@@ -1,0 +1,85 @@
+/* Плашка «Установить приложение» — над каталогом, только в браузере.
+   Ненавязчивая: приглушённый фон, закрывается крестиком навсегда. */
+
+.install-prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 20px 14px 12px;
+  border: 1px solid #F3F3F3;
+  border-radius: 2px;
+  /* background: rgba(169, 174, 54, 0.06); */
+  position: relative;
+}
+
+.install-prompt-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.install-prompt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  font-family: Mulish, sans-serif;
+}
+
+.install-prompt-text b {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1D1C1C;
+}
+
+.install-prompt-text span {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #9B9A9A;
+}
+
+/* Иконка кнопки «Поделиться» (lucide Share) — коробка со стрелкой вверх,
+   как в Safari на iOS. */
+.install-prompt-share {
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+  color: #9B9A9A;
+}
+
+.install-prompt-btn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 2px;
+  background: #A9AE36;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.install-prompt-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #9B9A9A;
+  cursor: pointer;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+}
+
+.install-prompt-close:hover {
+  color: #1D1C1C;
+}

@@ -21,19 +21,24 @@ const staticLegalPagesFallback = (): Plugin => ({
   },
 });
 
+// Один и тот же список для `pnpm dev` (server) и `pnpm preview` (preview).
+// preview отдаёт прод-сборку из dist/ — это единственный способ увидеть
+// локально плашку установки PWA: сигнал beforeinstallprompt Chrome шлёт
+// только для прод-сборки, не для dev с HMR.
+const apiProxy = {
+  '/auth': 'http://localhost:3000',
+  '/patterns': 'http://localhost:3000',
+  '/images': 'http://localhost:3000',
+  '/uploads': 'http://localhost:3000',
+  '/filters': 'http://localhost:3000',
+  '/favorites': 'http://localhost:3000',
+  '/channel': 'http://localhost:3000',
+  '/analytics': 'http://localhost:3000',
+};
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), staticLegalPagesFallback()],
-  server: {
-    proxy: {
-      '/auth': 'http://localhost:3000',
-      '/patterns': 'http://localhost:3000',
-      '/images': 'http://localhost:3000',
-      '/uploads': 'http://localhost:3000',
-      '/filters': 'http://localhost:3000',
-      '/favorites': 'http://localhost:3000',
-      '/channel': 'http://localhost:3000',
-      '/analytics': 'http://localhost:3000',
-    }
-  }
+  server: { proxy: apiProxy },
+  preview: { proxy: apiProxy },
 })

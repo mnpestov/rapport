@@ -4,6 +4,7 @@ import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { fetchPatterns, Pattern, FetchPatternsOptions, fetchFilters, FiltersResponse } from '../../api/patternsApi';
 import { FilterModal, SelectedFilters } from '../../components/FilterModal/FilterModal';
 import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
+import { InstallPrompt } from '../../components/InstallPrompt/InstallPrompt';
 import { SortModal, SortOption } from '../../components/SortModal/SortModal';
 import { Footer } from '../../components/Footer/Footer';
 import { trackSearchQuery } from '../../api/analyticsApi';
@@ -328,6 +329,10 @@ export const Catalog: React.FC = () => {
         foundCount={totalPatterns}
         hasActiveQuery={isFreeFilterActive || isNewFilterActive || isDiscountFilterActive || totalFiltersCount > 0 || debouncedSearch.trim() !== ''}
       />
+
+      {/* Плашка «установить приложение» — рендерит сама себя только в
+          браузере, вне Telegram; в Mini App возвращает null. */}
+      <InstallPrompt />
 
       {loading && <p className="loading-message">Загрузка каталога...</p>}
       {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}

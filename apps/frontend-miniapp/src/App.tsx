@@ -23,6 +23,7 @@ import {
   SESSION_EXPIRED_EVENT,
 } from './api/authSession';
 import { subscriptionRecheck } from './api/webAuthApi';
+import { initPwa } from './api/pwa';
 import { submitPaywallImpression, PaywallSource } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
@@ -155,6 +156,9 @@ function App() {
         // браузерную сессию (BROWSER_ACCESS_PLAN.md §3.5).
         const enterWebMode = async (): Promise<void> => {
           initAuthSession('web');
+          // Регистрируем Service Worker и включаем перехват промта установки
+          // только здесь — точно в браузере, не в Telegram.
+          initPwa();
           // Тихое восстановление по httpOnly-cookie: access-токен живёт в
           // памяти и теряется при перезагрузке вкладки, а refresh — нет.
           const token = await refreshWebSession();
@@ -180,7 +184,14 @@ function App() {
           setAppState("authorized");
         };
 
-        if (!import.meta.env.DEV) {
+        // В обычном dev (`pnpm dev`) этот блок пропускается: ниже
+        // подставляется initData="mock_dev" и приложение всегда уходит в
+        // Telegram-ветку — так локально не нужен реальный Telegram. Из-за
+        // этого браузерный режим (лендинг → вход → каталог) и PWA локально
+        // никак не поднять. Флаг VITE_FORCE_WEB=true включает браузерный
+        // путь в dev, не трогая прод (там переменной нет).
+        const forceWeb = import.meta.env.VITE_FORCE_WEB === 'true';
+        if (!import.meta.env.DEV || forceWeb) {
           // Устаревший клиент Telegram: SDK не загрузился, но UA говорит,
           // что мы внутри Telegram — тогда это не браузер, а старая версия.
           if (!tg && /Telegram/i.test(navigator.userAgent)) {
