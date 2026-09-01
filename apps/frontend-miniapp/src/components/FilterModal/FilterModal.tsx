@@ -541,8 +541,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   };
 
   return (
-    <div ref={sheetRef} className={`filter-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`}>
-      <div className="filter-modal-content sheet-panel">
+    <div ref={sheetRef} className={`filter-modal-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+      <div className="filter-modal-content sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="filter-modal-header">
           <button className="filter-close-btn" onClick={onClose}>
             <X size={24} />

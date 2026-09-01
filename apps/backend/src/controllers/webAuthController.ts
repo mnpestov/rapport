@@ -527,6 +527,16 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       });
     }
 
+    // Тихий refresh при загрузке страницы — тоже визит. Иначе активный
+    // веб-пользователь, который не перелогинивается, месяцами числился бы
+    // «не заходил»: lastSeenAt раньше обновлялся только на входе в Mini App.
+    void prisma.user.update({
+      where: { id: record.userId },
+      data: { lastSeenAt: new Date() },
+    }).catch((err) => {
+      console.error("[refresh] Failed to update lastSeenAt:", err);
+    });
+
     // Probabilistic GC — clean up expired and old revoked records.
     if (Math.random() < 0.05) {
       prisma.refreshToken.deleteMany({

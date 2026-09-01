@@ -192,6 +192,17 @@ export async function createWebSession(
     sessionId: session.id,
   });
 
+  // lastSeenAt отмечает любой успешный вход, а не только через Mini App:
+  // без этого браузерные заходы не попадали ни в дату последнего входа в
+  // админке, ни в статистику dashboard'а «посетители за период»
+  // (adminDashboardController фильтрует по этому полю).
+  void prisma.user.update({
+    where: { id: user.id },
+    data: { lastSeenAt: new Date() },
+  }).catch((err) => {
+    console.error("[createWebSession] Failed to update lastSeenAt:", err);
+  });
+
   return { accessToken, sessionId: session.id };
 }
 
