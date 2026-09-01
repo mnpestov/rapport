@@ -139,8 +139,8 @@
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  /* flex-wrap: wrap; */
+  gap: 10px;
   justify-content: space-between;
 }
 
@@ -150,40 +150,50 @@
     gap: 10px;
     padding: 10px;
   }
+
   .left {
     flex: none;
     width: 100%;
   }
+
   .img {
     width: 100%;
     height: auto;
     aspect-ratio: 3 / 4;
   }
+
   .right {
     gap: 10px;
   }
+
   .rows {
     gap: 5px;
   }
+
   .row {
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
   }
+
   .value {
     text-align: left;
     justify-content: flex-start;
   }
+
   .stack {
     align-items: flex-start;
   }
+
   .yarnChips {
     justify-content: flex-start;
   }
+
   .actions {
     flex-direction: column;
     gap: 8px;
   }
+
   /* .approveBtn/.editBtn/.rejectBtn were the buttons' own classes before
      they were unified onto the shared Button component (see
      CODE_REVIEW_BACKLOG.md-adjacent admin button unification) — those
@@ -193,12 +203,13 @@
      child of .actions instead, so it stays correct regardless of which
      component renders the button.
   */
-  .actions > button {
+  .actions>button {
     width: 100%;
     padding: 10px;
     font-size: 14px;
   }
 }
+
 /* Артикулы в карточке модерации. Распознанные и нераспознанные различаются
    цветом, а не подписью: подпись съела бы ширину, а решение по ним разное —
    первые проверяются взглядом, вторые требуют завести карточку.
