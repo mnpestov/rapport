@@ -4,8 +4,9 @@ import {  } from "lucide-react";
 import { UserRow, UserRowHeader } from "./UserRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Modal } from "../../components/Modal/Modal";
-import { getUsers, getUserSubscription, updateUser, syncPermission, AdminUser, AdminUserDetail, UserRole, SortField, SortOrder } from "../../api/users";
+import { getUsers, getUserSubscription, updateUser, syncPermission, AdminUser, AdminUserDetail, UserRole, SortField, SortOrder, UserFilter } from "../../api/users";
 import { getAuthors, AuthorItem } from "../../api/authors";
+import { ControlPanel } from "../../components/ControlPanel/ControlPanel";
 import toast from "react-hot-toast";
 import styles from "./Users.module.css";
 
@@ -351,38 +352,51 @@ function UserModal({
 export function Users() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<{ all: number; paid: number }>({ all: 0, paid: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [sortBy, setSortBy] = useState<SortField>("lastSeenAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [filter, setFilter] = useState<UserFilter>("all");
   const [selected, setSelected] = useState<AdminUser | null>(null);
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async (q: string, off: number, by: SortField, order: SortOrder) => {
-    setIsLoading(true);
-    try {
-      const res = await getUsers({ search: q || undefined, limit: LIMIT, offset: off, sortBy: by, sortOrder: order });
-      setUsers(res.data);
-      setTotal(res.total);
-    } catch {
-      // silent
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (q: string, off: number, by: SortField, order: SortOrder, tab: UserFilter) => {
+      setIsLoading(true);
+      try {
+        const res = await getUsers({
+          search: q || undefined,
+          limit: LIMIT,
+          offset: off,
+          sortBy: by,
+          sortOrder: order,
+          filter: tab,
+        });
+        setUsers(res.data);
+        setTotal(res.total);
+        setCounts(res.counts);
+      } catch {
+        // silent
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    load(search, offset, sortBy, sortOrder);
-  }, [offset, sortBy, sortOrder]);
+    load(search, offset, sortBy, sortOrder, filter);
+  }, [offset, sortBy, sortOrder, filter]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
       setOffset(0);
-      load(value, 0, sortBy, sortOrder);
+      load(value, 0, sortBy, sortOrder, filter);
     }, 300);
   };
 
@@ -390,6 +404,11 @@ export function Users() {
     const newOrder = sortBy === field && sortOrder === "desc" ? "asc" : "desc";
     setSortBy(field);
     setSortOrder(newOrder);
+    setOffset(0);
+  };
+
+  const handleFilterChange = (value: string) => {
+    setFilter(value as UserFilter);
     setOffset(0);
   };
 
@@ -417,6 +436,15 @@ export function Users() {
         title="Пользователи"
         search={{ value: search, onChange: handleSearchChange }}
         totalCount={total > 0 ? { label: "Всего пользователей:", value: total } : undefined}
+      />
+
+      <ControlPanel
+        tabs={[
+          { value: "all", label: "Все", count: counts.all },
+          { value: "paid", label: "Платные", count: counts.paid },
+        ]}
+        activeTab={filter}
+        onTabChange={handleFilterChange}
       />
 
       <div className={styles.tableWrapper}>

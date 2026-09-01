@@ -30,9 +30,13 @@ export interface AdminUserDetail extends AdminUser {
   excludeFromStats: boolean;
 }
 
+// Вкладки списка пользователей. "paid" = есть любой PREMIUM_* permission.
+export type UserFilter = "all" | "paid";
+
 export interface UsersResponse {
   data: AdminUser[];
   total: number;
+  counts: { all: number; paid: number };
 }
 
 export type SortField = "firstName" | "lastSeenAt" | "createdAt" | "favoritesCount";
@@ -44,6 +48,7 @@ export const getUsers = async (params: {
   offset?: number;
   sortBy?: SortField;
   sortOrder?: SortOrder;
+  filter?: UserFilter;
 }): Promise<UsersResponse> => {
   const q = new URLSearchParams();
   if (params.search) q.set("search", params.search);
@@ -51,6 +56,7 @@ export const getUsers = async (params: {
   if (params.offset != null) q.set("offset", String(params.offset));
   if (params.sortBy) q.set("sortBy", params.sortBy);
   if (params.sortOrder) q.set("sortOrder", params.sortOrder);
+  if (params.filter && params.filter !== "all") q.set("filter", params.filter);
   const res = await fetchWithAuth(`${API_URL}/admin/users?${q}`);
   if (!res.ok) throw new Error(`Failed to fetch users: ${res.statusText}`);
   return res.json();

@@ -8,21 +8,39 @@ const SORT_ORDERS = ["asc", "desc"] as const;
 type SortField = typeof SORT_FIELDS[number];
 type SortOrder = typeof SORT_ORDERS[number];
 
+const USER_FILTERS = ["all", "paid"] as const;
+type UserFilter = typeof USER_FILTERS[number];
+
+// «Платный» пользователь = есть любой из premium-permission. premiumExpiresAt
+// не смотрим: доступ решается по UserPermission, а ручная выдача premium в
+// админке идёт без даты (см. обсуждение фильтра «Платные»).
+const PREMIUM_PERMISSIONS = [
+  Permission.PREMIUM_CORE,
+  Permission.PREMIUM_DETAILS,
+  Permission.PREMIUM_EXTRA,
+];
+const PAID_WHERE = {
+  permissions: { some: { permission: { in: PREMIUM_PERMISSIONS } } },
+};
+
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
-  const { search, limit = "50", offset = "0", sortBy = "lastSeenAt", sortOrder = "desc" } = req.query;
+  const { search, limit = "50", offset = "0", sortBy = "lastSeenAt", sortOrder = "desc", filter = "all" } = req.query;
 
   const take = Math.min(parseInt(limit as string, 10) || 50, 100);
   const skip = parseInt(offset as string, 10) || 0;
 
   const field: SortField = SORT_FIELDS.includes(sortBy as SortField) ? (sortBy as SortField) : "lastSeenAt";
   const order: SortOrder = SORT_ORDERS.includes(sortOrder as SortOrder) ? (sortOrder as SortOrder) : "desc";
+  const activeFilter: UserFilter = USER_FILTERS.includes(filter as UserFilter) ? (filter as UserFilter) : "all";
   const orderBy: any = field === "favoritesCount"
     ? { favorites: { _count: order } }
     : field === "lastSeenAt"
       ? { lastSeenAt: { sort: order, nulls: "last" } }
       : { [field]: order };
 
-  const where: any = {};
+  // Общий кусок для всех вкладок — только поиск. Счётчики вкладок и сама
+  // выборка строятся поверх него.
+  const searchWhere: any = {};
   if (search && typeof search === "string") {
     const q = search.trim();
     const conditions: any[] = [
@@ -33,10 +51,12 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     try {
       conditions.push({ telegramId: BigInt(q) });
     } catch { /* not numeric */ }
-    where.OR = conditions;
+    searchWhere.OR = conditions;
   }
 
-  const [users, total] = await Promise.all([
+  const where: any = activeFilter === "paid" ? { ...searchWhere, ...PAID_WHERE } : searchWhere;
+
+  const [users, total, allCount, paidCount] = await Promise.all([
     prisma.user.findMany({
       where,
       take,
@@ -62,6 +82,10 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
       },
     }),
     prisma.user.count({ where }),
+    // Счётчики вкладок — с учётом текущего поиска, но независимо от
+    // выбранной вкладки (как на странице описаний).
+    prisma.user.count({ where: searchWhere }),
+    prisma.user.count({ where: { ...searchWhere, ...PAID_WHERE } }),
   ]);
 
   res.json({
@@ -71,6 +95,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
       favoritesCount: u._count.favorites,
     })),
     total,
+    counts: { all: allCount, paid: paidCount },
   });
 };
 
