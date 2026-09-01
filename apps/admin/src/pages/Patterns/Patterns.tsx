@@ -106,7 +106,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearch);
 
-  const [status, setStatus] = useState(isAuthor ? "all" : "active");
+  const [status, setStatus] = useState(isAuthor ? "published" : "active");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Moderation tab (admin only)
@@ -336,12 +336,11 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   ], [cabinetPatterns, cabinetDrafts]);
 
   const cabinetCounts = useMemo(() => ({
-    all: cabinetAll.length,
     published: cabinetPatterns.length,
     draft: cabinetDrafts.filter((d) => d.status === "DRAFT").length,
     pending: cabinetDrafts.filter((d) => d.status === "PENDING").length,
     rejected: cabinetDrafts.filter((d) => d.status === "REJECTED").length,
-  }), [cabinetAll, cabinetPatterns, cabinetDrafts]);
+  }), [cabinetPatterns, cabinetDrafts]);
 
   const filteredCabinetItems: CabinetItem[] = useMemo(() => {
     let list: CabinetItem[];
@@ -884,11 +883,6 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       <ControlPanel
         tabs={isAuthor ? [
           {
-            value: "all",
-            label: "Все",
-            count: cabinetCounts.all
-          },
-          {
             value: "published",
             label: "Опубликовано",
             prefix: <Check size={12} strokeWidth={1} color="#ffffffff" />,
@@ -936,7 +930,12 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
           },
         ]}
         activeTab={status}
-        onTabChange={(v) => setStatus(v)}
+        onTabChange={(v) => {
+          setStatus(v);
+          // Выбор чекбоксами не должен переезжать между вкладками —
+          // описания с разных вкладок нельзя обрабатывать одной операцией.
+          setSelectedIds(new Set());
+        }}
         actions={
           isAuthor ? (
             <>
@@ -947,13 +946,18 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               >
                 Добавить описание
               </Button>
-              <Button
-                variant="neutral"
-                disabled={selectedIds.size === 0}
-                onClick={handleAuthorPublishSelected}
-              >
-                Отправить на модерацию
-              </Button>
+              {/* Отправлять на модерацию можно только черновики и
+                  отклонённые — на «Опубликовано» и «На модерации» кнопка
+                  не нужна (см. handleAuthorPublishSelected). */}
+              {(status === "draft" || status === "rejected") && (
+                <Button
+                  variant="neutral"
+                  disabled={selectedIds.size === 0}
+                  onClick={handleAuthorPublishSelected}
+                >
+                  Отправить на модерацию
+                </Button>
+              )}
               <Button
                 variant="danger"
                 disabled={selectedIds.size === 0}
