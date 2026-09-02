@@ -58,9 +58,16 @@ function translateError(message: string): string {
   return KNOWN_ERROR_TRANSLATIONS[message] ?? 'Не удалось выполнить действие. Попробуйте ещё раз позже.';
 }
 
+// «Отправить ✓» появляется только после первого пояснения — пока текста
+// нет, нечего отправлять.
+const RESPOND_KEYBOARD_EMPTY = new InlineKeyboard().text('Отмена', 'author_app:cancel');
 const RESPOND_KEYBOARD = new InlineKeyboard()
   .text('Отправить ✓', 'author_app:respond_submit').row()
   .text('Отмена', 'author_app:cancel');
+
+function respondKeyboard(hasText: boolean): InlineKeyboard {
+  return hasText ? RESPOND_KEYBOARD : RESPOND_KEYBOARD_EMPTY;
+}
 
 function resetSession(ctx: CustomContext): void {
   ctx.session.authorAppStep = undefined;
@@ -173,7 +180,7 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
           `${result.adminComment ?? 'администратор запросил дополнительную информацию.'}\n\n` +
           `Напишите пояснения текстом тут в чате, обычным сообщением, можно несколькими. ` +
           `Когда закончите нажмите «Отправить ✓».`,
-        { reply_markup: RESPOND_KEYBOARD },
+        { reply_markup: respondKeyboard(false) },
       );
       return;
     case 'APPROVED':
@@ -312,15 +319,16 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
   // parse structure out of it, it's shown to the admin as-is.
   if (text.length > MAX_RESOURCE_LENGTH) {
     await ctx.reply(`Сообщение должно быть не длиннее ${MAX_RESOURCE_LENGTH} символов.`, {
-      reply_markup: RESPOND_KEYBOARD,
+      reply_markup: respondKeyboard(!!ctx.session.authorAppResponseText),
     });
     return true;
   }
   ctx.session.authorAppResponseText = ctx.session.authorAppResponseText
     ? `${ctx.session.authorAppResponseText}\n${text}`
     : text;
+  // Первое пояснение записано — теперь показываем «Отправить ✓».
   await ctx.reply('Добавлено. Можете написать ещё или нажать «Отправить ✓».', {
-    reply_markup: RESPOND_KEYBOARD,
+    reply_markup: respondKeyboard(true),
   });
   return true;
 }
@@ -458,7 +466,7 @@ export async function handleAuthorAppRespondSubmit(ctx: CallbackCtx): Promise<vo
 
   if (!userResponse) {
     await ctx.reply('Напишите хотя бы одно сообщение перед отправкой.', {
-      reply_markup: RESPOND_KEYBOARD,
+      reply_markup: respondKeyboard(false),
     });
     return;
   }
