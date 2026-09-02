@@ -52,7 +52,6 @@ const KNOWN_ERROR_TRANSLATIONS: Record<string, string> = {
   "login_taken": "Этот логин уже занят. Придумайте другой.",
   "no_draft": "Сессия заявки устарела. Начните заново: /become_author",
   "login_mismatch": "Что-то пошло не так с логином. Начните заново: /become_author",
-  "credential_exists": "У вас уже есть логин для входа.",
 };
 
 function translateError(message: string): string {
@@ -277,24 +276,17 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
     }
 
     try {
-      const { login } = await backendClient.reserveApplicationLogin({
+      const { login, preexisting } = await backendClient.reserveApplicationLogin({
         telegramId,
         login: text,
         authorName,
         resources,
       });
       ctx.session.authorAppLogin = login;
-      ctx.session.authorAppLoginPreexisting = false;
+      ctx.session.authorAppLoginPreexisting = preexisting;
       await showSummary(ctx);
     } catch (err) {
       if (err instanceof AuthorApplicationError) {
-        if (err.message === 'credential_exists') {
-          // Учётка появилась параллельно (второе устройство) — берём её.
-          ctx.session.authorAppLogin = err.login ?? text;
-          ctx.session.authorAppLoginPreexisting = true;
-          await showSummary(ctx);
-          return true;
-        }
         await ctx.reply(translateError(err.message), { reply_markup: LOGIN_KEYBOARD });
         return true;
       }
@@ -353,44 +345,36 @@ export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<vo
     return;
   }
 
-  // Логин у пользователя уже есть — либо мы узнали это на входе в диалог
-  // (лежит в сессии), либо перепроверяем сейчас. Шаг ручного ввода тогда
-  // пропускаем: закрепляем существующий логин за черновиком и — в сводку.
-  let existingLogin: string | null = ctx.session.authorAppLoginPreexisting
+  // Знаем ли уже логин пользователя — из сессии (узнали на входе) или
+  // спросим бэкенд. Если знаем — шаг ручного ввода пропускаем: сразу
+  // закрепляем логин за черновиком и показываем сводку.
+  let knownLogin: string | null = ctx.session.authorAppLoginPreexisting
     ? ctx.session.authorAppLogin ?? null
     : null;
 
-  if (!existingLogin) {
+  if (!knownLogin) {
     try {
       const status = await backendClient.getApplicationStatus(telegramId);
-      existingLogin = status.existingLogin ?? null;
+      knownLogin = status.existingLogin ?? null;
     } catch {
-      // Не смогли узнать — не страшно, спросим логин как обычно.
+      // Не смогли узнать — спросим логин как обычно.
     }
   }
 
-  if (existingLogin) {
+  if (knownLogin) {
     try {
-      const { login } = await backendClient.reserveApplicationLogin({
+      const { login, preexisting } = await backendClient.reserveApplicationLogin({
         telegramId,
-        login: existingLogin,
+        login: knownLogin,
         authorName,
         resources,
       });
       ctx.session.authorAppLogin = login;
-      ctx.session.authorAppLoginPreexisting = true;
+      ctx.session.authorAppLoginPreexisting = preexisting;
       await showSummary(ctx);
       return;
-    } catch (err) {
-      // Бэкенд подтверждает: учётка уже есть — берём логин из ответа и
-      // идём в сводку, а не спрашиваем заново.
-      if (err instanceof AuthorApplicationError && err.message === 'credential_exists') {
-        ctx.session.authorAppLogin = err.login ?? existingLogin;
-        ctx.session.authorAppLoginPreexisting = true;
-        await showSummary(ctx);
-        return;
-      }
-      // Иная ошибка — падаем в обычный сценарий с ручным вводом.
+    } catch {
+      // Не удалось закрепить — падаем в обычный сценарий с ручным вводом.
     }
   }
 

@@ -223,19 +223,18 @@ export const reserveApplicationLogin = async (req: Request, res: Response): Prom
       return;
     }
 
-    // Уже есть учётка (пользователь завёл логин через «вход на сайт») —
-    // выбирать логин заново нельзя, бот этот шаг вообще пропускает. Если
-    // всё же дошло сюда — отдаём существующий логин, шаг бессмысленен.
+    // Уже есть учётка (пользователь завёл логин через «вход на сайт»).
+    // Свой логин менять нельзя — но черновик всё равно нужно создать, иначе
+    // финальная отправка не найдёт заявку. Логин черновика фиксируем на
+    // существующем, игнорируя присланный.
     const existingCredential = await prisma.userCredential.findUnique({
       where: { userId: user.id },
       select: { login: true },
     });
-    if (existingCredential) {
-      res.status(409).json({ error: "credential_exists", login: existingCredential.login });
-      return;
-    }
+    const effectiveLogin = existingCredential?.login ?? login;
 
-    if (!(await isLoginAvailable(login, user.id))) {
+    // Проверяем занятость только для НОВОГО логина. Существующий — уже наш.
+    if (!existingCredential && !(await isLoginAvailable(effectiveLogin, user.id))) {
       res.status(409).json({ error: "login_taken" });
       return;
     }
@@ -250,7 +249,7 @@ export const reserveApplicationLogin = async (req: Request, res: Response): Prom
       await prisma.authorApplication.update({
         where: { id: draft.id },
         data: {
-          desiredLogin: login,
+          desiredLogin: effectiveLogin,
           authorName: draftInput.value.authorName,
           resources: draftInput.value.resources,
         },
@@ -261,13 +260,18 @@ export const reserveApplicationLogin = async (req: Request, res: Response): Prom
           userId: user.id,
           authorName: draftInput.value.authorName,
           resources: draftInput.value.resources,
-          desiredLogin: login,
+          desiredLogin: effectiveLogin,
           status: ApplicationStatus.DRAFT,
         },
       });
     }
 
-    res.json({ ok: true, login });
+    res.json({
+      ok: true,
+      login: effectiveLogin,
+      // Бот показывает пометку «(уже создан)» в сводке.
+      preexisting: !!existingCredential,
+    });
   } catch (error: any) {
     if (error.code === "P2002") {
       // Гонка: логин заняли между проверкой и записью, либо параллельный

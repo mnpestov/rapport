@@ -148,12 +148,14 @@ export class BackendClient {
   // Шаг «логин» в диалоге заявки: проверяет формат и занятость логина и
   // закрепляет его за черновиком заявки (создаёт черновик, если его нет).
   // На занятый логин бросает AuthorApplicationError с message='login_taken'.
+  // preexisting=true — у пользователя уже была учётка, логин взят из неё
+  // (присланный проигнорирован).
   async reserveApplicationLogin(params: {
     telegramId: number;
     login: string;
     authorName: string;
     resources: string[];
-  }): Promise<{ login: string }> {
+  }): Promise<{ login: string; preexisting: boolean }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -174,7 +176,9 @@ export class BackendClient {
       clearTimeout(timer);
     }
 
-    const data = await response.json().catch(() => ({}) as { error?: string; login?: string });
+    const data = await response
+      .json()
+      .catch(() => ({}) as { error?: string; login?: string; preexisting?: boolean });
     if (!response.ok) {
       throw new AuthorApplicationError(
         response.status,
@@ -182,7 +186,7 @@ export class BackendClient {
         data.login,
       );
     }
-    return data as { login: string };
+    return { login: data.login as string, preexisting: !!data.preexisting };
   }
 
   // Кнопка «Отмена» на сводке: удаляет черновик заявки, логин освобождается.
