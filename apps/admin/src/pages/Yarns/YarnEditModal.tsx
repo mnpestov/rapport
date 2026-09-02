@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../components/Button/Button";
 import { Modal } from "../../components/Modal/Modal";
 import { YarnItem } from "../../api/yarns";
+import { getYarnBrands, getYarnLines } from "../../api/yarns";
+import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Yarns.module.css";
 
 interface Props {
@@ -13,68 +15,95 @@ interface Props {
 }
 
 /**
- * Форма карточки артикула. Обязательное здесь только название; всё
- * остальное необязательно осознанно — у трети справочника характеристик нет
- * вовсе, и требовать их значило бы не дать завести карточку под пряжу,
- * которую автор упомянул, а магазин ещё не описал.
+ * Форма карточки артикула. Поля оставлены минимально необходимые:
  *
- * Бренд обязателен, только если карточка не родовая: у «Пуха норки» марки
- * нет и быть не может.
+ * - Бренд (обязателен, если не родовая карточка) — с autocomplete по существующим
+ * - Линейка (обязательна) — с autocomplete по существующим
+ * - Родовое название (только для админа)
+ * - Метраж м/100г (обязателен)
+ * - Плотность производителя (необязательна)
+ * - Состав (необязателен)
+ *
+ * Имя артикула формируется на бэкенде из бренда + линейки, поэтому поле
+ * «Название» убрано: дублирует пару Бренд/Линейка и провоцирует опечатки.
  */
 export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const [form, setForm] = useState({
-    name: yarn?.name ?? initialName ?? "",
     brand: yarn?.brand ?? "",
     line: yarn?.line ?? "",
     isGeneric: yarn?.isGeneric ?? false,
     mPer100g: yarn?.mPer100g?.toString() ?? "",
-    composition: yarn?.composition ?? "",
-    needleSizeRaw: yarn?.needleSizeRaw ?? "",
     densityRaw: yarn?.densityRaw ?? "",
-    ballWeightG: yarn?.ballWeightG?.toString() ?? "",
-    ballLengthM: yarn?.ballLengthM?.toString() ?? "",
-    sourceName: yarn?.sourceName ?? "",
-    sourceUrl: yarn?.sourceUrl ?? "",
+    composition: yarn?.composition ?? "",
   });
-  const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+
+  const set = (k: keyof typeof form, v: string | boolean) =>
+    setForm((f) => ({ ...f, [k]: v }));
 
   // Числовые поля живут в форме строками — иначе поле нельзя очистить, не
-  // проходя через NaN. Приводим один раз, на отправке; пустая строка должна
-  // стать null, а не нулём: «метраж неизвестен» и «метраж 0» — разное.
+  // проходя через NaN. Пустая строка → null: «метраж неизвестен» ≠ «метраж 0».
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
-  const payload = (): Partial<YarnItem> => ({
-    name: form.name.trim(),
-    brand: form.brand.trim() || null,
-    line: form.line.trim() || null,
-    isGeneric: form.isGeneric,
-    mPer100g: num(form.mPer100g),
-    composition: form.composition.trim() || null,
-    needleSizeRaw: form.needleSizeRaw.trim() || null,
-    densityRaw: form.densityRaw.trim() || null,
-    ballWeightG: num(form.ballWeightG),
-    ballLengthM: num(form.ballLengthM),
-    sourceName: form.sourceName.trim() || null,
-    sourceUrl: form.sourceUrl.trim() || null,
-  });
 
-  const field = (label: string, k: keyof typeof form, placeholder = "", wide = false) => (
-    <label className={wide ? styles.fieldWide : styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <input
-        className={styles.fieldInput}
-        value={form[k] as string}
-        placeholder={placeholder}
-        onChange={(e) => set(k, e.target.value)}
-      />
-    </label>
-  );
+  const payload = (): Partial<YarnItem> => {
+    const brand = form.brand.trim() || null;
+    const line = form.line.trim() || null;
+    // Имя = «Бренд Линейка» или только одно из них если второго нет.
+    const nameParts = [brand, line].filter(Boolean);
+    const name = nameParts.join(" ") || yarn?.name || "";
+    return {
+      name,
+      brand,
+      line,
+      isGeneric: form.isGeneric,
+      mPer100g: num(form.mPer100g),
+      densityRaw: form.densityRaw.trim() || null,
+      composition: form.composition.trim() || null,
+    };
+  };
+
+  // Валидация: бренд обязателен (кроме родовых карточек), линейка обязательна,
+  // метраж обязателен.
+  const isValid =
+    (form.isGeneric || form.brand.trim() !== "") &&
+    form.line.trim() !== "" &&
+    form.mPer100g.trim() !== "" &&
+    form.composition.trim() !== "";
 
   return (
-    <Modal isOpen onClose={onClose} title={yarn ? "Артикул" : "Новый артикул"} maxWidth={640}>
+    <Modal isOpen onClose={onClose} title={yarn ? "Артикул" : "Новый артикул"} maxWidth={560}>
       <div className={styles.form}>
-          {field("Название", "name", "Бренд и линейка целиком", true)}
-          {field("Бренд", "brand")}
-          {field("Линейка", "line")}
+        {/* Подсказка — что искали при создании */}
+        {!yarn && initialName && (
+          <p className={styles.fieldWide} style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontFamily: "Mulish, sans-serif" }}>
+            Создание для: <strong>{initialName}</strong>
+          </p>
+        )}
+        {/* Бренд — autocomplete */}
+        <AutocompleteField
+          label="Бренд"
+          value={form.brand}
+          onChange={(v) => set("brand", v)}
+          fetchSuggestions={getYarnBrands}
+          placeholder="Alize, Drops, Garn Studio…"
+          required={!form.isGeneric}
+          hint={form.isGeneric ? "Родовые карточки без бренда" : undefined}
+        />
+
+        {/* Линейка — autocomplete */}
+        <AutocompleteField
+          label="Линейка"
+          value={form.line}
+          onChange={(v) => set("line", v)}
+          fetchSuggestions={getYarnLines}
+          placeholder="Angora Gold, Loves You…"
+          required
+        />
+
+        {/* Чекбокс «Родовое» — только для админа */}
+        {isAdmin && (
           <label className={styles.checkboxField}>
             <input
               type="checkbox"
@@ -88,27 +117,174 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
               </span>
             </span>
           </label>
-          {field("Метраж, м/100 г", "mPer100g", "например, 350")}
-          {field("Вес мотка, г", "ballWeightG")}
-          {field("Длина мотка, м", "ballLengthM")}
-          {field("Спицы", "needleSizeRaw", "4,5—5 мм")}
-          {field("Плотность", "densityRaw", "22 п. × 30 р.")}
-          {field("Состав", "composition", "", true)}
-          {field("Источник", "sourceName", "", true)}
-          {field("Ссылка на источник", "sourceUrl", "", true)}
+        )}
+
+        {/* Метраж — обязательное поле */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Метраж, м/100 г *</span>
+          <input
+            className={styles.fieldInput}
+            value={form.mPer100g}
+            placeholder="например, 350"
+            inputMode="numeric"
+            onChange={(e) => set("mPer100g", e.target.value)}
+          />
+        </label>
+
+        {/* Плотность производителя — необязательное */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Плотность производителя</span>
+          <input
+            className={styles.fieldInput}
+            value={form.densityRaw}
+            placeholder="22 п. × 30 р."
+            onChange={(e) => set("densityRaw", e.target.value)}
+          />
+          <span className={styles.hint}>
+            Плотность вязания, указанная на мотке — число петель и рядов на 10 × 10 см.
+          </span>
+        </label>
+
+        {/* Состав — необязательное, на всю ширину */}
+        <label className={styles.fieldWide}>
+          <span className={styles.fieldLabel}>Состав *</span>
+          <input
+            className={styles.fieldInput}
+            value={form.composition}
+            placeholder="100% акрил; 80% шерсть, 20% полиамид…"
+            onChange={(e) => set("composition", e.target.value)}
+          />
+        </label>
       </div>
 
       <div className={styles.modalFoot}>
         <Button variant="secondary" onClick={onClose}>
           Отмена
         </Button>
-        <Button
-          disabled={!form.name.trim()}
-          onClick={() => onSave(payload())}
-        >
+        <Button disabled={!isValid} onClick={() => onSave(payload())}>
           Сохранить
         </Button>
       </div>
     </Modal>
+  );
+}
+
+// ─── Autocomplete-поле ──────────────────────────────────────────────────────
+
+interface AutocompleteFieldProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  fetchSuggestions: (q?: string) => Promise<{ items: string[] }>;
+  placeholder?: string;
+  required?: boolean;
+  hint?: string;
+}
+
+function AutocompleteField({
+  label,
+  value,
+  onChange,
+  fetchSuggestions,
+  placeholder,
+  required,
+  hint,
+}: AutocompleteFieldProps) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const load = useCallback(
+    (q: string, showDropdown: boolean) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const res = await fetchSuggestions(q || undefined);
+          setSuggestions(res.items);
+          if (showDropdown) {
+            setOpen(res.items.length > 0);
+          }
+          setActiveIdx(-1);
+        } catch {
+          setSuggestions([]);
+        }
+      }, 220);
+    },
+    [fetchSuggestions],
+  );
+
+  // При монтировании только предзагружаем список, НЕ открываем дропдаун.
+  useEffect(() => {
+    load("", false);
+    // Закрываем список по клику вне компонента.
+    const onOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [load]);
+
+  const handleChange = (v: string) => {
+    onChange(v);
+    load(v, true);
+  };
+
+  const handleSelect = (item: string) => {
+    onChange(item);
+    setOpen(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, -1));
+    } else if (e.key === "Enter" && activeIdx >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[activeIdx]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <label className={styles.field}>
+      <span className={styles.fieldLabel}>
+        {label}
+        {required && " *"}
+      </span>
+      <div className={styles.autocompleteWrap} ref={wrapRef}>
+        <input
+          className={styles.fieldInput}
+          value={value}
+          placeholder={placeholder}
+          autoComplete="off"
+          onChange={(e) => handleChange(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onKeyDown={handleKeyDown}
+        />
+        {open && (
+          <div className={styles.suggestions}>
+            {suggestions.map((item, idx) => (
+              <div
+                key={item}
+                className={`${styles.suggestionItem}${idx === activeIdx ? ` ${styles.active}` : ""}`}
+                onMouseDown={() => handleSelect(item)}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {hint && <span className={styles.hint}>{hint}</span>}
+    </label>
   );
 }

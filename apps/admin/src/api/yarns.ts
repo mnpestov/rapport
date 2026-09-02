@@ -93,6 +93,12 @@ export const getYarns = async (params: {
 export const suggestYarns = async (q: string): Promise<{ items: YarnSuggestItem[] }> =>
   json(await fetchWithAuth(`${API_URL}/admin/yarns/suggest?q=${encodeURIComponent(q)}`));
 
+export const getYarnBrands = async (q?: string): Promise<{ items: string[] }> =>
+  json(await fetchWithAuth(`${API_URL}/admin/yarns/brands${q ? `?q=${encodeURIComponent(q)}` : ``}`));
+
+export const getYarnLines = async (q?: string): Promise<{ items: string[] }> =>
+  json(await fetchWithAuth(`${API_URL}/admin/yarns/lines${q ? `?q=${encodeURIComponent(q)}` : ``}`));
+
 export const createYarn = async (data: Partial<YarnItem>): Promise<YarnItem> =>
   json(
     await fetchWithAuth(`${API_URL}/admin/yarns`, {

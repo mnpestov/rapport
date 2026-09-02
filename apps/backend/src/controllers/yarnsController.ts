@@ -67,6 +67,44 @@ export async function listYarns(req: Request, res: Response) {
 }
 
 /**
+ * Уникальные бренды из справочника. Используется для autocomplete в форме
+ * создания/редактирования артикула — чтобы авторы и модераторы выбирали из
+ * уже существующих значений, а не вводили «Alize» и «ализе» как два разных.
+ */
+export async function listYarnBrands(req: Request, res: Response) {
+  const q = String(req.query.q || "").trim();
+  const brands = await prisma.yarn.findMany({
+    where: {
+      brand: { not: null, ...(q ? { contains: q, mode: "insensitive" } : {}) },
+      mergedIntoId: null,
+    },
+    select: { brand: true },
+    distinct: ["brand"],
+    orderBy: { brand: "asc" },
+    take: 30,
+  });
+  res.json({ items: brands.map((b) => b.brand as string) });
+}
+
+/**
+ * Уникальные линейки из справочника. Аналог listYarnBrands для поля line.
+ */
+export async function listYarnLines(req: Request, res: Response) {
+  const q = String(req.query.q || "").trim();
+  const lines = await prisma.yarn.findMany({
+    where: {
+      line: { not: null, ...(q ? { contains: q, mode: "insensitive" } : {}) },
+      mergedIntoId: null,
+    },
+    select: { line: true },
+    distinct: ["line"],
+    orderBy: { line: "asc" },
+    take: 30,
+  });
+  res.json({ items: lines.map((l) => l.line as string) });
+}
+
+/**
  * Подсказка для формы описания. От трёх символов и не длиннее двадцати
  * позиций: 2123 карточки из 2778 не привязаны ни к одному описанию, и без
  * сортировки по числу связей сверху оказывался бы шум.

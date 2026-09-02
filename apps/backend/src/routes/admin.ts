@@ -91,6 +91,8 @@ import { getPriceCheckRuns, getPriceCheckStatus, triggerPriceCheck, getConfirmed
 import {
   listYarns,
   suggestYarns,
+  listYarnBrands,
+  listYarnLines,
   createYarn,
   updateYarn,
   deleteYarn,
@@ -175,6 +177,10 @@ router.get("/yarn-ranges", ...dictReadHandler, getYarnRanges);
 // Подсказка артикулов — здесь же и по той же причине: блок «Пряжа» живёт в
 // общей форме описания, а её открывает и кабинет автора.
 router.get("/yarns/suggest", ...dictReadHandler, suggestYarns);
+// Autocomplete брендов и линеек — доступны и автору (кабинет), и админу.
+// Зарегистрированы до requireAdmin по той же причине что и /yarns/suggest.
+router.get("/yarns/brands", ...dictReadHandler, listYarnBrands);
+router.get("/yarns/lines", ...dictReadHandler, listYarnLines);
 
 // ---------------------------------------------------------------------------
 // All remaining admin routes require an authenticated ADMIN user.

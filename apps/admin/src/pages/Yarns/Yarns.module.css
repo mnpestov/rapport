@@ -220,6 +220,42 @@
   color: var(--text-subtle);
 }
 
+/* Autocomplete: обёртка поля + выпадающий список подсказок */
+.autocompleteWrap {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.suggestionItem {
+  padding: 8px 12px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestionItem:hover,
+.suggestionItem.active {
+  background: var(--surface-muted);
+  color: var(--brand-bright);
+}
+
 .mergeBody {
   padding: 20px 22px;
 }
