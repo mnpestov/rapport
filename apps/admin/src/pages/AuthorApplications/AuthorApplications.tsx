@@ -17,6 +17,9 @@ import toast from "react-hot-toast";
 import styles from "./AuthorApplications.module.css";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
+  // Черновик — незавершённый диалог в боте. Админу в списке не показывается
+  // (нет в STATUS_OPTIONS), метка на случай прямого запроса ?status=DRAFT.
+  DRAFT: "Черновик",
   PENDING: "На рассмотрении",
   NEEDS_INFO: "Нужна информация",
   APPROVED: "Одобрено",
@@ -96,6 +99,7 @@ export function AuthorApplications() {
             <tr>
               <th>Автор</th>
               <th>Пользователь</th>
+              <th>Логин</th>
               <th>Ресурсы</th>
               <th>Статус</th>
               <th>Подана</th>
@@ -111,6 +115,9 @@ export function AuthorApplications() {
                   {app.user.username && (
                     <div className={styles.tdMuted}>@{app.user.username}</div>
                   )}
+                </td>
+                <td className={styles.tdText}>
+                  {app.desiredLogin ?? <span className={styles.tdMuted}>—</span>}
                 </td>
                 <td className={styles.tdMuted}>
                   {app.resources.map((r, i) => (
@@ -173,7 +180,7 @@ export function AuthorApplications() {
             ))}
             {applications.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={6} className={styles.centerState}>
+                <td colSpan={7} className={styles.centerState}>
                   Заявок нет
                 </td>
               </tr>
@@ -228,7 +235,11 @@ function ApproveModal({
   onDone: () => void;
 }) {
   const [mode, setMode] = useState<"existing" | "new">("new");
-  const [login, setLogin] = useState(generateSlug(application.authorName));
+  // Логин, выбранный заявителем при подаче. Для старых заявок без него —
+  // синтез из имени, как раньше. Поле остаётся редактируемым.
+  const [login, setLogin] = useState(
+    application.desiredLogin ?? generateSlug(application.authorName)
+  );
   const [createAuthorName, setCreateAuthorName] = useState(application.authorName);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<AuthorItem[]>([]);

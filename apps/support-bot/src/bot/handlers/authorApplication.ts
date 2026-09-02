@@ -14,9 +14,26 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 120;
 const REAPPLY_COOLDOWN_MS = 24 * 3600 * 1000;
 
+// Совпадает с валидацией на бэкенде (authorCredentialHelpers). Бот — UX-слой:
+// проверяем формат тут ради быстрой понятной ошибки, решает всё равно сервер.
+const LOGIN_MIN = 3;
+const LOGIN_MAX = 30;
+const LOGIN_RE = /^[a-zA-Z0-9._-]+$/;
+
+// «Готово ✓» на шаге ресурсов больше не отправляет заявку — ведёт к шагу
+// выбора логина.
 const RESOURCES_KEYBOARD = new InlineKeyboard()
-  .text('Готово ✓', 'author_app:submit').row()
+  .text('Далее ✓', 'author_app:resources_done').row()
   .text('Отмена', 'author_app:cancel');
+
+// Сводка перед отправкой.
+const CONFIRM_KEYBOARD = new InlineKeyboard()
+  .text('Отправить ✓', 'author_app:submit').row()
+  .text('Изменить логин', 'author_app:change_login').row()
+  .text('Отмена', 'author_app:cancel');
+
+// На шаге выбора логина — только отмена (логин присылается сообщением).
+const LOGIN_KEYBOARD = new InlineKeyboard().text('Отмена', 'author_app:cancel');
 
 // Backend error strings are a stable API contract, not user-facing copy —
 // deliberately in English (see authorApplicationController.ts). Map the
@@ -27,6 +44,10 @@ const KNOWN_ERROR_TRANSLATIONS: Record<string, string> = {
   "You already have a pending application": "У вас уже есть заявка на рассмотрении.",
   "You already have author cabinet access": "У вас уже есть доступ к кабинету автора.",
   "Please wait 24h before reapplying": "Повторно подать можно через 24 часа после отклонения.",
+  "login_taken": "Этот логин уже занят. Придумайте другой.",
+  "no_draft": "Сессия заявки устарела. Начните заново: /become_author",
+  "login_mismatch": "Что-то пошло не так с логином. Начните заново: /become_author",
+  "credential_exists": "У вас уже есть логин для входа.",
 };
 
 function translateError(message: string): string {
@@ -46,13 +67,54 @@ function resetSession(ctx: CustomContext): void {
   ctx.session.authorAppName = undefined;
   ctx.session.authorAppResources = [];
   ctx.session.authorAppResponseText = undefined;
+  ctx.session.authorAppLogin = undefined;
+  ctx.session.authorAppLoginPreexisting = undefined;
 }
 
 function startDialog(ctx: CustomContext): Promise<unknown> {
   ctx.session.authorAppStep = 'name';
   ctx.session.authorAppName = undefined;
   ctx.session.authorAppResources = [];
+  ctx.session.authorAppLogin = undefined;
+  ctx.session.authorAppLoginPreexisting = undefined;
   return ctx.reply('Как называется ваш авторский профиль?');
+}
+
+// Просит придумать логин. Вызывается после шага ресурсов и по кнопке
+// «Изменить логин».
+function askLogin(ctx: CustomContext): Promise<unknown> {
+  ctx.session.authorAppStep = 'login';
+  return ctx.reply(
+    [
+      'Придумайте логин для входа в кабинет автора.',
+      `Латинские буквы, цифры, точка, дефис или подчёркивание, от ${LOGIN_MIN} до ${LOGIN_MAX} символов.`,
+      '',
+      'Пароль сгенерируется автоматически — его нужно будет сменить при первом входе.',
+    ].join('\n'),
+    { reply_markup: LOGIN_KEYBOARD },
+  );
+}
+
+// Показывает сводку заявки и ждёт подтверждения.
+function showSummary(ctx: CustomContext): Promise<unknown> {
+  ctx.session.authorAppStep = 'confirm';
+  const name = ctx.session.authorAppName ?? '—';
+  const login = ctx.session.authorAppLogin ?? '—';
+  const resources = ctx.session.authorAppResources;
+  const resourceLines = resources.map((r) => `• ${r}`).join('\n');
+  const loginNote = ctx.session.authorAppLoginPreexisting ? ' (уже создан)' : '';
+
+  return ctx.reply(
+    [
+      'Проверьте заявку:',
+      '',
+      `Профиль: ${name}`,
+      `Логин: ${login}${loginNote}`,
+      'Ресурсы:',
+      resourceLines,
+    ].join('\n'),
+    { reply_markup: CONFIRM_KEYBOARD },
+  );
 }
 
 // /become_author — entry point. Checks the current application status first
@@ -85,6 +147,12 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
   }
 
   switch (result.status) {
+    case 'DRAFT':
+      // Незавершённый черновик прошлого захода — молча выбрасываем его
+      // (логин освободится) и начинаем диалог заново.
+      await backendClient.discardApplicationDraft(telegramId);
+      await startDialog(ctx);
+      return;
     case 'PENDING':
       await ctx.reply('Заявка на рассмотрении. Мы сообщим о решении.');
       return;
@@ -153,7 +221,7 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
 
   if (step === 'resources') {
     if (ctx.session.authorAppResources.length >= MAX_RESOURCES) {
-      await ctx.reply('Максимум 10 ресурсов. Нажмите «Готово ✓», чтобы отправить заявку.', {
+      await ctx.reply('Максимум 10 ресурсов. Нажмите «Далее ✓».', {
         reply_markup: RESOURCES_KEYBOARD,
       });
       return true;
@@ -166,9 +234,72 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
     }
     ctx.session.authorAppResources.push(text);
     await ctx.reply(
-      `Добавлено (${ctx.session.authorAppResources.length}/${MAX_RESOURCES}). Пришлите ещё ссылку или нажмите «Готово ✓».`,
+      `Добавлено (${ctx.session.authorAppResources.length}/${MAX_RESOURCES}). Пришлите ещё ссылку или нажмите «Далее ✓».`,
       { reply_markup: RESOURCES_KEYBOARD },
     );
+    return true;
+  }
+
+  if (step === 'login') {
+    if (text.length < LOGIN_MIN || text.length > LOGIN_MAX) {
+      await ctx.reply(
+        `Логин должен быть от ${LOGIN_MIN} до ${LOGIN_MAX} символов. Попробуйте ещё раз.`,
+        { reply_markup: LOGIN_KEYBOARD },
+      );
+      return true;
+    }
+    if (!LOGIN_RE.test(text)) {
+      await ctx.reply(
+        'Только латинские буквы, цифры, точка, дефис и подчёркивание — без пробелов. Попробуйте ещё раз.',
+        { reply_markup: LOGIN_KEYBOARD },
+      );
+      return true;
+    }
+
+    const authorName = ctx.session.authorAppName;
+    const resources = ctx.session.authorAppResources;
+    if (!authorName || resources.length === 0) {
+      await ctx.reply('Сессия заявки устарела. Начните заново: /become_author');
+      resetSession(ctx);
+      return true;
+    }
+
+    try {
+      const { login } = await backendClient.reserveApplicationLogin({
+        telegramId,
+        login: text,
+        authorName,
+        resources,
+      });
+      ctx.session.authorAppLogin = login;
+      ctx.session.authorAppLoginPreexisting = false;
+      await showSummary(ctx);
+    } catch (err) {
+      if (err instanceof AuthorApplicationError) {
+        if (err.message === 'credential_exists') {
+          // Учётка появилась параллельно (второе устройство) — берём её.
+          ctx.session.authorAppLogin = (err as any).login ?? text;
+          ctx.session.authorAppLoginPreexisting = true;
+          await showSummary(ctx);
+          return true;
+        }
+        await ctx.reply(translateError(err.message), { reply_markup: LOGIN_KEYBOARD });
+        return true;
+      }
+      console.error('[authorApp] reserveApplicationLogin failed:', err);
+      await ctx.reply('Не удалось проверить логин. Попробуйте позже.', {
+        reply_markup: LOGIN_KEYBOARD,
+      });
+    }
+    return true;
+  }
+
+  // step === 'confirm' — ждём нажатия кнопки, произвольный текст игнорируем
+  // (мягко напоминаем про кнопки).
+  if (step === 'confirm') {
+    await ctx.reply('Нажмите «Отправить ✓», «Изменить логин» или «Отмена».', {
+      reply_markup: CONFIRM_KEYBOARD,
+    });
     return true;
   }
 
@@ -190,7 +321,9 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
   return true;
 }
 
-export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
+// «Далее ✓» на шаге ресурсов — не отправляет заявку, а ведёт к выбору
+// логина (или к сводке, если логин у пользователя уже есть).
+export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<void> {
   await ctx.answerCallbackQuery();
 
   const telegramId = ctx.from.id;
@@ -198,19 +331,77 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
   const resources = ctx.session.authorAppResources;
 
   if (ctx.session.authorAppStep !== 'resources' || !authorName) {
-    // Stale callback (e.g. user restarted /become_author in another
-    // message) — nothing to submit.
     await ctx.reply('Сессия заявки устарела. Начните заново: /become_author');
     return;
   }
+  if (resources.length === 0) {
+    await ctx.reply('Укажите хотя бы один ресурс.', { reply_markup: RESOURCES_KEYBOARD });
+    return;
+  }
 
+  // Уже есть логин (заведён через «вход на сайт») — шаг выбора пропускаем,
+  // сразу закрепляем его за черновиком и показываем сводку.
+  let existingLogin: string | null = null;
+  try {
+    const status = await backendClient.getApplicationStatus(telegramId);
+    existingLogin = status.existingLogin ?? null;
+  } catch {
+    // Не смогли узнать — не страшно, спросим логин как обычно.
+  }
+
+  if (existingLogin) {
+    try {
+      const { login } = await backendClient.reserveApplicationLogin({
+        telegramId,
+        login: existingLogin,
+        authorName,
+        resources,
+      });
+      ctx.session.authorAppLogin = login;
+      ctx.session.authorAppLoginPreexisting = true;
+      await showSummary(ctx);
+      return;
+    } catch {
+      // Что-то помешало закрепить существующий логин — падаем в обычный
+      // сценарий с ручным вводом.
+    }
+  }
+
+  await askLogin(ctx);
+}
+
+// «Изменить логин» на сводке — назад к шагу ввода логина.
+export async function handleAuthorAppChangeLogin(ctx: CallbackCtx): Promise<void> {
+  await ctx.answerCallbackQuery();
+  if (ctx.session.authorAppLoginPreexisting) {
+    // Логин зафиксирован (существующая учётка) — менять в диалоге нельзя.
+    await ctx.reply('Ваш логин уже создан и его нельзя изменить здесь.', {
+      reply_markup: CONFIRM_KEYBOARD,
+    });
+    return;
+  }
+  await askLogin(ctx);
+}
+
+export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
+  await ctx.answerCallbackQuery();
+
+  const telegramId = ctx.from.id;
+  const authorName = ctx.session.authorAppName;
+  const resources = ctx.session.authorAppResources;
+  const login = ctx.session.authorAppLogin;
+
+  if (ctx.session.authorAppStep !== 'confirm' || !authorName || !login) {
+    await ctx.reply('Сессия заявки устарела. Начните заново: /become_author');
+    return;
+  }
   if (resources.length === 0) {
     await ctx.reply('Укажите хотя бы один ресурс.', { reply_markup: RESOURCES_KEYBOARD });
     return;
   }
 
   try {
-    await backendClient.submitAuthorApplication({ telegramId, authorName, resources });
+    await backendClient.submitAuthorApplication({ telegramId, authorName, resources, login });
   } catch (err) {
     if (err instanceof AuthorApplicationError) {
       logEvent({
@@ -220,6 +411,12 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
         status: err.status,
         error: err.message,
       });
+      // Логин заняли между сводкой и отправкой — вернуть к выбору логина.
+      if (err.message === 'login_taken') {
+        await ctx.reply('Пока вы заполняли заявку, этот логин заняли. Придумайте другой.');
+        await askLogin(ctx);
+        return;
+      }
       await ctx.reply(translateError(err.message));
     } else {
       logEvent({
@@ -234,11 +431,18 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
   }
 
   resetSession(ctx);
-  await ctx.reply('Заявка принята ✅. Мы сообщим о решении.');
+  await ctx.reply(
+    'Заявка принята ✅.\n\n' +
+      'Нам потребуется время на проверку информации. ' +
+      'При необходимости администратор свяжется с вами.',
+  );
 }
 
 export async function handleAuthorAppCancel(ctx: CallbackCtx): Promise<void> {
   await ctx.answerCallbackQuery();
+  // Убираем черновик, чтобы освободить закреплённый логин. Best-effort:
+  // если не удалось — подберёт фоновая уборка.
+  await backendClient.discardApplicationDraft(ctx.from.id);
   resetSession(ctx);
   await ctx.reply('Отменено.');
 }

@@ -710,6 +710,11 @@ model WebSession {
 // AuthorApplication implementation_plan.md). Submitted from the mini app or
 // the support bot, reviewed by an admin.
 enum ApplicationStatus {
+  // Заявка ещё заполняется в боте: пользователь выбрал логин (тот держится
+  // за ним), но не подтвердил отправку. Администратору не видна. Живёт
+  // сутки без изменений, потом убирается фоновой задачей и логин
+  // освобождается (BROWSER_ACCESS_PLAN — self-serve логин автора).
+  DRAFT
   PENDING
   NEEDS_INFO
   APPROVED
@@ -717,19 +722,19 @@ enum ApplicationStatus {
 }
 
 // ---------------------------------------------------------------------------
-// A user's request to become an author. At most one PENDING application per
-// user — enforced by a partial unique index Prisma can't express in schema
-// syntax; add it manually to the generated migration SQL (same pattern as
-// Draft_active_patternId_key below):
+// A user's request to become an author. At most one DRAFT-or-PENDING
+// application per user — enforced by a partial unique index Prisma can't
+// express in schema syntax; add it manually to the generated migration SQL
+// (same pattern as Draft_active_patternId_key below):
 //
-//   CREATE UNIQUE INDEX "AuthorApplication_pending_userId_key"
+//   CREATE UNIQUE INDEX "AuthorApplication_open_userId_key"
 //     ON "AuthorApplication"("userId")
-//     WHERE status = 'PENDING';
+//     WHERE status IN ('DRAFT', 'PENDING');
 //
-// NEEDS_INFO and REJECTED applications are NOT covered by that index (the
-// user can freely resubmit once out of NEEDS_INFO, and REJECTED has its own
-// 24h cooldown enforced in application code via processedAt, not the DB) —
-// only one application can ever be "awaiting a decision" at a time.
+// DRAFT is included so a user can't accumulate several half-filled drafts
+// (each holding a login). NEEDS_INFO and REJECTED are NOT covered (the user
+// can resubmit once out of NEEDS_INFO, and REJECTED has its own 24h cooldown
+// enforced in application code via processedAt, not the DB).
 // ---------------------------------------------------------------------------
 model AuthorApplication {
   id     String @id @default(uuid())
@@ -740,6 +745,13 @@ model AuthorApplication {
   // Max 10 URLs, each max 500 chars — enforced in authorApplicationController,
   // not at the DB level (Postgres text[] has no per-element length constraint).
   resources  String[]
+
+  // Логин, который пользователь выбрал себе для входа в кабинет. Пока
+  // заявка жива и не отклонена, логин считается занятым (проверка занятости
+  // смотрит и на UserCredential.login, и сюда). Очищается при отклонении —
+  // тогда логин снова свободен. null у заявок, поданных до внедрения
+  // self-serve логина: approve для них придумывает логин из имени, как раньше.
+  desiredLogin String?
 
   status ApplicationStatus @default(PENDING)
   // Set by an admin on needs-info/reject; explains what's missing or why.

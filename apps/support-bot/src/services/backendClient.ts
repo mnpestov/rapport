@@ -142,12 +142,77 @@ export class BackendClient {
     }
   }
 
+  // Шаг «логин» в диалоге заявки: проверяет формат и занятость логина и
+  // закрепляет его за черновиком заявки (создаёт черновик, если его нет).
+  // На занятый логин бросает AuthorApplicationError с message='login_taken'.
+  async reserveApplicationLogin(params: {
+    telegramId: number;
+    login: string;
+    authorName: string;
+    resources: string[];
+  }): Promise<{ login: string }> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/author-application/reserve-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify(params),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] reserveApplicationLogin timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    const data = await response.json().catch(() => ({}) as { error?: string; login?: string });
+    if (!response.ok) {
+      throw new AuthorApplicationError(
+        response.status,
+        data.error || `reserveApplicationLogin failed with ${response.status}`,
+      );
+    }
+    return data as { login: string };
+  }
+
+  // Кнопка «Отмена» на сводке: удаляет черновик заявки, логин освобождается.
+  // Тихо игнорирует отсутствие черновика.
+  async discardApplicationDraft(telegramId: number): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      await fetch(`${this.baseUrl}/internal/bot/author-application/discard-draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId }),
+        signal: controller.signal,
+      });
+    } catch {
+      // Best-effort: не смогли удалить черновик — его подберёт фоновая
+      // уборка через сутки. Пользователю показывать нечего.
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // implementation_plan.md §4.2/§6 — telegramId in the body, not query
   // (query strings can end up in proxy access logs).
+  //
+  // Финальная отправка: заявка уже есть как черновик с закреплённым логином
+  // (см. reserveApplicationLogin), здесь её переводят в «на рассмотрении».
+  // login передаётся для сверки бэкендом с черновиком.
   async submitAuthorApplication(params: {
     telegramId: number;
     authorName: string;
     resources: string[];
+    login: string;
   }): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { ApplicationStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 
 // Shared by authorApplicationController.ts (approve) and
@@ -7,6 +8,84 @@ import { prisma } from "../prismaClient";
 // between the two controllers.
 
 const MAX_LOGIN_LENGTH = 60;
+
+// ---------------------------------------------------------------------------
+// Правила логина, который пользователь придумывает сам — при заведении
+// доступа на сайт (userCredentialController) и при подаче заявки на кабинет
+// автора. Единственное место, где эти правила заданы; остальные их
+// импортируют.
+// ---------------------------------------------------------------------------
+
+export const LOGIN_MIN = 3;
+export const LOGIN_MAX = 30;
+export const LOGIN_RE = /^[a-z0-9._-]+$/;
+
+/**
+ * Проверяет формат придуманного пользователем логина и приводит его к
+ * нормальному виду (нижний регистр, без пробелов по краям). Сообщения
+ * об ошибке — на русском, показываются пользователю в боте.
+ */
+export function validateLogin(
+  raw: unknown
+): { ok: true; login: string } | { ok: false; error: string } {
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    return { ok: false, error: "Логин обязателен" };
+  }
+  const login = normalizeLogin(raw);
+  if (login.length < LOGIN_MIN || login.length > LOGIN_MAX) {
+    return { ok: false, error: `Логин должен быть от ${LOGIN_MIN} до ${LOGIN_MAX} символов` };
+  }
+  if (!LOGIN_RE.test(login)) {
+    return {
+      ok: false,
+      error: "Логин может содержать только латинские буквы, цифры, точку, дефис и подчёркивание",
+    };
+  }
+  return { ok: true, login };
+}
+
+// Заявки в этих статусах держат за собой логin (см. комментарий к
+// AuthorApplication.desiredLogin). REJECTED сюда не входит — при отклонении
+// логин очищается.
+const LOGIN_HOLDING_STATUSES: ApplicationStatus[] = [
+  ApplicationStatus.DRAFT,
+  ApplicationStatus.PENDING,
+  ApplicationStatus.NEEDS_INFO,
+  ApplicationStatus.APPROVED,
+];
+
+/**
+ * Свободен ли логин. Занятым считается логин, который:
+ *  - уже есть среди выданных учётных записей, либо
+ *  - держится живой заявкой на кабинет автора (DRAFT/PENDING/NEEDS_INFO/APPROVED).
+ *
+ * exceptUserId — чей собственный «захват» не считать конфликтом: заявка-черновик
+ * самого пользователя, когда он переприсылает тот же логин.
+ */
+export async function isLoginAvailable(
+  login: string,
+  exceptUserId?: string
+): Promise<boolean> {
+  const normalized = normalizeLogin(login);
+
+  const credential = await prisma.userCredential.findUnique({
+    where: { login: normalized },
+    select: { userId: true },
+  });
+  if (credential && credential.userId !== exceptUserId) return false;
+
+  const application = await prisma.authorApplication.findFirst({
+    where: {
+      desiredLogin: normalized,
+      status: { in: LOGIN_HOLDING_STATUSES },
+      ...(exceptUserId ? { NOT: { userId: exceptUserId } } : {}),
+    },
+    select: { id: true },
+  });
+  if (application) return false;
+
+  return true;
+}
 
 // UserCredential.login хранится всегда в нижнем регистре (нормализация на
 // запись — BROWSER_ACCESS_PLAN.md §4.1). Здесь base приходит из generateSlug,

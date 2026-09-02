@@ -6,6 +6,10 @@ export interface AuthorApplication {
   id: string;
   authorName: string;
   resources: string[];
+  // Логин, который заявитель выбрал себе для входа в кабинет. null у заявок,
+  // поданных до внедрения self-serve логина — для них approve придумывает
+  // логин из имени.
+  desiredLogin: string | null;
   status: ApplicationStatus;
   adminComment: string | null;
   // The applicant's reply to adminComment, sent via the bot's "Ответить"

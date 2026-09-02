@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
-import { generateTempPassword, normalizeLogin, normalizeP2002Target } from "../utils/authorCredentialHelpers";
+import { generateTempPassword, normalizeP2002Target, validateLogin } from "../utils/authorCredentialHelpers";
 
 /**
  * Self-serve учётка для входа в браузерную версию
@@ -19,28 +19,8 @@ import { generateTempPassword, normalizeLogin, normalizeP2002Target } from "../u
 
 const BCRYPT_COST = 12;
 
-// Логин виден только владельцу и админу, но набирать его человеку — с
-// клавиатуры телефона, поэтому латиница/цифры/._- без пробелов. Верхняя
-// граница совпадает с той, что уже действует для машинных авторских логинов
-// (resolveUniqueLogin), нижняя — чтобы логин нельзя было сделать
-// неотличимо коротким.
-const LOGIN_MIN = 3;
-const LOGIN_MAX = 30;
-const LOGIN_RE = /^[a-z0-9._-]+$/;
-
-function validateLogin(raw: unknown): { ok: true; login: string } | { ok: false; error: string } {
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    return { ok: false, error: "Логин обязателен" };
-  }
-  const login = normalizeLogin(raw);
-  if (login.length < LOGIN_MIN || login.length > LOGIN_MAX) {
-    return { ok: false, error: `Логин должен быть от ${LOGIN_MIN} до ${LOGIN_MAX} символов` };
-  }
-  if (!LOGIN_RE.test(login)) {
-    return { ok: false, error: "Логин может содержать только латинские буквы, цифры, точку, дефис и подчёркивание" };
-  }
-  return { ok: true, login };
-}
+// Правила логина (длина, символы) и сама проверка — в
+// authorCredentialHelpers, общие с заявкой на кабинет автора.
 
 function parseTelegramId(raw: unknown): bigint | null {
   if (raw === undefined || raw === null) return null;

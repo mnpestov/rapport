@@ -5,9 +5,18 @@ import { prisma } from "../prismaClient";
 import { generateSlug } from "../utils/slug";
 import { sendCredentials, sendNeedsInfo, sendRejected } from "../services/authorNotifier";
 import { issueCredentials } from "./authorCredentialController";
-import { resolveUniqueLogin, generateTempPassword, normalizeP2002Target } from "../utils/authorCredentialHelpers";
+import {
+  resolveUniqueLogin,
+  generateTempPassword,
+  normalizeP2002Target,
+  validateLogin,
+  isLoginAvailable,
+} from "../utils/authorCredentialHelpers";
 
 const REAPPLY_COOLDOWN_MS = 24 * 3600 * 1000;
+// Черновик заявки без изменений дольше этого срока считается брошенным:
+// фоновая задача его удаляет, освобождая логин.
+const DRAFT_TTL_MS = 24 * 3600 * 1000;
 const MAX_RESOURCES = 10;
 const MAX_RESOURCE_LENGTH = 500;
 const MIN_NAME_LENGTH = 2;
@@ -17,6 +26,15 @@ const MAX_USER_RESPONSE_LENGTH = 1000;
 interface ApplicationInput {
   authorName: string;
   resources: string[];
+}
+
+function parseTelegramId(raw: unknown): bigint | null {
+  if (raw === undefined || raw === null) return null;
+  try {
+    return BigInt(raw as any);
+  } catch {
+    return null;
+  }
 }
 
 // Shared validation — used by both the mini-app route (§4.1) and the bot's
@@ -133,7 +151,8 @@ export const getMyApplication = async (req: Request, res: Response): Promise<voi
   const userId = req.user!.userId;
   try {
     const application = await prisma.authorApplication.findFirst({
-      where: { userId },
+      // DRAFT — незавершённый черновик из бота, для mini-app он «нет заявки».
+      where: { userId, status: { not: ApplicationStatus.DRAFT } },
       orderBy: { createdAt: "desc" },
       select: { status: true, adminComment: true, processedAt: true },
     });
@@ -158,19 +177,145 @@ export const getMyApplication = async (req: Request, res: Response): Promise<voi
   }
 };
 
-// POST /internal/bot/author-application — bot, requireBotApiKey (§4.2)
-export const submitBotAuthorApplication = async (req: Request, res: Response): Promise<void> => {
-  const { telegramId } = req.body ?? {};
-  if (telegramId === undefined || telegramId === null) {
-    res.status(400).json({ error: "telegramId is required" });
+// POST /internal/bot/author-application/reserve-login — bot, requireBotApiKey.
+//
+// Шаг «логин» в диалоге бота. Пользователь придумал логин — проверяем формат
+// и занятость и закрепляем его за черновиком заявки этого пользователя.
+// Черновик создаётся здесь, если его ещё нет: имя профиля и ресурсы бот уже
+// собрал на предыдущих шагах и присылает вместе с логином.
+//
+// Идемпотентно по логину: повторный вызов с тем же логином (кнопка
+// «Изменить логин» → тот же) просто обновляет черновик.
+export const reserveApplicationLogin = async (req: Request, res: Response): Promise<void> => {
+  const telegramId = parseTelegramId(req.body?.telegramId);
+  if (telegramId === null) {
+    res.status(400).json({ error: "telegramId is required and must be numeric" });
     return;
   }
 
-  let telegramIdBig: bigint;
+  const loginCheck = validateLogin(req.body?.login);
+  if (!loginCheck.ok) {
+    res.status(400).json({ error: loginCheck.error });
+    return;
+  }
+  const { login } = loginCheck;
+
+  // Имя и ресурсы для черновика. На этом шаге они уже собраны ботом; при
+  // финальной отправке пришлются снова и перезапишутся.
+  const draftInput = validateApplicationInput(req.body);
+  if (!draftInput.ok) {
+    res.status(400).json({ error: draftInput.error });
+    return;
+  }
+
   try {
-    telegramIdBig = BigInt(telegramId);
-  } catch {
-    res.status(400).json({ error: "telegramId must be numeric" });
+    const user = await prisma.user.findUnique({ where: { telegramId } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Общие проверки права на подачу — как при финальной отправке. Нет
+    // смысла давать закрепить логин тому, кто и заявку подать не сможет.
+    const canApply = await checkCanApply(user.id);
+    if (!canApply.ok) {
+      res.status(canApply.status).json({ error: canApply.error });
+      return;
+    }
+
+    // Уже есть учётка (пользователь завёл логин через «вход на сайт») —
+    // выбирать логин заново нельзя, бот этот шаг вообще пропускает. Если
+    // всё же дошло сюда — отдаём существующий логин, шаг бессмысленен.
+    const existingCredential = await prisma.userCredential.findUnique({
+      where: { userId: user.id },
+      select: { login: true },
+    });
+    if (existingCredential) {
+      res.status(409).json({ error: "credential_exists", login: existingCredential.login });
+      return;
+    }
+
+    if (!(await isLoginAvailable(login, user.id))) {
+      res.status(409).json({ error: "login_taken" });
+      return;
+    }
+
+    // Черновик у пользователя один (partial unique index по DRAFT+PENDING).
+    const draft = await prisma.authorApplication.findFirst({
+      where: { userId: user.id, status: ApplicationStatus.DRAFT },
+      select: { id: true },
+    });
+
+    if (draft) {
+      await prisma.authorApplication.update({
+        where: { id: draft.id },
+        data: {
+          desiredLogin: login,
+          authorName: draftInput.value.authorName,
+          resources: draftInput.value.resources,
+        },
+      });
+    } else {
+      await prisma.authorApplication.create({
+        data: {
+          userId: user.id,
+          authorName: draftInput.value.authorName,
+          resources: draftInput.value.resources,
+          desiredLogin: login,
+          status: ApplicationStatus.DRAFT,
+        },
+      });
+    }
+
+    res.json({ ok: true, login });
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      // Гонка: логин заняли между проверкой и записью, либо параллельный
+      // reserve-login того же пользователя.
+      res.status(409).json({ error: "login_taken" });
+      return;
+    }
+    console.error("[AuthorApplication] reserveApplicationLogin failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /internal/bot/author-application/discard-draft — bot, requireBotApiKey.
+// Кнопка «Отмена» на сводке: удаляем черновик, логин освобождается.
+export const discardApplicationDraft = async (req: Request, res: Response): Promise<void> => {
+  const telegramId = parseTelegramId(req.body?.telegramId);
+  if (telegramId === null) {
+    res.status(400).json({ error: "telegramId is required and must be numeric" });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { telegramId } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    await prisma.authorApplication.deleteMany({
+      where: { userId: user.id, status: ApplicationStatus.DRAFT },
+    });
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("[AuthorApplication] discardApplicationDraft failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /internal/bot/author-application — bot, requireBotApiKey (§4.2).
+//
+// Финальная отправка. Заявка уже существует как черновик (создан на шаге
+// reserve-login) с закреплённым логином — переводим её в PENDING и
+// перезаписываем имя/ресурсы финальными значениями.
+export const submitBotAuthorApplication = async (req: Request, res: Response): Promise<void> => {
+  const telegramId = parseTelegramId(req.body?.telegramId);
+  if (telegramId === null) {
+    res.status(400).json({ error: "telegramId is required and must be numeric" });
     return;
   }
 
@@ -180,23 +325,49 @@ export const submitBotAuthorApplication = async (req: Request, res: Response): P
     return;
   }
 
+  // Логин из запроса — для сверки с черновиком (защита от рассинхрона
+  // бота и бэкенда).
+  const loginCheck = validateLogin(req.body?.login);
+  if (!loginCheck.ok) {
+    res.status(400).json({ error: loginCheck.error });
+    return;
+  }
+
   try {
-    const user = await prisma.user.findUnique({ where: { telegramId: telegramIdBig } });
+    const user = await prisma.user.findUnique({ where: { telegramId } });
     if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
 
-    // Same pre-checks as the mini-app route — the bot FSM is a UX layer,
-    // not a security boundary (see implementation_plan.md §4.2 note).
     const canApply = await checkCanApply(user.id);
     if (!canApply.ok) {
       res.status(canApply.status).json({ error: canApply.error });
       return;
     }
 
-    const application = await createApplication(user.id, validation.value);
-    res.status(201).json({ id: application.id, status: application.status });
+    const draft = await prisma.authorApplication.findFirst({
+      where: { userId: user.id, status: ApplicationStatus.DRAFT },
+    });
+    if (!draft) {
+      res.status(409).json({ error: "no_draft" });
+      return;
+    }
+    if (draft.desiredLogin !== loginCheck.login) {
+      // Бот и бэкенд разошлись — пусть бот начнёт диалог заново.
+      res.status(409).json({ error: "login_mismatch" });
+      return;
+    }
+
+    const updated = await prisma.authorApplication.update({
+      where: { id: draft.id },
+      data: {
+        authorName: validation.value.authorName,
+        resources: validation.value.resources,
+        status: ApplicationStatus.PENDING,
+      },
+    });
+    res.status(201).json({ id: updated.id, status: updated.status });
   } catch (error: any) {
     if (error.code === "P2002") {
       res.status(409).json({ error: "You already have a pending application" });
@@ -206,6 +377,19 @@ export const submitBotAuthorApplication = async (req: Request, res: Response): P
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// Фоновая уборка брошенных черновиков: не менялись дольше суток → удаляем,
+// логин освобождается. Вызывается по расписанию (см. index.ts).
+export async function cleanupAbandonedApplicationDrafts(): Promise<number> {
+  const cutoff = new Date(Date.now() - DRAFT_TTL_MS);
+  const { count } = await prisma.authorApplication.deleteMany({
+    where: { status: ApplicationStatus.DRAFT, updatedAt: { lt: cutoff } },
+  });
+  if (count > 0) {
+    console.log(`[AuthorApplication] cleaned up ${count} abandoned draft(s)`);
+  }
+  return count;
+}
 
 // POST /internal/bot/author-application/respond — bot, requireBotApiKey.
 // Lets an applicant reply to a NEEDS_INFO application without spawning a
@@ -318,14 +502,22 @@ export const getBotApplicationStatus = async (req: Request, res: Response): Prom
       return;
     }
 
-    const application = await prisma.authorApplication.findFirst({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      select: { status: true, adminComment: true, processedAt: true },
-    });
+    const [application, credential] = await Promise.all([
+      prisma.authorApplication.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, adminComment: true, processedAt: true, desiredLogin: true },
+      }),
+      // Есть ли уже учётка — боту нужно, чтобы в диалоге заявки решить,
+      // спрашивать логин или взять существующий. Отдаём и когда заявки нет.
+      prisma.userCredential.findUnique({
+        where: { userId: user.id },
+        select: { login: true },
+      }),
+    ]);
 
     if (!application) {
-      res.json({ status: null });
+      res.json({ status: null, existingLogin: credential?.login ?? null });
       return;
     }
 
@@ -333,6 +525,10 @@ export const getBotApplicationStatus = async (req: Request, res: Response): Prom
       status: application.status,
       adminComment: application.adminComment,
       processedAt: application.processedAt?.toISOString() ?? null,
+      // Логин из черновика/заявки — бот показывает его в сводке.
+      desiredLogin: application.desiredLogin,
+      // Существующий логин пользователя, если учётка уже заведена.
+      existingLogin: credential?.login ?? null,
     });
   } catch (error) {
     console.error("[AuthorApplication] getBotApplicationStatus failed:", error);
@@ -367,6 +563,9 @@ export const getAuthorApplications = async (req: Request, res: Response): Promis
         id: a.id,
         authorName: a.authorName,
         resources: a.resources,
+        // Логин, который пользователь выбрал при подаче. Админ видит его
+        // и может переопределить в форме одобрения.
+        desiredLogin: a.desiredLogin,
         status: a.status,
         adminComment: a.adminComment,
         // The applicant's reply to adminComment (see POST
@@ -414,10 +613,21 @@ export const approveAuthorApplication = async (req: Request, res: Response): Pro
       return;
     }
 
-    const baseLogin = typeof bodyLogin === "string" && bodyLogin.trim()
-      ? generateSlug(bodyLogin.trim())
-      : generateSlug(createAuthorName ?? app.authorName);
-    const login = await resolveUniqueLogin(baseLogin);
+    // Порядок выбора логина:
+    //  1. Логин, который выбрал сам пользователь при подаче (обычный путь).
+    //     Он уже закреплён за заявкой, коллизии быть не должно — берём как есть.
+    //  2. Логин, введённый администратором в форме одобрения (ручной
+    //     override, либо резолв заявок без желаемого логина).
+    //  3. Синтез из имени — для старых заявок, поданных до self-serve логина.
+    let login: string;
+    if (app.desiredLogin) {
+      login = app.desiredLogin;
+    } else {
+      const baseLogin = typeof bodyLogin === "string" && bodyLogin.trim()
+        ? generateSlug(bodyLogin.trim())
+        : generateSlug(createAuthorName ?? app.authorName);
+      login = await resolveUniqueLogin(baseLogin);
+    }
 
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
@@ -551,6 +761,8 @@ export const rejectAuthorApplication = async (req: Request, res: Response): Prom
         adminComment: typeof comment === "string" && comment.trim() ? comment.trim() : null,
         processedById: adminUserId,
         processedAt: new Date(),
+        // Отклонённая заявка логин больше не держит — освобождаем.
+        desiredLogin: null,
       },
     });
 

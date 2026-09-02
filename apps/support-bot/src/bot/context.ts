@@ -9,9 +9,19 @@ export interface SessionData {
   // 'respond' is a separate flow, not a resumption of 'name'/'resources':
   // it replies to an existing NEEDS_INFO application instead of creating a
   // new one (see /internal/bot/author-application/respond).
-  authorAppStep?: 'name' | 'resources' | 'respond';
+  //
+  // 'login' — пользователь придумывает логин для входа в кабинет; логин
+  // закрепляется за черновиком заявки на бэкенде. 'confirm' — показана
+  // сводка (имя, ресурсы, логин), ждём «Отправить»/«Изменить логин»/«Отмена».
+  authorAppStep?: 'name' | 'resources' | 'login' | 'confirm' | 'respond';
   authorAppName?: string;
   authorAppResources: string[];
+  // Логин, закреплённый за черновиком заявки на шаге 'login'. Нужен на шаге
+  // 'confirm' (показать в сводке) и при финальной отправке (сверка).
+  authorAppLogin?: string;
+  // Логин уже был у пользователя (завёл через «вход на сайт») — шаг 'login'
+  // пропущен, логин взят готовый, менять его в диалоге нельзя.
+  authorAppLoginPreexisting?: boolean;
   // Accumulated while in the 'respond' step (each message appended, one per
   // line — no attempt to separate "links" from "text", the backend stores
   // it as one free-text field), sent on "Отправить ✓".
