@@ -11,7 +11,6 @@ import {
   handleAuthorAppResourcesDone,
   handleAuthorAppSubmit,
   handleAuthorAppCancel,
-  handleAuthorAppRespondStart,
   handleAuthorAppRespondSubmit,
 } from './handlers/authorApplication';
 import {
@@ -57,7 +56,6 @@ export function createBot(): Bot<CustomContext> {
   bot.callbackQuery('author_app:resources_done', handleAuthorAppResourcesDone);
   bot.callbackQuery('author_app:submit', handleAuthorAppSubmit);
   bot.callbackQuery('author_app:cancel', handleAuthorAppCancel);
-  bot.callbackQuery('author_app:respond_start', handleAuthorAppRespondStart);
   bot.callbackQuery('author_app:respond_submit', handleAuthorAppRespondSubmit);
   bot.on('message', handleFallback);
 

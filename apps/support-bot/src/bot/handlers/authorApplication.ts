@@ -58,10 +58,6 @@ function translateError(message: string): string {
   return KNOWN_ERROR_TRANSLATIONS[message] ?? 'Не удалось выполнить действие. Попробуйте ещё раз позже.';
 }
 
-const NEEDS_INFO_KEYBOARD = new InlineKeyboard()
-  .text('Ответить', 'author_app:respond_start').row()
-  .text('Отмена', 'author_app:cancel');
-
 const RESPOND_KEYBOARD = new InlineKeyboard()
   .text('Отправить ✓', 'author_app:respond_submit').row()
   .text('Отмена', 'author_app:cancel');
@@ -168,12 +164,16 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
       await ctx.reply('Заявка на рассмотрении. Мы сообщим о решении.');
       return;
     case 'NEEDS_INFO':
+      // Сразу открываем приём ответа — отдельной кнопки «Ответить» нет,
+      // пользователь пишет пояснения обычными сообщениями в чат.
+      ctx.session.authorAppStep = 'respond';
+      ctx.session.authorAppResponseText = undefined;
       await ctx.reply(
         `По вашей заявке на авторский кабинет требуется уточнение:\n\n` +
           `${result.adminComment ?? 'администратор запросил дополнительную информацию.'}\n\n` +
-          `Нажмите «Ответить», чтобы дополнить заявку текстом или новыми ссылками — ` +
-          `отвечать нужно здесь, в этом диалоге, а не отдельным сообщением в чат.`,
-        { reply_markup: NEEDS_INFO_KEYBOARD },
+          `Напишите пояснения текстом тут в чате, обычным сообщением, можно несколькими. ` +
+          `Когда закончите нажмите «Отправить ✓».`,
+        { reply_markup: RESPOND_KEYBOARD },
       );
       return;
     case 'APPROVED':
@@ -443,22 +443,6 @@ export async function handleAuthorAppCancel(ctx: CallbackCtx): Promise<void> {
   await backendClient.discardApplicationDraft(ctx.from.id);
   resetSession(ctx);
   await ctx.reply('Отменено.');
-}
-
-// "Ответить" on a NEEDS_INFO application — starts the respond sub-flow
-// instead of restarting the whole name+resources dialog (the old
-// "Подать повторно" button called startDialog here, which fed into
-// submitAuthorApplication and silently created a second application while
-// the original NEEDS_INFO one sat abandoned).
-export async function handleAuthorAppRespondStart(ctx: CallbackCtx): Promise<void> {
-  await ctx.answerCallbackQuery();
-  ctx.session.authorAppStep = 'respond';
-  ctx.session.authorAppResponseText = undefined;
-  await ctx.reply(
-    'Напишите пояснение текстом и/или пришлите новые ссылки — можно несколькими сообщениями. ' +
-      'Когда закончите — нажмите «Отправить ✓».',
-    { reply_markup: RESPOND_KEYBOARD },
-  );
 }
 
 export async function handleAuthorAppRespondSubmit(ctx: CallbackCtx): Promise<void> {
