@@ -15,6 +15,7 @@ import { getAuthors, AuthorItem } from "../../api/authors";
 import { PatternCard, PatternCardHeader, PatternStatus } from "./PatternCard";
 import { Modal } from "../../components/Modal/Modal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
+import { AuthorGuideModal, isGuideDismissed } from "./AuthorGuideModal";
 import { getAdminDrafts, approveDraft, rejectDraft, AdminDraft } from "../../api/admin-drafts";
 import {
   CabinetDraft,
@@ -123,6 +124,14 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [creatingEditFor, setCreatingEditFor] = useState<string | null>(null);
   const [authorEditingDraft, setAuthorEditingDraft] = useState<CabinetDraft | null>(null);
   const [currentAuthorName, setCurrentAuthorName] = useState("");
+
+  // Памятки автора — показываются один раз (флаг в localStorage).
+  // welcome — при первом входе в кабинет; formGuide — поверх формы при
+  // первом «Добавить описание».
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(
+    () => isAuthor && !isGuideDismissed("welcome"),
+  );
+  const [showFormGuide, setShowFormGuide] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -410,6 +419,11 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       densityRows: "",
     });
     setIsModalOpen(true);
+    // Памятка по заполнению карточки — поверх формы, пока автор её не
+    // отметил как «не показывать больше».
+    if (isAuthor && !isGuideDismissed("form-rules")) {
+      setShowFormGuide(true);
+    }
   };
 
   const handleOpenEdit = async (id: string) => {
@@ -1232,19 +1246,21 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   />
                 </div>
 
-                {/* Автор */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Автор <span style={{ color: "var(--danger)" }}>*</span></label>
-                  <CreatableSelect
-                    isClearable
-                    isDisabled={isAuthor || formReadonly}
-                    styles={selectStyles}
-                    options={authors.map(a => ({ value: a.name, label: a.name }))}
-                    value={formData.authorName ? { value: formData.authorName, label: formData.authorName } : null}
-                    onChange={(val) => setFormData({ ...formData, authorName: val?.value || "" })}
-                    placeholder="Автор"
-                  />
-                </div>
+                {/* Автор — скрыт для авторов: им всё равно недоступен, показывать неактивный селект бессмысленно */}
+                {!isAuthor && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <label style={labelStyle}>Автор <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <CreatableSelect
+                      isClearable
+                      isDisabled={isAuthor || formReadonly}
+                      styles={selectStyles}
+                      options={authors.map(a => ({ value: a.name, label: a.name }))}
+                      value={formData.authorName ? { value: formData.authorName, label: formData.authorName } : null}
+                      onChange={(val) => setFormData({ ...formData, authorName: val?.value || "" })}
+                      placeholder="Автор"
+                    />
+                  </div>
+                )}
 
                 {/* Ссылка */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1275,23 +1291,6 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   />
                 </div>
 
-                {/* Толщина пряжи */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={optionalStyle}>(необязательно)</span></label>
-                  <CreatableSelect
-                    isMulti
-                    isDisabled={formReadonly}
-                    isValidNewOption={() => false}
-                    styles={selectStyles}
-                    options={yarnRangesList.map(y => ({ value: y.id, label: y.label }))}
-                    value={yarnRangesList
-                      .filter(y => formData.yarnRangeIds.includes(y.id))
-                      .map(y => ({ value: y.id, label: y.label }))}
-                    onChange={(vals) => setFormData({ ...formData, yarnRangeIds: vals.map(v => v.value) })}
-                    placeholder="Диапазон толщины"
-                  />
-                </div>
-
                 {/* Артикулы пряжи. Стоят рядом с толщиной, но заменой ей не
                     являются: толщина — диапазон для фильтра каталога, здесь
                     конкретная пряжа с именем. Метраж артикула в yarnRanges
@@ -1303,7 +1302,21 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   <>
                     <YarnPicker
                       value={patternYarns}
-                      onChange={setPatternYarns_}
+                      onChange={(next) => {
+                        setPatternYarns_(next);
+                        // Автоматически добавляем yarnRangeIds если пряжа известного метража.
+                        // Берём первую добавленную пряжу с значением mPer100g.
+                        const firstWithMetrage = next.find(y => y.mPer100g != null);
+                        if (firstWithMetrage?.mPer100g != null) {
+                          const m = firstWithMetrage.mPer100g;
+                          const matched = yarnRangesList.filter(
+                            r => m >= r.minValue && (r.maxValue == null || m <= r.maxValue)
+                          );
+                          if (matched.length > 0) {
+                            setFormData(prev => ({ ...prev, yarnRangeIds: matched.map(r => r.id) }));
+                          }
+                        }
+                      }}
                       disabled={formReadonly}
                       onCreateRequest={setCreatingYarnName}
                     />
@@ -1366,6 +1379,23 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   </>
                 </div>
 
+                {/* Толщина пряжи — автоматически заполняется при выборе пряжи с известным метражом */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={labelStyle}>Толщина пряжи (м/100г) <span style={optionalStyle}>(необязательно)</span></label>
+                  <CreatableSelect
+                    isMulti
+                    isDisabled={formReadonly}
+                    isValidNewOption={() => false}
+                    styles={selectStyles}
+                    options={yarnRangesList.map(y => ({ value: y.id, label: y.label }))}
+                    value={yarnRangesList
+                      .filter(y => formData.yarnRangeIds.includes(y.id))
+                      .map(y => ({ value: y.id, label: y.label }))}
+                    onChange={(vals) => setFormData({ ...formData, yarnRangeIds: vals.map(v => v.value) })}
+                    placeholder="Диапазон толщины"
+                  />
+                </div>
+
                 {/* Плотность */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <label style={labelStyle}>Плотность (петли × ряды) в лицевой глади <span style={optionalStyle}></span></label>
@@ -1399,7 +1429,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                   </div>
                 </div>
 
-                {/* Цена / старая цена — oldPrice заполнена только когда реально есть скидка */}
+                {/* Цена / старая цена — заблокированы когда isFree=true */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <label style={labelStyle}>Цена, ₽ <span style={optionalStyle}>(необязательно)</span></label>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1407,20 +1437,20 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       type="number"
                       value={formData.price}
                       onChange={e => setFormData({ ...formData, price: e.target.value })}
-                      style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                      style={{ ...inputStyle, width: "calc(50% - 16px)", opacity: formData.isFree ? 0.4 : 1 }}
                       placeholder=""
                       min={0}
-                      disabled={formReadonly}
+                      disabled={formReadonly || formData.isFree}
                     />
                     <span style={{ width: 8, flexShrink: 0 }} />
                     <input
                       type="number"
                       value={formData.oldPrice}
                       onChange={e => setFormData({ ...formData, oldPrice: e.target.value })}
-                      style={{ ...inputStyle, width: "calc(50% - 16px)" }}
+                      style={{ ...inputStyle, width: "calc(50% - 16px)", opacity: formData.isFree ? 0.4 : 1 }}
                       placeholder=""
                       min={0}
-                      disabled={formReadonly}
+                      disabled={formReadonly || formData.isFree}
                     />
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -1600,6 +1630,22 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               toast.error(e.message || "Не удалось создать артикул");
             }
           }}
+        />
+      )}
+
+      {/* Памятки автора. welcome — при первом входе в кабинет; form-rules —
+          поверх формы создания описания. Оба закрываются кнопкой или
+          кликом по оверлею; «Не показывать больше» пишет флаг в localStorage. */}
+      {showWelcomeGuide && (
+        <AuthorGuideModal
+          variant="welcome"
+          onClose={() => setShowWelcomeGuide(false)}
+        />
+      )}
+      {showFormGuide && (
+        <AuthorGuideModal
+          variant="form-rules"
+          onClose={() => setShowFormGuide(false)}
         />
       )}
     </div>
