@@ -526,7 +526,10 @@ function FormRulesContent() {
             </ul>
           </Rule>
 
-          <Rule preview={<PreviewPlus label="Подробности" />} title="Подробности">
+          <Rule
+            preview={<PreviewInput label="Подробности" placeholder=" " />}
+            title="Подробности"
+          >
             поле для свободных заметок (материалы, техника, размеры). На данный
             момент носит служебный характер и не отображается покупателям в
             каталоге.
