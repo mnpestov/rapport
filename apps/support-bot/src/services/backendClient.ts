@@ -25,6 +25,9 @@ export class AuthorApplicationError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    // Некоторые ответы несут логин (например credential_exists — уже
+    // существующая учётка пользователя).
+    public readonly login?: string,
   ) {
     super(message);
     this.name = 'AuthorApplicationError';
@@ -176,6 +179,7 @@ export class BackendClient {
       throw new AuthorApplicationError(
         response.status,
         data.error || `reserveApplicationLogin failed with ${response.status}`,
+        data.login,
       );
     }
     return data as { login: string };

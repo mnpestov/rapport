@@ -71,13 +71,24 @@ function resetSession(ctx: CustomContext): void {
   ctx.session.authorAppLoginPreexisting = undefined;
 }
 
-function startDialog(ctx: CustomContext): Promise<unknown> {
+async function startDialog(ctx: CustomContext, existingLogin?: string | null): Promise<void> {
   ctx.session.authorAppStep = 'name';
   ctx.session.authorAppName = undefined;
   ctx.session.authorAppResources = [];
-  ctx.session.authorAppLogin = undefined;
-  ctx.session.authorAppLoginPreexisting = undefined;
-  return ctx.reply('Как называется ваш авторский профиль?');
+  // Логин у пользователя уже есть (завёл через «вход на сайт») — шаг выбора
+  // логина в диалоге пропустим, используем этот. Сообщаем об этом сразу,
+  // чтобы для человека не было сюрприза на сводке.
+  if (existingLogin) {
+    ctx.session.authorAppLogin = existingLogin;
+    ctx.session.authorAppLoginPreexisting = true;
+    await ctx.reply(
+      `У вас уже есть логин для входа — ${existingLogin}. Он будет использован и для кабинета автора.`,
+    );
+  } else {
+    ctx.session.authorAppLogin = undefined;
+    ctx.session.authorAppLoginPreexisting = undefined;
+  }
+  await ctx.reply('Как называется ваш авторский профиль?');
 }
 
 // Просит придумать логин. Вызывается после шага ресурсов и по кнопке
@@ -151,7 +162,7 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
       // Незавершённый черновик прошлого захода — молча выбрасываем его
       // (логин освободится) и начинаем диалог заново.
       await backendClient.discardApplicationDraft(telegramId);
-      await startDialog(ctx);
+      await startDialog(ctx, result.existingLogin);
       return;
     case 'PENDING':
       await ctx.reply('Заявка на рассмотрении. Мы сообщим о решении.');
@@ -174,12 +185,12 @@ export async function handleBecomeAuthor(ctx: CustomContext): Promise<void> {
         await ctx.reply('Заявка была отклонена. Повторно подать можно через 24 часа после отклонения.');
         return;
       }
-      await startDialog(ctx);
+      await startDialog(ctx, result.existingLogin);
       return;
     }
     case null:
     default:
-      await startDialog(ctx);
+      await startDialog(ctx, result.existingLogin);
       return;
   }
 }
@@ -278,7 +289,7 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
       if (err instanceof AuthorApplicationError) {
         if (err.message === 'credential_exists') {
           // Учётка появилась параллельно (второе устройство) — берём её.
-          ctx.session.authorAppLogin = (err as any).login ?? text;
+          ctx.session.authorAppLogin = err.login ?? text;
           ctx.session.authorAppLoginPreexisting = true;
           await showSummary(ctx);
           return true;
@@ -339,14 +350,20 @@ export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<vo
     return;
   }
 
-  // Уже есть логин (заведён через «вход на сайт») — шаг выбора пропускаем,
-  // сразу закрепляем его за черновиком и показываем сводку.
-  let existingLogin: string | null = null;
-  try {
-    const status = await backendClient.getApplicationStatus(telegramId);
-    existingLogin = status.existingLogin ?? null;
-  } catch {
-    // Не смогли узнать — не страшно, спросим логин как обычно.
+  // Логин у пользователя уже есть — либо мы узнали это на входе в диалог
+  // (лежит в сессии), либо перепроверяем сейчас. Шаг ручного ввода тогда
+  // пропускаем: закрепляем существующий логин за черновиком и — в сводку.
+  let existingLogin: string | null = ctx.session.authorAppLoginPreexisting
+    ? ctx.session.authorAppLogin ?? null
+    : null;
+
+  if (!existingLogin) {
+    try {
+      const status = await backendClient.getApplicationStatus(telegramId);
+      existingLogin = status.existingLogin ?? null;
+    } catch {
+      // Не смогли узнать — не страшно, спросим логин как обычно.
+    }
   }
 
   if (existingLogin) {
@@ -361,9 +378,16 @@ export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<vo
       ctx.session.authorAppLoginPreexisting = true;
       await showSummary(ctx);
       return;
-    } catch {
-      // Что-то помешало закрепить существующий логин — падаем в обычный
-      // сценарий с ручным вводом.
+    } catch (err) {
+      // Бэкенд подтверждает: учётка уже есть — берём логин из ответа и
+      // идём в сводку, а не спрашиваем заново.
+      if (err instanceof AuthorApplicationError && err.message === 'credential_exists') {
+        ctx.session.authorAppLogin = err.login ?? existingLogin;
+        ctx.session.authorAppLoginPreexisting = true;
+        await showSummary(ctx);
+        return;
+      }
+      // Иная ошибка — падаем в обычный сценарий с ручным вводом.
     }
   }
 
