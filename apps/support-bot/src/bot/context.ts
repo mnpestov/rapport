@@ -12,7 +12,7 @@ export interface SessionData {
   //
   // 'login' — пользователь придумывает логин для входа в кабинет; логин
   // закрепляется за черновиком заявки на бэкенде. 'confirm' — показана
-  // сводка (имя, ресурсы, логин), ждём «Отправить»/«Изменить логин»/«Отмена».
+  // сводка (имя, ресурсы, логин), ждём «Отправить»/«Отмена».
   authorAppStep?: 'name' | 'resources' | 'login' | 'confirm' | 'respond';
   authorAppName?: string;
   authorAppResources: string[];

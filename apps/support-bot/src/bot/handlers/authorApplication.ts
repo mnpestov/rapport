@@ -20,16 +20,21 @@ const LOGIN_MIN = 3;
 const LOGIN_MAX = 30;
 const LOGIN_RE = /^[a-zA-Z0-9._-]+$/;
 
-// «Готово ✓» на шаге ресурсов больше не отправляет заявку — ведёт к шагу
-// выбора логина.
+// Шаг ресурсов. «Далее ✓» появляется только когда добавлена хотя бы одна
+// ссылка — раньше кнопка была всегда и по ней сразу ругалось «нужен ресурс».
+const RESOURCES_KEYBOARD_EMPTY = new InlineKeyboard().text('Отмена', 'author_app:cancel');
 const RESOURCES_KEYBOARD = new InlineKeyboard()
   .text('Далее ✓', 'author_app:resources_done').row()
   .text('Отмена', 'author_app:cancel');
 
+// Клавиатура шага ресурсов по числу уже добавленных ссылок.
+function resourcesKeyboard(count: number): InlineKeyboard {
+  return count > 0 ? RESOURCES_KEYBOARD : RESOURCES_KEYBOARD_EMPTY;
+}
+
 // Сводка перед отправкой.
 const CONFIRM_KEYBOARD = new InlineKeyboard()
   .text('Отправить ✓', 'author_app:submit').row()
-  .text('Изменить логин', 'author_app:change_login').row()
   .text('Отмена', 'author_app:cancel');
 
 // На шаге выбора логина — только отмена (логин присылается сообщением).
@@ -76,14 +81,10 @@ async function startDialog(ctx: CustomContext, existingLogin?: string | null): P
   ctx.session.authorAppName = undefined;
   ctx.session.authorAppResources = [];
   // Логин у пользователя уже есть (завёл через «вход на сайт») — шаг выбора
-  // логина в диалоге пропустим, используем этот. Сообщаем об этом сразу,
-  // чтобы для человека не было сюрприза на сводке.
+  // логина в диалоге молча пропустим, используем этот.
   if (existingLogin) {
     ctx.session.authorAppLogin = existingLogin;
     ctx.session.authorAppLoginPreexisting = true;
-    await ctx.reply(
-      `У вас уже есть логин для входа — ${existingLogin}. Он будет использован и для кабинета автора.`,
-    );
   } else {
     ctx.session.authorAppLogin = undefined;
     ctx.session.authorAppLoginPreexisting = undefined;
@@ -91,8 +92,8 @@ async function startDialog(ctx: CustomContext, existingLogin?: string | null): P
   await ctx.reply('Как называется ваш авторский профиль?');
 }
 
-// Просит придумать логин. Вызывается после шага ресурсов и по кнопке
-// «Изменить логин».
+// Просит придумать логин. Вызывается после шага ресурсов, если у
+// пользователя ещё нет учётной записи.
 function askLogin(ctx: CustomContext): Promise<unknown> {
   ctx.session.authorAppStep = 'login';
   return ctx.reply(
@@ -225,7 +226,7 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
     ctx.session.authorAppStep = 'resources';
     await ctx.reply(
       'Укажите ссылки на ваши профили (eiwi, Etsy, VK, Boosty и т.д.). По одной ссылке в сообщении. Максимум 10.',
-      { reply_markup: RESOURCES_KEYBOARD },
+      { reply_markup: resourcesKeyboard(ctx.session.authorAppResources.length) },
     );
     return true;
   }
@@ -233,20 +234,20 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
   if (step === 'resources') {
     if (ctx.session.authorAppResources.length >= MAX_RESOURCES) {
       await ctx.reply('Максимум 10 ресурсов. Нажмите «Далее ✓».', {
-        reply_markup: RESOURCES_KEYBOARD,
+        reply_markup: resourcesKeyboard(ctx.session.authorAppResources.length),
       });
       return true;
     }
     if (text.length === 0 || text.length > MAX_RESOURCE_LENGTH) {
       await ctx.reply(`Ссылка должна быть не длиннее ${MAX_RESOURCE_LENGTH} символов. Попробуйте ещё раз.`, {
-        reply_markup: RESOURCES_KEYBOARD,
+        reply_markup: resourcesKeyboard(ctx.session.authorAppResources.length),
       });
       return true;
     }
     ctx.session.authorAppResources.push(text);
     await ctx.reply(
       `Добавлено (${ctx.session.authorAppResources.length}/${MAX_RESOURCES}). Пришлите ещё ссылку или нажмите «Далее ✓».`,
-      { reply_markup: RESOURCES_KEYBOARD },
+      { reply_markup: resourcesKeyboard(ctx.session.authorAppResources.length) },
     );
     return true;
   }
@@ -308,7 +309,7 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
   // step === 'confirm' — ждём нажатия кнопки, произвольный текст игнорируем
   // (мягко напоминаем про кнопки).
   if (step === 'confirm') {
-    await ctx.reply('Нажмите «Отправить ✓», «Изменить логин» или «Отмена».', {
+    await ctx.reply('Нажмите «Отправить ✓» или «Отмена».', {
       reply_markup: CONFIRM_KEYBOARD,
     });
     return true;
@@ -346,7 +347,9 @@ export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<vo
     return;
   }
   if (resources.length === 0) {
-    await ctx.reply('Укажите хотя бы один ресурс.', { reply_markup: RESOURCES_KEYBOARD });
+    await ctx.reply('Укажите хотя бы один ресурс.', {
+      reply_markup: resourcesKeyboard(0),
+    });
     return;
   }
 
@@ -394,19 +397,6 @@ export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<vo
   await askLogin(ctx);
 }
 
-// «Изменить логин» на сводке — назад к шагу ввода логина.
-export async function handleAuthorAppChangeLogin(ctx: CallbackCtx): Promise<void> {
-  await ctx.answerCallbackQuery();
-  if (ctx.session.authorAppLoginPreexisting) {
-    // Логин зафиксирован (существующая учётка) — менять в диалоге нельзя.
-    await ctx.reply('Ваш логин уже создан и его нельзя изменить здесь.', {
-      reply_markup: CONFIRM_KEYBOARD,
-    });
-    return;
-  }
-  await askLogin(ctx);
-}
-
 export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
   await ctx.answerCallbackQuery();
 
@@ -420,7 +410,7 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
     return;
   }
   if (resources.length === 0) {
-    await ctx.reply('Укажите хотя бы один ресурс.', { reply_markup: RESOURCES_KEYBOARD });
+    await ctx.reply('Укажите хотя бы один ресурс.', { reply_markup: resourcesKeyboard(0) });
     return;
   }
 

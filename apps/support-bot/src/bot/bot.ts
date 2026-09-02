@@ -9,7 +9,6 @@ import {
   handleBecomeAuthor,
   handleAuthorAppBegin,
   handleAuthorAppResourcesDone,
-  handleAuthorAppChangeLogin,
   handleAuthorAppSubmit,
   handleAuthorAppCancel,
   handleAuthorAppRespondStart,
@@ -56,7 +55,6 @@ export function createBot(): Bot<CustomContext> {
   bot.callbackQuery('web_access:cancel', handleWebAccessCancel);
   bot.callbackQuery('web_access:forgot', handleWebAccessForgot);
   bot.callbackQuery('author_app:resources_done', handleAuthorAppResourcesDone);
-  bot.callbackQuery('author_app:change_login', handleAuthorAppChangeLogin);
   bot.callbackQuery('author_app:submit', handleAuthorAppSubmit);
   bot.callbackQuery('author_app:cancel', handleAuthorAppCancel);
   bot.callbackQuery('author_app:respond_start', handleAuthorAppRespondStart);
