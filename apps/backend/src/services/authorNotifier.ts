@@ -22,7 +22,12 @@ interface InlineKeyboardButton {
 async function sendMessage(
   telegramId: bigint,
   text: string,
-  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] }
+  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] },
+  // По умолчанию текст парсится как Markdown (нужно для `код` в кредах).
+  // Для сообщений, куда подставляется произвольный текст админа/пользователя,
+  // parse_mode отключают: иначе случайные `_ * [ ]` ломают отправку с
+  // 400 "can't parse entities".
+  opts?: { plain?: boolean }
 ): Promise<void> {
   const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
   const botToken = process.env.BOT_TOKEN;
@@ -40,7 +45,7 @@ async function sendMessage(
       body: JSON.stringify({
         chat_id: telegramId.toString(),
         text,
-        parse_mode: "Markdown",
+        ...(opts?.plain ? {} : { parse_mode: "Markdown" }),
         ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }),
     });
@@ -85,14 +90,19 @@ export async function sendNeedsInfo(telegramId: bigint, comment: string): Promis
     telegramId,
     `По вашей заявке на авторский кабинет требуется уточнение:\n\n${comment}\n\n` +
       `Чтобы ответить, отправьте команду /become_author — бот попросит написать ` +
-      `пояснения обычными сообщениями в чат.`
+      `пояснения обычными сообщениями в чат.`,
+    undefined,
+    // comment — произвольный текст админа, Markdown в нём ломает отправку.
+    { plain: true }
   );
 }
 
 export async function sendRejected(telegramId: bigint, comment?: string | null): Promise<void> {
   await sendMessage(
     telegramId,
-    `Ваша заявка на авторский кабинет отклонена.${comment ? `\n\nПричина: ${comment}` : ""}`
+    `Ваша заявка на авторский кабинет отклонена.${comment ? `\n\nПричина: ${comment}` : ""}`,
+    undefined,
+    { plain: true }
   );
 }
 
