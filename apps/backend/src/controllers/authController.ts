@@ -260,7 +260,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     // the app (see admin/dashboard/stats totalUsers via lastSeenAt).
     void prisma.user.update({
       where: { id: userRecord.id },
-      data: { lastSeenAt: new Date() },
+      data: { lastSeenAt: new Date(), lastSeenChannel: "tg" },
     }).catch((err) => {
       console.error(`[AUTH] [${requestId}] Failed to update lastSeenAt:`, err);
     });

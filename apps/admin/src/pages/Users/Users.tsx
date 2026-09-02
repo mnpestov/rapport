@@ -281,6 +281,14 @@ function UserModal({
               {formatDate(initialUser.lastSeenAt)}
             </span>
           </div>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>Канал входа</span>
+            <span className={initialUser.lastSeenChannel ? styles.rowValue : styles.rowValueMuted}>
+              {initialUser.lastSeenChannel === "web" ? "Веб"
+                : initialUser.lastSeenChannel === "tg" ? "Telegram"
+                : "—"}
+            </span>
+          </div>
         </div>
 
         <div className={styles.divider} />

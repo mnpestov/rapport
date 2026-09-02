@@ -532,7 +532,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     // «не заходил»: lastSeenAt раньше обновлялся только на входе в Mini App.
     void prisma.user.update({
       where: { id: record.userId },
-      data: { lastSeenAt: new Date() },
+      data: { lastSeenAt: new Date(), lastSeenChannel: "web" },
     }).catch((err) => {
       console.error("[refresh] Failed to update lastSeenAt:", err);
     });

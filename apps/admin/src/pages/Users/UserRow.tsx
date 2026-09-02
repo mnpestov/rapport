@@ -28,6 +28,13 @@ function fullName(u: Pick<AdminUser, "firstName" | "lastName">): string {
   return [u.firstName, u.lastName].filter(Boolean).join(" ") || "—";
 }
 
+// Канал последнего входа. null — пользователь не заходил после раскатки поля.
+function channelLabel(channel: string | null): string {
+  if (channel === "web") return "Веб";
+  if (channel === "tg") return "ТГ";
+  return "—";
+}
+
 // ── Header ────────────────────────────────────────────────────────────────────
 
 interface UserRowHeaderProps {
@@ -47,6 +54,9 @@ export function UserRowHeader({ sortBy, sortOrder, onSort }: UserRowHeaderProps)
       <span className={styles.colAuthor}>Имя автора</span>
       <button className={`${styles.colDate} ${styles.sortable}`} onClick={() => onSort("lastSeenAt")}>
         Последний вход <SortIcon field="lastSeenAt" sortBy={sortBy} sortOrder={sortOrder} />
+      </button>
+      <button className={`${styles.colChannel} ${styles.sortable}`} onClick={() => onSort("lastSeenChannel")}>
+        Вход <SortIcon field="lastSeenChannel" sortBy={sortBy} sortOrder={sortOrder} />
       </button>
       <button className={`${styles.colFav} ${styles.sortable}`} onClick={() => onSort("favoritesCount")}>
         Избранное <SortIcon field="favoritesCount" sortBy={sortBy} sortOrder={sortOrder} />
@@ -81,6 +91,12 @@ export function UserRow({ user, onClick, onEdit }: UserRowProps) {
         }
       </span>
       <span className={`${styles.colDate} ${styles.cellMuted}`}>{formatDate(user.lastSeenAt)}</span>
+      <span className={styles.colChannel}>
+        {user.lastSeenChannel
+          ? <span className={styles.cellBold}>{channelLabel(user.lastSeenChannel)}</span>
+          : <span className={styles.cellMuted}>—</span>
+        }
+      </span>
       <span className={styles.colFav}>
         {user.favoritesCount > 0 ? (
           <span className={styles.favCell}>

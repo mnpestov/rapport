@@ -59,6 +59,7 @@
 .colRole     { flex: 0.88 1 0; }
 .colAuthor   { flex: 2.52 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .colDate     { flex: 1.75 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colChannel  { flex: 0.7 1 0; white-space: nowrap; }
 .colFav      { flex: 1 1 0; }
 .colEdit     { flex: 0 0 40px; display: flex; justify-content: flex-end; }
 
@@ -78,6 +79,7 @@
 
 @media (max-width: 768px) {
   .colAuthor,
+  .colChannel,
   .colFav {
     display: none !important;
   }

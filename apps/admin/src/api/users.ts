@@ -16,6 +16,8 @@ export interface AdminUser {
   author: { id: string; name: string } | null;
   createdAt: string;
   lastSeenAt: string | null;
+  // Канал последнего входа: "tg" | "web" | null (не заходил после раскатки поля).
+  lastSeenChannel: string | null;
   platform: string | null;
   tgVersion: string | null;
   userAgent: string | null;
@@ -41,7 +43,7 @@ export interface UsersResponse {
   counts: { all: number; paid: number; web: number };
 }
 
-export type SortField = "firstName" | "lastSeenAt" | "createdAt" | "favoritesCount";
+export type SortField = "firstName" | "lastSeenAt" | "lastSeenChannel" | "createdAt" | "favoritesCount";
 export type SortOrder = "asc" | "desc";
 
 export const getUsers = async (params: {

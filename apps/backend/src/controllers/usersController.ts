@@ -3,7 +3,7 @@ import { Permission, UserRole } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { checkTelegramSubscriptionOnce } from "../utils/checkSubscription";
 
-const SORT_FIELDS = ["firstName", "lastSeenAt", "createdAt", "favoritesCount"] as const;
+const SORT_FIELDS = ["firstName", "lastSeenAt", "lastSeenChannel", "createdAt", "favoritesCount"] as const;
 const SORT_ORDERS = ["asc", "desc"] as const;
 type SortField = typeof SORT_FIELDS[number];
 type SortOrder = typeof SORT_ORDERS[number];
@@ -43,7 +43,10 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     ? { favorites: { _count: order } }
     : field === "lastSeenAt"
       ? { lastSeenAt: { sort: order, nulls: "last" } }
-      : { [field]: order };
+      : field === "lastSeenChannel"
+        // nulls last: пользователи без входов после раскатки поля — в конце
+        ? { lastSeenChannel: { sort: order, nulls: "last" } }
+        : { [field]: order };
 
   // Общий кусок для всех вкладок — только поиск. Счётчики вкладок и сама
   // выборка строятся поверх него.
@@ -84,6 +87,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
         author: { select: { id: true, name: true } },
         createdAt: true,
         lastSeenAt: true,
+        lastSeenChannel: true,
         platform: true,
         tgVersion: true,
         userAgent: true,
@@ -129,6 +133,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
       permissions: { select: { permission: true } },
       createdAt: true,
       lastSeenAt: true,
+      lastSeenChannel: true,
       platform: true,
       tgVersion: true,
       userAgent: true,

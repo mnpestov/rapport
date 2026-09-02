@@ -394,6 +394,10 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastSeenAt   DateTime?
+  // Канал последнего входа: "tg" (Mini App) или "web" (браузер). Пишется
+  // в тех же местах, что и lastSeenAt (authController, createWebSession,
+  // refresh). null — у пользователей, не заходивших после раскатки поля.
+  lastSeenChannel String?
   platform     String?
   tgVersion    String?
   userAgent    String?

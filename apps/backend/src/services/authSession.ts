@@ -198,7 +198,7 @@ export async function createWebSession(
   // (adminDashboardController фильтрует по этому полю).
   void prisma.user.update({
     where: { id: user.id },
-    data: { lastSeenAt: new Date() },
+    data: { lastSeenAt: new Date(), lastSeenChannel: "web" },
   }).catch((err) => {
     console.error("[createWebSession] Failed to update lastSeenAt:", err);
   });
