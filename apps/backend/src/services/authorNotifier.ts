@@ -78,17 +78,14 @@ export async function sendResendCredentials(telegramId: bigint, login: string, t
 }
 
 export async function sendNeedsInfo(telegramId: bigint, comment: string): Promise<void> {
+  // Без кнопок: это сообщение шлётся напрямую, мимо диалога бота, поэтому
+  // кнопка не могла бы перевести пользователя в режим приёма ответа.
+  // Отправляем в /become_author — там бот сам открывает приём пояснений.
   await sendMessage(
     telegramId,
     `По вашей заявке на авторский кабинет требуется уточнение:\n\n${comment}\n\n` +
-      `Нажмите «Ответить» ниже, чтобы дополнить заявку текстом или новыми ссылками — ` +
-      `отвечать нужно в этой кнопке, а не отдельным сообщением в чат.`,
-    {
-      inline_keyboard: [
-        [{ text: "Ответить", callback_data: "author_app:respond_start" }],
-        [{ text: "Отмена", callback_data: "author_app:cancel" }],
-      ],
-    }
+      `Чтобы ответить, отправьте команду /become_author — бот попросит написать ` +
+      `пояснения обычными сообщениями в чат.`
   );
 }
 
