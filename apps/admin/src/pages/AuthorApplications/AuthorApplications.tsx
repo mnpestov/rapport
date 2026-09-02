@@ -32,6 +32,32 @@ function displayName(user: AuthorApplication["user"]): string {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || user.telegramId;
 }
 
+// Длинный текст (ответ автора, комментарий админа) в ячейке таблицы:
+// показываем 2 строки, дальше — по кнопке «Показать полностью».
+const EXPAND_THRESHOLD = 120;
+
+function ExpandableText({ label, text }: { label: string; text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > EXPAND_THRESHOLD;
+
+  return (
+    <div className={styles.expandable}>
+      <span className={!expanded && long ? styles.expandableClamped : undefined}>
+        <b>{label}:</b> {text}
+      </span>
+      {long && (
+        <button
+          type="button"
+          className={styles.expandToggle}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Свернуть" : "Показать полностью"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AuthorApplications() {
   const [applications, setApplications] = useState<AuthorApplication[]>([]);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "ALL">("PENDING");
@@ -133,16 +159,12 @@ export function AuthorApplications() {
                   {/* Shown regardless of the current status — a PENDING
                       application can carry a NEEDS_INFO round's history
                       (admin's question + the applicant's reply) after the
-                      bot's "Ответить" flow moved it back to PENDING. */}
+                      bot's respond flow moved it back to PENDING. */}
                   {app.adminComment && (
-                    <div className={styles.tdMuted} title={app.adminComment}>
-                      Админ: {app.adminComment}
-                    </div>
+                    <ExpandableText label="Админ" text={app.adminComment} />
                   )}
                   {app.userResponse && (
-                    <div className={styles.tdMuted} title={app.userResponse}>
-                      Ответ: {app.userResponse}
-                    </div>
+                    <ExpandableText label="Ответ" text={app.userResponse} />
                   )}
                 </td>
                 <td className={styles.tdMuted}>

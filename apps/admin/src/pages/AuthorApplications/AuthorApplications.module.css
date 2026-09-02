@@ -98,6 +98,41 @@
   white-space: nowrap;
 }
 
+/* Раскрываемый длинный текст (ответ автора, комментарий админа) */
+.expandable {
+  color: var(--text-subtle);
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  line-height: 1.35;
+  max-width: 320px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.expandableClamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.expandToggle {
+  display: inline;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brand);
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.expandToggle:hover {
+  text-decoration: underline;
+}
+
 .centerState {
   padding: 48px;
   text-align: center;
