@@ -32,11 +32,11 @@
      which becomes the gap before "Подробности" — pull 10px back so it
      reads as the old 10px inter-row gap.
    - 10px between "Подробности" and "Похожие описания" (was the flex gap). */
-.details-below > .details-col {
+.details-below>.details-col {
   margin-top: -10px;
 }
 
-.details-below > .details-col + .details-col {
+.details-below>.details-col+.details-col {
   margin-top: 10px;
 }
 
@@ -44,7 +44,7 @@
    padding-bottom + the footer's own 10px padding-top gave a 30px gap
    before the page footer. That padding-bottom now sits above .details-below,
    so add the missing 20px back here. */
-.details-below + .app-footer {
+.details-below+.app-footer {
   margin-top: 20px;
 }
 
@@ -234,8 +234,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
-  margin-right: 2px;
+  padding: 0;
+  margin-right: 0;
   border: none;
   background: none;
   color: var(--dark_grey, #9B9A9A);
@@ -492,12 +492,12 @@
     padding: 0 24px 40px;
   }
 
-  .details-below > .details-col,
-  .details-below > .details-col + .details-col {
+  .details-below>.details-col,
+  .details-below>.details-col+.details-col {
     margin-top: 0;
   }
 
-  .details-below + .app-footer {
+  .details-below+.app-footer {
     margin-top: 0;
   }
 
@@ -506,7 +506,7 @@
      недостающие 4px по бокам, чтобы подвал выровнялся по общей сетке.
      Селектор через .details-container, чтобы работало и когда секции
      .details-below нет (нет «Подробностей»/«Похожих»). */
-  .details-container > .app-footer {
+  .details-container>.app-footer {
     padding-left: 24px;
     padding-right: 24px;
   }
@@ -530,7 +530,7 @@
     padding: 0 32px 48px;
   }
 
-  .details-container > .app-footer {
+  .details-container>.app-footer {
     padding-left: 32px;
     padding-right: 32px;
   }
