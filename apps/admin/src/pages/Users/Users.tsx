@@ -66,6 +66,7 @@ function PermissionsSection({
   const [premiumDetails, setPremiumDetails] = useState(user.permissions.includes("PREMIUM_DETAILS"));
   const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
   const [webAccess, setWebAccess] = useState(user.permissions.includes("WEB_ACCESS"));
+  const [priceAlert, setPriceAlert] = useState(user.permissions.includes("PRICE_ALERT"));
   const [excludeFromStats, setExcludeFromStats] = useState(user.excludeFromStats);
   const [authorId, setAuthorId] = useState<string | null>(user.authorId);
   const [authorName, setAuthorName] = useState<string>(user.author?.name ?? "");
@@ -118,6 +119,7 @@ function PermissionsSection({
       // Снятие WEB_ACCESS на бэкенде заодно завершает браузерные сессии
       // пользователя — иначе он работал бы до истечения токена (до 30 дней).
       await syncPermission(user.id, "WEB_ACCESS", webAccess, user.permissions.includes("WEB_ACCESS"));
+      await syncPermission(user.id, "PRICE_ALERT", priceAlert, user.permissions.includes("PRICE_ALERT"));
       toast.success("Разрешения обновлены");
       onSaved(role, role === "AUTHOR" ? authorId : null, role === "AUTHOR" ? authorName : null);
     } catch (err: any) {
@@ -132,6 +134,7 @@ function PermissionsSection({
     || premiumDetails !== user.permissions.includes("PREMIUM_DETAILS")
     || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA")
     || webAccess !== user.permissions.includes("WEB_ACCESS")
+    || priceAlert !== user.permissions.includes("PRICE_ALERT")
     || excludeFromStats !== user.excludeFromStats;
 
   return (
@@ -171,6 +174,13 @@ function PermissionsSection({
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Доступ в браузере</span>
         <ToggleSwitch checked={webAccess} onChange={setWebAccess} />
+      </div>
+
+      {/* Подписка на снижение цены описания — уведомления в бот. Выдаётся
+          платным пользователям (implementation_plan.md «Подписка на цены»). */}
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Подписка на цены</span>
+        <ToggleSwitch checked={priceAlert} onChange={setPriceAlert} />
       </div>
 
       {/* Не разрешение, а отметка "это наш/тестовый аккаунт" — влияет

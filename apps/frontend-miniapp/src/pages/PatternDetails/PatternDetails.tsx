@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+import { Heart, Bell } from 'lucide-react';
 import { fetchPatternById, fetchSimilarPatterns, Pattern } from '../../api/patternsApi';
 import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
 import { useFavorites } from '../../context/FavoritesContext';
+import { usePriceAlerts } from '../../context/PriceAlertsContext';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { CustomChevronDown, CustomChevronUp } from '../../components/Icons/Icons';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
@@ -12,6 +13,7 @@ import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { hasVisiblePrice, hasActiveDiscount } from '../../utils/priceHelpers';
 import { openExternalLink } from '../../utils/telegram';
 import { Footer } from '../../components/Footer/Footer';
+import { Toast } from '../../components/Toast/Toast';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import './PatternDetails.css';
 
@@ -81,18 +83,30 @@ export const PatternDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { isSubscribed, toggleAlert } = usePriceAlerts();
   // authorId/author name are already public regardless of access level
   // (unlike price/details/similar, which the backend itself omits) — this
   // is the one place that needs an explicit frontend gate, and it must
   // check PREMIUM_EXTRA specifically, not isAdmin — a non-admin explicitly
   // granted the flag must see this too. See PAID_TIER_PERMISSIONS_PLAN.md §3.4.
-  const { extra } = usePremiumAccess();
+  const { extra, priceAlert } = usePremiumAccess();
 
   const [pattern, setPattern] = useState<Pattern | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const [similarPatterns, setSimilarPatterns] = useState<Pattern[]>([]);
+  // Ошибку подписки на цену показываем тостом (лимит 20 → 429, сеть).
+  const [alertToast, setAlertToast] = useState<string | null>(null);
+
+  const handleToggleAlert = async () => {
+    if (!id) return;
+    try {
+      await toggleAlert(id);
+    } catch (err: any) {
+      setAlertToast(err?.message || 'Не удалось обновить подписку');
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -230,6 +244,31 @@ export const PatternDetails: React.FC = () => {
               <span className="details-product-type">{pattern.primaryProductType}</span>
               {hasVisiblePrice(pattern) && (
                 <div className="details-price-row">
+                  {/* Колокольчик подписки на снижение цены — только при
+                      разрешении PRICE_ALERT. Активна — фирменный зелёный.
+                      (implementation_plan.md — «Подписка на цены»). */}
+                  {priceAlert && (
+                    <button
+                      type="button"
+                      className={
+                        "details-alert-bell" +
+                        (id && isSubscribed(id) ? " details-alert-bell--active" : "")
+                      }
+                      onClick={handleToggleAlert}
+                      aria-label={
+                        id && isSubscribed(id)
+                          ? "Не следить за ценой"
+                          : "Следить за ценой"
+                      }
+                      aria-pressed={!!(id && isSubscribed(id))}
+                    >
+                      <Bell
+                        size={18}
+                        strokeWidth={1.5}
+                        fill={id && isSubscribed(id) ? "currentColor" : "none"}
+                      />
+                    </button>
+                  )}
                   <span className="details-price-current">{formatDecimal(pattern.price as string)} ₽</span>
                   {hasActiveDiscount(pattern) && (
                     <span className="details-price-old">{formatDecimal(pattern.oldPrice as string)} ₽</span>
@@ -348,6 +387,8 @@ export const PatternDetails: React.FC = () => {
           above (that's just the CTA button's own wrapper). Only page where
           sourceUrl is ever passed — the "Источник информации" line. */}
       <Footer sourceUrl={pattern.authorSite} />
+
+      <Toast message={alertToast} onClose={() => setAlertToast(null)} />
     </div>
   );
 };

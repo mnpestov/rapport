@@ -227,6 +227,26 @@
   text-decoration-line: line-through;
 }
 
+/* Колокольчик подписки на снижение цены — слева от цены
+   (implementation_plan.md «Подписка на цены»). Неактивен — серый,
+   активен — фирменный зелёный с заливкой. */
+.details-alert-bell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin-right: 2px;
+  border: none;
+  background: none;
+  color: var(--dark_grey, #9B9A9A);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.details-alert-bell--active {
+  color: #A9AE36;
+}
+
 .details-title {
   margin: 0;
   font-family: Mulish, sans-serif;

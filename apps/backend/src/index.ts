@@ -29,6 +29,7 @@ import authRouter from "./routes/auth";
 import patternsRouter from "./routes/patterns";
 import filtersRouter from "./routes/filters";
 import favoritesRouter from "./routes/favorites";
+import priceAlertsRouter from "./routes/priceAlerts";
 import channelRouter from "./routes/channel";
 import analyticsRouter from "./routes/analytics";
 import adminRouter from "./routes/admin";
@@ -40,6 +41,7 @@ import paymentsRouter from "./routes/payments";
 import { startExpireNewPatternsJob } from "./jobs/expireNewPatterns";
 import { startPopularityJob } from "./jobs/popularity";
 import { startCleanupApplicationDraftsJob } from "./jobs/cleanupApplicationDrafts";
+import { startPriceAlertDispatcherJob } from "./jobs/priceAlertDispatcher";
 
 const uploadsDir = path.join(__dirname, "../uploads/patterns");
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -134,6 +136,7 @@ app.use("/auth", authRouter);
 app.use("/patterns", patternsRouter);
 app.use("/filters", filtersRouter);
 app.use("/favorites", favoritesRouter);
+app.use("/price-alerts", priceAlertsRouter);
 app.use("/channel", channelRouter);
 app.use("/analytics", analyticsRouter);
 app.use("/admin", adminRouter);
@@ -168,6 +171,7 @@ process.on('unhandledRejection', (reason) => {
 startExpireNewPatternsJob();
 startPopularityJob();
 startCleanupApplicationDraftsJob();
+startPriceAlertDispatcherJob();
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

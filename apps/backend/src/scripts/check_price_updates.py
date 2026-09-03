@@ -242,10 +242,11 @@ def save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, erro
     changes_json = [
         {
             "author": a, "title": t, "url": u,
+            "patternId": pid,
             "oldPrice": op, "oldOldPrice": oop,
             "newPrice": np, "newOldPrice": nop,
         }
-        for a, t, u, op, oop, np, nop in changes
+        for a, t, u, pid, op, oop, np, nop in changes
     ]
     errors_json = [{"author": a, "title": t, "url": u, "error": e} for a, t, u, e in errors]
     escalations_json = [{"author": a, "title": t, "url": u, "runs": n} for a, t, u, n in escalations]
@@ -420,7 +421,7 @@ def check_prices(target_author_names=None):
                                 (new_price, new_old_price, new_is_free, pattern_id)
                             )
                             conn.commit()
-                            changes.append((author_name, title, url, old_price_f, old_old_price_f, new_price, new_old_price))
+                            changes.append((author_name, title, url, pattern_id, old_price_f, old_old_price_f, new_price, new_old_price))
 
                         # Успех — сбрасываем прогресс эскалации для этой пары.
                         state.pop(key, None)
@@ -470,7 +471,7 @@ def check_prices(target_author_names=None):
             lines.append("## Изменения цены")
             lines.append("| Автор | Товар | Ссылка | Было (цена/старая) | Стало (цена/старая) |")
             lines.append("|---|---|---|---|---|")
-            for author_name, title, url, old_p, old_op, new_p, new_op in changes:
+            for author_name, title, url, _pid, old_p, old_op, new_p, new_op in changes:
                 title_safe = (title or '').replace('|', '\\|')
                 lines.append(f"| {author_name} | {title_safe} | {url} | {old_p}/{old_op} | {new_p}/{new_op} |")
             lines.append("")

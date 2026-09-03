@@ -72,6 +72,7 @@ model Pattern {
   drafts       Draft[]
   yarns        PatternYarn[]
   yarnMentions PatternYarnMention[]
+  priceAlerts  PriceAlert[]
 
   @@index([popularityScore, id])
 }
@@ -350,6 +351,10 @@ enum Permission {
   // НЕ отменяет проверку подписки на канал — та отдельный гейт поверх
   // (enforceWebSubscription).
   WEB_ACCESS
+  // Позволяет подписываться на снижение цены описания и получать
+  // уведомления в бот (implementation_plan.md — «Подписка на цены»).
+  // Выдаётся платным пользователям из админки.
+  PRICE_ALERT
 }
 
 // Что именно произошло с баннером подписки. Append-only лог событий, из
@@ -439,6 +444,7 @@ model User {
   searchQueries     SearchQuery[]
   payments          Payment[]
   paywallEvents     PaywallEvent[]
+  priceAlerts       PriceAlert[]
 
   authorId      String?          @unique
   author        Author?          @relation("UserAuthor", fields: [authorId], references: [id])
@@ -774,6 +780,9 @@ model AuthorApplication {
 
   @@index([userId])
   @@index([status])
+  // Поиск занятости логина среди живых заявок + подбор брошенных черновиков
+  // фоновой задачей (добавлен в миграции 20260902100100).
+  @@index([desiredLogin])
 }
 
 // ---------------------------------------------------------------------------
@@ -966,7 +975,34 @@ model PriceCheckRun {
   escalations Json
   createdAt   DateTime @default(now())
 
+  // null = уведомления о снижении цены по этому прогону ещё не разосланы.
+  // Ставится джобом priceAlertDispatcher после рассылки. НЕ @default(now()):
+  // null нужен именно для разделения «новая запись» vs «обработана».
+  // Python-скрипт вставляет строку явным списком колонок (save_run_to_db),
+  // новая колонка не упомянута и получает NULL. Исторические строки
+  // бэкофиллятся в миграции.
+  alertsDispatchedAt DateTime?
+
   @@index([startedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Подписка пользователя на снижение цены конкретного описания
+// (implementation_plan.md — «Подписка на цены»). Уведомления шлёт джоб
+// priceAlertDispatcher, разбирая PriceCheckRun.changes. Отзыв PRICE_ALERT
+// строки не удаляет — диспетчер проверяет разрешение перед отправкой.
+// ---------------------------------------------------------------------------
+model PriceAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patternId String
+  pattern   Pattern  @relation(fields: [patternId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, patternId])
+  @@index([patternId]) // пакетный обход при рассылке
+  @@index([userId]) // GET /price-alerts
 }
 
 // ---------------------------------------------------------------------------

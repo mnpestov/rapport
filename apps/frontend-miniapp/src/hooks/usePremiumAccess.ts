@@ -22,9 +22,11 @@ export interface PremiumAccess {
   // см. paywallUiEnabled в authController.ts. До публичного запуска true
   // только у админа, поэтому обычный пользователь платного UI не видит.
   paywallUiEnabled: boolean;
+  // Показывать кнопку «Следить за ценой» на карточке описания.
+  priceAlert: boolean;
 }
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false };
 
 const readAccess = (): PremiumAccess => {
   const raw = localStorage.getItem("user_data");
@@ -39,6 +41,7 @@ const readAccess = (): PremiumAccess => {
       extra: isAdmin || permissions.includes("PREMIUM_EXTRA"),
       details: isAdmin || permissions.includes("PREMIUM_DETAILS"),
       paywallUiEnabled: Boolean(data.paywallUiEnabled),
+      priceAlert: isAdmin || permissions.includes("PRICE_ALERT"),
     };
   } catch {
     return NO_ACCESS;
