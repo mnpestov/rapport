@@ -41,7 +41,11 @@ const readAccess = (): PremiumAccess => {
       extra: isAdmin || permissions.includes("PREMIUM_EXTRA"),
       details: isAdmin || permissions.includes("PREMIUM_DETAILS"),
       paywallUiEnabled: Boolean(data.paywallUiEnabled),
-      priceAlert: isAdmin || permissions.includes("PRICE_ALERT"),
+      // Строго по разрешению, без авто-доступа админа: чтобы админ мог
+      // проверять включение/отключение тумблера «Подписка на цены» на
+      // самом себе. На бэкенде роут гейтится тем же — requirePermission
+      // (не ...OrAdmin).
+      priceAlert: permissions.includes("PRICE_ALERT"),
     };
   } catch {
     return NO_ACCESS;

@@ -31,15 +31,14 @@ export const PriceAlertsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     let isMounted = true;
 
     const init = async () => {
-      // Грузим данные только если у пользователя есть доступ. Читаем
-      // localStorage напрямую (те же 3 строки, что внутри readAccess в
-      // usePremiumAccess.ts) — не импортируем приватную функцию модуля.
+      // Грузим данные только если у пользователя есть разрешение PRICE_ALERT.
+      // Строго по разрешению, без авто-доступа админа — тем же правилом,
+      // что usePremiumAccess.priceAlert и роут (requirePermission).
       let hasPriceAlert = false;
       try {
         const raw = localStorage.getItem('user_data');
         const data = raw ? JSON.parse(raw) : null;
-        const isAdmin = data?.role === 'ADMIN';
-        hasPriceAlert = isAdmin || (data?.permissions ?? []).includes('PRICE_ALERT');
+        hasPriceAlert = (data?.permissions ?? []).includes('PRICE_ALERT');
       } catch {
         hasPriceAlert = false;
       }
