@@ -7,6 +7,14 @@
   padding: 16px;
 }
 
+.cardClickable {
+  cursor: pointer;
+}
+
+.cardClickable:hover {
+  border-color: #cbd5c9;
+}
+
 .left {
   flex: 0 0 168px;
   display: flex;
@@ -15,6 +23,7 @@
 }
 
 .img {
+  position: relative;
   width: 168px;
   height: 224px;
   border-radius: 2px;
@@ -38,6 +47,66 @@
   color: var(--text-placeholder);
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
+}
+
+/* ── Листаемая галерея (тот же приём, что PatternDetails в mini-app) ────── */
+
+.galleryOne {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleryTrack {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.galleryTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.gallerySlide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  scroll-snap-align: start;
+}
+
+.galleryDots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.galleryDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, width 0.15s;
+}
+
+.galleryDotActive {
+  background: #ffffff;
+  width: 16px;
+  border-radius: 3px;
 }
 
 .authorName {
@@ -113,6 +182,11 @@
 .titleValue {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.oldPrice {
+  color: var(--text-placeholder);
+  text-decoration: line-through;
 }
 
 .editBadge {

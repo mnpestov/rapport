@@ -124,6 +124,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const [creatingEditFor, setCreatingEditFor] = useState<string | null>(null);
   const [authorEditingDraft, setAuthorEditingDraft] = useState<CabinetDraft | null>(null);
   const [currentAuthorName, setCurrentAuthorName] = useState("");
+  // Просмотр карточки модерации: та же модалка-форма, только read-only.
+  // Данные берутся из объекта draft (getDraftsList отдаёт все поля), без
+  // дополнительного запроса.
+  const [viewingDraft, setViewingDraft] = useState(false);
 
   // Памятки автора — показываются один раз (флаг в localStorage).
   // welcome — при первом входе в кабинет; formGuide — поверх формы при
@@ -400,6 +404,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const handleOpenCreate = () => {
     setEditingId(null);
     setAuthorEditingDraft(null);
+    setViewingDraft(false);
     resetYarns();
     setFormData({
       title: "",
@@ -453,6 +458,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       originalFormDataRef.current = { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] };
       editingIsVisibleRef.current = res.isVisible;
       setEditingId(id);
+      setViewingDraft(false);
       // Связи грузим отдельным запросом и не блокируем ими форму: описание
       // должно открыться, даже если справочник недоступен.
       getPatternYarns(id)
@@ -468,6 +474,37 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     } catch (err: any) {
       toast.error(err.message || "Failed to load pattern details");
     }
+  };
+
+  // Просмотр карточки модерации (админ) — та же модалка read-only.
+  // Всё из объекта draft: getDraftsList отдаёт полный набор полей.
+  const handleViewDraft = (draft: AdminDraft) => {
+    setFormData({
+      title: draft.title || "",
+      authorName: draft.author?.name || "",
+      url: draft.url || "",
+      images: (draft.images || []).slice(0, 5),
+      details: draft.details || "",
+      price: draft.price != null ? String(draft.price) : "",
+      oldPrice: draft.oldPrice != null ? String(draft.oldPrice) : "",
+      isFree: draft.isFree,
+      isNew: draft.isNew,
+      categories: draft.categories.map((c) => c.name),
+      tags: draft.tags.map((t) => t.name),
+      instruments: draft.instruments.map((i) => i.name),
+      yarnRangeIds: draft.yarnRanges.map((y) => y.id),
+      densityStitches: draft.densityStitches != null ? String(draft.densityStitches) : "",
+      densityRows: draft.densityRows != null ? String(draft.densityRows) : "",
+    });
+    originalFormDataRef.current = null;
+    setEditingId(null);
+    setAuthorEditingDraft(null);
+    setPatternYarns_(
+      (draft.yarns || []).map((y) => ({ id: y.id, name: y.name, mPer100g: null, composition: null })),
+    );
+    setYarnMentions([]);
+    setViewingDraft(true);
+    setIsModalOpen(true);
   };
 
   const handleAuthorEditDraft = (draft: CabinetDraft) => {
@@ -499,6 +536,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       ? { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] }
       : null;
     setAuthorEditingDraft(draft);
+    setViewingDraft(false);
     setEditingId(draft.id);
     // Черновик может уже иметь выбранные артикулы — либо автор добавил их
     // раньше через YarnPicker (DraftYarn), либо это edit-черновик
@@ -828,10 +866,12 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
   };
 
-  const formReadonly = isAuthor && authorEditingDraft?.status === "PENDING";
-  const modalTitle = formReadonly
-    ? "Описание (на модерации)"
-    : editingId ? "Редактировать описание" : "Новое описание";
+  const formReadonly = (isAuthor && authorEditingDraft?.status === "PENDING") || viewingDraft;
+  const modalTitle = viewingDraft
+    ? "Просмотр описания"
+    : (isAuthor && authorEditingDraft?.status === "PENDING")
+      ? "Описание (на модерации)"
+      : editingId ? "Редактировать описание" : "Новое описание";
 
   // Only meaningful when editing an already-published pattern (see
   // originalFormDataRef assignment in handleAuthorEditDraft — null for a
@@ -877,6 +917,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
           // clutter, not worth surfacing an error toast for a close action.
         });
     }
+    setViewingDraft(false);
     setIsModalOpen(false);
   };
 
@@ -1029,6 +1070,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               draft={draft}
               onApprove={handleApproveDraft}
               onReject={(d) => { setRejectingDraft(d); setRejectComment(""); }}
+              onView={handleViewDraft}
             />
           ))}
         </div>
@@ -1158,9 +1200,15 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               )}
             </div>
           )}
+        </>
+      )}
 
-          <Modal isOpen={isModalOpen} onClose={handleCloseAuthorModal} title={modalTitle} maxWidth={760}>
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 30 }}>
+      {/* Модалка формы — ОТДЕЛЬНЫМ сиблингом, не внутри блока вкладок:
+          на «На модерации» у админа тот блок не рендерится, а модалка
+          нужна для просмотра карточки из очереди модерации. Её видимость
+          решает сам isModalOpen. */}
+      <Modal isOpen={isModalOpen} onClose={handleCloseAuthorModal} title={modalTitle} maxWidth={760}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 30 }}>
 
               {isAuthor && authorEditingDraft?.status === "REJECTED" && authorEditingDraft.moderationComment && (
                 <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, fontFamily: "Mulish", fontSize: 13, color: "#b91c1c" }}>
@@ -1528,28 +1576,26 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                     </button>
                   </>
                 )}
-              </div>
-            </form>
-          </Modal>
+          </div>
+        </form>
+      </Modal>
 
-          <ConfirmDialog
-            isOpen={confirmOpen}
-            title={isAuthor ? "Удалить выбранное" : status === "archive" ? "Удалить навсегда" : "Скрыть описания"}
-            message={
-              isAuthor
-                ? `Черновики (${selectedIds.size} шт.) будут удалены безвозвратно, опубликованные описания — перемещены в архив. Черновики на модерации не будут затронуты.`
-                : status === "archive"
-                  ? `Вы уверены, что хотите удалить выбранные карточки (${selectedIds.size} шт.) навсегда? Это действие необратимо, картинка также будет удалена.`
-                  : `Вы уверены, что хотите скрыть выбранные описания (${selectedIds.size} шт.)? Они переместятся в архив.`
-            }
-            confirmText={isAuthor ? "Удалить" : status === "archive" ? "Удалить" : "Скрыть"}
-            cancelText="Отмена"
-            variant="danger"
-            onConfirm={confirmDeleteSelected}
-            onCancel={() => setConfirmOpen(false)}
-          />
-        </>
-      )}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title={isAuthor ? "Удалить выбранное" : status === "archive" ? "Удалить навсегда" : "Скрыть описания"}
+        message={
+          isAuthor
+            ? `Черновики (${selectedIds.size} шт.) будут удалены безвозвратно, опубликованные описания — перемещены в архив. Черновики на модерации не будут затронуты.`
+            : status === "archive"
+              ? `Вы уверены, что хотите удалить выбранные карточки (${selectedIds.size} шт.) навсегда? Это действие необратимо, картинка также будет удалена.`
+              : `Вы уверены, что хотите скрыть выбранные описания (${selectedIds.size} шт.)? Они переместятся в архив.`
+        }
+        confirmText={isAuthor ? "Удалить" : status === "archive" ? "Удалить" : "Скрыть"}
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={confirmDeleteSelected}
+        onCancel={() => setConfirmOpen(false)}
+      />
 
       {rejectingDraft && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>

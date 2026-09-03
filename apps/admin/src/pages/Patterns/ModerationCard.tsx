@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { Button } from "../../components/Button/Button";
 import { AdminDraft } from "../../api/admin-drafts";
 import { API_URL } from "../../api/config";
@@ -9,6 +9,8 @@ interface ModerationCardProps {
   onApprove: (id: string) => Promise<void>;
   onReject: (draft: AdminDraft) => void;
   onEdit?: (draft: AdminDraft) => void;
+  /** Клик по карточке (кроме кнопок и ссылок) — открыть просмотр. */
+  onView?: (draft: AdminDraft) => void;
   approveLabel?: string;
   rejectLabel?: string;
 }
@@ -17,6 +19,14 @@ function getImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
   if (url.startsWith("http")) return url;
   return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
+// Целые/дробные рубли без лишних нулей ("800.00" -> "800", "799.50" -> "799.5").
+function formatPrice(value: number | string | null): string | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return String(n);
 }
 
 function CheckboxGlyph({ checked }: { checked: boolean }) {
@@ -51,18 +61,84 @@ function Stack({ items }: { items: { id: string; name: string }[] }) {
   );
 }
 
-export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabel = "Опубликовать", rejectLabel = "Отклонить" }: ModerationCardProps) {
-  const imgSrc = getImageUrl(draft.thumbnailUrl);
+// Листаемая галерея — тот же приём, что PatternDetails в mini-app:
+// CSS scroll-snap + точки, без библиотеки. Одно фото рендерится само по себе.
+function Gallery({ images, alt }: { images: string[]; alt: string }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const srcs = images.map(getImageUrl).filter((s): s is string => !!s);
+
+  if (srcs.length === 0) {
+    return <div className={styles.imgPlaceholder}>Нет фото</div>;
+  }
+  if (srcs.length === 1) {
+    return <img src={srcs[0]} alt={alt} className={styles.galleryOne} />;
+  }
+
+  const handleScroll = () => {
+    const track = trackRef.current;
+    if (!track || track.clientWidth === 0) return;
+    setActiveIndex(Math.round(track.scrollLeft / track.clientWidth));
+  };
+
+  const scrollToIndex = (index: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" });
+  };
 
   return (
-    <div className={styles.card}>
+    <>
+      <div className={styles.galleryTrack} ref={trackRef} onScroll={handleScroll}>
+        {srcs.map((src, index) => (
+          <img
+            key={index}
+            src={src}
+            alt={`${alt} ${index + 1}`}
+            className={styles.gallerySlide}
+            loading={index <= 1 ? "eager" : "lazy"}
+            decoding="async"
+          />
+        ))}
+      </div>
+      <div className={styles.galleryDots}>
+        {srcs.map((_, index) => (
+          <button
+            key={index}
+            type="button"
+            className={`${styles.galleryDot}${index === activeIndex ? " " + styles.galleryDotActive : ""}`}
+            onClick={(e) => { e.stopPropagation(); scrollToIndex(index); }}
+            aria-label={`Фото ${index + 1}`}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function ModerationCard({ draft, onApprove, onReject, onEdit, onView, approveLabel = "Опубликовать", rejectLabel = "Отклонить" }: ModerationCardProps) {
+  const price = formatPrice(draft.price);
+  const oldPrice = formatPrice(draft.oldPrice);
+  const hasDensity = draft.densityStitches != null || draft.densityRows != null;
+
+  // Клик по карточке открывает просмотр — но не по кнопкам/ссылкам/точкам
+  // галереи (у них своя обработка + stopPropagation).
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!onView) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a")) return;
+    onView(draft);
+  };
+
+  return (
+    <div
+      className={`${styles.card}${onView ? " " + styles.cardClickable : ""}`}
+      onClick={handleCardClick}
+    >
       <div className={styles.left}>
         <div className={styles.img}>
-          {imgSrc ? (
-            <img src={imgSrc} alt={draft.title} />
-          ) : (
-            <div className={styles.imgPlaceholder}>Нет фото</div>
-          )}
+          <Gallery images={draft.images} alt={draft.title} />
         </div>
         <div className={styles.authorName}>{draft.author.name}</div>
         <div className={styles.row}>
@@ -92,9 +168,19 @@ export function ModerationCard({ draft, onApprove, onReject, onEdit, approveLabe
               <span>{draft.yarnRanges.map((y) => y.label).join(", ")}</span>
             </Row>
           )}
-          {draft.densityStitches != null && draft.densityRows != null && (
+          {hasDensity && (
             <Row label="Плотность">
-              <span>{`${draft.densityStitches} х ${draft.densityRows}`}</span>
+              <span>{`${draft.densityStitches ?? "—"} х ${draft.densityRows ?? "—"}`}</span>
+            </Row>
+          )}
+          {price && (
+            <Row label="Цена">
+              <span>{price} ₽</span>
+            </Row>
+          )}
+          {oldPrice && (
+            <Row label="Старая цена">
+              <span className={styles.oldPrice}>{oldPrice} ₽</span>
             </Row>
           )}
           {/* Распознанные артикулы — чипами, нераспознанные упоминания —
