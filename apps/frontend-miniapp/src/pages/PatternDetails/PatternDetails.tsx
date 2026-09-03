@@ -262,8 +262,9 @@ export const PatternDetails: React.FC = () => {
                       }
                       aria-pressed={!!(id && isSubscribed(id))}
                     >
+                      {/* Размер иконки задаётся в CSS (.details-alert-bell svg)
+                          — адаптив по брейкпоинту. */}
                       <Bell
-                        size={18}
                         strokeWidth={1.5}
                         fill={id && isSubscribed(id) ? "currentColor" : "none"}
                       />
