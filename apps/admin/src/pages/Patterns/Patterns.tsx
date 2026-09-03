@@ -476,36 +476,59 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     }
   };
 
-  // Просмотр карточки модерации (админ) — та же модалка read-only.
-  // Всё из объекта draft: getDraftsList отдаёт полный набор полей.
-  const handleViewDraft = (draft: AdminDraft) => {
+  // Просмотр описания в модалке (read-only) — из очереди модерации у админа
+  // (AdminDraft) и из карточного вида кабинета автора (CabinetItem). Оба
+  // объекта уже несут полный набор полей, дополнительный запрос не нужен.
+  const openViewModal = (src: {
+    title: string;
+    url: string;
+    images: string[];
+    details: string | null;
+    price: number | string | null;
+    oldPrice: number | string | null;
+    isFree: boolean;
+    isNew: boolean;
+    categories: { id: string; name: string }[];
+    tags: { id: string; name: string }[];
+    instruments: { id: string; name: string }[];
+    yarnRanges: { id: string; label: string }[];
+    densityStitches: number | string | null;
+    densityRows: number | string | null;
+    yarns?: { id: string; name: string }[];
+    authorName?: string;
+  }) => {
     setFormData({
-      title: draft.title || "",
-      authorName: draft.author?.name || "",
-      url: draft.url || "",
-      images: (draft.images || []).slice(0, 5),
-      details: draft.details || "",
-      price: draft.price != null ? String(draft.price) : "",
-      oldPrice: draft.oldPrice != null ? String(draft.oldPrice) : "",
-      isFree: draft.isFree,
-      isNew: draft.isNew,
-      categories: draft.categories.map((c) => c.name),
-      tags: draft.tags.map((t) => t.name),
-      instruments: draft.instruments.map((i) => i.name),
-      yarnRangeIds: draft.yarnRanges.map((y) => y.id),
-      densityStitches: draft.densityStitches != null ? String(draft.densityStitches) : "",
-      densityRows: draft.densityRows != null ? String(draft.densityRows) : "",
+      title: src.title || "",
+      authorName: src.authorName || currentAuthorName || "",
+      url: src.url || "",
+      images: (src.images || []).slice(0, 5),
+      details: src.details || "",
+      price: src.price != null ? String(src.price) : "",
+      oldPrice: src.oldPrice != null ? String(src.oldPrice) : "",
+      isFree: src.isFree,
+      isNew: src.isNew,
+      categories: src.categories.map((c) => c.name),
+      tags: src.tags.map((t) => t.name),
+      instruments: src.instruments.map((i) => i.name),
+      yarnRangeIds: src.yarnRanges.map((y) => y.id),
+      densityStitches: src.densityStitches != null ? String(src.densityStitches) : "",
+      densityRows: src.densityRows != null ? String(src.densityRows) : "",
     });
     originalFormDataRef.current = null;
     setEditingId(null);
     setAuthorEditingDraft(null);
     setPatternYarns_(
-      (draft.yarns || []).map((y) => ({ id: y.id, name: y.name, mPer100g: null, composition: null })),
+      (src.yarns || []).map((y) => ({ id: y.id, name: y.name, mPer100g: null, composition: null })),
     );
     setYarnMentions([]);
     setViewingDraft(true);
     setIsModalOpen(true);
   };
+
+  const handleViewDraft = (draft: AdminDraft) =>
+    openViewModal({ ...draft, authorName: draft.author?.name });
+
+  const handleViewCabinetItem = (item: CabinetItem) => openViewModal(item);
 
   const handleAuthorEditDraft = (draft: CabinetDraft) => {
     const loaded = {
@@ -1020,6 +1043,9 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               >
                 Удалить
               </Button>
+              {!isMobile && (
+                <ViewToggle value={viewMode} onChange={setViewMode} />
+              )}
             </>
           ) : (
             <>
@@ -1089,7 +1115,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
               {!cabinetLoading && filteredCabinetItems.map((item) => (
                 <AuthorGridCard
                   key={`${item._type}-${item.id}`}
-                  item={toRowItem(item, currentAuthorName)}
+                  item={item}
                   status={statusOf(item)}
                   isSelected={selectedIds.has(item.id)}
                   onSelect={handleSelectRow}
@@ -1099,6 +1125,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       ? handleAuthorEditPattern(item.id)
                       : handleAuthorEditDraft(item)
                   }
+                  onView={handleViewCabinetItem}
                 />
               ))}
             </div>
