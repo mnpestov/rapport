@@ -1,4 +1,4 @@
-import { SquarePen, Trash2, RefreshCw } from "lucide-react";
+import { SquarePen, Trash2, RefreshCw, Check } from "lucide-react";
 import { IconButton } from "../../components/Button/Button";
 import { AuthorItem } from "../../api/authors";
 import styles from "./AuthorRow.module.css";
@@ -56,6 +56,15 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
     >
       <span className={styles.colName}>
         {author.name}
+        {/* За автором закреплён User (есть кабинет). */}
+        {author.cabinet && (
+          <Check
+            size={14}
+            strokeWidth={3}
+            className={styles.linkedMark}
+            aria-label="За автором закреплён пользователь"
+          />
+        )}
         {hasSyncReport && <span className={styles.unreadDot}>{syncItemsCount || 0}</span>}
       </span>
       <span className={styles.colSite}>

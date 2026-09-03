@@ -44,6 +44,12 @@
   gap: 6px;
 }
 
+/* За автором закреплён пользователь — фирменная оранжевая галочка. */
+.linkedMark {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
 .colSite {
   flex: 2 1 0;
   overflow: hidden;
