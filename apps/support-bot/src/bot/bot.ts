@@ -3,7 +3,14 @@ import { config } from '../config';
 import type { CustomContext, SessionData } from './context';
 import { updateLogger } from './middleware/updateLogger';
 import { handleStart } from './handlers/start';
-import { handleDiagnosticStart, handleDiagnosticRetry, handleEscalate, handleCacheFailed } from './handlers/callbackQuery';
+import {
+  handleDiagnosticStart,
+  handleDiagnosticRetry,
+  handleEscalate,
+  handleStayInTelegram,
+  handleCacheFailed,
+  handleManualHelp,
+} from './handlers/callbackQuery';
 import { handleFallback } from './handlers/fallback';
 import {
   handleBecomeAuthor,
@@ -48,7 +55,9 @@ export function createBot(): Bot<CustomContext> {
   bot.callbackQuery('diagnostic:start', handleDiagnosticStart);
   bot.callbackQuery('diagnostic:retry', handleDiagnosticRetry);
   bot.callbackQuery('support:escalate', handleEscalate);
+  bot.callbackQuery('support:proxy_not_it', handleStayInTelegram);
   bot.callbackQuery('support:cache_failed', handleCacheFailed);
+  bot.callbackQuery('support:manual', handleManualHelp);
   bot.callbackQuery('author_app:begin', handleAuthorAppBegin);
   bot.callbackQuery('web_access:begin', handleWebAccessBegin);
   bot.callbackQuery('web_access:cancel', handleWebAccessCancel);

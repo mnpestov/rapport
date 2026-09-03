@@ -13,7 +13,7 @@ const backendClient = new BackendClient();
 const RETRY_KEYBOARD = new InlineKeyboard().text('Проверить ещё раз', 'diagnostic:start');
 const RETRY_AFTER_ERROR_KEYBOARD = new InlineKeyboard().text('Проверить ещё раз', 'diagnostic:retry');
 const WHITELISTED_KEYBOARD = new InlineKeyboard()
-  .text('Я всё равно не могу войти', 'support:escalate').row()
+  .text('Всё равно не открывается', 'support:escalate').row()
   .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
 
 const MESSAGES: Record<DiagnosticOutcome, string> = {
@@ -122,7 +122,43 @@ export async function handleDiagnosticRetry(ctx: CallbackCtx): Promise<void> {
   return runDiagnosticFlow(ctx, true);
 }
 
+const OPEN_RAPPORT_URL = 'https://t.me/rapportapp_bot/rapport';
+const SITE_URL = 'https://rapport.su';
+
+// Экран 1: пользователь подтверждённо подписан, но Mini App не открывается.
+// Объясняем про прокси/VPN и предлагаем веб-версию. Диагностика уже
+// подтвердила подписку (этот callback вызывается только для SUBSCRIBED* /
+// AUTO_FIXED), так что отдельная проверка не нужна.
 export async function handleEscalate(ctx: CallbackCtx): Promise<void> {
+  logEvent({
+    event: 'WEB_ALTERNATIVE_OFFERED',
+    requestId: ctx.requestId,
+    telegramId: ctx.from.id,
+  });
+
+  await ctx.answerCallbackQuery();
+
+  const text =
+    'Мы проверили — подписка на канал у вас активна, доступ есть.\n\n' +
+    'Иногда мини-приложение не открывается из-за настроек Telegram: включённый ' +
+    'прокси или VPN в самом Telegram могут блокировать запуск встроенных ' +
+    'приложений. Это не зависит от нас.\n\n' +
+    'На этот случай у нас есть веб-версия Раппорта — тот же каталог, работает ' +
+    'в браузере телефона. Если добавить ярлык на экран «Домой», она открывается ' +
+    'как обычное приложение, отдельным значком.\n\n' +
+    'Хотите — я выдам вам логин и пароль для входа на сайте.';
+
+  const keyboard = new InlineKeyboard()
+    .text('Получить логин для сайта', 'web_access:begin').row()
+    .text('Хочу остаться в Телеграм', 'support:proxy_not_it').row()
+    .url('Открыть Раппорт', OPEN_RAPPORT_URL);
+
+  await ctx.reply(text, { reply_markup: keyboard });
+}
+
+// Экран 2: пользователь хочет остаться в Telegram — даём инструкцию по
+// очистке кэша (прежний текст handleEscalate).
+export async function handleStayInTelegram(ctx: CallbackCtx): Promise<void> {
   logEvent({
     event: 'CACHE_CLEAR_INSTRUCTION_SENT',
     requestId: ctx.requestId,
@@ -132,19 +168,47 @@ export async function handleEscalate(ctx: CallbackCtx): Promise<void> {
   await ctx.answerCallbackQuery();
 
   const text =
-    'Часто проблема решается простой очисткой кэша Telegram. Пожалуйста, попробуйте выполнить эти шаги:\n\n' +
+    'Тогда часто помогает очистка кэша Telegram:\n\n' +
     '1. Настройки → Данные и память → Использование памяти\n' +
-    '2. Снимите все галочки, оставьте только «Прочее» и нажмите «Очистить».\n' +
+    '2. Снимите все галочки, оставьте только «Прочее», нажмите «Очистить».\n' +
     '3. Полностью закройте Telegram (смахните из недавних) и откройте Раппорт заново.';
 
   const keyboard = new InlineKeyboard()
-    .text('Очистка кэша не помогла', 'support:cache_failed').row()
-    .url('Открыть Раппорт', 'https://t.me/rapportapp_bot/rapport');
+    .text('Не помогло', 'support:cache_failed').row()
+    .url('Открыть Раппорт', OPEN_RAPPORT_URL);
 
   await ctx.reply(text, { reply_markup: keyboard });
 }
 
+// Экран 3: кэш не помог — почти наверняка VPN/прокси. Даём варианты и
+// снова предлагаем веб.
 export async function handleCacheFailed(ctx: CallbackCtx): Promise<void> {
+  logEvent({
+    event: 'VPN_HINT_SENT',
+    requestId: ctx.requestId,
+    telegramId: ctx.from.id,
+  });
+
+  await ctx.answerCallbackQuery();
+
+  const text =
+    'Тогда, скорее всего, дело в VPN или прокси — они мешают Telegram запустить приложение.\n\n' +
+    'Что можно попробовать:\n' +
+    '• отключить VPN/прокси в настройках Telegram и открыть Раппорт заново;\n' +
+    '• подключиться через другой VPN или другую сеть;\n' +
+    `• зайти через веб-версию — там VPN не мешает: ${SITE_URL}`;
+
+  const keyboard = new InlineKeyboard()
+    .text('Получить логин для сайта', 'web_access:begin').row()
+    .text('Нужна помощь специалиста', 'support:manual').row()
+    .url('Открыть Раппорт', OPEN_RAPPORT_URL);
+
+  await ctx.reply(text, { reply_markup: keyboard });
+}
+
+// Ручная эскалация: сбор скриншота + пометка на бэкенде (прежний
+// handleCacheFailed).
+export async function handleManualHelp(ctx: CallbackCtx): Promise<void> {
   const telegramId = ctx.from.id;
   const username = ctx.from.username ?? undefined;
 
