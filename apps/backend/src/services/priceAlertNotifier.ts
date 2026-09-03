@@ -1,17 +1,23 @@
 /**
- * Уведомление в бот о снижении цены описания, на которое подписан
- * пользователь (implementation_plan.md — «Подписка на цены»).
+ * Уведомления подписчикам об изменении цены описания
+ * (implementation_plan.md — «Подписка на цены», вариант B).
  *
- * Тот же паттерн, что subscriptionNotifier.ts: отправка через
- * telegram-gateway `/send-message` (а не напрямую в api.telegram.org —
- * ETIMEDOUT на проде), функция никогда не бросает — упавшая доставка не
- * должна ронять весь прогон джоба на остальных подписчиках. Возвращает
- * факт доставки.
+ * Одна точка рассылки. Дёргается из ВСЕХ мест, где меняется Pattern.price:
+ *  - ручная правка админом в форме описания;
+ *  - одобрение правки автора (approveDraft, только edit-ветка);
+ *  - скрипт check_price_updates.py → POST /internal/bot/price-changed.
  *
- * parse_mode НЕ используется: текст содержит произвольное название
- * описания, любой `_`/`*` в нём сломал бы Markdown-разбор. У `/send-message`
- * его и нет.
+ * Событие для уведомления (см. обсуждение решений):
+ *  - снижение цены: было > стало, обе цены заданы, новая > 0;
+ *  - переход в бесплатно: было платно, стало isFree.
+ * Дедупликации нет — сколько снижений, столько уведомлений.
+ *
+ * Отправка через telegram-gateway `/send-message` (как subscriptionNotifier),
+ * никогда не бросает. parse_mode НЕ используется — в тексте произвольное
+ * название описания.
  */
+
+import { prisma } from "../prismaClient";
 
 async function sendViaGateway(telegramId: bigint, text: string): Promise<boolean> {
   const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
@@ -45,26 +51,94 @@ async function sendViaGateway(telegramId: bigint, text: string): Promise<boolean
   }
 }
 
-// Целые рубли без ".0" — цена приходит числом из changes[].
+// Целые рубли без ".0".
 function formatPrice(value: number): string {
   return Math.round(value).toLocaleString("ru-RU");
 }
 
-/**
- * @param oldPrice предыдущая фактическая цена (changes[].oldPrice)
- * @param newPrice новая фактическая цена (changes[].newPrice)
- */
-export async function sendPriceDropAlert(
-  telegramId: bigint,
-  patternTitle: string,
-  oldPrice: number,
-  newPrice: number,
-  patternId: string,
-): Promise<boolean> {
-  const text =
+const SITE = "https://rapport.su/pattern";
+
+function dropText(title: string, oldPrice: number, newPrice: number, patternId: string): string {
+  return (
     `💸 Цена снизилась!\n\n` +
-    `«${patternTitle}»\n` +
+    `«${title}»\n` +
     `Была: ${formatPrice(oldPrice)} ₽ → Стала: ${formatPrice(newPrice)} ₽\n\n` +
-    `https://rapport.su/pattern/${patternId}`;
-  return sendViaGateway(telegramId, text);
+    `${SITE}/${patternId}`
+  );
+}
+
+function freeText(title: string, patternId: string): string {
+  return (
+    `🎁 Описание стало бесплатным!\n\n` +
+    `«${title}»\n\n` +
+    `${SITE}/${patternId}`
+  );
+}
+
+interface PriceChange {
+  patternId: string;
+  title: string;
+  oldPrice: number | null;
+  oldIsFree: boolean;
+  newPrice: number | null;
+  newIsFree: boolean;
+}
+
+// Есть ли повод уведомлять и каким текстом.
+function buildMessage(c: PriceChange): string | null {
+  // Было платно → стало бесплатно.
+  if (c.newIsFree && !c.oldIsFree) {
+    return freeText(c.title, c.patternId);
+  }
+  // Снижение фактической цены.
+  if (
+    !c.newIsFree &&
+    c.oldPrice != null &&
+    c.newPrice != null &&
+    c.newPrice > 0 &&
+    c.newPrice < c.oldPrice
+  ) {
+    return dropText(c.title, c.oldPrice, c.newPrice, c.patternId);
+  }
+  return null;
+}
+
+/**
+ * Проверяет, было ли снижение/переход в бесплатно, и рассылает уведомления
+ * подписчикам этого описания с активным разрешением PRICE_ALERT.
+ * Никогда не бросает — вызывать fire-and-forget.
+ */
+export async function notifyPriceChange(change: PriceChange): Promise<void> {
+  try {
+    const message = buildMessage(change);
+    if (!message) return;
+
+    const alerts = await prisma.priceAlert.findMany({
+      where: { patternId: change.patternId },
+      include: {
+        user: {
+          select: {
+            telegramId: true,
+            permissions: {
+              where: { permission: "PRICE_ALERT" },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    const eligible = alerts.filter((a) => a.user.permissions.length > 0);
+    for (const alert of eligible) {
+      await sendViaGateway(alert.user.telegramId, message);
+    }
+
+    if (eligible.length > 0) {
+      console.log(
+        `[PriceAlert] notified ${eligible.length} subscriber(s) for pattern ${change.patternId}`,
+      );
+    }
+  } catch (err) {
+    console.error("[PriceAlert] notifyPriceChange failed:", err);
+  }
 }

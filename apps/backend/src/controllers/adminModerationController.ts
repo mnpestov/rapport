@@ -5,6 +5,7 @@ import { generateSlug } from "../utils/slug";
 import { deriveImageUrl } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
 import { normalizeUrl } from "../utils/adminShared";
+import { notifyPriceChange } from "../services/priceAlertNotifier";
 
 // ---------------------------------------------------------------------------
 // Moderation, user-author linking
@@ -87,6 +88,18 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
   const { id } = req.params;
   const adminId = req.user!.userId;
 
+  // Для уведомления подписчиков PRICE_ALERT: собираем данные внутри
+  // транзакции, шлём после её успешного коммита (вариант B). Только для
+  // правки существующего описания — у нового подписчиков нет.
+  let priceEvent: {
+    patternId: string;
+    title: string;
+    oldPrice: number | null;
+    oldIsFree: boolean;
+    newPrice: number | null;
+    newIsFree: boolean;
+  } | null = null;
+
   try {
     await prisma.$transaction(async (tx) => {
       const draft = await tx.draft.findUnique({
@@ -161,6 +174,11 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
         publishedPatternId = created.id;
       } else {
         // Edit existing pattern
+        const current = await tx.pattern.findUnique({
+          where: { id: draft.patternId },
+          select: { price: true, isFree: true },
+        });
+
         await tx.pattern.update({
           where: { id: draft.patternId },
           data: {
@@ -183,6 +201,15 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
           },
         });
         publishedPatternId = draft.patternId;
+
+        priceEvent = {
+          patternId: draft.patternId,
+          title: draft.title,
+          oldPrice: current?.price != null ? Number(current.price) : null,
+          oldIsFree: current?.isFree ?? false,
+          newPrice: draft.price != null ? Number(draft.price) : null,
+          newIsFree: draft.isFree,
+        };
       }
 
       // DraftYarn (author's manual YarnPicker choices) isn't an implicit
@@ -215,6 +242,10 @@ export const approveDraft = async (req: Request, res: Response): Promise<void> =
         },
       });
     });
+
+    // После успешного коммита — рассылка подписчикам (fire-and-forget,
+    // не влияет на ответ и не откатывает одобрение).
+    if (priceEvent) void notifyPriceChange(priceEvent);
 
     res.json({ success: true });
   } catch (error: any) {

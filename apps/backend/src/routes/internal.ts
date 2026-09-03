@@ -10,6 +10,7 @@ import {
   discardApplicationDraft,
 } from '../controllers/authorApplicationController';
 import { createUserCredential, lookupUserCredential } from '../controllers/userCredentialController';
+import { notifyPriceChanged } from '../controllers/priceAlertsController';
 
 const router = Router();
 
@@ -28,5 +29,9 @@ router.post('/bot/author-application/respond', requireBotApiKey, respondToApplic
 // telegramId в теле — та же причина, что и у заявок выше.
 router.post('/bot/user-credentials', requireBotApiKey, createUserCredential);
 router.post('/bot/user-credentials/lookup', requireBotApiKey, lookupUserCredential);
+
+// check_price_updates.py дёргает после апдейта цены описания — рассылка
+// подписчикам PRICE_ALERT (implementation_plan.md, вариант B).
+router.post('/bot/price-changed', requireBotApiKey, notifyPriceChanged);
 
 export default router;

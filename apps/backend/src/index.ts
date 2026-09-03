@@ -41,7 +41,6 @@ import paymentsRouter from "./routes/payments";
 import { startExpireNewPatternsJob } from "./jobs/expireNewPatterns";
 import { startPopularityJob } from "./jobs/popularity";
 import { startCleanupApplicationDraftsJob } from "./jobs/cleanupApplicationDrafts";
-import { startPriceAlertDispatcherJob } from "./jobs/priceAlertDispatcher";
 
 const uploadsDir = path.join(__dirname, "../uploads/patterns");
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -171,7 +170,6 @@ process.on('unhandledRejection', (reason) => {
 startExpireNewPatternsJob();
 startPopularityJob();
 startCleanupApplicationDraftsJob();
-startPriceAlertDispatcherJob();
 
 app.listen(PORT, () => {
   console.log(`Backend is running on http://localhost:${PORT}`);

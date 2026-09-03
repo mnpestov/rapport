@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
+import { notifyPriceChange } from "../services/priceAlertNotifier";
 
 // Подписка пользователя на снижение цены описания
 // (implementation_plan.md — «Подписка на цены»).
@@ -68,4 +69,33 @@ export const unsubscribeAlert = async (req: Request, res: Response): Promise<voi
     console.error("[PriceAlerts] Failed to unsubscribe:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+};
+
+// POST /internal/bot/price-changed — за requireBotApiKey. Вызывается
+// скриптом check_price_updates.py после того, как он обновил цену описания
+// в БД. Тело несёт старые/новые price + isFree — их скрипт знает на
+// итерации цикла. Рассылка решает сама, есть ли повод (снижение / переход
+// в бесплатно) — см. notifyPriceChange.
+export const notifyPriceChanged = async (req: Request, res: Response): Promise<void> => {
+  const { patternId, title, oldPrice, oldIsFree, newPrice, newIsFree } = req.body ?? {};
+
+  if (typeof patternId !== "string" || !patternId) {
+    res.status(400).json({ error: "patternId is required" });
+    return;
+  }
+
+  const toNum = (v: unknown): number | null =>
+    v === null || v === undefined ? null : Number.isFinite(Number(v)) ? Number(v) : null;
+
+  // Отвечаем сразу — рассылка асинхронная, скрипт не должен её ждать.
+  res.json({ ok: true });
+
+  void notifyPriceChange({
+    patternId,
+    title: typeof title === "string" && title ? title : "Описание",
+    oldPrice: toNum(oldPrice),
+    oldIsFree: oldIsFree === true,
+    newPrice: toNum(newPrice),
+    newIsFree: newIsFree === true,
+  });
 };

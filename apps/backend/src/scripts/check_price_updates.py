@@ -213,6 +213,42 @@ def send_telegram_message(text):
         print(f"[telegram] отправка не удалась: {e}")
 
 
+def notify_price_changed(pattern_id, title, old_price, old_is_free, new_price, new_is_free):
+    # Сообщаем бэкенду, что цена описания изменилась — он сам решит, есть ли
+    # повод уведомить подписчиков PRICE_ALERT (снижение / переход в
+    # бесплатно). Вызывается ПОСЛЕ коммита UPDATE "Pattern".
+    #
+    # Ошибка запроса не должна ронять прогон: снижения редки, потеря одного
+    # уведомления некритична, ретраи не делаем.
+    #
+    # BOT_API_KEY — тот же ключ, что проверяет requireBotApiskey на бэкенде
+    # (уже есть в apps/backend/.env, обёртка run_price_check.sh его source'ит).
+    # BACKEND_URL — единственная новая переменная, добавляется в тот же .env.
+    backend_url = os.environ.get("BACKEND_URL")
+    api_key = os.environ.get("BOT_API_KEY")
+    if not backend_url or not api_key:
+        print("[price-alert] BACKEND_URL/BOT_API_KEY не заданы, уведомление пропущено")
+        return
+    try:
+        resp = requests.post(
+            f"{backend_url}/internal/bot/price-changed",
+            headers={"x-bot-api-key": api_key},
+            json={
+                "patternId": pattern_id,
+                "title": title,
+                "oldPrice": old_price,
+                "oldIsFree": bool(old_is_free),
+                "newPrice": new_price,
+                "newIsFree": bool(new_is_free),
+            },
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            print(f"[price-alert] уведомление не принято: HTTP {resp.status_code} {resp.text[:200]}")
+    except Exception as e:
+        print(f"[price-alert] уведомление не отправлено: {e}")
+
+
 def build_errors_message(checked, changed_count, errors):
     lines = [
         f"Price check: {len(errors)} ошибок из {checked} проверенных ({changed_count} изменений).",
@@ -422,6 +458,13 @@ def check_prices(target_author_names=None):
                             )
                             conn.commit()
                             changes.append((author_name, title, url, pattern_id, old_price_f, old_old_price_f, new_price, new_old_price))
+                            # Уведомить подписчиков PRICE_ALERT (бэкенд сам
+                            # решит, снижение это или нет). После коммита.
+                            notify_price_changed(
+                                pattern_id, title,
+                                old_price_f, db_is_free,
+                                new_price, new_is_free,
+                            )
 
                         # Успех — сбрасываем прогресс эскалации для этой пары.
                         state.pop(key, None)

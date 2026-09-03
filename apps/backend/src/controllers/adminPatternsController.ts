@@ -6,6 +6,7 @@ import { generateSlug } from "../utils/slug";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, isOwnUpload } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
 import { normalizeUrl, normalizeQuotes, syncAuthor, syncTags, syncCategories, syncInstruments } from "../utils/adminShared";
+import { notifyPriceChange } from "../services/priceAlertNotifier";
 
 /**
  * Admin patterns CRUD. All handlers are reached only through requireAuth + requireAdmin.
@@ -265,6 +266,22 @@ export const updatePattern = async (req: Request, res: Response): Promise<void> 
       where: { id },
       data,
     });
+
+    // Уведомление подписчикам PRICE_ALERT, если цена реально снизилась или
+    // описание стало бесплатным (implementation_plan.md, вариант B).
+    // fire-and-forget — notifyPriceChange сама решает, есть ли повод.
+    if (data.price !== undefined || data.isFree !== undefined) {
+      void notifyPriceChange({
+        patternId: id,
+        title: updated.title,
+        oldPrice: existing.price != null ? Number(existing.price) : null,
+        oldIsFree: existing.isFree,
+        newPrice: data.price !== undefined
+          ? (data.price != null ? Number(data.price) : null)
+          : (existing.price != null ? Number(existing.price) : null),
+        newIsFree: data.isFree !== undefined ? data.isFree : existing.isFree,
+      });
+    }
 
     // Delete files removed from the gallery (only ones we host ourselves —
     // scraper-origin /images/patterns/ files are never touched, matching
