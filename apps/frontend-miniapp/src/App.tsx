@@ -111,28 +111,54 @@ function App() {
       try {
         const tg = (window as any).Telegram?.WebApp;
 
-        // Режим определяется ДО восстановления initData из sessionStorage.
-        // Иначе браузерная вкладка, в которой приложение когда-то
-        // открывали из Telegram, подхватывала бы оттуда ещё живой initData
-        // (он валиден 24 часа) и уходила в Telegram-ветку — то есть
-        // попадала прямо в каталог мимо экрана входа.
-        const mode = detectMode();
+        // Режим по detectMode() — теперь строго по свежему initData от SDK
+        // (см. authSession.ts). tg.platform больше не учитывается: SDK
+        // выставляет его и в Telegram-браузере, из-за чего сайт попадал в
+        // каталог мимо гейта WEB_ACCESS.
+        let mode = detectMode();
 
         let initData = tg?.initData || "";
         let restoredFromSession = false;
 
-        // Восстановление из хранилища — только для Telegram-режима: там оно
-        // лечит реальную проблему (WebView иногда поднимает приложение
-        // заново уже без initData). В браузере восстанавливать нечего.
+        // WebView-реролл: Telegram иногда переподнимает webview Mini App
+        // заново уже без initData. Он всегда в пределах секунд-минут одной
+        // сессии — восстанавливаем только реально свежий initData (< 10 мин
+        // с момента, когда SDK его дал), иначе через сутки после
+        // единственного открытия Mini App остаточный initData снова пускал
+        // бы браузер в каталог.
+        const TG_INITDATA_MAX_AGE_MS = 10 * 60 * 1000;
         if (mode === 'telegram') {
           if (initData) {
             sessionStorage.setItem('tg_initData', initData);
+            sessionStorage.setItem('tg_initData_ts', String(Date.now()));
           } else {
             const stored = sessionStorage.getItem('tg_initData');
-            if (stored) {
+            const ts = Number(sessionStorage.getItem('tg_initData_ts') || 0);
+            if (stored && Date.now() - ts < TG_INITDATA_MAX_AGE_MS) {
               initData = stored;
               restoredFromSession = true;
+            } else if (stored) {
+              // Протух — чистим, чтобы не мешал последующим заходам.
+              sessionStorage.removeItem('tg_initData');
+              sessionStorage.removeItem('tg_initData_ts');
             }
+          }
+        }
+
+        // Медленный старт Mini App: на части клиентов Telegram initData
+        // приходит от SDK не мгновенно. detectMode() без tg.platform в этот
+        // момент вернёт 'web'. Даём SDK 1.5 с на появление initData, прежде
+        // чем уходить в браузерный лендинг (симметрично retry ниже в
+        // telegram-ветке). tg?.platform здесь — только эвристика «окружение
+        // телеграмное», а не признак Mini App.
+        if (mode === 'web' && tg?.platform && tg.platform !== 'unknown' && !tg.initData) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          if (tg.initData) {
+            mode = 'telegram';
+            initData = tg.initData;
+            sessionStorage.setItem('tg_initData', initData);
+            sessionStorage.setItem('tg_initData_ts', String(Date.now()));
+            logFrontend('AUTH_INITDATA_LATE', { initDataLength: initData.length });
           }
         }
 

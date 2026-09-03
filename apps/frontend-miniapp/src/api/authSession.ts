@@ -23,24 +23,25 @@ import { fetchWithTimeout } from './fetchWithTimeout';
 export type AppMode = 'telegram' | 'web';
 
 /**
- * Открыто ли приложение внутри Telegram.
+ * Открыто ли приложение внутри Telegram как Mini App.
  *
- * Проверяем ФАКТ наличия свежего initData у SDK, а не косвенные признаки:
- *  - сам объект window.Telegram.WebApp есть ВСЕГДА (скрипт telegram-web-app.js
- *    подключён в index.html), поэтому его наличие ничего не доказывает;
- *  - initData из sessionStorage тоже не годится: он живёт 24 часа и
- *    остаётся в браузерной вкладке после того, как приложение однажды
- *    открывали из Telegram. Именно из-за него браузер попадал прямо в
- *    каталог мимо экрана входа.
+ * ЕДИНСТВЕННЫЙ надёжный признак — непустой initData, полученный от SDK
+ * прямо сейчас (не восстановленный из хранилища).
  *
- * platform === 'unknown' — как SDK помечает себя вне клиента Telegram.
+ * Почему НЕ по tg.platform: объект window.Telegram.WebApp есть всегда
+ * (скрипт telegram-web-app.js подключён в index.html), и SDK выставляет
+ * tg.platform = 'android'/'ios' даже когда сайт открыт в ТЕЛЕГРАМ-БРАУЗЕРЕ
+ * (webview на произвольном URL, не Mini App). Раньше detectMode на этом
+ * возвращал 'telegram', App.tsx восстанавливал остаточный tg_initData из
+ * sessionStorage (живёт 24 ч) и пускал в каталог через /auth/telegram —
+ * мимо гейта WEB_ACCESS.
+ *
+ * Медленный старт Mini App (initData появляется с задержкой) закрыт в
+ * App.tsx: перед уходом в web-режим SDK даётся 1.5 с на появление initData.
  */
 export function detectMode(): AppMode {
   const tg = (window as any).Telegram?.WebApp;
   if (!tg) return 'web';
-  if (tg.platform && tg.platform !== 'unknown') return 'telegram';
-  // Платформа неизвестна: доверяем только initData, полученному от SDK
-  // прямо сейчас (не восстановленному из хранилища).
   return tg.initData ? 'telegram' : 'web';
 }
 
