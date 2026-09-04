@@ -20,6 +20,12 @@ export interface AuthorItem {
   id: string;
   name: string;
   site: string | null;
+  // Свободный комментарий админа.
+  comment: string | null;
+  // Мы запросили разрешение публиковать контент автора.
+  contentPermissionRequested: boolean;
+  // Автор попросил удалить себя из Раппорта — новинки по нему не показываем.
+  removalRequested: boolean;
   patternsCount: number;
   cabinet: AuthorCabinetInfo | null;
 }
@@ -27,6 +33,9 @@ export interface AuthorItem {
 export interface AuthorInput {
   name: string;
   site?: string;
+  comment?: string | null;
+  contentPermissionRequested?: boolean;
+  removalRequested?: boolean;
 }
 
 export const getAuthors = async (search: string = ""): Promise<AuthorItem[]> => {

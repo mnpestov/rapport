@@ -1,4 +1,4 @@
-import { SquarePen, Trash2, RefreshCw, Check } from "lucide-react";
+import { SquarePen, Trash2, RefreshCw, Check, Loader } from "lucide-react";
 import { IconButton } from "../../components/Button/Button";
 import { AuthorItem } from "../../api/authors";
 import styles from "./AuthorRow.module.css";
@@ -25,6 +25,7 @@ export function AuthorRowHeader() {
       <span className={styles.colName}>Имя</span>
       <span className={styles.colSite}>Сайт</span>
       <span className={styles.colCount}>Описаний</span>
+      <span className={styles.colComment}>Комментарий</span>
       <span className={styles.colActions} />
     </div>
   );
@@ -50,21 +51,34 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
         : "Проверить новинки";
 
   return (
-    <div 
-      className={`${styles.row} ${hasSyncReport ? styles.rowClickable : ""}`} 
+    <div
+      className={[
+        styles.row,
+        hasSyncReport ? styles.rowClickable : "",
+        // Автор попросил удаления — вся строка приглушённая.
+        author.removalRequested ? styles.rowRemoval : "",
+      ].filter(Boolean).join(" ")}
       onClick={handleClick}
     >
       <span className={styles.colName}>
         {author.name}
-        {/* За автором закреплён User (есть кабинет). */}
-        {author.cabinet && (
+        {/* Статус связи с автором: кабинет перекрывает «запросили разрешение».
+            Кабинет есть → галочка. Кабинета нет, но запрос отправлен → ромашка. */}
+        {author.cabinet ? (
           <Check
             size={14}
             strokeWidth={3}
             className={styles.linkedMark}
             aria-label="За автором закреплён пользователь"
           />
-        )}
+        ) : author.contentPermissionRequested ? (
+          <Loader
+            size={15}
+            strokeWidth={2}
+            className={styles.permissionMark}
+            aria-label="Запросили разрешение постить контент"
+          />
+        ) : null}
         {hasSyncReport && <span className={styles.unreadDot}>{syncItemsCount || 0}</span>}
       </span>
       <span className={styles.colSite}>
@@ -77,12 +91,17 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
         )}
       </span>
       <span className={styles.colCount}>{author.patternsCount}</span>
+      <span className={styles.colComment} title={author.comment ?? undefined}>
+        {author.comment || <span className={styles.commentEmpty}>—</span>}
+      </span>
       <div className={styles.colActions}>
         <IconButton
           title={syncTitle}
           onClick={() => onRunSync(author)}
           disabled={syncDisabled}
-          style={{ color: hasScrapableSite ? "var(--text)" : "var(--text-subtle)" }}
+          // В приглушённой строке цвет задаёт .rowRemoval — инлайн не ставим,
+          // иначе он перебьёт класс.
+          style={author.removalRequested ? undefined : { color: hasScrapableSite ? "var(--text)" : "var(--text-subtle)" }}
         >
           <RefreshCw size={16} className={isSyncingThisAuthor ? styles.spinning : undefined} />
         </IconButton>
@@ -93,7 +112,7 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
           title="Удалить"
           onClick={() => onDelete(author)}
           disabled={author.patternsCount > 0}
-          style={{ color: author.patternsCount > 0 ? "var(--text-subtle)" : "var(--danger)" }}
+          style={author.removalRequested ? undefined : { color: author.patternsCount > 0 ? "var(--text-subtle)" : "var(--danger)" }}
         >
           <Trash2 size={16} />
         </IconButton>

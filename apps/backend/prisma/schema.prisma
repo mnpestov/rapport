@@ -85,6 +85,16 @@ model Author {
   drafts      Draft[]
   syncReports AuthorSyncReport[]
   user        User?              @relation("UserAuthor")
+
+  // Свободный текст для админа, пользователям не виден.
+  comment String?
+  // Мы запросили у автора разрешение публиковать его контент. Ставит админ вручную.
+  contentPermissionRequested Boolean @default(false)
+  // Автор попросил удалить себя из Раппорта. Ставит админ вручную. Пока
+  // стоит — новинки автора (AuthorSyncReport) не показываются админу в
+  // очереди модерации. Парсинг author_sync.py продолжается: автор может
+  // передумать, снятие флага возвращает всё как было.
+  removalRequested Boolean @default(false)
 }
 
 model ProductType {

@@ -34,6 +34,26 @@
   background: var(--surface-muted);
 }
 
+/* Автор попросил удаления: строка приглушена, но действия доступны
+   (парсинг идёт, автор может передумать). */
+.rowRemoval {
+  background: var(--surface-muted);
+  color: var(--text-subtle);
+}
+
+.rowRemoval a {
+  color: var(--text-subtle);
+}
+
+/* Все иконки в приглушённой строке — серые: маркеры статуса рядом с именем
+   (галочка кабинета / ромашка запроса) и иконки действий, у которых цвет
+   задан инлайн. */
+.rowRemoval .linkedMark,
+.rowRemoval .permissionMark,
+.rowRemoval .colActions button {
+  color: var(--text-subtle) !important;
+}
+
 .colName {
   flex: 2 1 0;
   overflow: hidden;
@@ -46,6 +66,12 @@
 
 /* За автором закреплён пользователь — фирменная оранжевая галочка. */
 .linkedMark {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+/* Мы запросили разрешение публиковать контент автора. */
+.permissionMark {
   flex-shrink: 0;
   color: var(--warning);
 }
@@ -73,6 +99,20 @@
 
 .colCount {
   flex: 1 1 0;
+}
+
+.colComment {
+  flex: 2 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-subtle);
+  font-size: 14px;
+}
+
+.commentEmpty {
+  color: var(--text-subtle);
 }
 
 .colActions {
@@ -108,7 +148,7 @@
 }
 
 @media (max-width: 768px) {
-  .colSite, .colCount {
+  .colSite, .colCount, .colComment {
     display: none !important;
   }
 }

@@ -122,11 +122,17 @@ export async function attachScrapedYarns(
 }
 
 export const getPendingReports = async (req: Request, res: Response) => {
-  // Выборка только PENDING отчетов для бейджа
+  // Выборка только PENDING отчетов для бейджа.
+  // author.removalRequested = false: автор, попросивший удаления, не должен
+  // светиться новинками в очереди модерации. Отчёты и items не удаляются —
+  // снятие флага возвращает их сюда (парсинг всё это время шёл как обычно).
   const reports = await prisma.authorSyncReport.findMany({
-    where: { status: "PENDING" },
-    select: { 
-      id: true, 
+    where: {
+      status: "PENDING",
+      author: { removalRequested: false },
+    },
+    select: {
+      id: true,
       authorId: true,
       _count: { select: { items: { where: { status: "PENDING" } } } }
     }

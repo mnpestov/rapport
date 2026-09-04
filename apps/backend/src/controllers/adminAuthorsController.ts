@@ -33,6 +33,9 @@ export const getAuthors = async (req: Request, res: Response): Promise<void> => 
       id: a.id,
       name: a.name,
       site: a.site,
+      comment: a.comment,
+      contentPermissionRequested: a.contentPermissionRequested,
+      removalRequested: a.removalRequested,
       patternsCount: a._count.patterns,
       cabinet: a.user
         ? {
@@ -81,7 +84,7 @@ export const createAuthor = async (req: Request, res: Response): Promise<void> =
 export const updateAuthor = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, site } = req.body;
+    const { name, site, comment, contentPermissionRequested, removalRequested } = req.body;
 
     if (!name) {
       res.status(400).json({ error: "Name is required" });
@@ -90,7 +93,15 @@ export const updateAuthor = async (req: Request, res: Response): Promise<void> =
 
     const author = await prisma.author.update({
       where: { id },
-      data: { name, site: site || null }
+      data: {
+        name,
+        site: site || null,
+        // Флаги/комментарий — только если пришли в теле (частичное
+        // обновление из модалки шлёт их всегда, но на всякий случай).
+        ...(comment !== undefined ? { comment: comment || null } : {}),
+        ...(typeof contentPermissionRequested === "boolean" ? { contentPermissionRequested } : {}),
+        ...(typeof removalRequested === "boolean" ? { removalRequested } : {}),
+      },
     });
     res.json(author);
   } catch (error: any) {

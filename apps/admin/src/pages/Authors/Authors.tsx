@@ -26,7 +26,13 @@ export function Authors() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAuthor, setEditingAuthor] = useState<AuthorItem | null>(null);
-  const [formData, setFormData] = useState({ name: "", site: "" });
+  const [formData, setFormData] = useState({
+    name: "",
+    site: "",
+    comment: "",
+    contentPermissionRequested: false,
+    removalRequested: false,
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -161,13 +167,19 @@ export function Authors() {
 
   const handleOpenCreate = () => {
     setEditingAuthor(null);
-    setFormData({ name: "", site: "" });
+    setFormData({ name: "", site: "", comment: "", contentPermissionRequested: false, removalRequested: false });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (author: AuthorItem) => {
     setEditingAuthor(author);
-    setFormData({ name: author.name, site: author.site ?? "" });
+    setFormData({
+      name: author.name,
+      site: author.site ?? "",
+      comment: author.comment ?? "",
+      contentPermissionRequested: author.contentPermissionRequested,
+      removalRequested: author.removalRequested,
+    });
     setIsModalOpen(true);
   };
 
@@ -181,11 +193,16 @@ export function Authors() {
 
     try {
       setIsSaving(true);
-      const payload = { name: formData.name.trim(), site: formData.site.trim() };
       if (editingAuthor) {
-        await updateAuthor(editingAuthor.id, payload);
+        await updateAuthor(editingAuthor.id, {
+          name: formData.name.trim(),
+          site: formData.site.trim(),
+          comment: formData.comment.trim() || null,
+          contentPermissionRequested: formData.contentPermissionRequested,
+          removalRequested: formData.removalRequested,
+        });
       } else {
-        await createAuthor(payload);
+        await createAuthor({ name: formData.name.trim(), site: formData.site.trim() });
       }
       toast.success(editingAuthor ? "Автор обновлен" : "Автор создан");
       setIsModalOpen(false);
@@ -324,6 +341,40 @@ export function Authors() {
               placeholder="https://example.com"
             />
           </div>
+
+          {editingAuthor && (
+            <>
+              <div className={styles.formGroup}>
+                <label>Комментарий</label>
+                <textarea
+                  value={formData.comment}
+                  onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+                  className={styles.textarea}
+                  rows={3}
+                  placeholder="Заметки для админа, пользователям не видны"
+                />
+              </div>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={formData.contentPermissionRequested}
+                  onChange={(e) => setFormData({ ...formData, contentPermissionRequested: e.target.checked })}
+                />
+                <span>Запросили разрешение постить их контент</span>
+              </label>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={formData.removalRequested}
+                  onChange={(e) => setFormData({ ...formData, removalRequested: e.target.checked })}
+                />
+                <span>Автор попросил удалить себя из Раппорта</span>
+              </label>
+            </>
+          )}
+
           <div className={styles.formActions}>
             <Button variant="secondary" onClick={handleCloseModal}>
               Отмена
