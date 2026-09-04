@@ -6,6 +6,7 @@ import { Button } from "../../components/Button/Button";
 import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem, getSyncStatus, checkPendingAuthors, startSync, startAuthorSync } from "../../api/authors";
 import { getPendingReports } from "../../api/authors";
 import { Modal } from "../../components/Modal/Modal";
+import { Tabs } from "../../components/Tabs/Tabs";
 import { SyncModal } from "./SyncModal";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import { CabinetSection } from "./CabinetSection";
@@ -37,6 +38,10 @@ export function Authors() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Фильтр по наличию личного кабинета (за автором закреплён пользователь).
+  // Чисто клиентский — список авторов уже загружен целиком.
+  const [cabinetFilter, setCabinetFilter] = useState<"all" | "with" | "without">("all");
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -239,6 +244,12 @@ export function Authors() {
 
   const totalPendingCount = syncReports.reduce((sum, r) => sum + r.itemsCount, 0);
 
+  const withCabinetCount = authors.filter((a) => a.cabinet).length;
+  const withoutCabinetCount = authors.length - withCabinetCount;
+  const visibleAuthors = authors.filter((a) =>
+    cabinetFilter === "all" ? true : cabinetFilter === "with" ? !!a.cabinet : !a.cabinet
+  );
+
   if (isLoading && authors.length === 0) {
     return <div className={styles.centerState}>Загрузка...</div>;
   }
@@ -264,6 +275,16 @@ export function Authors() {
 
       <div className={styles.controlsPanel}>
         <div className={styles.leftControls}>
+          <Tabs
+            tabs={[
+              { value: "all", label: "Все", count: authors.length },
+              { value: "with", label: "С ЛК", count: withCabinetCount },
+              { value: "without", label: "Без ЛК", count: withoutCabinetCount },
+            ]}
+            value={cabinetFilter}
+            onChange={(v) => setCabinetFilter(v as "all" | "with" | "without")}
+            mobileLabel="Фильтр по кабинету"
+          />
           {totalPendingCount > 0 && (
             <span className={styles.pendingCounter}>
               Найдено <span className={styles.pendingCounterValue}>{totalPendingCount}</span> новин{totalPendingCount === 1 ? "ки" : "ок"}
@@ -287,7 +308,7 @@ export function Authors() {
 
       <div className={styles.tableWrapper}>
         <AuthorRowHeader />
-        {authors.map((author) => {
+        {visibleAuthors.map((author) => {
           const report = syncReports.find(r => r.authorId === author.id);
           return (
             <AuthorRow
@@ -308,8 +329,10 @@ export function Authors() {
             />
           );
         })}
-        {authors.length === 0 && !isLoading && (
-          <div className={styles.centerState}>Авторов пока нет</div>
+        {visibleAuthors.length === 0 && !isLoading && (
+          <div className={styles.centerState}>
+            {authors.length === 0 ? "Авторов пока нет" : "Нет авторов в этой категории"}
+          </div>
         )}
       </div>
 
