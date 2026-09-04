@@ -65,6 +65,65 @@ async function resolveYarnPayload(yarns: any[]) {
     }));
 }
 
+/**
+ * Толщина пряжи (диапазон м/100 г) из артикулов, когда скрапер её сам не
+ * нашёл. Зеркалит автоподстановку в форме описания
+ * (admin Patterns.tsx: при выборе артикула известного метража
+ * подставляется соответствующий YarnRange).
+ *
+ * Срабатывает ТОЛЬКО если у новинки нет своих yarnRanges: то, что нашёл
+ * скрапер или проставил модератор, приоритетнее. Берём первый артикул с
+ * заполненным mPer100g (у трети карточек его нет — их просто пропускаем),
+ * слитые карточки резолвим на победителя.
+ */
+async function deriveYarnRangeIdsFromArticles(parsedData: any): Promise<string[]> {
+  const scraped: any[] = Array.isArray(parsedData?.yarns) ? parsedData.yarns : [];
+  const keys = scraped.map((y) => String(y?.normalizedKey || "")).filter(Boolean);
+  if (keys.length === 0) return [];
+
+  const cards = await prisma.yarn.findMany({
+    where: { normalizedKey: { in: keys } },
+    select: { normalizedKey: true, mPer100g: true, mergedIntoId: true },
+  });
+  const byKey = new Map(cards.map((c) => [c.normalizedKey, c]));
+
+  // Метраж у победителя слияния, если карточка слита.
+  const winnerIds = Array.from(
+    new Set(cards.map((c) => c.mergedIntoId).filter((v): v is string => !!v))
+  );
+  const winners = winnerIds.length
+    ? await prisma.yarn.findMany({
+        where: { id: { in: winnerIds } },
+        select: { id: true, mPer100g: true },
+      })
+    : [];
+  const winnerById = new Map(winners.map((w) => [w.id, w]));
+
+  // Первый по порядку из parsedData артикул с известным метражом.
+  let metrage: number | null = null;
+  for (const y of scraped) {
+    const card = byKey.get(String(y?.normalizedKey || ""));
+    if (!card) continue;
+    const m = card.mergedIntoId
+      ? winnerById.get(card.mergedIntoId)?.mPer100g ?? null
+      : card.mPer100g;
+    if (m != null) {
+      metrage = m;
+      break;
+    }
+  }
+  if (metrage == null) return [];
+
+  const ranges = await prisma.yarnRange.findMany({
+    where: {
+      minValue: { lte: metrage },
+      OR: [{ maxValue: null }, { maxValue: { gte: metrage } }],
+    },
+    select: { id: true },
+  });
+  return ranges.map((r) => r.id);
+}
+
 export async function attachScrapedYarns(
   tx: Prisma.TransactionClient,
   patternId: string,
@@ -153,6 +212,54 @@ export const getReportById = async (req: Request, res: Response) => {
     where: { id: reportId },
     include: { items: { where: { status: "PENDING" } } }
   });
+  if (!report) {
+    return res.json(report);
+  }
+
+  // Артикулы в parsedData от скрапера несут id/name/normalizedKey, но НЕ
+  // метраж. Дотягиваем mPer100g из справочника, чтобы админка могла
+  // показать его в чипе и автоподставить толщину при ручной правке, как в
+  // форме описания. Ключ переживает слияние — метраж берём у победителя.
+  const allKeys = new Set<string>();
+  for (const it of report.items) {
+    const ys = (it.parsedData as any)?.yarns;
+    if (Array.isArray(ys)) for (const y of ys) {
+      if (y?.normalizedKey) allKeys.add(String(y.normalizedKey));
+    }
+  }
+  if (allKeys.size > 0) {
+    const cards = await prisma.yarn.findMany({
+      where: { normalizedKey: { in: Array.from(allKeys) } },
+      select: { normalizedKey: true, mPer100g: true, mergedIntoId: true },
+    });
+    const winnerIds = Array.from(
+      new Set(cards.map((c) => c.mergedIntoId).filter((v): v is string => !!v))
+    );
+    const winners = winnerIds.length
+      ? await prisma.yarn.findMany({
+          where: { id: { in: winnerIds } },
+          select: { id: true, mPer100g: true },
+        })
+      : [];
+    const winnerById = new Map(winners.map((w) => [w.id, w.mPer100g]));
+    const metrageByKey = new Map(
+      cards.map((c) => [
+        c.normalizedKey,
+        c.mergedIntoId ? winnerById.get(c.mergedIntoId) ?? null : c.mPer100g,
+      ])
+    );
+    for (const it of report.items) {
+      const ys = (it.parsedData as any)?.yarns;
+      if (Array.isArray(ys)) {
+        for (const y of ys) {
+          if (y?.normalizedKey && metrageByKey.has(String(y.normalizedKey))) {
+            y.mPer100g = metrageByKey.get(String(y.normalizedKey)) ?? null;
+          }
+        }
+      }
+    }
+  }
+
   res.json(report);
 };
 
@@ -314,6 +421,16 @@ export const processSyncBatch = async (req: Request, res: Response) => {
       // returns null on failure, and the read side falls back to imageUrl.
       const thumbnailUrl = await generateThumbnailUrl(images[0]);
 
+      // Толщину пряжи, если она не пришла со скрапера/от модератора,
+      // выводим из метража артикулов — как в форме описания. Читаем БД
+      // здесь, до транзакции.
+      const hasOwnRanges = Array.isArray(parsedData.yarnRanges) && parsedData.yarnRanges.length > 0;
+      const ownRangeIds: string[] = hasOwnRanges
+        ? parsedData.yarnRanges.map((y: any) => y.id)
+        : [];
+      const derivedRangeIds = hasOwnRanges ? [] : await deriveYarnRangeIdsFromArticles(parsedData);
+      const yarnRangeIdsToConnect = hasOwnRanges ? ownRangeIds : derivedRangeIds;
+
       // 4. Короткая БД-транзакция
       await prisma.$transaction(async (tx) => {
         const raceExists = await tx.pattern.findUnique({ where: { slug: finalPatternSlug } });
@@ -342,7 +459,7 @@ export const processSyncBatch = async (req: Request, res: Response) => {
             categories: { connect: (parsedData.categories || []).map((c: any) => ({ id: c.id })) },
             tags: { connect: (parsedData.tags || []).map((t: any) => ({ id: t.id })) },
             instruments: { connect: (parsedData.instruments || []).map((i: any) => ({ id: i.id })) },
-            yarnRanges: { connect: (parsedData.yarnRanges || []).map((y: any) => ({ id: y.id })) },
+            yarnRanges: { connect: yarnRangeIdsToConnect.map((id: string) => ({ id })) },
           }
         });
 

@@ -52,8 +52,12 @@ function toFormState(item: AdminDraft): FormState {
     instruments: item.instruments.map((i) => i.name),
     yarnRangeIds: item.yarnRanges.map((y) => y.id),
     // Артикулы у новинки лежат в parsedData: описания в Pattern ещё нет, и
-    // вешать связь не на что. Резолв случится при одобрении.
-    yarns: (item.yarns || []).map((y) => ({ id: y.id, name: y.name, mPer100g: null, composition: null })),
+    // вешать связь не на что. Резолв случится при одобрении. mPer100g
+    // приходит из getReportById (в parsedData скрапер его не пишет) —
+    // нужен для автоподстановки толщины ниже.
+    yarns: (item.yarns || []).map((y) => ({
+      id: y.id, name: y.name, mPer100g: y.mPer100g ?? null, composition: null,
+    })),
     densityStitches: item.densityStitches != null ? String(item.densityStitches) : "",
     densityRows: item.densityRows != null ? String(item.densityRows) : "",
   };
@@ -84,6 +88,24 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
       })
       .catch(() => toast.error("Не удалось загрузить справочники"));
   }, [isOpen]);
+
+  // Скрапер нашёл артикулы, но не толщину — подставляем диапазон из метража
+  // артикула, как в форме описания. Только при открытии и только если своих
+  // yarnRanges у новинки нет. Ждём загрузки справочника диапазонов.
+  useEffect(() => {
+    if (!formData || yarnRangesList.length === 0) return;
+    if (formData.yarnRangeIds.length > 0) return;
+    const firstWithMetrage = formData.yarns.find((y) => y.mPer100g != null);
+    if (firstWithMetrage?.mPer100g == null) return;
+    const m = firstWithMetrage.mPer100g;
+    const matched = yarnRangesList.filter(
+      (r) => m >= r.minValue && (r.maxValue == null || m <= r.maxValue)
+    );
+    if (matched.length > 0) {
+      setFormData((prev) => (prev ? { ...prev, yarnRangeIds: matched.map((r) => r.id) } : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData?.yarns, yarnRangesList]);
 
   if (!isOpen || !item || !formData) return null;
 
@@ -241,7 +263,26 @@ export function SyncItemEditModal({ isOpen, item, onClose, onSaved }: SyncItemEd
             <label style={labelStyle}>Пряжа <span style={optionalStyle}>(необязательно)</span></label>
             <YarnPicker
               value={formData.yarns}
-              onChange={(yarns) => setFormData({ ...formData, yarns })}
+              onChange={(yarns) => {
+                setFormData((prev) => {
+                  if (!prev) return prev;
+                  const next = { ...prev, yarns };
+                  // Автоподстановка толщины из метража артикула — как в форме
+                  // описания (Patterns.tsx). Только если модератор ещё не
+                  // выбрал диапазон сам: свой выбор приоритетнее.
+                  if (prev.yarnRangeIds.length === 0) {
+                    const firstWithMetrage = yarns.find((y) => y.mPer100g != null);
+                    if (firstWithMetrage?.mPer100g != null) {
+                      const m = firstWithMetrage.mPer100g;
+                      const matched = yarnRangesList.filter(
+                        (r) => m >= r.minValue && (r.maxValue == null || m <= r.maxValue)
+                      );
+                      if (matched.length > 0) next.yarnRangeIds = matched.map((r) => r.id);
+                    }
+                  }
+                  return next;
+                });
+              }}
             />
           </div>
 

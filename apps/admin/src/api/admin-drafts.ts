@@ -33,7 +33,7 @@ export interface AdminDraft {
       Оба случая рендерятся одинаково в ModerationCard, поэтому поле общее;
       необязательное — старые sync-only черновики без этого поля тоже
       валидны. */
-  yarns?: { id: string; name: string; matchRule?: string | null }[];
+  yarns?: { id: string; name: string; matchRule?: string | null; normalizedKey?: string; mPer100g?: number | null }[];
   yarnMentions?: { rawText: string; kind: string; metrageInText?: string | null }[];
 }
 
