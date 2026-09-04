@@ -87,6 +87,42 @@ export async function isLoginAvailable(
   return true;
 }
 
+/**
+ * Возвращает User по telegramId, создавая его, если он ещё не заходил в
+ * Mini App. Нужно ботовским ручкам заявки на кабинет автора: раньше они
+ * падали с 404 для автора, который нашёл бота, но приложение ни разу не
+ * открывал (User создаётся только на /auth/telegram или веб-логине).
+ *
+ * Поля намеренно неполные (нет languageCode/isPremium) — первый же вход в
+ * Mini App дополнит их своим upsert'ом. Тот же приём уже используется в
+ * createUserCredential («получить логин для сайта»).
+ */
+export async function ensureBotUser(
+  telegramId: bigint,
+  from?: { username?: unknown; firstName?: unknown; lastName?: unknown }
+): Promise<{ id: string }> {
+  const username = typeof from?.username === "string" ? from.username : undefined;
+  const firstName =
+    typeof from?.firstName === "string" && from.firstName ? from.firstName : undefined;
+  const lastName = typeof from?.lastName === "string" ? from.lastName : undefined;
+
+  return prisma.user.upsert({
+    where: { telegramId },
+    update: {
+      username: username ?? undefined,
+      firstName: firstName ?? undefined,
+      lastName: lastName ?? undefined,
+    },
+    create: {
+      telegramId,
+      firstName: firstName ?? "Пользователь",
+      lastName: lastName ?? null,
+      username: username ?? null,
+    },
+    select: { id: true },
+  });
+}
+
 // UserCredential.login хранится всегда в нижнем регистре (нормализация на
 // запись — BROWSER_ACCESS_PLAN.md §4.1). Здесь base приходит из generateSlug,
 // который и так отдаёт lowercase, но toLowerCase() оставлен явно: инвариант

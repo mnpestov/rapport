@@ -155,6 +155,11 @@ export class BackendClient {
     login: string;
     authorName: string;
     resources: string[];
+    // Данные из Telegram — бэкенд заводит по ним User, если автор ни разу
+    // не открывал Mini App.
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
   }): Promise<{ login: string; preexisting: boolean }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -221,6 +226,10 @@ export class BackendClient {
     authorName: string;
     resources: string[];
     login: string;
+    // См. reserveApplicationLogin — бэкенд заводит User, если его ещё нет.
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
   }): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

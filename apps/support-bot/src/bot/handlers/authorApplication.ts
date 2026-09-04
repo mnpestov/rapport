@@ -50,6 +50,9 @@ const KNOWN_ERROR_TRANSLATIONS: Record<string, string> = {
   "You already have author cabinet access": "У вас уже есть доступ к кабинету автора.",
   "Please wait 24h before reapplying": "Повторно подать можно через 24 часа после отклонения.",
   "login_taken": "Этот логин уже занят. Придумайте другой.",
+  // После правки бэкенда (User заводится на месте) этот путь недостижим —
+  // оставлено как понятный запасной текст вместо общей заглушки.
+  "User not found": "Не получилось вас узнать. Откройте Раппорт разок и вернитесь: https://t.me/rapportapp_bot/rapport",
   "no_draft": "Сессия заявки устарела. Начните заново: /become_author",
   "login_mismatch": "Что-то пошло не так с логином. Начните заново: /become_author",
 };
@@ -288,6 +291,9 @@ export async function handleAuthorApplicationStep(ctx: CustomContext): Promise<b
         login: text,
         authorName,
         resources,
+        username: ctx.from?.username ?? null,
+        firstName: ctx.from?.first_name ?? null,
+        lastName: ctx.from?.last_name ?? null,
       });
       ctx.session.authorAppLogin = login;
       ctx.session.authorAppLoginPreexisting = preexisting;
@@ -376,6 +382,9 @@ export async function handleAuthorAppResourcesDone(ctx: CallbackCtx): Promise<vo
         login: knownLogin,
         authorName,
         resources,
+        username: ctx.from.username ?? null,
+        firstName: ctx.from.first_name ?? null,
+        lastName: ctx.from.last_name ?? null,
       });
       ctx.session.authorAppLogin = login;
       ctx.session.authorAppLoginPreexisting = preexisting;
@@ -407,7 +416,15 @@ export async function handleAuthorAppSubmit(ctx: CallbackCtx): Promise<void> {
   }
 
   try {
-    await backendClient.submitAuthorApplication({ telegramId, authorName, resources, login });
+    await backendClient.submitAuthorApplication({
+      telegramId,
+      authorName,
+      resources,
+      login,
+      username: ctx.from.username ?? null,
+      firstName: ctx.from.first_name ?? null,
+      lastName: ctx.from.last_name ?? null,
+    });
   } catch (err) {
     if (err instanceof AuthorApplicationError) {
       logEvent({

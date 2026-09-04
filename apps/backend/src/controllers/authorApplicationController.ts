@@ -11,6 +11,7 @@ import {
   normalizeP2002Target,
   validateLogin,
   isLoginAvailable,
+  ensureBotUser,
 } from "../utils/authorCredentialHelpers";
 
 const REAPPLY_COOLDOWN_MS = 24 * 3600 * 1000;
@@ -209,11 +210,10 @@ export const reserveApplicationLogin = async (req: Request, res: Response): Prom
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { telegramId } });
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
+    // Автор мог найти бота, ни разу не открыв Mini App — тогда User'а ещё
+    // нет. Создаём его здесь по данным из Telegram (бот шлёт их в теле),
+    // иначе заявку через бота подать невозможно.
+    const user = await ensureBotUser(telegramId, req.body);
 
     // Общие проверки права на подачу — как при финальной отправке. Нет
     // смысла давать закрепить логин тому, кто и заявку подать не сможет.
@@ -338,11 +338,9 @@ export const submitBotAuthorApplication = async (req: Request, res: Response): P
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { telegramId } });
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
+    // Как и на шаге reserve-login: если User'а ещё нет, создаём его —
+    // черновик заявки закреплён за userId, без него отправлять нечего.
+    const user = await ensureBotUser(telegramId, req.body);
 
     const canApply = await checkCanApply(user.id);
     if (!canApply.ok) {
@@ -500,9 +498,11 @@ export const getBotApplicationStatus = async (req: Request, res: Response): Prom
   }
 
   try {
+    // Статус — read-only запрос, User здесь не создаём: нет User → нет и
+    // заявки, отвечаем как «ещё не подавал».
     const user = await prisma.user.findUnique({ where: { telegramId: telegramIdBig } });
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      res.json({ status: null, existingLogin: null });
       return;
     }
 
