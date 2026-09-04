@@ -1,8 +1,8 @@
-import { InlineKeyboard } from 'grammy';
 import { logEvent } from '../../logger';
 import type { CustomContext } from '../context';
 import { BackendClient } from '../../services/backendClient';
 import { notifyAdmin } from '../admin';
+import { sendGreeting } from './start';
 import { handleAuthorApplicationStep } from './authorApplication';
 import { handleWebAccessStep } from './webAccess';
 
@@ -60,11 +60,13 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
 
   if (telegramId) {
     if (ctx.session.awaitingScreenshot) {
+      // Пользователь дошёл до ручной эскалации — принимаем скриншот/описание,
+      // уведомляем админа, сохраняем обращение в БД.
       ctx.session.awaitingScreenshot = false;
-      
+
       const username = ctx.from?.username;
       const nameParts = [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(' ');
-      
+
       const adminMsg = [
         '<b>⚠️ Пользователь прислал данные (скриншот/текст)</b>',
         '',
@@ -73,24 +75,23 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
         nameParts ? `Имя: ${nameParts}` : null,
         `Тип сообщения: ${messageType}`
       ].filter(Boolean).join('\n');
-      
+
       await notifyAdmin(ctx, adminMsg);
       await ctx.reply('Спасибо! Мы получили информацию, администраторы уже уведомлены и скоро помогут вам.');
-    } else {
-      const keyboard = new InlineKeyboard().text('Запустить диагностику', 'diagnostic:start');
-      await ctx.reply(
-        'Я сохранил ваше сообщение для поддержки. Чтобы попытаться решить проблему автоматически прямо сейчас — нажмите кнопку ниже.',
-        { reply_markup: keyboard }
-      );
-    }
 
-    backendClient.saveMessage({
-      telegramId,
-      username: ctx.from?.username ?? null,
-      firstName: ctx.from?.first_name ?? null,
-      messageType,
-      text,
-      fileId: fileId ?? null,
-    });
+      backendClient.saveMessage({
+        telegramId,
+        username: ctx.from?.username ?? null,
+        firstName: ctx.from?.first_name ?? null,
+        messageType,
+        text,
+        fileId: fileId ?? null,
+      });
+    } else {
+      // Произвольное сообщение вне какого-либо флоу — вернувшийся
+      // пользователь, у которого нет кнопки «Начать». Показываем то же,
+      // что /start. В очередь поддержки НЕ сохраняем: это не обращение.
+      await sendGreeting(ctx);
+    }
   }
 }
