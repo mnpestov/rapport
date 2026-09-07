@@ -316,8 +316,26 @@ def check_prices(target_author_names=None):
     try:
         authors_to_check = target_author_names if target_author_names else CONFIRMED_AUTHORS
 
-        cursor.execute('SELECT id FROM "Author" WHERE name = ANY(%s)', (authors_to_check,))
-        author_ids = [row[0] for row in cursor.fetchall()]
+        # Резолвим имена из CONFIRMED_AUTHORS (или CLI-аргументов) в
+        # (id, name, site) ОДИН раз, дальше весь прогон работает по id.
+        # Раньше цикл ходил по строкам-именам и делал повторный
+        # `WHERE name = %s` на каждой итерации — из-за чего переименование
+        # автора в БД (админкой) роняло его в «не найден в БД» и цены
+        # переставали проверяться. name берём из БД (актуальное), а не из
+        # списка — он может отстать после переименования.
+        cursor.execute(
+            'SELECT id, name, site FROM "Author" WHERE name = ANY(%s)',
+            (authors_to_check,)
+        )
+        resolved = cursor.fetchall()  # [(id, name, site), ...]
+        author_ids = [row[0] for row in resolved]
+
+        # Имена из списка, которых нет в БД — сообщаем как раньше (полезно
+        # знать, что CONFIRMED_AUTHORS разошёлся с БД), но один раз здесь,
+        # а не внутри цикла по паттернам.
+        found_names = {name for _id, name, _site in resolved}
+        missing_names = [n for n in authors_to_check if n not in found_names]
+
         snapshot_path = snapshot_current_prices(cursor, author_ids, run_stamp)
         if snapshot_path:
             print(f"Снапшот: {snapshot_path}")
@@ -331,15 +349,11 @@ def check_prices(target_author_names=None):
         touched_keys = set()
         escalations = []
 
-        for author_name in authors_to_check:
-            try:
-                cursor.execute('SELECT id, site FROM "Author" WHERE name = %s', (author_name,))
-                row = cursor.fetchone()
-                if not row:
-                    errors.append((author_name, None, None, "автор не найден в БД"))
-                    continue
-                author_id, site = row
+        for author_name in missing_names:
+            errors.append((author_name, None, None, "автор не найден в БД (возможно, переименован)"))
 
+        for author_id, author_name, site in resolved:
+            try:
                 cursor.execute(
                     'SELECT id, url, title, price, "oldPrice", "isFree" FROM "Pattern" '
                     'WHERE "authorId" = %s AND "isVisible" = true AND url IS NOT NULL',
@@ -371,7 +385,15 @@ def check_prices(target_author_names=None):
                         continue
 
                     checked += 1
-                    key = f"{author_name}::{url}"
+                    # Ключ эскалации — по id автора, не по имени: переживает
+                    # переименование. Старые ключи вида "Имя::url" в
+                    # price_check_state.json после этого осиротеют и
+                    # отвалятся сами (prune ниже удаляет всё, что не в
+                    # touched_keys для обработанного автора; чужие — просто
+                    # не трогаются и не мешают). Счётчики хронических ошибок,
+                    # если такие были, накопятся заново за ESCALATION_THRESHOLD
+                    # прогонов.
+                    key = f"{author_id}::{url}"
                     touched_keys.add(key)
                     try:
                         matched_via_handler = False
@@ -486,7 +508,7 @@ def check_prices(target_author_names=None):
                 # patterns пуст) — можно доверять полученному списку и
                 # чистить устаревшие ключи этого автора, которых не было
                 # среди только что обработанных.
-                prefix = f"{author_name}::"
+                prefix = f"{author_id}::"
                 for existing_key in list(state.keys()):
                     if existing_key.startswith(prefix) and existing_key not in touched_keys:
                         del state[existing_key]
