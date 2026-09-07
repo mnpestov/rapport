@@ -98,7 +98,14 @@ export const getAuthorMe = async (req: Request, res: Response): Promise<void> =>
 
 // ---------------------------------------------------------------------------
 // GET /author/patterns
-// Combined list: own Drafts (any status, open only) + own published Patterns.
+// Combined list: own Drafts (any status, open only) + own PUBLISHED Patterns.
+//
+// isVisible: true — архивные описания автору не показываем. Кнопка «Удалить»
+// в кабинете = архивирование (isVisible=false, см. archivePattern); без
+// этого фильтра заархивированное описание тут же возвращалось в список
+// «Опубликовано» при следующем обновлении, и автор не мог понять, почему
+// «дубль не удаляется». Вкладки «Архивные» у автора нет — вернуть из
+// архива можно только через админку.
 // ---------------------------------------------------------------------------
 export const getAuthorPatterns = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -118,7 +125,7 @@ export const getAuthorPatterns = async (req: Request, res: Response): Promise<vo
         },
       }),
       prisma.pattern.findMany({
-        where: { authorId },
+        where: { authorId, isVisible: true },
         orderBy: { updatedAt: "desc" },
         include: {
           tags: { select: { id: true, name: true } },
