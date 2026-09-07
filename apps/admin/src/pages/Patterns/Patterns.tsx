@@ -651,6 +651,60 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
         await submitCabinetDraft(saved.id);
         saved = { ...saved, status: "PENDING" };
         toast.success("Отправлено на модерацию");
+      } else if (isAuthor) {
+        // Автор часто не понимает, что «Сохранить черновик» не публикует
+        // изменения — они попадут в каталог только после модерации.
+        // Тост с кнопкой «Отправить на модерацию» закрывает и понимание,
+        // и действие в один клик, не заставляя искать вкладку «Черновики».
+        const draftId = saved.id;
+        toast(
+          (t) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 320 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span>
+                  Черновик сохранён, но <b>не опубликован</b>. Чтобы изменения попали
+                  в каталог, отправьте его на модерацию.
+                </span>
+                <button
+                  type="button"
+                  aria-label="Закрыть"
+                  onClick={() => toast.dismiss(t.id)}
+                  style={{
+                    flexShrink: 0,
+                    display: "flex",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--text-subtle)",
+                    padding: 0,
+                    marginTop: 1,
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  toast.dismiss(t.id);
+                  try {
+                    await submitCabinetDraft(draftId);
+                    setCabinetDrafts((prev) =>
+                      prev.map((d) => (d.id === draftId ? { ...d, status: "PENDING" as const } : d))
+                    );
+                    toast.success("Отправлено на модерацию");
+                  } catch (err: any) {
+                    toast.error(err.message || "Не удалось отправить на модерацию");
+                  }
+                }}
+                style={btnStyle("var(--brand-bright)", "var(--surface)")}
+              >
+                Отправить на модерацию
+              </button>
+            </div>
+          ),
+          { duration: 8000, icon: "✓" }
+        );
       } else {
         toast.success("Сохранено");
       }
@@ -1618,7 +1672,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
                       }}
                       title={isEditingPublishedUnchanged ? "Нет изменений для сохранения" : undefined}
                     >
-                      {isSaving ? "Сохранение..." : "Сохранить"}
+                      {isSaving ? "Сохранение..." : isAuthor ? "Сохранить черновик" : "Сохранить"}
                     </button>
                     <button
                       type="button"
