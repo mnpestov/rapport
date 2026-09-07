@@ -591,13 +591,20 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   const handleAuthorEditPattern = async (patternId: string) => {
     try {
       setCreatingEditFor(patternId);
-      const draft = await createEditDraft(patternId);
-      setCabinetDrafts((prev) => [draft, ...prev]);
+      const { draft, created } = await createEditDraft(patternId);
+      setCabinetDrafts((prev) => {
+        const idx = prev.findIndex((d) => d.id === draft.id);
+        if (idx === -1) return [draft, ...prev];
+        const next = [...prev];
+        next[idx] = draft;
+        return next;
+      });
       handleAuthorEditDraft(draft);
-      // Свежий edit-черновик опубликованного описания, ещё не сохранён —
-      // единственный случай, когда закрытие без изменений его удаляет
-      // (ставим после handleAuthorEditDraft, который сбрасывает флаг).
-      justCreatedEditDraftRef.current = true;
+      // Авто-удаление при закрытии без изменений — только для реально
+      // свежесозданного черновика. Если вернулся уже существующий
+      // (created === false), это сохранённая работа автора, трогать её
+      // нельзя. handleAuthorEditDraft уже сбросил флаг в false.
+      if (created) justCreatedEditDraftRef.current = true;
     } catch (err: any) {
       toast.error(err.message || "Ошибка при создании черновика");
     } finally {

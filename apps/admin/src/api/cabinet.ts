@@ -145,7 +145,9 @@ export const submitCabinetDraft = async (id: string): Promise<{ success: boolean
   return res.json();
 };
 
-export const createEditDraft = async (patternId: string): Promise<CabinetDraft> => {
+export const createEditDraft = async (
+  patternId: string
+): Promise<{ draft: CabinetDraft; created: boolean }> => {
   const res = await fetchWithAuth(`${API_URL}/author/patterns/${patternId}/edit`, {
     method: 'POST',
   });
@@ -153,7 +155,9 @@ export const createEditDraft = async (patternId: string): Promise<CabinetDraft> 
     const err = await res.json().catch(() => ({}));
     throw new Error((err as any).error || 'Failed to create edit draft');
   }
-  return res.json();
+  // 201 — создан новый edit-черновик; 200 — вернулся уже существующий
+  // открытый черновик по этому описанию (повторный вход в «Редактировать»).
+  return { draft: await res.json(), created: res.status === 201 };
 };
 
 export const deleteCabinetDraft = async (id: string): Promise<{ success: boolean }> => {

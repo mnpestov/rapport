@@ -7,7 +7,6 @@ import { normalizeQuotes } from "../utils/adminShared";
 
 // ---------------------------------------------------------------------------
 // Rate limiter — in-memory, per userId.
-// Limits draft creation to 10 per hour to protect the moderation queue.
 // Note: resets on process restart and does not sync across multiple processes.
 // ---------------------------------------------------------------------------
 class RateLimiter {
@@ -29,7 +28,20 @@ class RateLimiter {
   }
 }
 
-const draftCreateLimiter = new RateLimiter(10, 60 * 60 * 1000); // 10 per hour
+// НОВЫЕ черновики «с нуля» (createDraft) — их и надо сдерживать от спама в
+// очередь модерации. 40/час: активный автор может за раз завести десятки
+// описаний, но это не автоматический флуд. Раньше было 10/час на оба
+// эндпоинта вместе, из-за чего автор, приводящий в порядок весь свой
+// каталог (правка + отправка на модерацию по каждому описанию), упирался
+// в лимит на легитимном сценарии.
+const draftCreateLimiter = new RateLimiter(40, 60 * 60 * 1000);
+
+// Правки опубликованных описаний (createEditDraft) — отдельный, более
+// щедрый лимит. Такой черновик привязан к конкретному Pattern, партиал-
+// уникальный индекс не даёт создать второй на то же описание, поэтому
+// спамить очередь модерации им нельзя — ограничение здесь только от
+// явных аномалий (зациклившийся клиент), не от пользователя.
+const editDraftCreateLimiter = new RateLimiter(80, 60 * 60 * 1000);
 
 // ---------------------------------------------------------------------------
 // Helper — resolve the authorId linked to the current user.
@@ -145,7 +157,7 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
     const userId = req.user!.userId;
 
     if (!draftCreateLimiter.isAllowed(userId)) {
-      res.status(429).json({ error: "Too many drafts created. Try again later." });
+      res.status(429).json({ error: "Слишком часто создаёте черновики. Попробуйте через несколько минут." });
       return;
     }
 
@@ -238,12 +250,6 @@ export const createDraft = async (req: Request, res: Response): Promise<void> =>
 export const createEditDraft = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-
-    if (!draftCreateLimiter.isAllowed(userId)) {
-      res.status(429).json({ error: "Too many drafts created. Try again later." });
-      return;
-    }
-
     const authorId = await resolveAuthorId(userId);
     const { id: patternId } = req.params;
 
@@ -272,15 +278,33 @@ export const createEditDraft = async (req: Request, res: Response): Promise<void
     }
 
     // One active edit draft per pattern at a time (enforced in app code;
-    // the partial unique index in the DB provides the DB-level guarantee)
+    // the partial unique index in the DB provides the DB-level guarantee).
+    // Повторный вход в «Редактировать» того же описания возвращает уже
+    // существующий черновик (200), а не 409, и НЕ тратит лимит — иначе
+    // автор, который вернулся к черновику, зря жёг квоту.
     const existingDraft = await prisma.draft.findFirst({
       where: { patternId, closedAt: null },
+      include: {
+        tags: { select: { id: true, name: true } },
+        categories: { select: { id: true, name: true } },
+        instruments: { select: { id: true, name: true } },
+        yarnRanges: { select: { id: true, label: true } },
+        yarns: { select: { yarn: { select: { id: true, name: true, mPer100g: true, composition: true } } } },
+        pattern: { select: { id: true, title: true } },
+      },
     });
     if (existingDraft) {
-      res.status(409).json({
-        error: "An active draft already exists for this pattern",
-        draftId: existingDraft.id,
+      res.status(200).json({
+        ...existingDraft,
+        _type: "draft" as const,
+        yarns: flattenYarnLinks(existingDraft.yarns),
       });
+      return;
+    }
+
+    // Лимит проверяем только когда реально создаём новый edit-черновик.
+    if (!editDraftCreateLimiter.isAllowed(userId)) {
+      res.status(429).json({ error: "Слишком часто открываете описания на редактирование. Попробуйте через несколько минут." });
       return;
     }
 
