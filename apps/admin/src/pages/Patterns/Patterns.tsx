@@ -184,6 +184,14 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
   // часть formData (см. комментарий выше).
   const originalPatternYarnIdsRef = useRef<string[] | null>(null);
 
+  // true только когда модалку открыли через «Редактировать» у
+  // ОПУБЛИКОВАННОГО описания и createEditDraft тут же завёл свежий
+  // edit-черновик, который ещё ни разу не сохраняли. Только такой черновик
+  // авто-удаляется при закрытии без изменений («передумал, ничего не
+  // ввёл»). Сохранённый черновик, открытый повторно из вкладки
+  // «Черновики», сюда не попадает — иначе его закрытие его же и стирало.
+  const justCreatedEditDraftRef = useRef(false);
+
   // Форма переиспользуется между описаниями, и без сброса в новой карточке
   // осталась бы пряжа предыдущей.
   const resetYarns = () => {
@@ -405,6 +413,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     setEditingId(null);
     setAuthorEditingDraft(null);
     setViewingDraft(false);
+    justCreatedEditDraftRef.current = false;
     resetYarns();
     setFormData({
       title: "",
@@ -457,6 +466,7 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       setFormData(loaded);
       originalFormDataRef.current = { ...loaded, categories: [...loaded.categories], tags: [...loaded.tags], instruments: [...loaded.instruments], images: [...loaded.images] };
       editingIsVisibleRef.current = res.isVisible;
+      justCreatedEditDraftRef.current = false;
       setEditingId(id);
       setViewingDraft(false);
       // Связи грузим отдельным запросом и не блокируем ими форму: описание
@@ -561,6 +571,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     setAuthorEditingDraft(draft);
     setViewingDraft(false);
     setEditingId(draft.id);
+    // По умолчанию это открытие УЖЕ существующего черновика (вкладка
+    // «Черновики») — авто-удалять его при закрытии нельзя. Флаг поднимет
+    // обратно только handleAuthorEditPattern для свеже-созданного.
+    justCreatedEditDraftRef.current = false;
     // Черновик может уже иметь выбранные артикулы — либо автор добавил их
     // раньше через YarnPicker (DraftYarn), либо это edit-черновик
     // опубликованного паттерна, куда createEditDraft скопировал его
@@ -580,6 +594,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       const draft = await createEditDraft(patternId);
       setCabinetDrafts((prev) => [draft, ...prev]);
       handleAuthorEditDraft(draft);
+      // Свежий edit-черновик опубликованного описания, ещё не сохранён —
+      // единственный случай, когда закрытие без изменений его удаляет
+      // (ставим после handleAuthorEditDraft, который сбрасывает флаг).
+      justCreatedEditDraftRef.current = true;
     } catch (err: any) {
       toast.error(err.message || "Ошибка при создании черновика");
     } finally {
@@ -624,6 +642,10 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
       let saved: CabinetDraft = authorEditingDraft
         ? await updateCabinetDraft(authorEditingDraft.id, payload)
         : await createCabinetDraft(payload);
+
+      // Черновик сохранён — это больше не «пустой свеже-созданный»,
+      // закрытие модалки его удалять не должно.
+      justCreatedEditDraftRef.current = false;
 
       if (submitToModeration) {
         await submitCabinetDraft(saved.id);
@@ -928,18 +950,27 @@ export function Patterns({ variant = "admin" }: PatternsProps) {
     })();
 
   // Closing without changes shouldn't leave the stray edit draft that
-  // handleAuthorEditPattern already created via createEditDraft when the
-  // modal was opened — "I clicked Edit just to check, nothing to save".
+  // handleAuthorEditPattern just created via createEditDraft — "I clicked
+  // Edit on a published pattern just to check, nothing to save".
+  //
+  // Строго только для этого случая: justCreatedEditDraftRef === true, т.е.
+  // черновик заведён в этой сессии кнопкой «Редактировать» у
+  // опубликованного описания и НИ РАЗУ не сохранён. Раньше проверялось
+  // только isEditingPublishedUnchanged, из-за чего повторное открытие уже
+  // сохранённого черновика из вкладки «Черновики» и его закрытие удаляло
+  // черновик вместе с внесёнными правками.
   const handleCloseAuthorModal = () => {
-    if (isEditingPublishedUnchanged && authorEditingDraft) {
+    if (justCreatedEditDraftRef.current && isEditingPublishedUnchanged && authorEditingDraft) {
       const draftId = authorEditingDraft.id;
       deleteCabinetDraft(draftId)
         .then(() => setCabinetDrafts((prev) => prev.filter((d) => d.id !== draftId)))
-        .catch(() => {
+        .catch((err) => {
           // Best-effort cleanup — an orphaned empty draft is harmless
-          // clutter, not worth surfacing an error toast for a close action.
+          // clutter, not worth a toast on a close action.
+          console.warn("Не удалось убрать пустой edit-черновик:", err);
         });
     }
+    justCreatedEditDraftRef.current = false;
     setViewingDraft(false);
     setIsModalOpen(false);
   };
