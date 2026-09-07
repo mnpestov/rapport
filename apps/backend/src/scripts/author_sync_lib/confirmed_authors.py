@@ -132,5 +132,8 @@ CONFIRMED_AUTHORS = [
     "Юлия Рубленова / viajeuvie",
     "Юлия Старикова",
     "Юлия Устинова",
-    "Эля knitsometimes",
+    # 2026-09 — автор переименован в БД «Эля knitsometimes» → «knitsometimes»
+    # (админкой). Имя в списке должно дословно совпадать с Author.name, иначе
+    # check_price_updates.py не находит автора и не проверяет его цены.
+    "knitsometimes",
 ]
