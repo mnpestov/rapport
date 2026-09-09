@@ -387,7 +387,7 @@ export const PatternDetails: React.FC = () => {
       {/* Full-width, below both columns — distinct from .details-footer
           above (that's just the CTA button's own wrapper). Only page where
           sourceUrl is ever passed — the "Источник информации" line. */}
-      <Footer sourceUrl={pattern.authorSite} />
+      <Footer sourceUrl={pattern.authorSite} patternId={pattern.id} />
 
       <Toast message={alertToast} onClose={() => setAlertToast(null)} />
     </div>

@@ -8,12 +8,15 @@ import './ReportErrorModal.css';
 interface ReportErrorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // id описания, с карточки которого открыли форму (PatternDetails). null
+  // в каталоге/избранном — там контекста описания нет.
+  patternId?: string | null;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
-export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onClose }) => {
+export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onClose, patternId }) => {
   // Держит шторку в дереве на время выезда вниз и даёт класс для
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
   // мгновенно, до анимации закрытия.
@@ -60,7 +63,7 @@ export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onCl
     if (!message.trim() || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
-    const ok = await submitErrorReport(message.trim(), screenshot);
+    const ok = await submitErrorReport(message.trim(), screenshot, patternId ?? null);
     setSubmitting(false);
     if (ok) {
       setStep('success');

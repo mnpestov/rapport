@@ -5,11 +5,20 @@ import { getAuthHeaders } from "./authApi";
 // Multipart, not JSON like analyticsApi's sendAnalyticsEvent — carries an
 // optional screenshot file. No Content-Type header here: the browser sets
 // its own multipart boundary for FormData, an explicit header would break it.
-export const submitErrorReport = async (message: string, screenshot: File | null): Promise<boolean> => {
+export const submitErrorReport = async (
+  message: string,
+  screenshot: File | null,
+  patternId: string | null = null,
+): Promise<boolean> => {
   const formData = new FormData();
   formData.append("message", message);
   if (screenshot) {
     formData.append("screenshot", screenshot);
+  }
+  // Контекст описания — бэкенд по id дотянет название/автора/цену в
+  // сообщение админам (reportController.ts).
+  if (patternId) {
+    formData.append("patternId", patternId);
   }
 
   try {

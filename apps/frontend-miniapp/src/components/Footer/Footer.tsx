@@ -19,6 +19,10 @@ interface FooterProps {
   // linking to that pattern's own author's site (Author.site in the DB).
   // Absent everywhere else the Footer is used.
   sourceUrl?: string | null;
+  // Also only PatternDetails — id текущего описания. Уходит в «Сообщить об
+  // ошибке», чтобы админ видел, о каком описании речь (бэкенд по id
+  // дотягивает название/автора/цену). В каталоге/избранном не передаётся.
+  patternId?: string | null;
 }
 
 // The Figma label is just the bare host ("knitprofi.ru"), not the full
@@ -36,7 +40,7 @@ const handleLinkClick = (url: string) => (e: React.MouseEvent) => {
   openExternalLink(url);
 };
 
-export const Footer: React.FC<FooterProps> = ({ sourceUrl }) => {
+export const Footer: React.FC<FooterProps> = ({ sourceUrl, patternId }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   return (
@@ -88,7 +92,11 @@ export const Footer: React.FC<FooterProps> = ({ sourceUrl }) => {
         </div>
       </div>
 
-      <ReportErrorModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
+      <ReportErrorModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        patternId={patternId ?? null}
+      />
     </footer>
   );
 };
