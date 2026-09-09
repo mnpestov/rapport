@@ -274,7 +274,7 @@ def build_escalation_message(escalations):
     return "\n".join(lines)
 
 
-def save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, errors, escalations):
+def save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, errors, escalations, list_drift=None):
     changes_json = [
         {
             "author": a, "title": t, "url": u,
@@ -284,7 +284,16 @@ def save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, erro
         }
         for a, t, u, pid, op, oop, np, nop in changes
     ]
+    # errorsCount считает ТОЛЬКО настоящие ошибки. Рассинхрон списка с БД
+    # (list_drift) кладём в errors-JSON для видимости в админке, но пометкой
+    # kind="list_drift" — сам счётчик его не учитывает.
     errors_json = [{"author": a, "title": t, "url": u, "error": e} for a, t, u, e in errors]
+    for name in (list_drift or []):
+        errors_json.append({
+            "author": name, "title": None, "url": None,
+            "error": "автор не найден в БД (возможно, переименован); проверка цен не затронута",
+            "kind": "list_drift",
+        })
     escalations_json = [{"author": a, "title": t, "url": u, "runs": n} for a, t, u, n in escalations]
 
     cursor.execute(
@@ -330,9 +339,13 @@ def check_prices(target_author_names=None):
         resolved = cursor.fetchall()  # [(id, name, site), ...]
         author_ids = [row[0] for row in resolved]
 
-        # Имена из списка, которых нет в БД — сообщаем как раньше (полезно
-        # знать, что CONFIRMED_AUTHORS разошёлся с БД), но один раз здесь,
-        # а не внутри цикла по паттернам.
+        # Имена из списка, которых нет в БД. Это НЕ ошибка проверки цен (ни
+        # один паттерн из-за этого не пропущен) — это рассинхрон
+        # CONFIRMED_AUTHORS с БД после переименования автора админкой.
+        # Показываем в отчёте, чтобы список поправили, но не считаем
+        # ошибкой: не идёт в errorsCount и не триггерит Telegram-алерт
+        # каждый прогон. Переименования нередки — см. историю
+        # confirmed_authors.py.
         found_names = {name for _id, name, _site in resolved}
         missing_names = [n for n in authors_to_check if n not in found_names]
 
@@ -345,12 +358,12 @@ def check_prices(target_author_names=None):
 
         changes = []
         errors = []
+        # Рассинхрон списка с БД — отдельно от errors: в отчёт попадает, в
+        # errorsCount/Telegram — нет.
+        list_drift = list(missing_names)
         checked = 0
         touched_keys = set()
         escalations = []
-
-        for author_name in missing_names:
-            errors.append((author_name, None, None, "автор не найден в БД (возможно, переименован)"))
 
         for author_id, author_name, site in resolved:
             try:
@@ -557,6 +570,14 @@ def check_prices(target_author_names=None):
                 title_safe = (title or '—').replace('|', '\\|')
                 lines.append(f"| {author_name} | {title_safe} | {url} | {run_count} |")
             lines.append("")
+        if list_drift:
+            lines.append("## Список авторов разошёлся с БД (не ошибка проверки)")
+            lines.append("Автор из CONFIRMED_AUTHORS не найден по имени — вероятно, "
+                         "переименован в админке. Обновите confirmed_authors.py.")
+            lines.append("")
+            for name in list_drift:
+                lines.append(f"- {name.replace('|', chr(92) + '|')}")
+            lines.append("")
 
         report_text = '\n'.join(lines)
         report_path = os.path.join(SCRIPT_DIR, 'price_check_report.md')
@@ -568,13 +589,18 @@ def check_prices(target_author_names=None):
 
         # Основной канал результата — таблица для админки, независимо от
         # исхода. Telegram — только когда есть на что реагировать.
-        save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, errors, escalations)
+        save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, errors, escalations, list_drift)
 
+        # Telegram — только по настоящим ошибкам и хроническим сбоям.
+        # Рассинхрон списка с БД в алерт не идёт: он не влияет на проверку
+        # цен и всплывал бы каждый прогон до правки confirmed_authors.py.
         if errors:
             send_telegram_message(build_errors_message(checked, len(changes), errors))
         if escalations:
             send_telegram_message(build_escalation_message(escalations))
 
+        if list_drift:
+            print(f"Список авторов разошёлся с БД (не ошибка): {', '.join(list_drift)}")
         print(f"Проверено {checked} паттерн(ов), изменений: {len(changes)}, ошибок: {len(errors)}.")
         print(f"Отчёт: {report_path}")
         return changes, errors
