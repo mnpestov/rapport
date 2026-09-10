@@ -20,8 +20,18 @@ import { generateToken, generateRefreshToken } from "../utils/jwt";
 // upsert(... include: { permissions: { select: { permission: true } } }).
 export interface PaywallUserFields {
   role: UserRole;
+  createdAt: Date;
   lastPaywallShownAt: Date | null;
   premiumExpiresAt: Date | null;
+}
+
+// «Сегодня» для правила «баннер не в день первого входа» считаем по
+// московскому календарю: граница нового дня — 00:00 MSK, как её понимает
+// пользователь. MSK круглый год UTC+3 (перехода на летнее время нет), так
+// что фиксированного сдвига достаточно, tz-библиотека не нужна.
+const MSK_OFFSET_MS = 3 * 60 * 60 * 1000;
+function mskDayIndex(d: Date): number {
+  return Math.floor((d.getTime() + MSK_OFFSET_MS) / (24 * 60 * 60 * 1000));
 }
 
 export interface PaywallState {
@@ -79,9 +89,16 @@ export function buildPaywallState(params: {
   // возвращает локально настоящий кулдаун, не трогая mock-авторизацию.
   // На прод не влияет — там allowDevAuth всегда false, и обхода нет.
   const skipPaywallCooldown = allowDevAuth && process.env.DEV_PAYWALL_COOLDOWN !== "true";
+  // Первый автопоказ — не в день первого входа. Если аккаунт создан
+  // сегодня (по MSK-календарю), баннер откладываем до следующего дня:
+  // человеку сначала дают осмотреться. Существующих пользователей не
+  // трогает — у них createdAt в прошлом. Дев-обход кулдауна не отменяет
+  // этого: правило про первое впечатление, а не про частоту.
+  const isFirstDay = mskDayIndex(user.createdAt) === mskDayIndex(new Date());
   const showPaywallBanner =
     paywallUiEnabled &&
     effectiveIsSubscriber &&
+    !isFirstDay &&
     // Баннер "оформите подписку" — только тем, у кого платного доступа
     // НЕТ. Здесь раньше стоял обход `isAdmin || !hasExtra`: у админа
     // hasExtra всегда true (роль подразумевает все премиум-флаги), и без

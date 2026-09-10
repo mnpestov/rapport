@@ -296,6 +296,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         permissions: { select: { permission: true } },
         // Нужны для paywall-полей ниже — та же форма, что читает
         // buildPaywallState в Mini App-флоу.
+        createdAt: true,
         lastPaywallShownAt: true,
         premiumExpiresAt: true,
       },
