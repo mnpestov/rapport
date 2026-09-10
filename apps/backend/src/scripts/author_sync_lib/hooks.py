@@ -905,12 +905,70 @@ def _extract_vigbo_price(soup):
         original = None
     return current, original
 
+def _extract_nethouse_shop_details_price(soup):
+    # Nethouse (ru.nethouse.ru → сейчас на CDN vigbo.com, но разметка НЕ
+    # совпадает с _extract_vigbo_price выше). Живой пример — house-yarn.ru
+    # (Юлия Грозман): цену автор дублирует в <h1> ("Описание «Джемпер
+    # Angel» 600 руб"), а кнопки/DOM-цены (.product-price-container,
+    # .js-product-price) на странице НЕТ вовсе — рендерятся только JS в
+    # браузере. Единственный серверный источник числа — JSON-блок
+    # <script type="text/json" data-shop-action="product-details"> со
+    # списком skus:
+    #   { "skus": [{ "priceOrigin": "600.00",
+    #                "priceWithDiscount": "0.00",   # 0 = скидки НЕТ
+    #                "price": "<span ...>600 руб.</span>" }] }
+    #
+    # Отличие от _extract_vigbo_price: там priceWithDiscount — реальная
+    # текущая цена, здесь "0.00" означает «скидка не применена», а не
+    # «бесплатно». Скидку берём, только если 0 < priceWithDiscount <
+    # priceOrigin (у Грозман скидок нет ни на одном товаре — проверено).
+    # priceOrigin == 0 — подтверждённо бесплатный товар (у неё есть такие,
+    # "Бесплатное описание..." — h1 и priceOrigin "0.00" совпадают);
+    # normalize_free_price дальше по конвейеру превратит 0 в isFree.
+    for script in soup.find_all('script', attrs={'data-shop-action': 'product-details'}):
+        raw = script.string or script.get_text()
+        if not raw or 'skus' not in raw:
+            continue
+        try:
+            data = json.loads(raw)
+            skus = data.get('skus') or []
+            if not skus:
+                continue
+            sku = skus[0]
+            origin_raw = sku.get('priceOrigin')
+            if origin_raw is None:
+                # запасной путь — число из видимого текста span'а price
+                # ("600 руб." / "1 200 руб."): убрать всё, кроме цифр.
+                inner = re.sub(r'<[^>]+>', '', sku.get('price') or '')
+                digits = re.sub(r'[^\d]', '', inner.split(',')[0].split('.')[0])
+                origin = float(digits) if digits else None
+            else:
+                origin = float(str(origin_raw).replace(',', '.'))
+            if origin is None:
+                continue
+            if origin == 0:
+                return 0.0, None
+            disc_raw = sku.get('priceWithDiscount') or sku.get('price_with_discount')
+            try:
+                disc = float(str(disc_raw).replace(',', '.')) if disc_raw is not None else 0.0
+            except (TypeError, ValueError):
+                disc = 0.0
+            if 0 < disc < origin:
+                return disc, origin
+            return origin, None
+        except (ValueError, KeyError, IndexError, TypeError):
+            continue
+    return None, None
+
+
 def extract_price_any_known_platform(soup, url=None, headers=None):
     # Single shared chain of every markup-shape-based (not domain-gated)
     # price mechanism implemented so far — WooCommerce, the js-description
     # platform, hollywool.ru's Bitrix widget, eiwi.ru, romnastena.com,
     # omalica.ru's Bitrix microdata, ekaterinafrog.ru/juliavyazget.com's
-    # stable-field-id Tilda text blocks, InSales. Each one auto-detects via its own
+    # stable-field-id Tilda text blocks, InSales, Nethouse (house-yarn.ru —
+    # price only in the data-shop-action JSON blob), Vigbo. Each one
+    # auto-detects via its own
     # selectors and returns (None, None) when its markup isn't present, so
     # trying them in sequence is safe/cheap on any page.
     #
@@ -958,6 +1016,9 @@ def extract_price_any_known_platform(soup, url=None, headers=None):
     if price is not None:
         return price, old_price
     price, old_price = _extract_tilda_store_popup_price(soup, url, headers)
+    if price is not None:
+        return price, old_price
+    price, old_price = _extract_nethouse_shop_details_price(soup)
     if price is not None:
         return price, old_price
     return _extract_vigbo_price(soup)
