@@ -167,3 +167,18 @@ export const getPaywallStatsUsers = async (
   }
   return response.json();
 };
+
+// Кто подписался на снижение цены конкретного описания — детализация
+// плашки "Топ по подписке на цену". Тот же формат ответа, что у
+// getPaywallStatsUsers (PaywallStatsUser[]), переиспользует PaywallUsersModal.
+export const getPatternPriceAlertSubscribers = async (
+  patternId: string
+): Promise<PaywallStatsUsersResponse> => {
+  const response = await fetchWithAuth(
+    `${API_URL}/admin/patterns/${patternId}/price-alert-subscribers`
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to fetch price alert subscribers: ${response.statusText}`);
+  }
+  return response.json();
+};

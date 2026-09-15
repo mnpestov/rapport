@@ -44,9 +44,12 @@ interface TopTableProps {
   title: string;
   icon: React.ReactNode;
   items: TopPatternItem[];
+  // Опционально: строка становится кликабельной — раскрывает список
+  // конкретных пользователей (сейчас только у "Топ по подписке на цену").
+  onItemClick?: (item: TopPatternItem) => void;
 }
 
-function TopTable({ title, icon, items }: TopTableProps) {
+function TopTable({ title, icon, items, onItemClick }: TopTableProps) {
   return (
     <div className={styles.topCard}>
       <div className={styles.topCardHeader}>
@@ -58,7 +61,11 @@ function TopTable({ title, icon, items }: TopTableProps) {
       ) : (
         <ol className={styles.topList}>
           {items.map((item, idx) => (
-            <li key={item.patternId} className={styles.topItem}>
+            <li
+              key={item.patternId}
+              className={onItemClick ? `${styles.topItem} ${styles.topItemClickable}` : styles.topItem}
+              onClick={onItemClick ? () => onItemClick(item) : undefined}
+            >
               <span className={styles.topIndex}>{idx + 1}.</span>
               <div className={styles.topNameCol}>
                 <span className={styles.topName}>{item.title}</span>
@@ -67,7 +74,13 @@ function TopTable({ title, icon, items }: TopTableProps) {
                   {item.url && (
                     <>
                       {" · "}
-                      <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.topLink}>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.topLink}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         ссылка
                       </a>
                     </>
@@ -366,6 +379,9 @@ export function Dashboard() {
             </svg>
           }
           items={topByPriceAlerts}
+          onItemClick={(item) =>
+            setDrilldown({ kind: "priceAlertPattern", patternId: item.patternId, title: `Подписаны на цену: ${item.title}` })
+          }
         />
       </div>
 

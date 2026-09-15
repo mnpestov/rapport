@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Modal } from "../../components/Modal/Modal";
 import {
   getPaywallStatsUsers,
+  getPatternPriceAlertSubscribers,
   PaywallStatsUser,
   PaywallMetric,
   PaywallScope,
@@ -13,13 +14,11 @@ import styles from "./PaywallUsersModal.module.css";
 
 const PAGE = 50;
 
-export interface DrilldownTarget {
-  metric: PaywallMetric;
-  scope: PaywallScope;
-  // Заголовок модалки — берётся с той плашки, по которой кликнули, чтобы
-  // не собирать его заново из metric+scope и не разойтись с подписью.
-  title: string;
-}
+// Либо метрика воронки (period/scope применяются), либо конкретное описание
+// (список подписчиков на цену этого паттерна — без периода, там и так все).
+export type DrilldownTarget =
+  | { kind?: "metric"; metric: PaywallMetric; scope: PaywallScope; title: string }
+  | { kind: "priceAlertPattern"; patternId: string; title: string };
 
 interface Props {
   target: DrilldownTarget | null;
@@ -48,23 +47,29 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
 
-  // Сброс постранички при смене метрики — иначе, открыв вторую метрику
-  // после пролистывания первой, попадёшь сразу на её третью страницу.
+  // Сброс постранички при смене цели — иначе, открыв вторую метрику после
+  // пролистывания первой, попадёшь сразу на её третью страницу.
   useEffect(() => {
     setOffset(0);
-  }, [target?.metric, target?.scope]);
+  }, [target && "metric" in target ? target.metric : undefined, target && "scope" in target ? target.scope : undefined, target && "patternId" in target ? target.patternId : undefined]);
 
   useEffect(() => {
     if (!target) return;
     let isMounted = true;
     setLoading(true);
 
-    const periodParams =
-      period === "custom" && appliedRange
-        ? { from: appliedRange.from, to: appliedRange.to }
-        : { period: period as Exclude<Period, "custom"> };
+    const request =
+      target.kind === "priceAlertPattern"
+        ? getPatternPriceAlertSubscribers(target.patternId)
+        : (() => {
+            const periodParams =
+              period === "custom" && appliedRange
+                ? { from: appliedRange.from, to: appliedRange.to }
+                : { period: period as Exclude<Period, "custom"> };
+            return getPaywallStatsUsers({ ...periodParams, metric: target.metric, scope: target.scope, limit: PAGE, offset });
+          })();
 
-    getPaywallStatsUsers({ ...periodParams, metric: target.metric, scope: target.scope, limit: PAGE, offset })
+    request
       .then((res) => {
         if (!isMounted) return;
         setItems(res.items);
@@ -76,7 +81,10 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
     return () => { isMounted = false; };
   }, [target, period, appliedRange, offset]);
 
-  const isPaid = target?.metric === "PAID";
+  // Подписчики на цену не постранично (их не так много) — пагинация ниже
+  // скрыта для них через pageCount.
+  const isPriceAlertPattern = target?.kind === "priceAlertPattern";
+  const isPaid = !isPriceAlertPattern && target?.metric === "PAID";
   const pageCount = Math.ceil(total / PAGE);
   const currentPage = Math.floor(offset / PAGE) + 1;
 
@@ -99,8 +107,8 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
               <tr>
                 <th>Пользователь</th>
                 <th>Telegram</th>
-                {isPaid ? <th>Счёт</th> : <th>Раз</th>}
-                <th>{isPaid ? "Оплачен" : "Последний раз"}</th>
+                {isPaid ? <th>Счёт</th> : !isPriceAlertPattern && <th>Раз</th>}
+                <th>{isPaid ? "Оплачен" : isPriceAlertPattern ? "Подписан" : "Последний раз"}</th>
               </tr>
             </thead>
             <tbody>
@@ -111,16 +119,14 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
                     {u.username ? `@${u.username}` : "—"}
                     <div className={styles.tgId}>{u.telegramId}</div>
                   </td>
-                  <td className={styles.center}>
-                    {isPaid ? (
-                      <>
-                        №{u.invId}
-                        <div className={styles.tgId}>{u.amount} ₽</div>
-                      </>
-                    ) : (
-                      u.count
-                    )}
-                  </td>
+                  {isPaid ? (
+                    <td className={styles.center}>
+                      №{u.invId}
+                      <div className={styles.tgId}>{u.amount} ₽</div>
+                    </td>
+                  ) : !isPriceAlertPattern && (
+                    <td className={styles.center}>{u.count}</td>
+                  )}
                   <td className={styles.meta}>{formatDateTime(u.lastAt)}</td>
                 </tr>
               ))}
@@ -129,7 +135,7 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
         </div>
       )}
 
-      {pageCount > 1 && (
+      {!isPriceAlertPattern && pageCount > 1 && (
         <div className={styles.pagination}>
           <Button
             variant="secondary"

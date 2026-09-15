@@ -13,6 +13,7 @@ import {
   getPatternsStats,
   getDashboard,
   getDashboardStats,
+  getPatternPriceAlertSubscribers,
 } from "../controllers/adminDashboardController";
 import {
   getPatternsList,
@@ -196,6 +197,7 @@ router.get("/dashboard", getDashboard);
 router.get("/dashboard/stats", getDashboardStats);
 router.get("/paywall-stats", getPaywallStats);
 router.get("/paywall-stats/users", getPaywallStatsUsers);
+router.get("/patterns/:id/price-alert-subscribers", getPatternPriceAlertSubscribers);
 
 // Счета: список всех платежей и ручная сверка конкретного счёта с
 // Robokassa (см. adminPaymentsController).

@@ -268,3 +268,47 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// GET /admin/patterns/:id/price-alert-subscribers — кто подписался на
+// снижение цены конкретного описания (детализация плашки "Топ по подписке
+// на цену" на дашборде). Форма ответа { total, items } намеренно та же,
+// что у getPaywallStatsUsers (PaywallStatsUser[]) — переиспользует готовую
+// PaywallUsersModal вместо отдельного компонента-таблицы.
+export const getPatternPriceAlertSubscribers = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  try {
+    const subscriptions = await prisma.priceAlert.findMany({
+      where: { patternId: id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            telegramId: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      total: subscriptions.length,
+      items: subscriptions.map((s) => ({
+        userId: s.user.id,
+        telegramId: s.user.telegramId.toString(),
+        firstName: s.user.firstName,
+        lastName: s.user.lastName,
+        username: s.user.username,
+        count: 1,
+        lastAt: s.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error("[Admin] getPatternPriceAlertSubscribers failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

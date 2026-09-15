@@ -131,6 +131,17 @@
   gap: 8px;
 }
 
+.topItemClickable {
+  cursor: pointer;
+  border-radius: 4px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+}
+
+.topItemClickable:hover {
+  background: var(--surface-muted);
+}
+
 .topIndex {
   font-family: 'Mulish', sans-serif;
   font-size: 14px;
