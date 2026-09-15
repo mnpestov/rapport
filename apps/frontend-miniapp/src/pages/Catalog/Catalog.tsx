@@ -112,6 +112,13 @@ export const Catalog: React.FC = () => {
     return 0;
   });
   const isRestoringRef = useRef(!filterAuthorId && !!sessionStorage.getItem('catalog_scroll'));
+  // Пока идёт восстановление скролла при возврате с карточки описания,
+  // контент спрятан (visibility, не unmount — раскладка должна посчитаться)
+  // вместо показа "Загрузка каталога..." и карточек, прыгающих с верха
+  // экрана: без этого пользователь на долю секунды видел три разных кадра
+  // подряд (текст загрузки → список сверху → скачок вниз к месту скролла).
+  // Снимается в том же кадре, где применяется scrollTo — см. эффект ниже.
+  const [isRestoringVisible, setIsRestoringVisible] = useState(isRestoringRef.current);
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 10;
 
@@ -224,19 +231,34 @@ export const Catalog: React.FC = () => {
 
           if (isFirstLoadRestoring) {
             isRestoringRef.current = false;
-            setTimeout(() => {
-              const savedScroll = sessionStorage.getItem('catalog_scroll');
-              if (savedScroll) {
-                window.scrollTo(0, parseInt(savedScroll, 10));
-                sessionStorage.removeItem('catalog_scroll');
-              }
-            }, 100);
+            // Два rAF вместо setTimeout(100): первый ждёт, пока React
+            // закоммитит DOM с восстановленным списком карточек (иначе
+            // scrollTo целится в ещё не выросшую страницу), второй — что
+            // браузер успел посчитать layout перед следующей отрисовкой.
+            // Снимаем isRestoringVisible в том же кадре, что и сам scrollTo,
+            // чтобы пользователь не увидел ни пустой экран дольше нужного,
+            // ни список, ещё не докрученный до места.
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const savedScroll = sessionStorage.getItem('catalog_scroll');
+                if (savedScroll) {
+                  window.scrollTo(0, parseInt(savedScroll, 10));
+                  sessionStorage.removeItem('catalog_scroll');
+                }
+                setIsRestoringVisible(false);
+              });
+            });
           }
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         console.error(err);
-        if (isMounted) setError("Не удалось загрузить каталог");
+        if (isMounted) {
+          setError("Не удалось загрузить каталог");
+          // Иначе при ошибке контент так и останется скрытым навсегда —
+          // isRestoringVisible больше некому снять.
+          setIsRestoringVisible(false);
+        }
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -334,38 +356,47 @@ export const Catalog: React.FC = () => {
           браузере, вне Telegram; в Mini App возвращает null. */}
       <InstallPrompt />
 
-      {loading && <p className="loading-message">Загрузка каталога...</p>}
-      {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
+      {/* visibility, не условный рендер: пока идёт восстановление скролла
+          после возврата с карточки описания, контент должен посчитать
+          реальную раскладку (иначе scrollTo в эффекте выше целится в
+          нулевую высоту), но не должен быть виден — иначе пользователь
+          видит склейку из "Загрузка каталога...", списка сверху и скачка
+          вниз. "Загрузка каталога..." в этом случае тоже не показываем —
+          это тот же самый лишний кадр, просто с текстом вместо карточек. */}
+      <div style={isRestoringVisible ? { visibility: 'hidden' } : undefined}>
+        {loading && !isRestoringVisible && <p className="loading-message">Загрузка каталога...</p>}
+        {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
 
-      {!loading && !error && patterns.length === 0 && (
-        <div className="catalog-empty-state">
-          По вашему запросу ничего не найдено. <br />
-          Попробуйте изменить запрос или воспользоваться фильтрами.
-        </div>
-      )}
-
-      {!loading && !error && patterns.length > 0 && (
-        <>
-          <div className="catalog-grid">
-            {patterns.map(pattern => (
-              <PatternCard
-                key={pattern.id}
-                {...pattern}
-                onBeforeNavigate={() => logSearchOnce(debouncedSearch, totalPatterns)}
-              />
-            ))}
+        {!loading && !error && patterns.length === 0 && (
+          <div className="catalog-empty-state">
+            По вашему запросу ничего не найдено. <br />
+            Попробуйте изменить запрос или воспользоваться фильтрами.
           </div>
-          {hasMore && (
-            <div ref={lastElementRef} className="load-more-container" style={{ height: '20px' }}>
-              {isFetchingMore && <p className="loading-message" style={{ marginTop: 0 }}>Загрузка...</p>}
+        )}
+
+        {!loading && !error && patterns.length > 0 && (
+          <>
+            <div className="catalog-grid">
+              {patterns.map(pattern => (
+                <PatternCard
+                  key={pattern.id}
+                  {...pattern}
+                  onBeforeNavigate={() => logSearchOnce(debouncedSearch, totalPatterns)}
+                />
+              ))}
             </div>
-          )}
-          {/* Only once pagination is genuinely exhausted — sits after the
-              last card in normal document flow, so it's naturally reached
-              (and only then) by scrolling to the true end of the list. */}
-          {!hasMore && <Footer />}
-        </>
-      )}
+            {hasMore && (
+              <div ref={lastElementRef} className="load-more-container" style={{ height: '20px' }}>
+                {isFetchingMore && <p className="loading-message" style={{ marginTop: 0 }}>Загрузка...</p>}
+              </div>
+            )}
+            {/* Only once pagination is genuinely exhausted — sits after the
+                last card in normal document flow, so it's naturally reached
+                (and only then) by scrolling to the true end of the list. */}
+            {!hasMore && <Footer />}
+          </>
+        )}
+      </div>
 
       <FilterModal
         isOpen={isFilterModalOpen}
