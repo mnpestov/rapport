@@ -28,6 +28,21 @@ const MIN_AGE_MINUTES = 30;
 // Дальше этого срока смысла спрашивать нет: Robokassa отдаёт счёт как
 // ненайденный, а живых платежей такой давности не бывает.
 const MAX_AGE_DAYS = 14;
+// Окно "свежих" платежей для алерта о системной поломке — НЕ то же самое,
+// что окно сверки выше. Сверяем с Robokassa всё до 14 дней (это нужно само
+// по себе — вдруг деньги реально пришли), но алармить на "сутки нет ни
+// одной оплаты" по ВСЕМ этим 14 дням нельзя: одна и та же пачка старых
+// заброшенных платежей тогда торчит в выборке днями подряд, и при обычном
+// затишье (никто вообще не пытался платить) алерт держится, пока не
+// истечёт 14-дневное окно — то есть постоянно, просто теперь не чаще раза
+// в 15 минут вместо каждого прогона. Публика 2026-09-15: после починки
+// мьюта бот продолжал слать раз в 15 минут часами именно поэтому.
+//
+// Алерт должен реагировать на СИСТЕМНУЮ поломку — т.е. на то, что НОВЫЕ
+// попытки оплаты создаются и все проваливаются прямо сейчас, а не на факт,
+// что старые зависшие платежи существуют. Поэтому считаем отдельно: только
+// платежи младше RECENT_WINDOW_HOURS.
+const RECENT_WINDOW_HOURS = 3;
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
@@ -50,7 +65,19 @@ async function main(): Promise<void> {
   let needsAttention = 0;
   let errors = 0;
 
+  // Для алерта "системная поломка" ниже — считаем ТОЛЬКО платежи младше
+  // RECENT_WINDOW_HOURS (см. комментарий у константы). Старые заброшенные
+  // платежи из 14-дневного окна сверки в этот счётчик не идут: иначе один
+  // и тот же "хвост" держал бы алерт активным днями при обычном затишье.
+  const recentCutoff = now - RECENT_WINDOW_HOURS * 60 * 60 * 1000;
+  let recentStale = 0;
+  let recentAbandoned = 0;
+  let recentRecovered = 0;
+
   for (const payment of stale) {
+    const isRecent = payment.createdAt.getTime() > recentCutoff;
+    if (isRecent) recentStale++;
+
     const state = await fetchOpState(payment.invId);
 
     if (state.kind === "error") {
@@ -66,6 +93,7 @@ async function main(): Promise<void> {
       // Счёт не создавался на стороне Robokassa — пользователь нажал
       // "Оформить", но до страницы оплаты не дошёл.
       abandoned++;
+      if (isRecent) recentAbandoned++;
       continue;
     }
 
@@ -75,11 +103,12 @@ async function main(): Promise<void> {
         // Деньги реально получены, а доступа у человека нет — ровно тот
         // случай, ради которого всё это.
         console.log(`[Reconcile] InvId=${payment.invId}: деньги получены (код ${state.stateCode}), выдаём доступ`);
-        if (dryRun) { recovered++; break; }
+        if (dryRun) { recovered++; if (isRecent) recentRecovered++; break; }
 
         const result = await completePayment(payment, Number(payment.amount));
         if (result.outcome === "granted") {
           recovered++;
+          if (isRecent) recentRecovered++;
           await sendPaymentAlert(
             `reconciled-${payment.invId}`,
             `Платёж InvId=${payment.invId} на ${payment.amount} ₽ прошёл у Robokassa, ` +
@@ -119,27 +148,28 @@ async function main(): Promise<void> {
       default:
         // 0/5/10 — денег не было, штатный отказ.
         abandoned++;
+        if (isRecent) recentAbandoned++;
     }
   }
 
-  // Системная поломка: платежи создаются, но ни один не доходит. Так
-  // выглядят упавший прокси /payments и разъехавшиеся пароли.
-  if (!dryRun && stale.length >= 5 && recovered === 0 && abandoned === stale.length) {
-    const paidRecently = await prisma.payment.count({
-      where: { status: "PAID", paidAt: { gt: new Date(now - 24 * 60 * 60 * 1000) } },
-    });
-    if (paidRecently === 0) {
-      await sendPaymentAlert(
-        "no-successful-payments",
-        `За сутки ни одной успешной оплаты, при этом ${stale.length} платежей зависли в PENDING.\n\n` +
-          `Похоже на системную поломку: проверьте проксирование /payments в nginx и пароли Robokassa в .env.`
-      );
-    }
+  // Системная поломка: НОВЫЕ платежи создаются прямо сейчас и ВСЕ
+  // проваливаются — так выглядят упавший прокси /payments и разъехавшиеся
+  // пароли. Считается только по свежим (< RECENT_WINDOW_HOURS) платежам:
+  // если за это время никто вообще не пытался платить, recentStale = 0, и
+  // алерт молчит — затишье не повод для тревоги, повод только полный
+  // провал СВЕЖИХ попыток.
+  if (!dryRun && recentStale >= 5 && recentRecovered === 0 && recentAbandoned === recentStale) {
+    await sendPaymentAlert(
+      "no-successful-payments",
+      `За последние ${RECENT_WINDOW_HOURS}ч ${recentStale} новых платежей — и ни один не прошёл.\n\n` +
+        `Похоже на системную поломку: проверьте проксирование /payments в nginx и пароли Robokassa в .env.`
+    );
   }
 
   console.log(
     `[Reconcile] Итог: восстановлено ${recovered}, брошено ${abandoned}, ` +
-      `требует внимания ${needsAttention}, ошибок связи ${errors}${dryRun ? " (dry-run)" : ""}`
+      `требует внимания ${needsAttention}, ошибок связи ${errors}${dryRun ? " (dry-run)" : ""}; ` +
+      `свежих (<${RECENT_WINDOW_HOURS}ч) — всего ${recentStale}, восстановлено ${recentRecovered}, брошено ${recentAbandoned}`
   );
 }
 
