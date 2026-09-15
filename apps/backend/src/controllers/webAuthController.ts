@@ -299,6 +299,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         createdAt: true,
         lastPaywallShownAt: true,
         premiumExpiresAt: true,
+        priceAlertIntroShownAt: true,
       },
     });
 
@@ -329,7 +330,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     // Те же paywall-поля, что отдаёт /auth/telegram: без них браузерная
     // версия не знала бы, показывать ли кнопку подписки и баннер —
     // usePremiumAccess читает их из localStorage.user_data.
-    const { showPaywallBanner, subscriptionWarning, paywallUiEnabled } = buildPaywallState({
+    const { showPaywallBanner, subscriptionWarning, paywallUiEnabled, showPriceAlertIntro } = buildPaywallState({
       user,
       permissions,
       effectiveIsSubscriber,
@@ -350,6 +351,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         permissions,
         showPaywallBanner,
         subscriptionWarning,
+        showPriceAlertIntro,
         paywallUiEnabled,
         premiumExpiresAt: user.premiumExpiresAt?.toISOString() ?? null,
       },

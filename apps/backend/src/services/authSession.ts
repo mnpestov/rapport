@@ -23,6 +23,7 @@ export interface PaywallUserFields {
   createdAt: Date;
   lastPaywallShownAt: Date | null;
   premiumExpiresAt: Date | null;
+  priceAlertIntroShownAt: Date | null;
 }
 
 // «Сегодня» для правила «баннер не в день первого входа» считаем по
@@ -39,6 +40,7 @@ export interface PaywallState {
   paywallUiEnabled: boolean;
   showPaywallBanner: boolean;
   subscriptionWarning: "expiring_3_days" | "expiring_1_day" | null;
+  showPriceAlertIntro: boolean;
 }
 
 /**
@@ -139,7 +141,21 @@ export function buildPaywallState(params: {
     }
   }
 
-  return { isAdmin, paywallUiEnabled, showPaywallBanner, subscriptionWarning };
+  // ── Разовый баннер "новая функция: подписка на цены" ────────────────────
+  // Действующим платным подписчикам (hasExtra), один раз за всё время —
+  // priceAlertIntroShownAt проставляется при показе (см. paywallController
+  // submitPriceAlertIntroImpression) и больше не сбрасывается. Не
+  // пересекается с subscriptionWarning/showPaywallBanner по смыслу
+  // (та же логика взаимоисключения, что у баннера выше): предупреждение об
+  // истечении и приглашение оформить показываются раньше по приоритету на
+  // фронте (App.tsx), это поле — запасной третий вариант.
+  const showPriceAlertIntro =
+    paywallUiEnabled &&
+    effectiveIsSubscriber &&
+    hasExtra &&
+    user.priceAlertIntroShownAt === null;
+
+  return { isAdmin, paywallUiEnabled, showPaywallBanner, subscriptionWarning, showPriceAlertIntro };
 }
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { Maintenance } from './pages/Maintenance/Maintenance';
 import { authenticate } from './api/authApi';
-import { TelegramOnly } from './pages/TelegramOnly/TelegramOnly';
+import { Landing } from './pages/Landing/Landing';
 import { UpdateTelegram } from './pages/UpdateTelegram/UpdateTelegram';
 import { LoadError } from './pages/LoadError/LoadError';
 import { PaymentSuccess } from './pages/PaymentSuccess/PaymentSuccess';
@@ -24,7 +24,7 @@ import {
 } from './api/authSession';
 import { subscriptionRecheck } from './api/webAuthApi';
 import { initPwa } from './api/pwa';
-import { submitPaywallImpression, PaywallSource } from './api/paywallApi';
+import { submitPaywallImpression, submitPriceAlertIntroImpression, PaywallSource } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -367,6 +367,7 @@ function App() {
 
     let showPaywallBanner = false;
     let subscriptionWarning: PaywallVariant | null = null;
+    let showPriceAlertIntro = false;
     try {
       const raw = localStorage.getItem("user_data");
       const parsed = raw ? JSON.parse(raw) : null;
@@ -375,24 +376,35 @@ function App() {
       if (warning === "expiring_3_days" || warning === "expiring_1_day") {
         subscriptionWarning = warning;
       }
+      showPriceAlertIntro = Boolean(parsed?.showPriceAlertIntro);
     } catch {
       showPaywallBanner = false;
       subscriptionWarning = null;
+      showPriceAlertIntro = false;
     }
 
-    // Предупреждение об истечении важнее баннера: у подписчика доступ ещё
-    // есть, и предлагать ему "оформите подписку" вместо "продлите" было бы
-    // неверно. На практике эти два состояния и так не пересекаются
-    // (см. authController.ts), приоритет — страховка от такого показа.
-    if (!subscriptionWarning && !showPaywallBanner) return;
+    // Приоритет: предупреждение об истечении > баннер "оформите" >
+    // разовое "новая функция" действующим подписчикам. Первые два на
+    // практике не пересекаются (см. authController.ts) — это страховка.
+    // showPriceAlertIntro отдельно взаимоисключающ с обоими по бэкенд-
+    // условию (только hasExtra), но если у подписчика ОДНОВРЕМЕННО горит
+    // subscriptionWarning и он ещё не видел intro — предупреждение важнее,
+    // intro подождёт следующего входа (серверный флаг не гасится показом
+    // другого баннера).
+    if (!subscriptionWarning && !showPaywallBanner && !showPriceAlertIntro) return;
 
     if (!import.meta.env.DEV) sessionStorage.setItem("paywall_shown_session", "true");
-    setPaywallSource("AUTO_BANNER");
-    setPaywallVariant(subscriptionWarning ?? "paywall");
+    setPaywallSource(subscriptionWarning || showPaywallBanner ? "AUTO_BANNER" : "PRICE_ALERT_INTRO");
+    setPaywallVariant(subscriptionWarning ?? (showPaywallBanner ? "paywall" : "price_alert_intro"));
     setIsPaywallOpen(true);
-    // Аналитика показов — только про сам баннер (PAYWALL_BANNER_PLAN.md §7),
-    // предупреждения об истечении в ней не участвуют.
-    if (!subscriptionWarning) submitPaywallImpression();
+    // Аналитика показов — только про сам баннер и intro
+    // (PAYWALL_BANNER_PLAN.md §7), предупреждения об истечении в ней не
+    // участвуют.
+    if (showPaywallBanner && !subscriptionWarning) {
+      submitPaywallImpression();
+    } else if (showPriceAlertIntro && !subscriptionWarning && !showPaywallBanner) {
+      submitPriceAlertIntroImpression();
+    }
   }, [appState]);
 
   // Ручное открытие шторки кнопкой в строке поиска (SubscriptionButton).
@@ -467,7 +479,7 @@ function App() {
     // Кнопка входа — только в браузере: внутри Telegram входить некуда,
     // там аккаунт уже задан мессенджером.
     return (
-      <TelegramOnly
+      <Landing
         onLoginClick={isWebMode() ? () => setAppState("web_login") : undefined}
       />
     );

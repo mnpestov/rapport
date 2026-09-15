@@ -146,7 +146,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
     // Логика целиком в services/authSession.ts (buildPaywallState) — она
     // одинакова для Mini App и веб-входа, см. BROWSER_ACCESS_PLAN.md §4.3.
     // Перенесена дословно, поведение не менялось.
-    const { showPaywallBanner, subscriptionWarning, paywallUiEnabled } = buildPaywallState({
+    const { showPaywallBanner, subscriptionWarning, paywallUiEnabled, showPriceAlertIntro } = buildPaywallState({
       user: userRecord,
       permissions,
       effectiveIsSubscriber,
@@ -240,6 +240,7 @@ export const telegramAuth = async (req: Request, res: Response) => {
         permissions,
         showPaywallBanner,
         subscriptionWarning,
+        showPriceAlertIntro,
         // Показывать ли кнопку подписки в строке поиска. До публичного
         // запуска — только админу (см. paywallUiEnabled выше).
         paywallUiEnabled,

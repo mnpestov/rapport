@@ -27,6 +27,25 @@ export const submitPaywallImpression = async (req: Request, res: Response): Prom
   }
 };
 
+// POST /analytics/price-alert-intro-impression — тот же принцип, что
+// submitPaywallImpression выше, но пишет ОТДЕЛЬНОЕ поле: priceAlertIntroShownAt
+// не сбрасывает 7-дневный кулдаун обычного баннера и наоборот (см.
+// комментарий у поля в schema.prisma). Разово выставляется и больше не
+// меняется — buildPaywallState проверяет "=== null", а не давность.
+export const submitPriceAlertIntroImpression = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { priceAlertIntroShownAt: new Date() },
+    });
+    res.status(204).end();
+  } catch (error) {
+    console.error("[Paywall] Failed to record price-alert-intro impression:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const EVENT_TYPES = new Set<string>(Object.values(PaywallEventType));
 const SOURCES = new Set<string>(Object.values(PaywallSource));
 

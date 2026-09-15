@@ -172,9 +172,9 @@ async function issueSessionResponse(
   // Подписка на канал только что проверена при создании сессии.
   const paywallSource = await prisma.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { role: true, createdAt: true, lastPaywallShownAt: true, premiumExpiresAt: true },
+    select: { role: true, createdAt: true, lastPaywallShownAt: true, premiumExpiresAt: true, priceAlertIntroShownAt: true },
   });
-  const { showPaywallBanner, subscriptionWarning, paywallUiEnabled } = buildPaywallState({
+  const { showPaywallBanner, subscriptionWarning, paywallUiEnabled, showPriceAlertIntro } = buildPaywallState({
     user: paywallSource,
     permissions,
     effectiveIsSubscriber: true,
@@ -192,6 +192,7 @@ async function issueSessionResponse(
       permissions,
       showPaywallBanner,
       subscriptionWarning,
+      showPriceAlertIntro,
       paywallUiEnabled,
       premiumExpiresAt: paywallSource.premiumExpiresAt?.toISOString() ?? null,
     },

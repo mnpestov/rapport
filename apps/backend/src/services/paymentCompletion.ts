@@ -73,6 +73,15 @@ export async function completePayment(
       create: { userId: user.id, permission: Permission.PREMIUM_EXTRA },
       update: {},
     });
+    // Подписка на снижение цены — включена по умолчанию для любого платного
+    // пользователя, с первой же оплаты. Раньше выдавалась только вручную
+    // (администратор/whitelist), из-за чего платящие по обычному флоу её не
+    // получали вовсе — см. апдейт 2026-09.
+    await tx.userPermission.upsert({
+      where: { userId_permission: { userId: user.id, permission: Permission.PRICE_ALERT } },
+      create: { userId: user.id, permission: Permission.PRICE_ALERT },
+      update: {},
+    });
   });
 
   if (!newExpiresAt) return { outcome: "already_paid" };

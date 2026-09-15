@@ -390,6 +390,7 @@ enum PaywallSource {
   EXPIRING_3_DAYS // предупреждение "истекает через 3 дня"
   EXPIRING_1_DAY // предупреждение "через 1 день"
   ACTIVE // шторка "подписка активна" (продление из неё)
+  PRICE_ALERT_INTRO // разовый баннер "новая функция" — подписка на цены (действующим платным)
 }
 
 enum PaymentStatus {
@@ -422,6 +423,14 @@ model User {
   // conversion analytics (cheaper to add now than in a second migration).
   lastPaywallShownAt   DateTime?
   lastPaywallClickedAt DateTime?
+
+  // Разовый баннер "новая функция" (подписка на цены) действующим платным
+  // подписчикам — variant='price_alert_intro' в PaywallModal, 2026-09.
+  // Отдельное поле, не lastPaywallShownAt: то перезаписывается и на нём
+  // висит СВОЙ функциональный 7-дневный кулдаун обычного баннера — делить
+  // одно поле между двумя разными механизмами показа значило бы, что показ
+  // одного молча сбрасывает кулдаун другого. null = ещё не видел.
+  priceAlertIntroShownAt DateTime?
 
   // Свои и тестовые аккаунты, которых не должно быть в статистике воронки
   // подписки (PAYMENTS_ROBOKASSA_PLAN.md §10). Отдельный флаг, а не роль:

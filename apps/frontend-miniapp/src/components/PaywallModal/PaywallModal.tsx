@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { BellRing } from 'lucide-react';
 import { submitPaywallImpression, submitPaywallEvent, PaywallSource } from '../../api/paywallApi';
 import { createPayment } from '../../api/paymentsApi';
 import { openExternalLink } from '../../utils/telegram';
 import logo from '../../assets/paywall/rapport-logo.svg';
+import priceAlert from '../../assets/paywall/advantage-price-alert.png';
 import discountTag from '../../assets/paywall/advantage-discount-tag.png';
 import priceVisibility from '../../assets/paywall/advantage-price-visibility.png';
 import authorLink from '../../assets/paywall/advantage-author-link.png';
@@ -17,11 +19,15 @@ import { useSheetTransition } from '../../hooks/useSheetTransition';
 import '../../styles/sheet.css';
 import './PaywallModal.css';
 
-// Один и тот же компонент обслуживает три сценария — все они про "оплати
-// подписку", отличаются только шапкой и наличием списка фич, а шторка,
-// кнопки и логика оплаты общие (Figma: 970:12151 баннер, 975:5061 за 3 дня,
-// 975:5217 за 1 день).
-export type PaywallVariant = 'paywall' | 'expiring_3_days' | 'expiring_1_day' | 'active';
+// Один и тот же компонент обслуживает сценарии оплаты/продления — все они
+// про "оплати подписку", отличаются только шапкой и наличием списка фич,
+// а шторка, кнопки и логика оплаты общие (Figma: 970:12151 баннер, 975:5061
+// за 3 дня, 975:5217 за 1 день).
+//
+// 'price_alert_intro' — исключение: показывается ДЕЙСТВУЮЩИМ подписчикам
+// один раз, чтобы рассказать про новую фичу (подписка на цены), и не ведёт
+// к оплате — кнопка просто закрывает шторку (Figma 1240:7207).
+export type PaywallVariant = 'paywall' | 'expiring_3_days' | 'expiring_1_day' | 'active' | 'price_alert_intro';
 
 interface PaywallModalProps {
   isOpen: boolean;
@@ -42,38 +48,52 @@ interface VariantConfig {
   body?: string;
   // Подзаголовок над списком — только "за 1 день" ("Вы потеряете:").
   listHeading?: string;
-  showLogoHeader: boolean;
+  // Текст над/под логотипом в шапке-логотипе ('paywall' — "Расширьте
+  // возможности" / "с Премиум-подпиской", 'price_alert_intro' — "Новая
+  // функция" / "с Премиум-подпиской", Figma 1240:7229). Только когда задан
+  // — рендерится шапка с логотипом вместо обычного title.
+  logoHeaderLines?: [string, string];
   showAdvantages: boolean;
-  ctaTitle: string;
+  // Только 'price_alert_intro' (Figma 1240:7298): один пункт "Подписка на
+  // скидку" с иконкой-колокольчиком вместо мокапа экрана и без остального
+  // списка фич — человек уже платный подписчик, его не нужно убеждать
+  // остальным списком, только рассказать про новое.
+  onlyPriceAlertHighlight?: boolean;
+  // Не задан у 'price_alert_intro': это баннер про уже включённую фичу, а не
+  // предложение оплаты — кнопки оплаты/продления там не место, только "Закрыть".
+  ctaTitle?: string;
 }
 
 const VARIANTS: Record<PaywallVariant, VariantConfig> = {
   paywall: {
     title: '',
-    showLogoHeader: true,
+    logoHeaderLines: ['Расширьте возможности', 'с Премиум-подпиской'],
     showAdvantages: true,
     ctaTitle: 'Оформить подписку',
   },
   expiring_3_days: {
     title: 'Ваша Премиум-подписка истекает через 3 дня',
     body: 'Чтобы не потерять доступ ко всем функциям, продлите подписку уже сейчас.',
-    showLogoHeader: false,
     showAdvantages: false,
     ctaTitle: 'Продлить подписку',
   },
   expiring_1_day: {
     title: 'Через 1 день ваша Премиум-подписка закончится',
     listHeading: 'Вы потеряете:',
-    showLogoHeader: false,
     showAdvantages: true,
     ctaTitle: 'Продлить подписку',
   },
   active: {
     title: 'Ваша Премиум-подписка активна',
     body: 'Все функции открыты.',
-    showLogoHeader: false,
     showAdvantages: false,
     ctaTitle: 'Продлить на месяц',
+  },
+  price_alert_intro: {
+    title: '',
+    logoHeaderLines: ['Новая функция', 'с Премиум-подпиской'],
+    showAdvantages: true,
+    onlyPriceAlertHighlight: true,
   },
 };
 
@@ -84,6 +104,7 @@ const VARIANT_SOURCE: Record<Exclude<PaywallVariant, 'paywall'>, PaywallSource> 
   expiring_3_days: 'EXPIRING_3_DAYS',
   expiring_1_day: 'EXPIRING_1_DAY',
   active: 'ACTIVE',
+  price_alert_intro: 'PRICE_ALERT_INTRO',
 };
 
 interface Advantage {
@@ -104,9 +125,13 @@ function formatExpiryDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// Copy + feature set from Figma node 970:12151 — matches PREMIUM_EXTRA 1:1
-// (PAID_TIER_PERMISSIONS_PLAN.md §0), no discrepancy found when cross-checked.
+// Copy + feature set from Figma node 970:12151/1086:5724 — matches
+// PREMIUM_EXTRA 1:1 (PAID_TIER_PERMISSIONS_PLAN.md §0), no discrepancy found
+// when cross-checked. "Подписка на скидку" (PRICE_ALERT) добавлена первой
+// 2026-09 — тот же permission выдаётся автоматически с первой оплаты
+// (paymentCompletion.ts), сюда попадает в списке наравне с остальными.
 const ADVANTAGES: Advantage[] = [
+  { image: priceAlert, title: 'Подписка на скидку', text: 'Уведомим вас, если автор снизит цену.' },
   { image: discountTag, title: 'Тег «Скидка»', text: 'Фильтруйте описания с акциями. Экономьте на том, что и так планировали купить.' },
   { image: priceVisibility, title: 'Видимость цены', text: 'Стоимость описания теперь сразу на карточке. Без лишних действий.' },
   { image: authorLink, title: 'Ссылка на автора', text: 'Переходите к другим работам мастера в один клик прямо со страницы описания.' },
@@ -196,11 +221,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
       <div className="paywall-modal-content sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="paywall-modal-scroll" ref={scrollRef} onScroll={handleScroll}>
           <div className="paywall-modal-header">
-            {config.showLogoHeader ? (
+            {config.logoHeaderLines ? (
               <>
-                <h1 className="paywall-modal-title">Расширьте возможности</h1>
+                <h1 className="paywall-modal-title">{config.logoHeaderLines[0]}</h1>
                 <img src={logo} alt="Rapport" className="paywall-modal-logo" />
-                <h1 className="paywall-modal-title">с Премиум-подпиской</h1>
+                <h1 className="paywall-modal-title">{config.logoHeaderLines[1]}</h1>
               </>
             ) : (
               <>
@@ -219,7 +244,16 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
 
           {config.listHeading && <p className="paywall-list-heading">{config.listHeading}</p>}
 
-          {config.showAdvantages && (
+          {/* price_alert_intro (Figma 1240:7298): один пункт, иконка-
+              колокольчик вместо мокапа экрана — человек уже подписчик,
+              полный список фич ему показывать незачем. */}
+          {config.onlyPriceAlertHighlight ? (
+            <div className="paywall-highlight">
+              <BellRing className="paywall-highlight-icon" size={24} />
+              <p className="paywall-highlight-title">{ADVANTAGES[0].title}</p>
+              <p className="paywall-highlight-description">{ADVANTAGES[0].text}</p>
+            </div>
+          ) : config.showAdvantages && (
             <ul className="paywall-advantages-list">
               {ADVANTAGES.map((advantage) => (
                 <li className="paywall-advantage" key={advantage.title}>
@@ -237,17 +271,19 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
         </div>
 
         <div className="paywall-modal-buttons">
-          <button
-            type="button"
-            className="paywall-subscribe-btn"
-            onClick={handleSubscribeClick}
-            disabled={isCreatingPayment}
-          >
-            <span className="paywall-subscribe-btn-title">{config.ctaTitle}</span>
-            <span className="paywall-subscribe-btn-price">
-              {isCreatingPayment ? 'Открываем оплату…' : '69 ₽/мес.'}
-            </span>
-          </button>
+          {config.ctaTitle && (
+            <button
+              type="button"
+              className="paywall-subscribe-btn"
+              onClick={handleSubscribeClick}
+              disabled={isCreatingPayment}
+            >
+              <span className="paywall-subscribe-btn-title">{config.ctaTitle}</span>
+              <span className="paywall-subscribe-btn-price">
+                {isCreatingPayment ? 'Открываем оплату…' : '69 ₽/мес.'}
+              </span>
+            </button>
+          )}
           <button type="button" className="paywall-close-btn" onClick={handleClose}>
             Закрыть
           </button>

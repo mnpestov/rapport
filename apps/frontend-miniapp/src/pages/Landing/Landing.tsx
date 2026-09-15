@@ -2,7 +2,7 @@ import React from 'react';
 import headerLogo from '../../assets/paywall/logo-small-red.svg';
 import heroLogo from '../../assets/paywall/rapport-logo-black.svg';
 import heroImage from '../../assets/landing/hero.png';
-import './TelegramOnly.css';
+import './Landing.css';
 
 const BOT_APP_LINK = 'https://t.me/rapportapp_bot/rapport';
 const BOT_CHAT_LINK = 'https://t.me/rapportapp_bot';
@@ -35,7 +35,10 @@ const FREE_ADVANTAGES: Advantage[] = [
 // PREMIUM_EXTRA — тот же список и порядок, что ADVANTAGES в PaywallModal.tsx
 // (Figma 970:12151, уже сверен с PAID_TIER_PERMISSIONS_PLAN.md §0), но без
 // картинок — в текущей версии макета (999:7406) у платного списка их убрали.
+// "Подписка на скидку" добавлена первой строкой вслед за новым баннером
+// price_alert_intro в PaywallModal.tsx — там она тоже первая в списке.
 const PAID_ADVANTAGES: Advantage[] = [
+  { title: 'Подписка на скидку', text: 'Уведомим вас, если автор снизит цену.' },
   { title: 'Тег «Скидка»', text: 'Фильтруйте описания с акциями. Экономьте на том, что и так планировали купить.' },
   { title: 'Цена', text: 'Стоимость описания теперь сразу на карточке. Без лишних действий.' },
   { title: 'Гиперссылка на автора', text: 'Переходите к другим работам мастера в один клик прямо со страницы описания.' },
@@ -48,14 +51,14 @@ const PAID_ADVANTAGES: Advantage[] = [
   { title: 'Фильтр по плотности', text: 'Находите описания, идеально подходящие под вашу плотность вязания. Никаких пересчётов.' },
 ];
 
-interface TelegramOnlyProps {
+interface LandingProps {
   // Передаётся только в браузерном режиме: внутри Telegram входить некуда,
   // аккаунт уже задан мессенджером. Пока веб-доступ открыт не для всех,
   // кнопка намеренно скромная — не главный CTA страницы.
   onLoginClick?: () => void;
 }
 
-export const TelegramOnly: React.FC<TelegramOnlyProps> = ({ onLoginClick }) => {
+export const Landing: React.FC<LandingProps> = ({ onLoginClick }) => {
   return (
     <div className="landing">
       <header className="landing-header">
@@ -79,7 +82,7 @@ export const TelegramOnly: React.FC<TelegramOnlyProps> = ({ onLoginClick }) => {
             <h1 className="landing-hero-title">Агрегатор вязальных описаний</h1>
             <div className="landing-hero-desc">
               <p>Все описания в одном месте!</p>
-              <p>Раппорт — это Mini App. Он работает только внутри мессенджера — откройте приложение через Telegram, чтобы продолжить.</p>
+              <p>Раппорт доступен в Telegram и в браузере. Откройте приложение через Telegram или войдите по логину и паролю, чтобы продолжить.</p>
             </div>
             <a className="landing-btn landing-btn-primary" href={BOT_APP_LINK}>Найти описание</a>
           </div>

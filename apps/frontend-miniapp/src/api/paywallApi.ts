@@ -26,6 +26,24 @@ export const submitPaywallImpression = async (clicked?: boolean): Promise<void> 
   }
 };
 
+// Разовая отметка показа баннера "новая функция: подписка на цены"
+// (variant='price_alert_intro') — ОТДЕЛЬНОЕ поле от submitPaywallImpression
+// выше, не сбрасывает его 7-дневный кулдаун. См. paywallController.ts.
+export const submitPriceAlertIntroImpression = async (): Promise<void> => {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_URL}/analytics/price-alert-intro-impression`,
+      { method: "POST", headers: { ...getAuthHeaders(), "Content-Type": "application/json" } },
+      5000
+    );
+    if (!response.ok) {
+      console.error(`[Paywall] Failed to record price-alert-intro impression: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("[Paywall] Network error recording price-alert-intro impression:", error);
+  }
+};
+
 // Значения обязаны совпадать с enum-ами PaywallEventType/PaywallSource в
 // schema.prisma — бэкенд отвергает всё, чего нет в enum, чтобы мусор не
 // попал в выборку и не исказил отчёт.
@@ -47,7 +65,10 @@ export type PaywallSource =
   | "FILTER_LOCK"
   | "EXPIRING_3_DAYS"
   | "EXPIRING_1_DAY"
-  | "ACTIVE";
+  | "ACTIVE"
+  // Разовый баннер "новая функция" (подписка на цены) действующим платным
+  // подписчикам — см. PaywallModal variant='price_alert_intro'.
+  | "PRICE_ALERT_INTRO";
 
 // Отдельно от submitPaywallImpression намеренно: тот пишет функциональное
 // поле, на котором висит 7-дневный кулдаун показа, а это — append-only лог

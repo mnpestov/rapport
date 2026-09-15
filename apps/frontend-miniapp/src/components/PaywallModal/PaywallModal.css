@@ -100,6 +100,42 @@
   line-height: 1.1;
 }
 
+/* price_alert_intro (Figma 1240:7298) — единственный пункт списка,
+   показанный действующему подписчику: иконка-колокольчик вместо мокапа
+   экрана, текст по центру. Тот же горизонтальный отступ, что у
+   .paywall-advantages-list. */
+.paywall-highlight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.paywall-highlight-icon {
+  color: #A9AE36;
+  margin-bottom: 4px;
+}
+
+.paywall-highlight-title {
+  margin: 0;
+  color: #1D1C1C;
+  font-family: Mulish, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.paywall-highlight-description {
+  margin: 0;
+  color: #1D1C1C;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
 .paywall-advantages-list {
   list-style: none;
   margin: 0;
@@ -264,5 +300,6 @@
     flex: 1;
     width: auto;
     height: 100%;
+    min-height: 59px;
   }
 }
