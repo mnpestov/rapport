@@ -101,25 +101,47 @@
 }
 
 /* price_alert_intro (Figma 1240:7298) — единственный пункт списка,
-   показанный действующему подписчику: иконка-колокольчик вместо мокапа
-   экрана, текст по центру. Тот же горизонтальный отступ, что у
-   .paywall-advantages-list. */
+   показанный действующему подписчику: мокап экрана + иконка-колокольчик
+   на уровне заголовка (не отдельной строкой выше), выровнено по низу
+   горизонтально, как в макете. Тот же горизонтальный отступ и картинка,
+   что у .paywall-advantages-list. */
 .paywall-highlight {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 4px;
-  padding: 0 20px;
-  text-align: center;
+  padding: 0 20px 0 12px;
 }
 
+.paywall-highlight-image {
+  position: relative;
+  flex-shrink: 0;
+  width: 60px;
+  height: 80px;
+  overflow: hidden;
+}
+
+.paywall-highlight-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+/* Заливка, а не только обводка — в макете колокольчик зелёный и залитый
+   (fill=currentColor на самом <Bell>), не просто зелёный контур. */
 .paywall-highlight-icon {
+  flex-shrink: 0;
   color: #A9AE36;
-  margin-bottom: 4px;
 }
 
 .paywall-highlight-title {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: #1D1C1C;
   font-family: Mulish, sans-serif;
   font-size: 17px;

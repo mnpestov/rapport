@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BellRing } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { submitPaywallImpression, submitPaywallEvent, PaywallSource } from '../../api/paywallApi';
 import { createPayment } from '../../api/paymentsApi';
 import { openExternalLink } from '../../utils/telegram';
@@ -249,9 +249,16 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, var
               полный список фич ему показывать незачем. */}
           {config.onlyPriceAlertHighlight ? (
             <div className="paywall-highlight">
-              <BellRing className="paywall-highlight-icon" size={24} />
-              <p className="paywall-highlight-title">{ADVANTAGES[0].title}</p>
-              <p className="paywall-highlight-description">{ADVANTAGES[0].text}</p>
+              <div className="paywall-highlight-image">
+                <img src={ADVANTAGES[0].image} alt="" className="paywall-advantage-screenshot" />
+              </div>
+              <div className="paywall-highlight-text">
+                <p className="paywall-highlight-title">
+                  <Bell className="paywall-highlight-icon" size={24} strokeWidth={1.5} fill="currentColor" />
+                  {ADVANTAGES[0].title}
+                </p>
+                <p className="paywall-highlight-description">{ADVANTAGES[0].text}</p>
+              </div>
             </div>
           ) : config.showAdvantages && (
             <ul className="paywall-advantages-list">
