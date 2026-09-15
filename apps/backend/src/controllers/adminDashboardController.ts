@@ -7,12 +7,19 @@ import { prisma } from "../prismaClient";
  * richer aggregations are marked with TODO.
  */
 
+// Свои и тестовые аккаунты (тумблер "Не учитывать в статистике" в карточке
+// пользователя) не должны попадать ни в один из счётчиков/топов дашборда —
+// тот же фильтр, что уже применялся только к воронке подписки
+// (paywallStatsController.ts), распространён и сюда.
+const EXCLUDE_TEST_USERS = { excludeFromStats: false };
+const EXCLUDE_TEST_USERS_RELATION = { user: EXCLUDE_TEST_USERS };
+
 // GET /admin/users/stats
 export const getUsersStats = async (_req: Request, res: Response): Promise<void> => {
   try {
     const [total, byRole] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
+      prisma.user.count({ where: EXCLUDE_TEST_USERS }),
+      prisma.user.groupBy({ by: ["role"], where: EXCLUDE_TEST_USERS, _count: { _all: true } }),
     ]);
 
     res.json({
@@ -30,8 +37,8 @@ export const getPatternsStats = async (_req: Request, res: Response): Promise<vo
   try {
     const [totalPatterns, totalViews, totalLinkClicks] = await Promise.all([
       prisma.pattern.count(),
-      prisma.patternView.count(),
-      prisma.patternLinkClick.count(),
+      prisma.patternView.count({ where: EXCLUDE_TEST_USERS_RELATION }),
+      prisma.patternLinkClick.count({ where: EXCLUDE_TEST_USERS_RELATION }),
     ]);
 
     res.json({
@@ -51,9 +58,9 @@ export const getPatternsStats = async (_req: Request, res: Response): Promise<vo
 export const getDashboard = async (_req: Request, res: Response): Promise<void> => {
   try {
     const [users, patterns, subscribeClicks] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count({ where: EXCLUDE_TEST_USERS }),
       prisma.pattern.count(),
-      prisma.subscribeClick.count(),
+      prisma.subscribeClick.count({ where: EXCLUDE_TEST_USERS_RELATION }),
     ]);
 
     res.json({
@@ -101,10 +108,11 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     const createdAtRange = analyticsFrom
       ? { gte: analyticsFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) }
       : undefined;
-    const dateFilter = createdAtRange ? { createdAt: createdAtRange } : undefined;
-    const topWhere = createdAtRange
-      ? { createdAt: { ...createdAtRange } }
-      : undefined;
+    const dateFilter = {
+      ...(createdAtRange ? { createdAt: createdAtRange } : {}),
+      ...EXCLUDE_TEST_USERS_RELATION,
+    };
+    const topWhere = dateFilter;
 
     // Raw SQL for author aggregation — groupBy can't aggregate across a joined
     // relation, so this joins PatternView/LinkClick/Favorite -> Pattern -> Author.
@@ -134,9 +142,9 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       topSearchQueriesRaw,
     ] = await Promise.all([
       analyticsFrom
-        ? prisma.user.count({ where: { lastSeenAt: { gte: analyticsFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) } } })
-        : prisma.user.count(),
-      prisma.user.count({ where: { createdAt: { gte: newUsersFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) } } }),
+        ? prisma.user.count({ where: { lastSeenAt: { gte: analyticsFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) }, ...EXCLUDE_TEST_USERS } })
+        : prisma.user.count({ where: EXCLUDE_TEST_USERS }),
+      prisma.user.count({ where: { createdAt: { gte: newUsersFrom, ...(analyticsTo ? { lte: analyticsTo } : {}) }, ...EXCLUDE_TEST_USERS } }),
       prisma.patternView.count({ where: dateFilter }),
       prisma.patternLinkClick.count({ where: dateFilter }),
       prisma.subscribeClick.count({ where: dateFilter }),
@@ -175,8 +183,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         FROM "PatternView" v
         JOIN "Pattern" p ON p.id = v."patternId"
         JOIN "Author" a ON a.id = p."authorId"
+        JOIN "User" u ON u.id = v."userId"
         WHERE (${sqlFrom}::timestamptz IS NULL OR v."createdAt" >= ${sqlFrom}::timestamptz)
           AND (${sqlTo}::timestamptz IS NULL OR v."createdAt" <= ${sqlTo}::timestamptz)
+          AND u."excludeFromStats" = false
         GROUP BY a.id, a.name
         ORDER BY count DESC
         LIMIT 10
@@ -186,8 +196,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         FROM "PatternLinkClick" v
         JOIN "Pattern" p ON p.id = v."patternId"
         JOIN "Author" a ON a.id = p."authorId"
+        JOIN "User" u ON u.id = v."userId"
         WHERE (${sqlFrom}::timestamptz IS NULL OR v."createdAt" >= ${sqlFrom}::timestamptz)
           AND (${sqlTo}::timestamptz IS NULL OR v."createdAt" <= ${sqlTo}::timestamptz)
+          AND u."excludeFromStats" = false
         GROUP BY a.id, a.name
         ORDER BY count DESC
         LIMIT 10
@@ -197,8 +209,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         FROM "UserFavorite" v
         JOIN "Pattern" p ON p.id = v."patternId"
         JOIN "Author" a ON a.id = p."authorId"
+        JOIN "User" u ON u.id = v."userId"
         WHERE (${sqlFrom}::timestamptz IS NULL OR v."createdAt" >= ${sqlFrom}::timestamptz)
           AND (${sqlTo}::timestamptz IS NULL OR v."createdAt" <= ${sqlTo}::timestamptz)
+          AND u."excludeFromStats" = false
         GROUP BY a.id, a.name
         ORDER BY count DESC
         LIMIT 10
@@ -279,7 +293,7 @@ export const getPatternPriceAlertSubscribers = async (req: Request, res: Respons
 
   try {
     const subscriptions = await prisma.priceAlert.findMany({
-      where: { patternId: id },
+      where: { patternId: id, ...EXCLUDE_TEST_USERS_RELATION },
       orderBy: { createdAt: "desc" },
       select: {
         createdAt: true,
