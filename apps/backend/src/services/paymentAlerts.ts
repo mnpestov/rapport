@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 /**
  * Уведомления админу о проблемах с платежами (PAYMENTS_ROBOKASSA_PLAN.md
  * §10.5). До этого все такие случаи писались только в console.error — то
@@ -18,14 +21,49 @@ const ADMIN_TELEGRAM_ID = "505293788";
 // Одинаковые алерты подряд гасятся: Robokassa повторяет Result URL, и при
 // systemic-поломке (разъехались пароли) прилетело бы по сообщению на
 // каждую попытку каждого пользователя.
+//
+// Состояние живёт в файле, а не в Map в памяти процесса — see
+// reconcilePayments.ts: run_payment_reconcile.sh запускает его из cron
+// КАЖДЫЕ 15 минут отдельным процессом (`tsx script.ts`), и in-memory Map
+// умирала вместе с процессом на каждом прогоне — окно молчания фактически
+// никогда не срабатывало между вызовами из cron, только внутри одного
+// прогона. Итог live-инцидента: алерт "no-successful-payments" слался
+// каждые 15 минут часами подряд, хотя MUTE_WINDOW_MS = 15 минут — окно
+// технически "работало", просто не переживало рестарт процесса. Файл
+// переживает; вызывающая сторона (webhook в rapport-api, живущий часами) от
+// этого не страдает — просто читает/пишет тот же файл вместо Map.
 const MUTE_WINDOW_MS = 15 * 60 * 1000;
-const lastSentAt = new Map<string, number>();
+const STATE_PATH = path.join(__dirname, "../scripts/payment_alert_state.json");
+
+function loadState(): Record<string, number> {
+  try {
+    return JSON.parse(fs.readFileSync(STATE_PATH, "utf-8"));
+  } catch {
+    // Файла нет (первый запуск) или он битый — начинаем с чистого листа.
+    // Худший случай — один лишний алерт, не пропущенный критичный.
+    return {};
+  }
+}
+
+function saveState(state: Record<string, number>): void {
+  try {
+    fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
+    fs.writeFileSync(STATE_PATH, JSON.stringify(state));
+  } catch (err) {
+    // Не смогли сохранить — окно молчания в следующий раз не сработает,
+    // но сама отправка (ради которой всё это) уже прошла успешно. Не
+    // бросаем: см. докстринг модуля.
+    console.error("[PaymentAlert] Failed to persist mute state:", err);
+  }
+}
 
 export async function sendPaymentAlert(key: string, text: string): Promise<void> {
   const now = Date.now();
-  const previous = lastSentAt.get(key);
+  const state = loadState();
+  const previous = state[key];
   if (previous && now - previous < MUTE_WINDOW_MS) return;
-  lastSentAt.set(key, now);
+  state[key] = now;
+  saveState(state);
 
   const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
   const apiKey = process.env.TELEGRAM_GATEWAY_API_KEY;

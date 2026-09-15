@@ -97,6 +97,7 @@ apps/backend/src/scripts/price_check_report.md
 apps/backend/src/scripts/price_check_report_*.md
 apps/backend/src/scripts/price_check_state.json
 apps/backend/src/scripts/price_snapshots/
+apps/backend/src/scripts/payment_alert_state.json
 apps/backend/find_duplicates.ts
 apps/backend/src/scripts/check_authors.py
 apps/backend/src/scripts/find_remaining_authors.py
