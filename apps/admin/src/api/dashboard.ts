@@ -29,6 +29,7 @@ export interface DashboardStats {
   totalPatternLinkClicks: number;
   totalSubscribeClicks: number;
   totalFavorites: number;
+  totalPriceAlerts: number;
 }
 
 export interface DashboardResponse {
@@ -36,6 +37,7 @@ export interface DashboardResponse {
   topByViews: TopPatternItem[];
   topByLinkClicks: TopPatternItem[];
   topByFavorites: TopPatternItem[];
+  topByPriceAlerts: TopPatternItem[];
   topAuthorsByViews: TopAuthorItem[];
   topAuthorsByLinkClicks: TopAuthorItem[];
   topAuthorsByFavorites: TopAuthorItem[];

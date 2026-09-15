@@ -245,7 +245,7 @@ export function Dashboard() {
     );
   }
 
-  const { stats, topByViews, topByLinkClicks, topByFavorites } = data;
+  const { stats, topByViews, topByLinkClicks, topByFavorites, topByPriceAlerts } = data;
 
   return (
     <div className={styles.container} style={{ opacity: isRefreshing ? 0.6 : 1, transition: "opacity 0.15s" }}>
@@ -307,6 +307,7 @@ export function Dashboard() {
         <StatCard label="Просмотров карточек" value={stats.totalPatternViews} />
         <StatCard label="Переходов на подписку" value={stats.totalSubscribeClicks} />
         <StatCard label="Добавлений в избранное" value={stats.totalFavorites} />
+        <StatCard label="Подписок на цену" value={stats.totalPriceAlerts} />
       </div>
 
       {/* Воронка подписки — PAYMENTS_ROBOKASSA_PLAN.md §10. Не рисуется,
@@ -355,6 +356,16 @@ export function Dashboard() {
             </svg>
           }
           items={topByFavorites}
+        />
+        <TopTable
+          title="Топ по подписке на цену"
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#83942C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+          }
+          items={topByPriceAlerts}
         />
       </div>
 
