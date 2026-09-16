@@ -155,6 +155,29 @@
   padding: 0;
 }
 
+/* Figma 1264:15466 (I1264:15495;1264:16067) — h:36, p:10, border:#E5E5E5,
+   cornerRadius:2. Отдельный класс, не .filter-btn: та рассчитана на
+   текстовые лейблы (padding 8/15), тут квадратная кнопка под 24px-иконку. */
+.price-alert-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 7px;
+  border-radius: 2px;
+  border: 1px solid #F3F3F3;
+  background: #ffffff;
+  color: #1D1C1C;
+  cursor: pointer;
+}
+
+.price-alert-filter-btn.active {
+  color: #A9AE36;
+  border-color: #A9AE36;
+}
+
 .catalog-filters {
   display: flex;
   gap: 8px;

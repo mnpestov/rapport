@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Heart, SlidersHorizontal, ArrowDownUp } from 'lucide-react';
+import { Search, X, Heart, SlidersHorizontal, ArrowDownUp, Bell } from 'lucide-react';
 import { CustomX } from '../Icons/Icons';
 import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import { SubscriptionButton } from '../SubscriptionButton/SubscriptionButton';
@@ -63,6 +63,14 @@ interface SearchFilterBarProps {
   // Ссылка на кнопку сортировки — нужна SortModal, чтобы на десктопе
   // раскрыть окно сортировки как выпадающий селект под этой кнопкой.
   sortButtonRef?: React.Ref<HTMLButtonElement>;
+  // Кнопка-колокольчик "Подписки на цену" в Избранном (Figma 1264:15466) —
+  // показывает только описания, на цену которых подписан пользователь.
+  // Есть свой гейт по PRICE_ALERT (не toolbarLocked/extra): у пользователя
+  // может быть только базовый PREMIUM_EXTRA без PRICE_ALERT. Оба пропа
+  // обязательны вместе, как showFavoritesButton/onFavoritesClick выше.
+  showPriceAlertButton?: boolean;
+  isPriceAlertActive?: boolean;
+  onTogglePriceAlert?: () => void;
 }
 
 // Identical search+filter header used on Catalog and Favorites — see
@@ -91,6 +99,9 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   toolbarRequiresExtra = false,
   showSubscriptionButton = true,
   sortButtonRef,
+  showPriceAlertButton = false,
+  isPriceAlertActive = false,
+  onTogglePriceAlert,
 }) => {
   const { extra, paywallUiEnabled } = usePremiumAccess();
   // Один выключатель на всю панель: строку поиска, чипы и обе кнопки.
@@ -196,6 +207,16 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
             onClick={onOpenSortModal}
           >
             <ArrowDownUp size={24} />
+          </button>
+        )}
+        {showPriceAlertButton && (
+          <button
+            className={`price-alert-filter-btn ${isPriceAlertActive ? 'active' : ''}`}
+            aria-label="Подписки на цену"
+            aria-pressed={isPriceAlertActive}
+            onClick={onTogglePriceAlert}
+          >
+            <Bell size={20} fill={isPriceAlertActive ? 'currentColor' : 'none'} strokeWidth={1.5} />
           </button>
         )}
         <div className="catalog-filters">

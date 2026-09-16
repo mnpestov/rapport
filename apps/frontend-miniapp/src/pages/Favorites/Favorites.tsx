@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFavorites } from '../../context/FavoritesContext';
+import { usePriceAlerts } from '../../context/PriceAlertsContext';
 import { fetchPatternsByIds, fetchFilters, Pattern, FiltersResponse } from '../../api/patternsApi';
 import { PatternCard } from '../../components/PatternCard/PatternCard';
 import { SearchFilterBar } from '../../components/SearchFilterBar/SearchFilterBar';
@@ -31,6 +32,16 @@ export const Favorites: React.FC = () => {
   const [allPatterns, setAllPatterns] = useState<Pattern[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Колокольчик "Подписки на цену" — переключает ИСТОЧНИК списка целиком
+  // (не фильтр поверх избранного): показывает все описания, на цену
+  // которых подписан пользователь, независимо от того, добавлены ли они в
+  // избранное. Грузится лениво (только когда кнопку впервые включили) и
+  // держится отдельно от allPatterns — оба набора могут пересекаться лишь
+  // частично.
+  const [priceAlertPatterns, setPriceAlertPatterns] = useState<Pattern[]>([]);
+  const [priceAlertLoading, setPriceAlertLoading] = useState(false);
+  const priceAlertLoadedForRef = useRef<string>('');
+
   // Reference-only: id→label + sortOrder for yarnRanges, since Pattern only
   // carries yarnRangeIds (no parallel label array) — fetched once, never
   // recomputed from favorites. Not used as the option SOURCE (that's still
@@ -40,13 +51,15 @@ export const Favorites: React.FC = () => {
   // for non-core users regardless.
   const [yarnRangesUniverse, setYarnRangesUniverse] = useState<FiltersResponse['yarnRanges']>([]);
 
-  const { extra } = usePremiumAccess();
+  const { extra, priceAlert } = usePremiumAccess();
+  const { alerts: priceAlertIds } = usePriceAlerts();
 
   const [searchInput, setSearchInput] = useState(() => sessionStorage.getItem('favorites_search') || '');
   const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
   const [isFreeFilterActive, setIsFreeFilterActive] = useState(() => sessionStorage.getItem('favorites_free_filter') === 'true');
   const [isNewFilterActive, setIsNewFilterActive] = useState(() => sessionStorage.getItem('favorites_new_filter') === 'true');
   const [isDiscountFilterActive, setIsDiscountFilterActive] = useState(() => sessionStorage.getItem('favorites_discount_filter') === 'true');
+  const [isPriceAlertFilterActive, setIsPriceAlertFilterActive] = useState(() => sessionStorage.getItem('favorites_price_alert_filter') === 'true');
   const [sortValue, setSortValue] = useState<SortOption>(() => (sessionStorage.getItem('favorites_sort') as SortOption) || 'newest');
   const [advancedFilters, setAdvancedFilters] = useState<SelectedFilters>(() => {
     const saved = sessionStorage.getItem('favorites_advanced_filters');
@@ -67,9 +80,10 @@ export const Favorites: React.FC = () => {
     sessionStorage.setItem('favorites_free_filter', String(isFreeFilterActive));
     sessionStorage.setItem('favorites_new_filter', String(isNewFilterActive));
     sessionStorage.setItem('favorites_discount_filter', String(isDiscountFilterActive));
+    sessionStorage.setItem('favorites_price_alert_filter', String(isPriceAlertFilterActive));
     sessionStorage.setItem('favorites_sort', sortValue);
     sessionStorage.setItem('favorites_advanced_filters', JSON.stringify(advancedFilters));
-  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
+  }, [searchInput, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, isPriceAlertFilterActive, sortValue, advancedFilters]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput), 300);
@@ -127,6 +141,37 @@ export const Favorites: React.FC = () => {
     return () => { isMounted = false; };
   }, [favorites]);
 
+  // Ленивая загрузка списка "подписан на цену" — только когда кнопка
+  // реально включена (не на каждый чих priceAlertIds), и не повторно для
+  // того же набора id (priceAlertLoadedForRef), чтобы toggle туда-обратно
+  // не бил по сети каждый раз.
+  useEffect(() => {
+    if (!isPriceAlertFilterActive) return;
+
+    const key = [...priceAlertIds].sort().join(',');
+    if (priceAlertLoadedForRef.current === key) return;
+
+    let isMounted = true;
+    const load = async () => {
+      if (priceAlertIds.length === 0) {
+        if (isMounted) { setPriceAlertPatterns([]); priceAlertLoadedForRef.current = key; }
+        return;
+      }
+      setPriceAlertLoading(true);
+      try {
+        const results = await fetchPatternsByIds(priceAlertIds);
+        if (isMounted) { setPriceAlertPatterns(results); priceAlertLoadedForRef.current = key; }
+      } catch (err) {
+        console.error("Failed to load price alert subscriptions", err);
+      } finally {
+        if (isMounted) setPriceAlertLoading(false);
+      }
+    };
+
+    load();
+    return () => { isMounted = false; };
+  }, [isPriceAlertFilterActive, priceAlertIds]);
+
   // Фильтры и сортировка в Избранном — платные (кнопки скрыты без
   // PREMIUM_EXTRA, см. SearchFilterBar). Здесь дополнительно НЕ применяем
   // сохранённый выбор, если права больше нет: значения лежат в
@@ -145,14 +190,20 @@ export const Favorites: React.FC = () => {
   const effectiveFree = extra ? isFreeFilterActive : false;
   const effectiveNew = extra ? isNewFilterActive : false;
   const effectiveDiscount = extra ? isDiscountFilterActive : false;
+  const effectivePriceAlertOnly = extra && priceAlert ? isPriceAlertFilterActive : false;
 
-  const filteredPatterns = useMemo(() => sortPatterns(filterPatterns(allPatterns, {
+  // Источник списка целиком, не пересечение: включённый колокольчик
+  // показывает все описания из PriceAlert, даже не добавленные в избранное.
+  const sourcePatterns = effectivePriceAlertOnly ? priceAlertPatterns : allPatterns;
+  const isSourceLoading = effectivePriceAlertOnly ? priceAlertLoading : loading;
+
+  const filteredPatterns = useMemo(() => sortPatterns(filterPatterns(sourcePatterns, {
     search: effectiveSearch,
     isFree: effectiveFree,
     isNew: effectiveNew,
     isDiscount: effectiveDiscount,
     selected: effectiveFilters,
-  }), effectiveSort), [allPatterns, effectiveSearch, effectiveFree, effectiveNew, effectiveDiscount, effectiveSort, effectiveFilters]);
+  }), effectiveSort), [sourcePatterns, effectiveSearch, effectiveFree, effectiveNew, effectiveDiscount, effectiveSort, effectiveFilters]);
 
   // Reset client-side pagination whenever the effective filter changes —
   // same trigger set Catalog resets its (server-side) offset on.
@@ -160,7 +211,7 @@ export const Favorites: React.FC = () => {
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     setVisibleCount(PAGE_SIZE);
-  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, sortValue, advancedFilters]);
+  }, [debouncedSearch, isFreeFilterActive, isNewFilterActive, isDiscountFilterActive, isPriceAlertFilterActive, sortValue, advancedFilters]);
 
   const visiblePatterns = filteredPatterns.slice(0, visibleCount);
   const hasMore = visibleCount < filteredPatterns.length;
@@ -213,7 +264,7 @@ export const Favorites: React.FC = () => {
   // По ПРИМЕНЯЕМЫМ значениям, а не по сохранённым: у бесплатного
   // пользователя панель скрыта и ничего не фильтруется, поэтому счётчик
   // должен говорить "всего описаний", а не "найдено".
-  const hasActiveQuery = effectiveFree || effectiveNew || effectiveDiscount
+  const hasActiveQuery = effectiveFree || effectiveNew || effectiveDiscount || effectivePriceAlertOnly
     || (extra && totalFiltersCount > 0) || effectiveSearch.trim() !== '';
 
   return (
@@ -229,9 +280,9 @@ export const Favorites: React.FC = () => {
         <h1 className="favorites-title">Избранное</h1>
       </div>
 
-      {loading && <p className="loading-message">Загрузка...</p>}
+      {isSourceLoading && <p className="loading-message">Загрузка...</p>}
 
-      {!loading && favorites.length === 0 && (
+      {!isSourceLoading && !effectivePriceAlertOnly && favorites.length === 0 && (
         <div className="favorites-empty">
           <h2>У вас пока нет избранных описаний</h2>
           <p>Нажимайте на сердечко у понравившихся описаний в каталоге, чтобы сохранить их здесь.</p>
@@ -241,7 +292,7 @@ export const Favorites: React.FC = () => {
         </div>
       )}
 
-      {!loading && favorites.length > 0 && (
+      {!isSourceLoading && (effectivePriceAlertOnly || favorites.length > 0) && (
         <>
           <SearchFilterBar
             searchInput={searchInput}
@@ -252,6 +303,9 @@ export const Favorites: React.FC = () => {
             onToggleNew={() => setIsNewFilterActive(v => !v)}
             isDiscountActive={isDiscountFilterActive}
             onToggleDiscount={() => setIsDiscountFilterActive(v => !v)}
+            showPriceAlertButton={priceAlert}
+            isPriceAlertActive={isPriceAlertFilterActive}
+            onTogglePriceAlert={() => setIsPriceAlertFilterActive(v => !v)}
             onOpenSortModal={() => setIsSortModalOpen(v => !v)}
             sortButtonRef={sortButtonRef}
             totalFiltersCount={totalFiltersCount}
