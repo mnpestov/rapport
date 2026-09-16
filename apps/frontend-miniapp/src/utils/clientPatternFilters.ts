@@ -81,6 +81,10 @@ export const matchesSearch = (pattern: Pattern, query: string): boolean => {
   if (pattern.productTypes.some(n => n.toLowerCase().includes(q))) return true;
   if (pattern.instruments.some(n => n.toLowerCase().includes(q))) return true;
   if (pattern.tags.some(n => n.toLowerCase().includes(q))) return true;
+  // Как на бэкенде: только PREMIUM_CORE — yarnNames присутствует в ответе
+  // /patterns/batch только для core-запросов (см. patternsController.ts),
+  // так что для остальных этот массив просто пуст/undefined.
+  if (pattern.yarnNames?.some(n => n.toLowerCase().includes(q))) return true;
   return false;
 };
 

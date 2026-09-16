@@ -60,6 +60,9 @@ export interface Pattern {
   // PatternYarn. Distinct from yarnRanges (metrage bucket, not a specific
   // article).
   yarnIds?: string[];
+  // Names for the same yarns — needed by favorites' client-side search
+  // (matchesSearch), which matches free text against names, not ids.
+  yarnNames?: string[];
   // The "actually went live" moment — see the field comment in
   // schema.prisma. Always present for a visible pattern (verified on prod:
   // 0 of 3068 NULL), never omitted by any list endpoint even though no

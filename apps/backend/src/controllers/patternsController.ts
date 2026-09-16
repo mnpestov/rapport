@@ -31,7 +31,10 @@ export const getPatterns = async (req: Request, res: Response) => {
   try {
     const { search, isFree, isNew, isDiscount, sort, priceMin, priceMax, limit, offset } = req.query;
 
-    const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, hasCore(req)));
+    const extra = hasExtra(req);
+    const core = hasCore(req);
+
+    const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, core));
 
     if (search && typeof search === 'string') {
       where.OR = [
@@ -39,7 +42,13 @@ export const getPatterns = async (req: Request, res: Response) => {
         { author: { name: { contains: search, mode: 'insensitive' } } },
         { categories: { some: { name: { contains: search, mode: 'insensitive' } } } },
         { instruments: { some: { name: { contains: search, mode: 'insensitive' } } } },
-        { tags: { some: { name: { contains: search, mode: 'insensitive' } } } }
+        { tags: { some: { name: { contains: search, mode: 'insensitive' } } } },
+        // Артикул пряжи — как сам фильтр по нему, только для PREMIUM_CORE
+        // (описания без прав всё равно не получают yarnIds для сопоставления
+        // на клиенте, так что искать по этому полю для них незачем).
+        ...(core
+          ? [{ yarns: { some: { status: 'ACTIVE', yarn: { name: { contains: search, mode: 'insensitive' as const } } } } }]
+          : []),
       ];
     }
 
@@ -50,9 +59,6 @@ export const getPatterns = async (req: Request, res: Response) => {
     if (isNew === 'true') {
       where.isNew = true;
     }
-
-    const extra = hasExtra(req);
-    const core = hasCore(req);
 
     // Both isDiscount and priceMin/priceMax constrain the same `price`
     // column — built into ONE object (not two separate assignments) so a
@@ -252,7 +258,12 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
         // Same reasoning as yarnRanges above, for the "Артикул пряжи"
         // filter — only ACTIVE links (see YarnLinkStatus в schema.prisma),
         // REJECTED means the author-facing tool considers the mention wrong.
-        ...(core ? { yarns: { where: { status: "ACTIVE" }, select: { yarnId: true } } } : {}),
+        // yarn.name (not just yarnId) — favorites' client-side search
+        // (matchesSearch) needs the actual name, id alone is meaningless
+        // for substring matching.
+        ...(core
+          ? { yarns: { where: { status: "ACTIVE" }, select: { yarnId: true, yarn: { select: { name: true } } } } }
+          : {}),
       }
     });
 
@@ -268,6 +279,7 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
         ...mapPatternListItem(rest),
         ...(core ? { yarnRangeIds: (yarnRanges || []).map((y: any) => y.id) } : {}),
         ...(core ? { yarnIds: (yarns || []).map((y: any) => y.yarnId) } : {}),
+        ...(core ? { yarnNames: (yarns || []).map((y: any) => y.yarn.name) } : {}),
       };
     });
 
