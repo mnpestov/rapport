@@ -31,7 +31,17 @@ const apiProxy = {
   '/images': 'http://localhost:3000',
   '/uploads': 'http://localhost:3000',
   '/filters': 'http://localhost:3000',
-  '/favorites': 'http://localhost:3000',
+  // '/favorites' совпадает с React Router путём /favorites (Favorites.tsx)
+  // — при прямом заходе/F5 на него браузер шлёт навигационный GET,
+  // который без bypass тоже улетал бы на бэкенд как API-запрос без
+  // Authorization и получал 401 вместо SPA-шелла. bypass пропускает
+  // только настоящие навигации (Sec-Fetch-Mode: navigate) мимо прокси —
+  // fetch/XHR к API этот заголовок не ставят и проксируются как обычно.
+  '/favorites': {
+    target: 'http://localhost:3000',
+    bypass: (req: import('http').IncomingMessage) =>
+      req.headers['sec-fetch-mode'] === 'navigate' ? req.url : undefined,
+  },
   '/price-alerts': 'http://localhost:3000',
   '/channel': 'http://localhost:3000',
   '/analytics': 'http://localhost:3000',

@@ -267,10 +267,24 @@ export const Favorites: React.FC = () => {
   const hasActiveQuery = effectiveFree || effectiveNew || effectiveDiscount || effectivePriceAlertOnly
     || (extra && totalFiltersCount > 0) || effectiveSearch.trim() !== '';
 
+  // Уход со страницы — сброс поиска/фильтров/сортировки: иначе, вернувшись
+  // в Избранное позже (даже в новую сессию просмотра каталога), человек
+  // застаёт список отфильтрованным по тому, что выбрал в прошлый раз, и не
+  // понимает, откуда взялось неполное Избранное.
+  const clearSessionState = () => {
+    sessionStorage.removeItem('favorites_search');
+    sessionStorage.removeItem('favorites_free_filter');
+    sessionStorage.removeItem('favorites_new_filter');
+    sessionStorage.removeItem('favorites_discount_filter');
+    sessionStorage.removeItem('favorites_price_alert_filter');
+    sessionStorage.removeItem('favorites_sort');
+    sessionStorage.removeItem('favorites_advanced_filters');
+  };
+
   return (
     <div className="favorites-container">
       <div className="favorites-header">
-        <button className="back-button" onClick={() => navigate(-1)}>
+        <button className="back-button" onClick={() => { clearSessionState(); navigate(-1); }}>
           <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
           Назад
         </button>
@@ -286,7 +300,7 @@ export const Favorites: React.FC = () => {
         <div className="favorites-empty">
           <h2>У вас пока нет избранных описаний</h2>
           <p>Нажимайте на сердечко у понравившихся описаний в каталоге, чтобы сохранить их здесь.</p>
-          <button className="favorites-empty-btn" onClick={() => navigate('/')}>
+          <button className="favorites-empty-btn" onClick={() => { clearSessionState(); navigate('/'); }}>
             В каталог
           </button>
         </div>
