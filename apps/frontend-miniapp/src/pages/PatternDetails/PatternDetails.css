@@ -346,6 +346,21 @@
   white-space: pre-wrap;
 }
 
+/* Список артикулов пряжи — тот же текстовый стиль, что у
+   .details-expandable-body ("Подробности"), но без маркеров списка. */
+.details-yarns-list {
+  list-style: none;
+  padding: 0;
+}
+
+.details-yarns-list li {
+  margin-bottom: 2px;
+}
+
+.details-yarns-list li:last-child {
+  margin-bottom: 0;
+}
+
 .details-similar-title {
   overflow: hidden;
   color: var(--black, #1D1C1C);

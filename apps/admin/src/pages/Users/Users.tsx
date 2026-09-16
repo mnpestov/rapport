@@ -64,6 +64,7 @@ function PermissionsSection({
   const [role, setRole] = useState<UserRole>(user.role);
   const [premiumCore, setPremiumCore] = useState(user.permissions.includes("PREMIUM_CORE"));
   const [premiumDetails, setPremiumDetails] = useState(user.permissions.includes("PREMIUM_DETAILS"));
+  const [premiumYarns, setPremiumYarns] = useState(user.permissions.includes("PREMIUM_YARNS"));
   const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
   const [webAccess, setWebAccess] = useState(user.permissions.includes("WEB_ACCESS"));
   const [priceAlert, setPriceAlert] = useState(user.permissions.includes("PRICE_ALERT"));
@@ -115,6 +116,7 @@ function PermissionsSection({
       });
       await syncPermission(user.id, "PREMIUM_CORE", premiumCore, user.permissions.includes("PREMIUM_CORE"));
       await syncPermission(user.id, "PREMIUM_DETAILS", premiumDetails, user.permissions.includes("PREMIUM_DETAILS"));
+      await syncPermission(user.id, "PREMIUM_YARNS", premiumYarns, user.permissions.includes("PREMIUM_YARNS"));
       await syncPermission(user.id, "PREMIUM_EXTRA", premiumExtra, user.permissions.includes("PREMIUM_EXTRA"));
       // Снятие WEB_ACCESS на бэкенде заодно завершает браузерные сессии
       // пользователя — иначе он работал бы до истечения токена (до 30 дней).
@@ -132,6 +134,7 @@ function PermissionsSection({
   const isDirty = role !== user.role || authorId !== user.authorId
     || premiumCore !== user.permissions.includes("PREMIUM_CORE")
     || premiumDetails !== user.permissions.includes("PREMIUM_DETAILS")
+    || premiumYarns !== user.permissions.includes("PREMIUM_YARNS")
     || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA")
     || webAccess !== user.permissions.includes("WEB_ACCESS")
     || priceAlert !== user.permissions.includes("PRICE_ALERT")
@@ -161,6 +164,10 @@ function PermissionsSection({
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Подробности</span>
         <ToggleSwitch checked={premiumDetails} onChange={setPremiumDetails} />
+      </div>
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Артикулы пряжи в карточке</span>
+        <ToggleSwitch checked={premiumYarns} onChange={setPremiumYarns} />
       </div>
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Максимальный</span>

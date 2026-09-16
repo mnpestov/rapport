@@ -95,6 +95,7 @@ export const PatternDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [isYarnsExpanded, setIsYarnsExpanded] = useState(false);
   const [similarPatterns, setSimilarPatterns] = useState<Pattern[]>([]);
   // Ошибку подписки на цену показываем тостом (лимит 20 → 429, сеть).
   const [alertToast, setAlertToast] = useState<string | null>(null);
@@ -360,7 +361,7 @@ export const PatternDetails: React.FC = () => {
           instead of being trapped in the narrow right column
           (Figma node 1134:5825). Rendered only when it has content —
           an empty wrapper would still shift the mobile footer spacing. */}
-      {(pattern.details || similarPatterns.length > 0) && (
+      {(pattern.details || (pattern.yarns && pattern.yarns.length > 0) || similarPatterns.length > 0) && (
         <div className="details-below">
           {pattern.details && (
             <div className="details-col details-expandable">
@@ -375,6 +376,34 @@ export const PatternDetails: React.FC = () => {
               </button>
               {isDetailsExpanded && (
                 <p className="details-expandable-body">{pattern.details}</p>
+              )}
+            </div>
+          )}
+
+          {/* Артикулы пряжи — отдельное разрешение PREMIUM_YARNS, не
+              PREMIUM_CORE (тот гейтит только фильтр/поиск по артикулу) и не
+              PREMIUM_DETAILS (тот — блок "Подробности" выше). Тот же UX:
+              сворачиваемый блок, закрыт по умолчанию. */}
+          {pattern.yarns && pattern.yarns.length > 0 && (
+            <div className="details-col details-expandable">
+              <button
+                type="button"
+                className="details-expandable-header"
+                onClick={() => setIsYarnsExpanded(v => !v)}
+                aria-expanded={isYarnsExpanded}
+              >
+                <span className="details-label">Артикулы пряжи</span>
+                {isYarnsExpanded ? <CustomChevronUp size={24} /> : <CustomChevronDown size={24} />}
+              </button>
+              {isYarnsExpanded && (
+                <ul className="details-expandable-body details-yarns-list">
+                  {pattern.yarns.map((yarn, index) => (
+                    <li key={index}>
+                      {yarn.name}
+                      {yarn.mPer100g != null && ` — ${yarn.mPer100g} м/100г`}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           )}

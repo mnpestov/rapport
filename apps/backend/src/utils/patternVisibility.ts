@@ -32,3 +32,4 @@ export const PATTERN_DETAILS_OMIT = {
 export const hasExtra = (req: Request): boolean => !!req.premium?.extra;
 export const hasCore = (req: Request): boolean => !!req.premium?.core;
 export const hasDetails = (req: Request): boolean => !!req.premium?.details;
+export const hasYarns = (req: Request): boolean => !!req.premium?.yarns;

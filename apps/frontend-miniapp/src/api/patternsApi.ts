@@ -35,6 +35,11 @@ export interface Pattern {
   densityStitches?: string | null;
   densityRows?: string | null;
   yarnRanges?: string[];
+  // Only populated by fetchPatternById, and only for PREMIUM_YARNS (a
+  // separate permission from PREMIUM_CORE/DETAILS) — yarn articles for the
+  // collapsible "Артикулы пряжи" block, same UX as `details` below.
+  // mPer100g — метраж (м/100г), null when the yarn card has none on file.
+  yarns?: { name: string; mPer100g: number | null }[];
   // Gallery — only populated by fetchPatternById, same reasoning as above.
   // Always has at least one entry (the cover, same value as imageUrl).
   images?: string[];

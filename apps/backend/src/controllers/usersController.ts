@@ -18,6 +18,7 @@ const PREMIUM_PERMISSIONS = [
   Permission.PREMIUM_CORE,
   Permission.PREMIUM_DETAILS,
   Permission.PREMIUM_EXTRA,
+  Permission.PREMIUM_YARNS,
 ];
 
 // where-условие каждой вкладки, поверх поиска. "all" — без доп. условия.

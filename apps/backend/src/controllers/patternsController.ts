@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
 import { buildPatternWhere, stripPremiumFacetParams } from "../utils/patternFilters";
-import { PATTERN_PRICE_OMIT, PATTERN_CORE_OMIT, PATTERN_DETAILS_OMIT, hasExtra, hasCore, hasDetails } from "../utils/patternVisibility";
+import { PATTERN_PRICE_OMIT, PATTERN_CORE_OMIT, PATTERN_DETAILS_OMIT, hasExtra, hasCore, hasDetails, hasYarns } from "../utils/patternVisibility";
 
 // Shared by every endpoint that returns a list of patterns (catalog, batch-
 // by-ids, similar) — maps the Prisma relations down to the flat shape the
@@ -160,6 +160,7 @@ export const getPatternById = async (req: Request, res: Response) => {
     const extra = hasExtra(req);
     const core = hasCore(req);
     const details = hasDetails(req);
+    const yarnsAccess = hasYarns(req);
     const pattern = await prisma.pattern.findFirst({
       where: { id, isVisible: true },
       // The only endpoint that reads a Pattern with no omit at all before
@@ -180,6 +181,12 @@ export const getPatternById = async (req: Request, res: Response) => {
         // yarnRanges is a relation, not omit-able — only include it at all
         // when PREMIUM_CORE is present (mirrors densityStitches/densityRows).
         ...(core ? { yarnRanges: { select: { label: true } } } : {}),
+        // Отдельный гейт PREMIUM_YARNS (не CORE/DETAILS) — своя фича, список
+        // артикулов пряжи в карточке. Только ACTIVE-связи, как в фильтре.
+        // mPer100g — метраж (м/100г), показывается рядом с названием.
+        ...(yarnsAccess
+          ? { yarns: { where: { status: "ACTIVE" }, select: { yarn: { select: { name: true, mPer100g: true } } } } }
+          : {}),
       }
     });
 
@@ -214,6 +221,9 @@ export const getPatternById = async (req: Request, res: Response) => {
       productTypes: pattern.categories.map(pt => pt.name),
       tags: pattern.tags.map(t => t.name),
       yarnRanges: core ? (pattern as any).yarnRanges.map((y: any) => y.label) : [],
+      yarns: yarnsAccess
+        ? (pattern as any).yarns.map((py: any) => ({ name: py.yarn.name, mPer100g: py.yarn.mPer100g }))
+        : [],
       primaryProductType: pattern.categories[0]?.name || '',
       externalLink: pattern.url || ''
     };

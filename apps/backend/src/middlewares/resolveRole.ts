@@ -7,6 +7,7 @@ export interface PremiumAccess {
   core: boolean;
   extra: boolean;
   details: boolean;
+  yarns: boolean;
 }
 
 declare global {
@@ -38,7 +39,7 @@ declare global {
 const ROLE_CACHE_TTL_MS = 30_000;
 const roleCache = new Map<string, { premium: PremiumAccess; expiresAt: number }>();
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, yarns: false };
 
 export const resolveRole = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   if (!req.user) {
@@ -60,7 +61,7 @@ export const resolveRole = async (req: Request, _res: Response, next: NextFuncti
       select: {
         role: true,
         permissions: {
-          where: { permission: { in: [Permission.PREMIUM_CORE, Permission.PREMIUM_EXTRA, Permission.PREMIUM_DETAILS] } },
+          where: { permission: { in: [Permission.PREMIUM_CORE, Permission.PREMIUM_EXTRA, Permission.PREMIUM_DETAILS, Permission.PREMIUM_YARNS] } },
           select: { permission: true },
         },
       },
@@ -72,6 +73,7 @@ export const resolveRole = async (req: Request, _res: Response, next: NextFuncti
       core: isAdmin || perms.has(Permission.PREMIUM_CORE),
       extra: isAdmin || perms.has(Permission.PREMIUM_EXTRA),
       details: isAdmin || perms.has(Permission.PREMIUM_DETAILS),
+      yarns: isAdmin || perms.has(Permission.PREMIUM_YARNS),
     };
   } catch (error) {
     console.error("[resolveRole] Failed to resolve access:", error);

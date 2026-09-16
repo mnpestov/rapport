@@ -24,9 +24,12 @@ export interface PremiumAccess {
   paywallUiEnabled: boolean;
   // Показывать кнопку «Следить за ценой» на карточке описания.
   priceAlert: boolean;
+  // Отдельное разрешение — блок "Артикулы пряжи" в карточке описания
+  // (не PREMIUM_CORE/DETAILS). См. PermissionsSection в admin/Users.tsx.
+  yarns: boolean;
 }
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false, yarns: false };
 
 const readAccess = (): PremiumAccess => {
   const raw = localStorage.getItem("user_data");
@@ -46,6 +49,7 @@ const readAccess = (): PremiumAccess => {
       // самом себе. На бэкенде роут гейтится тем же — requirePermission
       // (не ...OrAdmin).
       priceAlert: permissions.includes("PRICE_ALERT"),
+      yarns: isAdmin || permissions.includes("PREMIUM_YARNS"),
     };
   } catch {
     return NO_ACCESS;
