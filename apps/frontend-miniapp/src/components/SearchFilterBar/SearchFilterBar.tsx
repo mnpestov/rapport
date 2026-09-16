@@ -216,7 +216,7 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
             aria-pressed={isPriceAlertActive}
             onClick={onTogglePriceAlert}
           >
-            <Bell size={20} fill={isPriceAlertActive ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            <Bell size={20} fill="none" strokeWidth={1.5} />
           </button>
         )}
         <div className="catalog-filters">

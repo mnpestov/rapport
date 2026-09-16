@@ -174,8 +174,9 @@
 }
 
 .price-alert-filter-btn.active {
-  color: #A9AE36;
-  border-color: #A9AE36;
+  color: #ffffff;
+  border-color: #ABC6BA;
+  background-color: #ABC6BA;
 }
 
 .catalog-filters {

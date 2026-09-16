@@ -6,6 +6,11 @@ export interface Pattern {
   // Only populated by fetchPatternById — used by the detail page's Footer
   // ("Источник информации: ..."), nowhere else needs it.
   authorSite?: string | null;
+  // Only populated by fetchPatternById — whether the author has a linked
+  // account (личный кабинет автора), shown as a checkmark next to the
+  // author name. Same public fact admin's Authors list already shows via
+  // AuthorRow's `cabinet` field, not premium-gated.
+  authorHasCabinet?: boolean;
   primaryProductType: string;
   imageUrl: string;
   // Card-sized (≤800px) derivative of imageUrl — falls back to imageUrl

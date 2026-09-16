@@ -295,6 +295,17 @@
   cursor: pointer;
 }
 
+/* Галочка "есть личный кабинет" рядом с именем автора (Figma 1264:15635) —
+   залитый кружок matcha со светлой галочкой, чуть смещена вниз (pt), чтобы
+   встать на уровень строчных букв имени, а не капс-хайта. */
+.details-author-cabinet-mark {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: #A9AE36;
+  fill: #A9AE36;
+  stroke: #ffffff;
+}
+
 .details-value-list {
   margin: 0;
   padding-left: 24px;

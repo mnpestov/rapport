@@ -169,7 +169,11 @@ export const getPatternById = async (req: Request, res: Response) => {
       // rolled out independently) — see PAID_TIER_PERMISSIONS_PLAN.md §3.2/§3.3.
       omit: { ...(extra ? {} : PATTERN_PRICE_OMIT), ...(core ? {} : PATTERN_CORE_OMIT), ...(details ? {} : PATTERN_DETAILS_OMIT) },
       include: {
-        author: true,
+        // user: { select: { id: true } } — just enough to know whether an
+        // author cabinet is linked, mirrors adminAuthorsController's own
+        // `cabinet` field (implementation_plan.md §8). Not the credential
+        // block admin gets: the detail page only needs a yes/no checkmark.
+        author: { include: { user: { select: { id: true } } } },
         instruments: true,
         categories: true,
         tags: true,
@@ -202,6 +206,10 @@ export const getPatternById = async (req: Request, res: Response) => {
       // premium-gated: Author.site is public info about the seller, not
       // pattern content.
       authorSite: pattern.author?.site || null,
+      // Публичный факт "у автора есть личный кабинет" — не премиум-гейт,
+      // как и authorSite выше (implementation_plan.md §8, тот же критерий,
+      // что admin-панель показывает галочкой в списке авторов).
+      authorHasCabinet: !!(pattern.author as any)?.user,
       instruments: pattern.instruments.map(i => i.name),
       productTypes: pattern.categories.map(pt => pt.name),
       tags: pattern.tags.map(t => t.name),

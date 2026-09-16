@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, Bell } from 'lucide-react';
+import { Heart, Bell, CheckCircle2 } from 'lucide-react';
 import { fetchPatternById, fetchSimilarPatterns, Pattern } from '../../api/patternsApi';
 import { trackPatternView, trackPatternLinkClick } from '../../api/analyticsApi';
 import { useFavorites } from '../../context/FavoritesContext';
@@ -304,6 +304,16 @@ export const PatternDetails: React.FC = () => {
                 </button>
               ) : (
                 <span className="details-value">{pattern.author}</span>
+              )}
+              {/* Галочка "есть личный кабинет" (Figma 1264:15635) — тот же
+                  публичный факт, что admin-панель показывает в списке
+                  авторов (AuthorRow.tsx, поле cabinet), не премиум-гейт. */}
+              {pattern.authorHasCabinet && (
+                <CheckCircle2
+                  size={14}
+                  className="details-author-cabinet-mark"
+                  aria-label="У автора есть личный кабинет"
+                />
               )}
             </div>
 
