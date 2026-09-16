@@ -16,7 +16,7 @@ import './Favorites.css';
 const PAGE_SIZE = 20;
 
 const EMPTY_FILTERS: SelectedFilters = {
-  categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], priceMin: '', priceMax: ''
+  categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], yarns: [], priceMin: '', priceMax: ''
 };
 
 export const Favorites: React.FC = () => {
@@ -50,6 +50,9 @@ export const Favorites: React.FC = () => {
   // PREMIUM_CORE-gated in FilterModal anyway, and simply renders no options
   // for non-core users regardless.
   const [yarnRangesUniverse, setYarnRangesUniverse] = useState<FiltersResponse['yarnRanges']>([]);
+  // Тот же приём, для "Артикул пряжи" — у Pattern только yarnIds, названия
+  // берутся отсюда.
+  const [yarnsUniverse, setYarnsUniverse] = useState<FiltersResponse['yarns']>([]);
 
   const { extra, priceAlert } = usePremiumAccess();
   const { alerts: priceAlertIds } = usePriceAlerts();
@@ -91,7 +94,10 @@ export const Favorites: React.FC = () => {
   }, [searchInput]);
 
   useEffect(() => {
-    fetchFilters().then(data => setYarnRangesUniverse(data.yarnRanges)).catch(console.error);
+    fetchFilters().then(data => {
+      setYarnRangesUniverse(data.yarnRanges);
+      setYarnsUniverse(data.yarns);
+    }).catch(console.error);
   }, []);
 
   const prevFavoritesRef = useRef<string[]>([]);
@@ -236,16 +242,16 @@ export const Favorites: React.FC = () => {
   // loaded set or the yarnRanges name reference changes, not on every
   // keystroke/selection change.
   const filtersData = useMemo(
-    () => computeFacetsFromPatterns(allPatterns, EMPTY_FILTERS, yarnRangesUniverse),
-    [allPatterns, yarnRangesUniverse]
+    () => computeFacetsFromPatterns(allPatterns, EMPTY_FILTERS, yarnRangesUniverse, yarnsUniverse),
+    [allPatterns, yarnRangesUniverse, yarnsUniverse]
   );
 
   // Stable reference (useCallback) — FilterModal's own facet-refetch effect
   // depends on this function identity; an inline arrow here would trigger
   // an extra recompute on every unrelated Favorites re-render.
   const fetchFacets = useCallback(
-    (selected: SelectedFilters) => Promise.resolve(computeFacetsFromPatterns(allPatterns, selected, yarnRangesUniverse)),
-    [allPatterns, yarnRangesUniverse]
+    (selected: SelectedFilters) => Promise.resolve(computeFacetsFromPatterns(allPatterns, selected, yarnRangesUniverse, yarnsUniverse)),
+    [allPatterns, yarnRangesUniverse, yarnsUniverse]
   );
 
   const totalFiltersCount = advancedFilters.categories.length +
@@ -254,6 +260,7 @@ export const Favorites: React.FC = () => {
     advancedFilters.authors.length +
     advancedFilters.yarnRanges.length +
     advancedFilters.density.length +
+    advancedFilters.yarns.length +
     (advancedFilters.priceMin || advancedFilters.priceMax ? 1 : 0);
 
   const clearFilters = (e: React.MouseEvent) => {

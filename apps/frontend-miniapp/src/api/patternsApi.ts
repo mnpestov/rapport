@@ -55,6 +55,11 @@ export interface Pattern {
   // this pattern, for the same client-side filter-matching reason as above.
   // Distinct from `yarnRanges` (labels, fetchPatternById only).
   yarnRangeIds?: string[];
+  // Same gating/purpose as yarnRangeIds above, for "Артикул пряжи" — ids of
+  // the (ACTIVE-status only) Yarn rows linked to this pattern via
+  // PatternYarn. Distinct from yarnRanges (metrage bucket, not a specific
+  // article).
+  yarnIds?: string[];
   // The "actually went live" moment — see the field comment in
   // schema.prisma. Always present for a visible pattern (verified on prod:
   // 0 of 3068 NULL), never omitted by any list endpoint even though no
@@ -91,6 +96,7 @@ export interface FetchPatternsOptions {
   authors?: string[];
   yarnRanges?: string[];
   density?: string[];
+  yarns?: string[];
   signal?: AbortSignal;
 }
 
@@ -106,6 +112,7 @@ export interface FiltersResponse {
   authors: FilterOption[];
   yarnRanges: FilterOption[];
   density: FilterOption[];
+  yarns: FilterOption[];
 }
 
 import { API_URL } from "./config";
@@ -153,6 +160,9 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   if (options?.density && options.density.length > 0) {
     options.density.forEach(d => params.append("density", d));
   }
+  if (options?.yarns && options.yarns.length > 0) {
+    options.yarns.forEach(y => params.append("yarns", y));
+  }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
   const response = await authorizedFetch(`${API_URL}/patterns${queryString}`, { signal: options.signal }, 10000);
@@ -196,6 +206,7 @@ export interface FetchFiltersOptions {
   authors?: string[];
   yarnRanges?: string[];
   density?: string[];
+  yarns?: string[];
   signal?: AbortSignal;
 }
 
@@ -219,6 +230,9 @@ export const fetchFilters = async (options: FetchFiltersOptions = {}): Promise<F
   }
   if (options.density && options.density.length > 0) {
     options.density.forEach(d => params.append("density", d));
+  }
+  if (options.yarns && options.yarns.length > 0) {
+    options.yarns.forEach(y => params.append("yarns", y));
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";

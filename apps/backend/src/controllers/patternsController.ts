@@ -249,6 +249,10 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
         // pattern without a server round-trip. Id only, not label — the
         // label list itself comes from /filters, same as Catalog.
         ...(core ? { yarnRanges: { select: { id: true } } } : {}),
+        // Same reasoning as yarnRanges above, for the "Артикул пряжи"
+        // filter — only ACTIVE links (see YarnLinkStatus в schema.prisma),
+        // REJECTED means the author-facing tool considers the mention wrong.
+        ...(core ? { yarns: { where: { status: "ACTIVE" }, select: { yarnId: true } } } : {}),
       }
     });
 
@@ -256,13 +260,14 @@ export const getPatternsByIds = async (req: Request, res: Response) => {
     const orderedPatterns = validIds.map(id => patternsMap.get(id)).filter(p => p !== undefined) as typeof patterns;
 
     const mappedPatterns = orderedPatterns.map((p: any) => {
-      // Strip the raw yarnRanges relation array before the shared mapper
-      // spreads `...p` — replaced with the flat yarnRangeIds below so the
+      // Strip the raw yarnRanges/yarns relation arrays before the shared
+      // mapper spreads `...p` — replaced with the flat *Ids below so the
       // response shape stays consistent (never a stray {id}[] object array).
-      const { yarnRanges, ...rest } = p;
+      const { yarnRanges, yarns, ...rest } = p;
       return {
         ...mapPatternListItem(rest),
         ...(core ? { yarnRangeIds: (yarnRanges || []).map((y: any) => y.id) } : {}),
+        ...(core ? { yarnIds: (yarns || []).map((y: any) => y.yarnId) } : {}),
       };
     });
 

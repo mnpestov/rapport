@@ -71,6 +71,7 @@ export const Catalog: React.FC = () => {
       authors: [],
       yarnRanges: [],
       density: [],
+      yarns: [],
       priceMin: '',
       priceMax: ''
     };
@@ -207,6 +208,7 @@ export const Catalog: React.FC = () => {
           authors: advancedFilters.authors.length > 0 ? advancedFilters.authors : undefined,
           yarnRanges: advancedFilters.yarnRanges.length > 0 ? advancedFilters.yarnRanges : undefined,
           density: advancedFilters.density.length > 0 ? advancedFilters.density : undefined,
+          yarns: advancedFilters.yarns.length > 0 ? advancedFilters.yarns : undefined,
           signal: controller.signal,
         };
 
@@ -311,13 +313,14 @@ export const Catalog: React.FC = () => {
     advancedFilters.authors.length +
     advancedFilters.yarnRanges.length +
     advancedFilters.density.length +
+    advancedFilters.yarns.length +
     // One combined range, not two — setting both "от" and "до" is still a
     // single "Цена" filter, same as how one selected density bucket is +1.
     (advancedFilters.priceMin || advancedFilters.priceMax ? 1 : 0);
 
   const clearFilters = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], priceMin: '', priceMax: '' });
+    setAdvancedFilters({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], yarns: [], priceMin: '', priceMax: '' });
   };
 
   return (

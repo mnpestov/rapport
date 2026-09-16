@@ -67,6 +67,7 @@ export const matchesFacetsExcept = (
   if (excludeFacet !== 'authors' && selected.authors.length > 0 && !selected.authors.includes(pattern.authorId)) return false;
   if (excludeFacet !== 'yarnRanges' && !idsIntersect(pattern.yarnRangeIds, selected.yarnRanges)) return false;
   if (excludeFacet !== 'density' && !matchesDensity(pattern, selected.density)) return false;
+  if (excludeFacet !== 'yarns' && !idsIntersect(pattern.yarnIds, selected.yarns)) return false;
   return true;
 };
 
@@ -188,7 +189,8 @@ const collectUnique = (patterns: Pattern[], predicate: (p: Pattern) => boolean, 
 export const computeFacetsFromPatterns = (
   patterns: Pattern[],
   selected: SelectedFilters,
-  yarnRangesUniverse: FilterOption[]
+  yarnRangesUniverse: FilterOption[],
+  yarnsUniverse: FilterOption[] = []
 ): FiltersResponse => {
   const categories = collectUnique(
     patterns,
@@ -249,5 +251,17 @@ export const computeFacetsFromPatterns = (
     return aS - bS || aR - bR;
   });
 
-  return { categories, tags, instruments, authors, yarnRanges, density };
+  // Тот же приём, что yarnRanges выше: у Pattern нет названия артикула,
+  // только id (yarnIds), поэтому имена берутся из отдельно загруженного
+  // справочника (yarnsUniverse), а не из самих patterns.
+  const yarnIdsPresent = new Set(
+    collectUnique(
+      patterns,
+      p => matchesFacetsExcept(p, selected, 'yarns'),
+      p => (p.yarnIds || []).map(id => ({ id, name: id }))
+    ).map(o => o.id)
+  );
+  const yarns = yarnsUniverse.filter(o => yarnIdsPresent.has(o.id));
+
+  return { categories, tags, instruments, authors, yarnRanges, density, yarns };
 };

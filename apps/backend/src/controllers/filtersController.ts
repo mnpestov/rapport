@@ -28,7 +28,7 @@ export const getFilters = async (req: Request, res: Response) => {
     const core = hasCore(req);
     const query = stripPremiumFacetParams(req.query, core);
 
-    const [categories, tags, instruments, authors, yarnRangesRaw, densityRaw, adultSample] = await Promise.all([
+    const [categories, tags, instruments, authors, yarnRangesRaw, densityRaw, yarnsRaw, adultSample] = await Promise.all([
       prisma.productType.findMany({
         where: { patterns: { some: buildPatternWhere(query, "categories") } },
         select: { id: true, name: true },
@@ -75,6 +75,17 @@ export const getFilters = async (req: Request, res: Response) => {
             distinct: ["densityStitches", "densityRows"],
           })
         : Promise.resolve([]),
+      // yarns — PREMIUM_CORE-гейт, как yarnRanges/density выше. some вместо
+      // прямого where.yarnId: артикул связан с описанием через PatternYarn,
+      // и в опции должны попасть только активные (status: ACTIVE) связи,
+      // как и в самом buildPatternWhere.
+      core
+        ? prisma.yarn.findMany({
+            where: { patterns: { some: { status: "ACTIVE", pattern: buildPatternWhere(query, "yarns") } } },
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+          })
+        : Promise.resolve([]),
       // Есть ли вообще что показать под "взрослое" при текущих остальных
       // фильтрах. Синтетический вариант ведёт себя как обычная опция фасета:
       // появляется, только если ему соответствует хотя бы одно описание —
@@ -118,6 +129,7 @@ export const getFilters = async (req: Request, res: Response) => {
       authors,
       yarnRanges,
       density,
+      yarns: yarnsRaw,
     });
   } catch (error) {
     console.error(error);

@@ -1,4 +1,4 @@
-export type PatternFacet = "categories" | "tags" | "instruments" | "authors" | "yarnRanges" | "density";
+export type PatternFacet = "categories" | "tags" | "instruments" | "authors" | "yarnRanges" | "density" | "yarns";
 
 // Синтетический тег "взрослое". В БД его нет и заводить не нужно: у описаний
 // проставляется только "детское", а взрослым считается всё остальное. Поэтому
@@ -27,7 +27,7 @@ export const stripPremiumFacetParams = (
   hasCore: boolean
 ): Record<string, unknown> => {
   if (hasCore) return query;
-  const { yarnRanges, density, ...rest } = query;
+  const { yarnRanges, density, yarns, ...rest } = query;
   return rest;
 };
 
@@ -55,6 +55,7 @@ export const buildPatternWhere = (query: Record<string, unknown>, excludeFacet?:
   const authorsParam = parseArrayParam(query.authors);
   const yarnRangesParam = parseArrayParam(query.yarnRanges);
   const densityParam = parseArrayParam(query.density);
+  const yarnsParam = parseArrayParam(query.yarns);
 
   if (excludeFacet !== "categories" && categoriesParam.length > 0) {
     where.categories = { some: { id: { in: categoriesParam } } };
@@ -101,6 +102,14 @@ export const buildPatternWhere = (query: Record<string, unknown>, excludeFacet?:
     if (densityOr.length > 0) {
       where.AND = [...(where.AND || []), { OR: densityOr }];
     }
+  }
+
+  if (excludeFacet !== "yarns" && yarnsParam.length > 0) {
+    // Как yarnRanges: значения внутри секции объединяются по ИЛИ. Только
+    // ACTIVE-связи — REJECTED означает «человек удалил связь как неверную»
+    // (см. YarnLinkStatus в schema.prisma), такую пряжу описание фактически
+    // не использует.
+    where.yarns = { some: { yarnId: { in: yarnsParam }, status: "ACTIVE" } };
   }
 
   return where;

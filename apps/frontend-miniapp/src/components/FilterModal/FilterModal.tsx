@@ -22,6 +22,7 @@ export interface SelectedFilters {
   authors: string[];
   yarnRanges: string[];
   density: string[];
+  yarns: string[];
   // Not a facet like the six above (no discrete option list to pick from —
   // it's a continuous range), so it deliberately isn't a key of
   // FiltersResponse and doesn't go through renderSection/handleToggle.
@@ -153,7 +154,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
     instruments: '',
     authors: '',
     yarnRanges: '',
-    density: '' // unused — density has its own two-input search below, kept only to satisfy the Record type
+    density: '', // unused — density has its own two-input search below, kept only to satisfy the Record type
+    yarns: ''
   });
   // Density's search is two independent numeric fields ("п." / "р."), unlike
   // every other section's single free-text box — needs its own state shape.
@@ -258,7 +260,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   };
 
   const handleReset = () => {
-    setSelected({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], priceMin: '', priceMax: '' });
+    setSelected({ categories: [], tags: [], instruments: [], authors: [], yarnRanges: [], density: [], yarns: [], priceMin: '', priceMax: '' });
     setDensitySearch({ stitches: '', rows: '' });
   };
 
@@ -573,6 +575,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
                 : renderLockedSection("Толщина пряжи (м/100г)")}
               <div className="filter-divider" />
               {core ? renderSection("Плотность", "density") : renderLockedSection("Плотность")}
+              <div className="filter-divider" />
+              {core ? renderSection("Артикул пряжи", "yarns") : renderLockedSection("Артикул пряжи")}
             </>
           )}
         </div>
@@ -582,7 +586,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
           <button
             className="filter-apply-btn"
             onClick={handleApply}
-            disabled={selected.categories.length === 0 && selected.tags.length === 0 && selected.instruments.length === 0 && selected.authors.length === 0 && selected.yarnRanges.length === 0 && selected.density.length === 0 && !selected.priceMin && !selected.priceMax}
+            disabled={selected.categories.length === 0 && selected.tags.length === 0 && selected.instruments.length === 0 && selected.authors.length === 0 && selected.yarnRanges.length === 0 && selected.density.length === 0 && selected.yarns.length === 0 && !selected.priceMin && !selected.priceMax}
           >
             Применить
           </button>
