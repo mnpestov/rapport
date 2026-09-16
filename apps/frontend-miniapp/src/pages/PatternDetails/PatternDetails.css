@@ -301,6 +301,10 @@
 .details-author-cabinet-mark {
   flex-shrink: 0;
   margin-top: 4px;
+  /* Родительский .details-row-spaced задаёт gap:12px между всеми детьми
+     строки — тянуть галочку ближе к имени автора нужно именно здесь, не
+     трогая общий gap строки (тот же зазор нужен между "Автор:" и именем). */
+  margin-left: -6px;
   color: #A9AE36;
   fill: #A9AE36;
   stroke: #ffffff;
