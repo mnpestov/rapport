@@ -383,14 +383,6 @@ function App() {
       showPriceAlertIntro = false;
     }
 
-    // DEV-only: priceAlertIntroShownAt проставляется на бэкенде один раз
-    // навсегда (см. paywallController.ts), поэтому без этого флаг быстро
-    // становится постоянно false даже локально — форсируем показ на
-    // каждой перезагрузке, чтобы можно было итерировать на вёрстке.
-    if (import.meta.env.DEV) {
-      showPriceAlertIntro = true;
-    }
-
     // Приоритет: предупреждение об истечении > баннер "оформите" >
     // разовое "новая функция" действующим подписчикам. Первые два на
     // практике не пересекаются (см. authController.ts) — это страховка.
@@ -411,12 +403,7 @@ function App() {
     if (showPaywallBanner && !subscriptionWarning) {
       submitPaywallImpression();
     } else if (showPriceAlertIntro && !subscriptionWarning && !showPaywallBanner) {
-      // В DEV showPriceAlertIntro форсирован выше, чтобы баннер открывался
-      // на каждой перезагрузке — не шлём impression, иначе сам этот вызов
-      // проставит priceAlertIntroShownAt на сервере и следующий форс уже
-      // не будет ни на что влиять (сервер всё равно продолжит слать true
-      // только в DEV-обходе, но смысл теста — не трогать прод-состояние).
-      if (!import.meta.env.DEV) submitPriceAlertIntroImpression();
+      submitPriceAlertIntroImpression();
     }
   }, [appState]);
 
