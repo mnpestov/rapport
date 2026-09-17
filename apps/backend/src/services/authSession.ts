@@ -24,6 +24,8 @@ export interface PaywallUserFields {
   lastPaywallShownAt: Date | null;
   premiumExpiresAt: Date | null;
   priceAlertIntroShownAt: Date | null;
+  expiring3DaysShownAt: Date | null;
+  expiring1DayShownAt: Date | null;
 }
 
 // «Сегодня» для правила «баннер не в день первого входа» считаем по
@@ -131,13 +133,22 @@ export function buildPaywallState(params: {
   // показывается только тем, у кого доступа НЕТ, а это, наоборот, только
   // действующим подписчикам. Пороги совпадают с cron-напоминанием в бот
   // (checkSubscriptions.ts, 3 дня), плюс отдельный "последний день".
+  // По одному показу на этап (expiring3DaysShownAt/expiring1DayShownAt) —
+  // без этого условие "осталось ≤3 дней" остаётся истинным при каждом
+  // входе весь трёхдневный период, и баннер лез бы на каждый заход вместо
+  // одного раза. Оба поля сбрасываются в null при каждом новом продлении
+  // (completePayment), так что следующий цикл подписки увидит
+  // предупреждение заново, когда снова приблизится к истечению.
   let subscriptionWarning: "expiring_3_days" | "expiring_1_day" | null = null;
   if (paywallUiEnabled && effectiveIsSubscriber && user.premiumExpiresAt) {
     const msLeft = user.premiumExpiresAt.getTime() - Date.now();
     if (msLeft > 0) {
       const daysLeft = msLeft / (24 * 60 * 60 * 1000);
-      if (daysLeft <= 1) subscriptionWarning = "expiring_1_day";
-      else if (daysLeft <= 3) subscriptionWarning = "expiring_3_days";
+      if (daysLeft <= 1 && user.expiring1DayShownAt === null) {
+        subscriptionWarning = "expiring_1_day";
+      } else if (daysLeft <= 3 && user.expiring3DaysShownAt === null) {
+        subscriptionWarning = "expiring_3_days";
+      }
     }
   }
 

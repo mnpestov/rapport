@@ -24,7 +24,7 @@ import {
 } from './api/authSession';
 import { subscriptionRecheck } from './api/webAuthApi';
 import { initPwa } from './api/pwa';
-import { submitPaywallImpression, submitPriceAlertIntroImpression, PaywallSource } from './api/paywallApi';
+import { submitPaywallImpression, submitPriceAlertIntroImpression, submitExpiringWarningImpression, PaywallSource } from './api/paywallApi';
 
 function logFrontend(event: string, extra?: Record<string, unknown>) {
   const payload = { event, userAgent: navigator.userAgent, ...extra };
@@ -366,7 +366,7 @@ function App() {
     if (!import.meta.env.DEV && sessionStorage.getItem("paywall_shown_session")) return;
 
     let showPaywallBanner = false;
-    let subscriptionWarning: PaywallVariant | null = null;
+    let subscriptionWarning: "expiring_3_days" | "expiring_1_day" | null = null;
     let showPriceAlertIntro = false;
     try {
       const raw = localStorage.getItem("user_data");
@@ -397,13 +397,16 @@ function App() {
     setPaywallSource(subscriptionWarning || showPaywallBanner ? "AUTO_BANNER" : "PRICE_ALERT_INTRO");
     setPaywallVariant(subscriptionWarning ?? (showPaywallBanner ? "paywall" : "price_alert_intro"));
     setIsPaywallOpen(true);
-    // Аналитика показов — только про сам баннер и intro
-    // (PAYWALL_BANNER_PLAN.md §7), предупреждения об истечении в ней не
-    // участвуют.
+    // Аналитика показов (PAYWALL_BANNER_PLAN.md §7) отдельно от
+    // функциональной отметки "показано" ниже — impression-эндпоинты пишут
+    // разные поля на разные кулдауны, смешивать нельзя (см. их комментарии
+    // в paywallController.ts).
     if (showPaywallBanner && !subscriptionWarning) {
       submitPaywallImpression();
     } else if (showPriceAlertIntro && !subscriptionWarning && !showPaywallBanner) {
       submitPriceAlertIntroImpression();
+    } else if (subscriptionWarning) {
+      submitExpiringWarningImpression(subscriptionWarning);
     }
   }, [appState]);
 

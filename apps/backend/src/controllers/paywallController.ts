@@ -46,6 +46,38 @@ export const submitPriceAlertIntroImpression = async (req: Request, res: Respons
   }
 };
 
+// POST /analytics/expiring-warning-impression — { variant: "expiring_3_days"
+// | "expiring_1_day" }. Тот же принцип, что submitPriceAlertIntroImpression:
+// отдельные поля на этап, разово проставляются и больше не читаются как
+// "давность" — buildPaywallState проверяет "=== null". Сбрасываются в null
+// при каждом продлении подписки (completePayment), так что следующий цикл
+// увидит предупреждение заново.
+const EXPIRING_VARIANT_FIELD = {
+  expiring_3_days: "expiring3DaysShownAt",
+  expiring_1_day: "expiring1DayShownAt",
+} as const;
+
+export const submitExpiringWarningImpression = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const variant = req.body?.variant;
+
+  if (typeof variant !== "string" || !(variant in EXPIRING_VARIANT_FIELD)) {
+    res.status(400).json({ error: "Unknown variant" });
+    return;
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { [EXPIRING_VARIANT_FIELD[variant as keyof typeof EXPIRING_VARIANT_FIELD]]: new Date() },
+    });
+    res.status(204).end();
+  } catch (error) {
+    console.error("[Paywall] Failed to record expiring-warning impression:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const EVENT_TYPES = new Set<string>(Object.values(PaywallEventType));
 const SOURCES = new Set<string>(Object.values(PaywallSource));
 

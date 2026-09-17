@@ -8,7 +8,7 @@ import {
   recordSearchQuery,
 } from "../controllers/analyticsController";
 import { submitErrorReport } from "../controllers/reportController";
-import { submitPaywallImpression, submitPaywallEvent, submitPriceAlertIntroImpression } from "../controllers/paywallController";
+import { submitPaywallImpression, submitPaywallEvent, submitPriceAlertIntroImpression, submitExpiringWarningImpression } from "../controllers/paywallController";
 
 const router = Router();
 
@@ -22,6 +22,7 @@ router.post("/search-query", recordSearchQuery);
 router.post("/paywall-impression", submitPaywallImpression);
 router.post("/paywall-event", submitPaywallEvent);
 router.post("/price-alert-intro-impression", submitPriceAlertIntroImpression);
+router.post("/expiring-warning-impression", submitExpiringWarningImpression);
 
 // Screenshot attached to a "Report error" submission — kept in memory only,
 // forwarded straight to Telegram's sendPhoto (reportController.ts) and

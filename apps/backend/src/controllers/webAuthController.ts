@@ -300,6 +300,8 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         lastPaywallShownAt: true,
         premiumExpiresAt: true,
         priceAlertIntroShownAt: true,
+        expiring3DaysShownAt: true,
+        expiring1DayShownAt: true,
       },
     });
 

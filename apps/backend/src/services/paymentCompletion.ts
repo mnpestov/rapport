@@ -61,6 +61,11 @@ export async function completePayment(
         // Новый оплаченный период — снова имеет право на своё напоминание
         // за 3 дня (см. checkSubscriptions.ts).
         premiumReminderSentAt: null,
+        // Тот же смысл, что и premiumReminderSentAt выше, но для баннера в
+        // самом Mini App: новый период истечёт заново, значит и
+        // предупреждение о нём нужно показать заново.
+        expiring3DaysShownAt: null,
+        expiring1DayShownAt: null,
       },
     });
     await tx.userPermission.upsert({

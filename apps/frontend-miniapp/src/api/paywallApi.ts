@@ -44,6 +44,31 @@ export const submitPriceAlertIntroImpression = async (): Promise<void> => {
   }
 };
 
+// Разовая отметка показа предупреждения об истечении подписки — по одному
+// полю на каждый этап (expiring3DaysShownAt/expiring1DayShownAt), см.
+// paywallController.ts. Без этого условие "осталось ≤N дней" оставалось бы
+// истинным при каждом входе весь соответствующий период.
+export const submitExpiringWarningImpression = async (
+  variant: "expiring_3_days" | "expiring_1_day"
+): Promise<void> => {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_URL}/analytics/expiring-warning-impression`,
+      {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ variant }),
+      },
+      5000
+    );
+    if (!response.ok) {
+      console.error(`[Paywall] Failed to record expiring-warning impression: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("[Paywall] Network error recording expiring-warning impression:", error);
+  }
+};
+
 // Значения обязаны совпадать с enum-ами PaywallEventType/PaywallSource в
 // schema.prisma — бэкенд отвергает всё, чего нет в enum, чтобы мусор не
 // попал в выборку и не исказил отчёт.
