@@ -326,3 +326,102 @@ export const getPatternPriceAlertSubscribers = async (req: Request, res: Respons
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// GET /admin/users/activity-segments — «реальная» аудитория, в отличие от
+// голого count(User) на вкладке пользователей. Единственный надёжный сигнал
+// вовлечённости в этом продукте — факт просмотра карточки (PatternView), а
+// не lastSeenAt: то поле проставляется и при пустом заходе без единого
+// действия в каталоге. Дорогой запрос (сканирует PatternView целиком) —
+// вызывается только вручную кнопкой "Обновить" на странице статистики, не
+// на каждый рендер.
+export const getUserActivitySegments = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const [segments, weekly, cohorts] = await Promise.all([
+      prisma.$queryRaw<
+        { segment: string; count: bigint }[]
+      >`
+        WITH stats AS (
+          SELECT
+            u.id,
+            v.last_view,
+            u."premiumExpiresAt" > now() AS sub_active
+          FROM "User" u
+          LEFT JOIN (
+            SELECT "userId", MAX("createdAt") AS last_view FROM "PatternView" GROUP BY "userId"
+          ) v ON v."userId" = u.id
+          WHERE u."excludeFromStats" = false
+        )
+        SELECT
+          CASE
+            WHEN sub_active THEN 'paid'
+            WHEN last_view IS NULL THEN 'dead'
+            WHEN last_view >= now() - interval '30 days' THEN 'active'
+            WHEN last_view >= now() - interval '90 days' THEN 'sleeping'
+            ELSE 'churned'
+          END AS segment,
+          COUNT(*) AS count
+        FROM stats
+        GROUP BY 1
+      `,
+      // Регистрации и реальная активность по неделям — тот же срез, что в
+      // дашборде реактивации (последние 16 недель, включая текущую).
+      prisma.$queryRaw<
+        { week: Date; new_users: bigint; active_users: bigint }[]
+      >`
+        SELECT
+          weeks.week,
+          COALESCE(nu.cnt, 0) AS new_users,
+          COALESCE(au.cnt, 0) AS active_users
+        FROM (
+          SELECT date_trunc('week', d)::date AS week
+          FROM generate_series(date_trunc('week', now()) - interval '15 weeks', date_trunc('week', now()), interval '1 week') d
+        ) weeks
+        LEFT JOIN (
+          SELECT date_trunc('week', "createdAt")::date AS week, COUNT(*) AS cnt
+          FROM "User" WHERE "excludeFromStats" = false GROUP BY 1
+        ) nu ON nu.week = weeks.week
+        LEFT JOIN (
+          SELECT date_trunc('week', "lastSeenAt")::date AS week, COUNT(*) AS cnt
+          FROM "User" WHERE "excludeFromStats" = false AND "lastSeenAt" IS NOT NULL GROUP BY 1
+        ) au ON au.week = weeks.week
+        ORDER BY weeks.week
+      `,
+      // Когортное удержание: доля каждой недельной когорты регистрации,
+      // вернувшаяся позже 7 дней после регистрации. Последние 2 недели
+      // включаются, но фронт помечает их как "рано судить".
+      prisma.$queryRaw<
+        { week: Date; cohort_size: bigint; returned_d7plus: bigint }[]
+      >`
+        SELECT
+          date_trunc('week', u."createdAt")::date AS week,
+          COUNT(*) AS cohort_size,
+          COUNT(*) FILTER (WHERE u."lastSeenAt" > u."createdAt" + interval '7 days') AS returned_d7plus
+        FROM "User" u
+        WHERE u."excludeFromStats" = false
+        GROUP BY 1
+        ORDER BY 1
+      `,
+    ]);
+
+    const segmentCounts: Record<string, number> = { paid: 0, active: 0, sleeping: 0, dead: 0, churned: 0 };
+    for (const row of segments) segmentCounts[row.segment] = Number(row.count);
+
+    res.json({
+      segments: segmentCounts,
+      weekly: weekly.map((w) => ({
+        week: w.week.toISOString().slice(0, 10),
+        newUsers: Number(w.new_users),
+        activeUsers: Number(w.active_users),
+      })),
+      cohorts: cohorts.map((c) => ({
+        week: c.week.toISOString().slice(0, 10),
+        cohortSize: Number(c.cohort_size),
+        returnedD7Plus: Number(c.returned_d7plus),
+      })),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[Admin] getUserActivitySegments failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

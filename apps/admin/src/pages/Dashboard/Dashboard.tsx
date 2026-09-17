@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getDashboardStats, getPaywallStats, DashboardResponse, PaywallStatsResponse, TopPatternItem, TopAuthorItem, TopSearchQueryItem, Period } from "../../api/dashboard";
 import { PaywallFunnel } from "./PaywallFunnel";
+import { UserActivitySegments } from "./UserActivitySegments";
 import { PaywallUsersModal, DrilldownTarget } from "./PaywallUsersModal";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { DateRangePicker, DateRange } from "../../components/DateRangePicker/DateRangePicker";
@@ -320,6 +321,11 @@ export function Dashboard() {
         <StatCard label="Переходов на подписку" value={stats.totalSubscribeClicks} />
         <StatCard label="Добавлений в избранное" value={stats.totalFavorites} />
       </div>
+
+      {/* Реальная аудитория — сегментация по факту просмотра каталога, не
+          по голому числу аккаунтов. Не завязана на выбранный период сверху:
+          сегменты считаются по всей истории пользователя, а не по окну. */}
+      <UserActivitySegments />
 
       {/* Воронка подписки — PAYMENTS_ROBOKASSA_PLAN.md §10. Не рисуется,
           пока данные не пришли: пустой виджет с нулями выглядел бы как

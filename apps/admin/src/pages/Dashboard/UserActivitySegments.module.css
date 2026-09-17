@@ -1,0 +1,258 @@
+/* Рамки и типографика повторяют YarnCoverage.module.css/PaywallFunnel.module.css. */
+.wrapper {
+  margin-top: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  display: block;
+  font-family: "Mulish", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.subtitle {
+  display: block;
+  margin-top: 4px;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty,
+.error {
+  padding: 20px 28px;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.error {
+  color: #b45309;
+}
+
+.segmentGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 1200px) {
+  .segmentGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .segmentGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.segmentCell {
+  padding: 16px 20px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.segmentCell:last-child {
+  border-right: none;
+}
+
+.segmentHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.segmentLabel {
+  font-family: "Mulish", sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.segmentValue {
+  margin-top: 6px;
+  font-family: "Mulish", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.segmentPct {
+  margin-top: 2px;
+  font-family: "Mulish", sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.segmentHint {
+  margin-top: 6px;
+  font-family: "Mulish", sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-subtle);
+}
+
+.section {
+  padding: 18px 28px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.sectionTitle {
+  margin-bottom: 14px;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.weeklyChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 140px;
+}
+
+.weeklyCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 0;
+}
+
+.weeklyBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 116px;
+  width: 100%;
+  justify-content: center;
+}
+
+.weeklyBarNew,
+.weeklyBarActive {
+  width: 40%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+
+.weeklyBarNew {
+  background: #2a78d6;
+}
+
+.weeklyBarActive {
+  background: #1baf7a;
+}
+
+.weeklyLabel {
+  margin-top: 6px;
+  font-family: "Mulish", sans-serif;
+  font-size: 10px;
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
+.legendRow {
+  display: flex;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "Mulish", sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.cohortTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Mulish", sans-serif;
+  font-size: 13px;
+}
+
+.cohortTable th {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.cohortTable td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.immature {
+  color: var(--text-subtle);
+  font-size: 11px;
+}
+
+.retentionCell {
+  position: relative;
+}
+
+.retentionBar {
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 3px;
+  background: #2a78d6;
+  opacity: 0.16;
+  z-index: 0;
+}
+
+.retentionText {
+  position: relative;
+  z-index: 1;
+}

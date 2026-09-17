@@ -14,6 +14,7 @@ import {
   getDashboard,
   getDashboardStats,
   getPatternPriceAlertSubscribers,
+  getUserActivitySegments,
 } from "../controllers/adminDashboardController";
 import {
   getPatternsList,
@@ -195,6 +196,7 @@ router.get("/users/stats", getUsersStats);
 router.get("/patterns/stats", getPatternsStats);
 router.get("/dashboard", getDashboard);
 router.get("/dashboard/stats", getDashboardStats);
+router.get("/users/activity-segments", getUserActivitySegments);
 router.get("/paywall-stats", getPaywallStats);
 router.get("/paywall-stats/users", getPaywallStatsUsers);
 router.get("/patterns/:id/price-alert-subscribers", getPatternPriceAlertSubscribers);

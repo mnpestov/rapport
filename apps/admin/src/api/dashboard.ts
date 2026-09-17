@@ -182,3 +182,42 @@ export const getPatternPriceAlertSubscribers = async (
   }
   return response.json();
 };
+
+// "Реальная" аудитория — сегментация по факту просмотра карточки, а не по
+// голому count(User). Дорогой запрос (сканирует PatternView), вызывается
+// только по клику "Обновить" на странице статистики, не при каждом
+// открытии.
+export interface UserActivitySegments {
+  paid: number;
+  active: number;
+  sleeping: number;
+  dead: number;
+  churned: number;
+}
+
+export interface UserActivityWeeklyPoint {
+  week: string;
+  newUsers: number;
+  activeUsers: number;
+}
+
+export interface UserActivityCohort {
+  week: string;
+  cohortSize: number;
+  returnedD7Plus: number;
+}
+
+export interface UserActivitySegmentsResponse {
+  segments: UserActivitySegments;
+  weekly: UserActivityWeeklyPoint[];
+  cohorts: UserActivityCohort[];
+  generatedAt: string;
+}
+
+export const getUserActivitySegments = async (): Promise<UserActivitySegmentsResponse> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/users/activity-segments`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch user activity segments: ${response.statusText}`);
+  }
+  return response.json();
+};
