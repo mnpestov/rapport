@@ -16,6 +16,32 @@ import { Check, HelpCircle, X } from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./AuthorApplications.module.css";
 
+// Ресурсы — произвольный текст, введённый в боте без валидации формата
+// (см. authorApplicationController.ts: trim + длина, никакого URL-regex),
+// поэтому ссылкой делаем только то, что реально похоже на адрес — иначе
+// текст, не являющийся ссылкой, рендерился бы кликабельным без толку.
+function toHref(resource: string): string | null {
+  const trimmed = resource.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // "vk.com/id1", "instagram.com/name" и т.п. — без протокола, но с точкой
+  // в характерном месте: считаем доменом, если после первого "/" (если он
+  // есть) слева есть хотя бы одна точка и нет пробелов.
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(trimmed) && !trimmed.includes(" ")) {
+    return `https://${trimmed}`;
+  }
+  return null;
+}
+
+function ResourceLink({ resource }: { resource: string }) {
+  const href = toHref(resource);
+  if (!href) return <>{resource}</>;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {resource}
+    </a>
+  );
+}
+
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   // Черновик — незавершённый диалог в боте. Админу в списке не показывается
   // (нет в STATUS_OPTIONS), метка на случай прямого запроса ?status=DRAFT.
@@ -148,7 +174,7 @@ export function AuthorApplications() {
                 <td className={styles.tdMuted}>
                   {app.resources.map((r, i) => (
                     <div key={i} className={styles.resourceLine} title={r}>
-                      {r}
+                      <ResourceLink resource={r} />
                     </div>
                   ))}
                 </td>
@@ -397,7 +423,7 @@ function ApproveModal({
         <div className={styles.formGroup}>
           <label>Ресурсы автора</label>
           {application.resources.map((r, i) => (
-            <div key={i} className={styles.tdMuted}>{r}</div>
+            <div key={i} className={styles.tdMuted}><ResourceLink resource={r} /></div>
           ))}
         </div>
 
