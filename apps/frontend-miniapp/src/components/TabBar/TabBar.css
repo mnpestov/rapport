@@ -10,7 +10,7 @@
   bottom: 0;
   z-index: 100;
   background: #f3f3f3;
-  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 20px calc(40px + env(safe-area-inset-bottom));
 }
 
 .tab-bar-inner {
