@@ -57,6 +57,9 @@ export function Yarns() {
   // (модератор разбирает быстро, не копится тысячами).
   const [pendingItems, setPendingItems] = useState<YarnItem[]>([]);
   const [pendingLoading, setPendingLoading] = useState(true);
+  // Client-side, не новый запрос — очередь и так грузится целиком (см.
+  // комментарий выше про отсутствие пагинации у pending).
+  const [stashOnly, setStashOnly] = useState(false);
   const [rejectingItem, setRejectingItem] = useState<YarnItem | null>(null);
   const [rejecting, setRejecting] = useState(false);
 
@@ -215,7 +218,12 @@ export function Yarns() {
                 Добавить
               </Button>
             </>
-          ) : undefined
+          ) : (
+            <label className={styles.checkbox}>
+              <input type="checkbox" checked={stashOnly} onChange={(e) => setStashOnly(e.target.checked)} />
+              Только из хранилища
+            </label>
+          )
         }
       />
 
@@ -290,11 +298,23 @@ export function Yarns() {
             <span>Описаний</span>
             <span />
           </div>
-          {pendingItems.map((y) => (
+          {pendingItems
+            .filter((y) => !stashOnly || y.createdVia === "STASH_USER")
+            .map((y) => (
             <div key={y.id} className={styles.row}>
               <span className={styles.nameCell}>
                 <span className={styles.name}>{y.name}</span>
                 {y.isGeneric && <span className={styles.badge}>родовой</span>}
+                {/* Источник заявки — AUTHOR (узкий проверенный круг) или
+                    STASH_USER (личное хранилище пряжи, потенциально массовый
+                    источник опечаток/дублей). Показываем бейдж только для
+                    STASH_USER: AUTHOR — текущее большинство/дефолт, не
+                    нуждается в подсветке (YARN_STASH_PLAN.md §5.4). */}
+                {y.createdVia === "STASH_USER" && (
+                  <span className={styles.badge} title="Заявка подана через личное хранилище пряжи пользователя">
+                    из хранилища
+                  </span>
+                )}
               </span>
               <span className={y.mPer100g == null ? styles.missing : undefined}>
                 {y.mPer100g != null ? `${y.mPer100g} м/100 г` : "—"}
@@ -325,8 +345,10 @@ export function Yarns() {
               </span>
             </div>
           ))}
-          {!pendingLoading && pendingItems.length === 0 && (
-            <div className={styles.empty}>Нет артикулов на проверке</div>
+          {!pendingLoading && pendingItems.filter((y) => !stashOnly || y.createdVia === "STASH_USER").length === 0 && (
+            <div className={styles.empty}>
+              {stashOnly ? "Нет заявок из хранилища пряжи" : "Нет артикулов на проверке"}
+            </div>
           )}
         </div>
       )}

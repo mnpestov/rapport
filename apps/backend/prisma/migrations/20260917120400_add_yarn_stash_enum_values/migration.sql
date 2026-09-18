@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "Permission" ADD VALUE 'PREMIUM_YARN_STASH';
+
+-- AlterEnum
+ALTER TYPE "YarnStatus" ADD VALUE 'REJECTED';

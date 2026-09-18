@@ -35,6 +35,7 @@ import analyticsRouter from "./routes/analytics";
 import adminRouter from "./routes/admin";
 import authorRouter from "./routes/author";
 import authorApplicationsRouter from "./routes/authorApplications";
+import stashRouter from "./routes/stash";
 import internalRouter from "./routes/internal";
 import diagRouter from "./routes/diag";
 import paymentsRouter from "./routes/payments";
@@ -44,6 +45,8 @@ import { startCleanupApplicationDraftsJob } from "./jobs/cleanupApplicationDraft
 
 const uploadsDir = path.join(__dirname, "../uploads/patterns");
 fs.mkdirSync(uploadsDir, { recursive: true });
+const yarnStashUploadsDir = path.join(__dirname, "../uploads/yarn-stash");
+fs.mkdirSync(yarnStashUploadsDir, { recursive: true });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -141,6 +144,7 @@ app.use("/analytics", analyticsRouter);
 app.use("/admin", adminRouter);
 app.use("/author", authorRouter);
 app.use("/author-applications", authorApplicationsRouter);
+app.use("/stash", stashRouter);
 app.use("/internal", internalRouter);
 app.use("/diag", diagRouter);
 app.use("/payments", paymentsRouter);

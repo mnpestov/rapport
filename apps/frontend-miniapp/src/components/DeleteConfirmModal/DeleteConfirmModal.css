@@ -1,0 +1,67 @@
+.delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1100;
+  display: flex;
+  align-items: flex-end;
+}
+
+.delete-confirm-panel {
+  background: #ffffff;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delete-confirm-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.delete-confirm-text {
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #9b9a9a;
+  margin: 0 0 12px;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delete-confirm-cancel,
+.delete-confirm-confirm {
+  width: 100%;
+  height: 50px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+}
+
+.delete-confirm-cancel {
+  background: #f3f3f3;
+  color: #1d1c1c;
+}
+
+.delete-confirm-confirm {
+  background: #d8520f;
+  color: #ffffff;
+}
+
+.delete-confirm-cancel:disabled,
+.delete-confirm-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

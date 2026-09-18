@@ -45,6 +45,15 @@ const apiProxy = {
   '/price-alerts': 'http://localhost:3000',
   '/channel': 'http://localhost:3000',
   '/analytics': 'http://localhost:3000',
+  // /stash — хранилище пряжи (YARN_STASH_PLAN.md, T9). React Router уже
+  // занимает этот путь (/stash, /stash/:id) — тот же bypass, что и у
+  // /favorites, нужен по той же причине: прямая навигация/F5 должна отдать
+  // SPA-шелл, а не улететь на бэкенд без Authorization.
+  '/stash': {
+    target: 'http://localhost:3000',
+    bypass: (req: import('http').IncomingMessage) =>
+      req.headers['sec-fetch-mode'] === 'navigate' ? req.url : undefined,
+  },
 };
 
 // https://vitejs.dev/config/

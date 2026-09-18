@@ -21,6 +21,11 @@ const YARN_SELECT = {
   densityRaw: true, ballWeightG: true, ballLengthM: true,
   sourceName: true, sourceUrl: true, isActive: true, mergedIntoId: true,
   status: true,
+  // Источник заявки — AUTHOR (узкий проверенный круг) или STASH_USER
+  // (потенциально массовый источник опечаток/дублей из личного хранилища
+  // пряжи, YARN_STASH_PLAN.md §5.4). Модератор видит его как бейдж в
+  // очереди PENDING, чтобы калибровать доверие к заявке.
+  createdVia: true,
   aliases: { select: { id: true, alias: true } },
   _count: { select: { patterns: true } },
 } satisfies Prisma.YarnSelect;
@@ -36,11 +41,18 @@ export async function listYarns(req: Request, res: Response) {
   // никогда не бывает слит), но фильтр всё равно применяется одинаково —
   // безвредно, слитых PENDING-карточек не бывает.
   const pendingOnly = req.query.pending === "1";
+  // Фильтр по источнику заявки — используется в очереди модерации, чтобы
+  // отдельно посмотреть только личные заявки пользователей хранилища
+  // (потенциально массовый источник шума) или только авторские (план §5.4).
+  const createdViaParam = String(req.query.createdVia || "");
+  const createdVia =
+    createdViaParam === "AUTHOR" || createdViaParam === "STASH_USER" ? createdViaParam : null;
 
   const where: Prisma.YarnWhereInput = { mergedIntoId: null };
   if (noMetrage) where.mPer100g = null;
   if (genericOnly) where.isGeneric = true;
   if (pendingOnly) where.status = YarnStatus.PENDING;
+  if (createdVia) where.createdVia = createdVia;
   if (q) {
     const key = normalizeYarnKey(q);
     // Пустой ключ означает, что в запросе не было ни букв, ни цифр —
@@ -184,13 +196,25 @@ export async function createYarn(req: Request, res: Response) {
 }
 
 /**
- * POST /author/yarns — тот же путь создания, что createYarn выше (одна и та
- * же валидация и хелперы), но status жёстко ставится PENDING и никогда не
- * читается из req.body: иначе автор мог бы прислать `status: "APPROVED"`
- * напрямую и обойти модерацию (implementation_plan_moderation_yarns_articles.md
+ * Тот же путь создания, что createYarn выше (одна и та же валидация и
+ * хелперы), но status жёстко ставится PENDING и никогда не читается из
+ * req.body: иначе вызывающий мог бы прислать `status: "APPROVED"` напрямую и
+ * обойти модерацию (implementation_plan_moderation_yarns_articles.md
  * Verification Plan, шаг 8).
+ *
+ * Не завязана на конкретное разрешение вызывающего — только на req.body —
+ * что и позволяет переиспользовать её под POST /stash/yarns
+ * (YARN_STASH_PLAN.md §3, PREMIUM_YARN_STASH вместо AUTHOR_CABINET).
+ * createdVia — параметр вызова, НЕ читается из req.body (та же причина, что
+ * у status: доверять телу запроса для поля, влияющего на приоритет
+ * модерации, нельзя) — каждый вызывающий роут передаёт свою константу явно:
+ * /author/yarns → AUTHOR (дефолт), /stash/yarns → STASH_USER (§5.4).
  */
-export async function createAuthorYarn(req: Request, res: Response) {
+export async function createAuthorYarn(
+  req: Request,
+  res: Response,
+  createdVia: "AUTHOR" | "STASH_USER" = "AUTHOR"
+) {
   const data = yarnFields(req.body);
   if (!data.name) return res.status(400).json({ error: "Название обязательно" });
   if (!data.isGeneric && !data.brand) {
@@ -205,7 +229,7 @@ export async function createAuthorYarn(req: Request, res: Response) {
     return res.status(409).json({ error: `Такой артикул уже есть: «${existing.name}»`, id: existing.id });
   }
   const yarn = await prisma.yarn.create({
-    data: { ...data, normalizedKey, dedupKey: yarnDedupKey(data.name), status: YarnStatus.PENDING },
+    data: { ...data, normalizedKey, dedupKey: yarnDedupKey(data.name), status: YarnStatus.PENDING, createdVia },
     select: YARN_SELECT,
   });
   res.status(201).json(yarn);
@@ -271,6 +295,14 @@ export async function mergeYarn(req: Request, res: Response) {
     await tx.patternYarnMention.updateMany({ where: { suggestedYarnId: id }, data: { suggestedYarnId: targetId } });
     await tx.patternYarnMention.updateMany({ where: { resolvedYarnId: id }, data: { resolvedYarnId: targetId } });
 
+    // StashSkein.yarnId — в отличие от PatternYarn/DraftYarn выше, здесь нет
+    // уникального индекса (userId, yarnId): один пользователь может иметь
+    // несколько записей на один и тот же артикул (разный цвет/партия,
+    // YARN_STASH_PLAN.md §1.4), так что дедуп-логика PatternYarn (найти
+    // дубли, удалить, потом перенести) тут не нужна — простой updateMany
+    // без риска конфликта уникальности.
+    await tx.stashSkein.updateMany({ where: { yarnId: id }, data: { yarnId: targetId } });
+
     for (const alias of [{ alias: src.name }, ...src.aliases]) {
       const normalizedAlias = normalizeYarnKey(alias.alias);
       if (!normalizedAlias) continue;
@@ -311,6 +343,16 @@ export async function approveYarn(req: Request, res: Response) {
  * deleteYarn: тот намеренно блокирует удаление при наличии связей (409,
  * "слейте его с другим или снимите связи") — здесь ровно наоборот, снятие
  * связей явно входит в контракт отклонения, а не считается ошибкой.
+ *
+ * Ставит status: REJECTED вместо физического удаления строки
+ * (YARN_STASH_PLAN.md §5.1) — личная заявка пользователя из хранилища пряжи
+ * (createdVia: STASH_USER) не должна пропадать при отклонении: владелец
+ * продолжает видеть свою StashSkein-запись как ни в чём не бывало,
+ * REJECTED-карточка просто не попадает в suggestYarns/публичный поиск для
+ * других (тот уже фильтрует строго APPROVED). Для авторского PENDING-потока
+ * (createdVia: AUTHOR, без StashSkein-ссылок) поведение внешне то же самое —
+ * карточка перестаёт быть видимой кому-либо, кроме админки, просто теперь
+ * через статус, а не через удаление строки.
  */
 export async function rejectPendingYarn(req: Request, res: Response) {
   const { id } = req.params;
@@ -324,12 +366,13 @@ export async function rejectPendingYarn(req: Request, res: Response) {
     await tx.patternYarn.deleteMany({ where: { yarnId: id } });
     // DraftYarn.yarn has no onDelete: Cascade (RESTRICT, like PatternYarn) —
     // a PENDING yarn picked in an open draft's form but not yet published
-    // would otherwise block yarn.delete below with a FK violation.
+    // would otherwise block reads/writes on it staying REJECTED with a
+    // dangling draft link.
     await tx.draftYarn.deleteMany({ where: { yarnId: id } });
     await tx.patternYarnMention.updateMany({ where: { suggestedYarnId: id }, data: { suggestedYarnId: null } });
     await tx.patternYarnMention.updateMany({ where: { resolvedYarnId: id }, data: { resolvedYarnId: null } });
     await tx.yarnAlias.deleteMany({ where: { yarnId: id } });
-    await tx.yarn.delete({ where: { id } });
+    await tx.yarn.update({ where: { id }, data: { status: YarnStatus.REJECTED, isActive: false } });
   });
   res.json({ ok: true });
 }
@@ -341,14 +384,21 @@ export async function deleteYarn(req: Request, res: Response) {
   // yarn.delete() below just as much as a PatternYarn link does. Missed
   // this the first time DraftYarn was added (only rejectPendingYarn was
   // updated), which is exactly how this constraint violation happened.
-  const [patternLinks, draftLinks] = await Promise.all([
+  //
+  // stashLinks — то же самое для StashSkein.yarnId (YARN_STASH_PLAN.md §5.1
+  // finding 2): та связь тоже без onDelete: Cascade (RESTRICT по умолчанию),
+  // и без этой проверки deleteYarn мог бы либо упасть 500 на FK-конфликте,
+  // либо (если бы миграция сгенерировала не-RESTRICT default) молча стереть
+  // артикул, на который ссылается чужое хранилище пряжи.
+  const [patternLinks, draftLinks, stashLinks] = await Promise.all([
     prisma.patternYarn.count({ where: { yarnId: id } }),
     prisma.draftYarn.count({ where: { yarnId: id } }),
+    prisma.stashSkein.count({ where: { yarnId: id } }),
   ]);
-  const links = patternLinks + draftLinks;
+  const links = patternLinks + draftLinks + stashLinks;
   if (links) {
     return res.status(409).json({
-      error: `Артикул связан с ${links} описан${links === 1 ? "ием" : "иями"} (включая черновики) — слейте его с другим или снимите связи`,
+      error: `Артикул связан с ${links} описан${links === 1 ? "ием" : "иями"} (включая черновики и хранилища пряжи) — слейте его с другим или снимите связи`,
     });
   }
   await prisma.yarn.delete({ where: { id } });

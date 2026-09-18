@@ -3,6 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import { Catalog } from './pages/Catalog/Catalog';
 import { PatternDetails } from './pages/PatternDetails/PatternDetails';
 import { Favorites } from './pages/Favorites/Favorites';
+import { Stash } from './pages/Stash/Stash';
+import { StashSkeinDetails } from './pages/StashSkeinDetails/StashSkeinDetails';
+import { TabBar } from './components/TabBar/TabBar';
 import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { Maintenance } from './pages/Maintenance/Maintenance';
@@ -23,6 +26,7 @@ import {
   SESSION_EXPIRED_EVENT,
 } from './api/authSession';
 import { subscriptionRecheck } from './api/webAuthApi';
+import { usePremiumAccess } from './hooks/usePremiumAccess';
 import { initPwa } from './api/pwa';
 import { submitPaywallImpression, submitPriceAlertIntroImpression, submitExpiringWarningImpression, PaywallSource } from './api/paywallApi';
 
@@ -49,6 +53,13 @@ function App() {
   // карточке описания решает, есть ли куда возвращаться. Вызов до любых
   // ранних return'ов: хук должен отработать на каждый рендер.
   useNavigationDepthTracker();
+
+  // Период тестирования хранилища пряжи: доступ только ADMIN, независимо от
+  // PREMIUM_YARN_STASH (фримиум-модель для всех — следующий этап, см. бэклог
+  // "оплата подписки на хранилище"). Убрать это условие и вернуться к
+  // access.yarnStash, когда тестирование закончится.
+  const access = usePremiumAccess();
+  const isStashTestingAccess = access.isAdmin;
 
   const [appState, setAppState] = useState<AppState>("loading");
   const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
@@ -510,7 +521,13 @@ function App() {
         <Route path="/" element={<Catalog />} />
         <Route path="/pattern/:id" element={<PatternDetails />} />
         <Route path="/favorites" element={<Favorites />} />
+        {/* Хранилище пряжи: в проде фримиум всем (лимит 10 артикулов + подбор
+            описаний под PREMIUM_YARN_STASH), но на период тестирования роут
+            и таб-бар видны только ADMIN — см. isStashTestingAccess выше. */}
+        {isStashTestingAccess && <Route path="/stash" element={<Stash />} />}
+        {isStashTestingAccess && <Route path="/stash/:id" element={<StashSkeinDetails />} />}
       </Routes>
+      {isStashTestingAccess && <TabBar />}
       <PaywallModal
         isOpen={isPaywallOpen}
         variant={paywallVariant}

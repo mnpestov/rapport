@@ -1,21 +1,46 @@
+/* Нижний паддинг ниже Footer: var(--tab-bar-reserve) резервирует реальную
+   высоту таб-бара (страница не может рендериться под ним), +8px — видимый
+   зазор между нижним краем Footer и верхним краем таб-бара, тот же, что и
+   на остальных страницах с таб-баром (Stash.css, Favorites.css) — не
+   должен «подниматься» выше него на страницах без таб-бара тоже, поэтому
+   env(safe-area-inset-bottom) остаётся отдельным слагаемым. */
 .catalog-container {
-  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
   font-family: Mulish, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   min-height: 100vh;
   max-width: 1200px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* При коротком результате (мало карточек, помещаются в один экран) Footer
+   без этого оставался сразу под последней карточкой — заметно выше
+   таб-бара, а не прижатым к низу экрана над ним. .catalog-body (обёртка с
+   переключением visibility при восстановлении скролла) сама становится
+   flex-колонкой и растягивается на всё оставшееся место в
+   .catalog-container — тогда margin-top:auto на Footer, её прямом
+   flex-child, действительно забирает свободное место снизу. */
+.catalog-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.catalog-body .app-footer {
+  margin-top: auto;
 }
 
 @media (min-width: 768px) {
   .catalog-container {
-    padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+    padding: 0 24px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
   }
 }
 
 @media (min-width: 1024px) {
   .catalog-container {
-    padding: 0 32px calc(24px + env(safe-area-inset-bottom));
+    padding: 0 32px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
   }
 }
 

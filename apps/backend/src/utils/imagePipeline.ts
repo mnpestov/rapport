@@ -16,6 +16,13 @@ const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8")) as {
 
 const SCRAPER_IMAGES_DIR = path.join(__dirname, "../../public/images/patterns");
 const UPLOADS_IMAGES_DIR = path.join(__dirname, "../../uploads/patterns");
+// Хранилище пряжи (YARN_STASH_PLAN.md T8) — своя директория, не смешивается
+// с фото описаний. Явная третья ветка ниже, а не тихий fallback в
+// SCRAPER_IMAGES_DIR: план прямо предупреждает, что копипаста без явного
+// отказа для неизвестных префиксов молча промахивает файлы мимо своей
+// директории (existsSync просто вернёт false, thumbnail не сгенерируется —
+// деградация без единой ошибки в логах).
+const YARN_STASH_IMAGES_DIR = path.join(__dirname, "../../uploads/yarn-stash");
 
 type Variant = "thumb" | "detail";
 
@@ -23,7 +30,15 @@ function resolveDir(relativeUrl: string): { dir: string; prefix: string } {
   if (relativeUrl.startsWith("/uploads/patterns/")) {
     return { dir: UPLOADS_IMAGES_DIR, prefix: "/uploads/patterns/" };
   }
-  return { dir: SCRAPER_IMAGES_DIR, prefix: "/images/patterns/" };
+  if (relativeUrl.startsWith("/uploads/yarn-stash/")) {
+    return { dir: YARN_STASH_IMAGES_DIR, prefix: "/uploads/yarn-stash/" };
+  }
+  if (relativeUrl.startsWith("/images/patterns/")) {
+    return { dir: SCRAPER_IMAGES_DIR, prefix: "/images/patterns/" };
+  }
+  // Неизвестный префикс — явная ошибка, а не молчаливый fallback в
+  // SCRAPER_IMAGES_DIR (см. комментарий выше и YARN_STASH_PLAN.md §3.1).
+  throw new Error(`[imagePipeline] Unknown image URL prefix, cannot resolve directory: ${relativeUrl}`);
 }
 
 // Generates (or reuses, if already generated) a resized derivative of

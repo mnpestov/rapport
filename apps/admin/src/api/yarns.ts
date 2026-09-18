@@ -24,7 +24,14 @@ export interface YarnItem {
   mergedIntoId: string | null;
   // PENDING — создан автором через POST /author/yarns, ждёт проверки, не
   // виден в suggestYarns. APPROVED — default, включая всё созданное админом.
-  status: "PENDING" | "APPROVED";
+  // REJECTED — отклонённая личная заявка из хранилища пряжи, остаётся
+  // видимой владельцу, но не в справочнике (YARN_STASH_PLAN.md §5.1).
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  // Источник заявки — AUTHOR (узкий проверенный круг через /author/yarns)
+  // или STASH_USER (личное хранилище пряжи через /stash/yarns, потенциально
+  // массовый источник опечаток/дублей — план §5.4). Бейдж в очереди
+  // модерации.
+  createdVia: "AUTHOR" | "STASH_USER";
   aliases: YarnAliasItem[];
   _count: { patterns: number };
 }
@@ -80,6 +87,7 @@ export const getYarns = async (params: {
   noMetrage?: boolean;
   generic?: boolean;
   pending?: boolean;
+  createdVia?: "AUTHOR" | "STASH_USER";
 }): Promise<{ items: YarnItem[]; total: number; page: number; pageSize: number }> => {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
@@ -87,6 +95,7 @@ export const getYarns = async (params: {
   if (params.noMetrage) qs.set("noMetrage", "1");
   if (params.generic) qs.set("generic", "1");
   if (params.pending) qs.set("pending", "1");
+  if (params.createdVia) qs.set("createdVia", params.createdVia);
   return json(await fetchWithAuth(`${API_URL}/admin/yarns?${qs}`));
 };
 

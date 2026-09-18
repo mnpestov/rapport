@@ -1,5 +1,8 @@
+/* Нижний паддинг ниже Footer: 8px видимого зазора до таб-бара, тот же, что
+   и на Catalog/Stash — var(--tab-bar-reserve) уже резервирует его реальную
+   высоту (включая safe-area, см. index.css). */
 .favorites-container {
-  padding: 16px;
+  padding: 16px 16px calc(8px + var(--tab-bar-reserve, 0px));
   min-height: 100vh;
   background-color: #ffffff;
   display: flex;
@@ -10,14 +13,23 @@
 
 @media (min-width: 768px) {
   .favorites-container {
-    padding: 24px;
+    padding: 24px 24px calc(8px + var(--tab-bar-reserve, 0px));
   }
 }
 
 @media (min-width: 1024px) {
   .favorites-container {
-    padding: 32px;
+    padding: 32px 32px calc(8px + var(--tab-bar-reserve, 0px));
   }
+}
+
+/* При коротком результате (мало/один результат) Footer без этого оставался
+   сразу под последней карточкой — заметно выше таб-бара, а не прижатым к
+   низу экрана над ним. .favorites-container уже flex-колонка — margin-top:
+   auto на Footer, её прямом flex-child (JSX-фрагмент не создаёт свой DOM-
+   узел), забирает всё свободное место в колонке. */
+.favorites-container > .app-footer {
+  margin-top: auto;
 }
 
 .favorites-header {

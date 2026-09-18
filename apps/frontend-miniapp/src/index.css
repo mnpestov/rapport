@@ -156,6 +156,22 @@ body {
   background-color: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Резерв под нижний таб-бар (TabBar.tsx, position: fixed) — 0 по
+     умолчанию, чтобы страницы без таб-бара (карточка описания, формы) не
+     получали лишний отступ. TabBar сам переключает класс has-tab-bar на
+     трёх главных маршрутах, когда виден (YARN_STASH_PLAN.md T18). */
+  --tab-bar-reserve: 0px;
+}
+
+body.has-tab-bar {
+  /* Реальная высота .tab-bar (TabBar.css): 22px иконка + 6px margin-top
+     лейбла + ~11px текст лейбла (line-height 1.1 при font-size 10px) +
+     10px верхний padding + 10px нижний padding (до safe-area) ≈ 59px,
+     округлено вверх до 60px. Раньше был указан устаревший расчёт (36px
+     иконка) — итоговое число (77px) резервировало на ~17px больше
+     реального таб-бара, из-за чего футер каждой страницы отступал от него
+     дальше, чем нужно. */
+  --tab-bar-reserve: calc(60px + env(safe-area-inset-bottom));
 }
 
 h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {

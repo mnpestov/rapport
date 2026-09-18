@@ -27,9 +27,14 @@ export interface PremiumAccess {
   // Отдельное разрешение — блок "Артикулы пряжи" в карточке описания
   // (не PREMIUM_CORE/DETAILS). См. PermissionsSection в admin/Users.tsx.
   yarns: boolean;
+  // Личное хранилище пряжи (YARN_STASH_PLAN.md T20) — гейтит ВЕСЬ нижний
+  // таб-бар целиком (не только пункт "Пряжа"), не путать с yarns выше (тот
+  // про справочные артикулы в чужом описании, это — про личный инвентарь
+  // пользователя). ADMIN-only запуск, без переходного бесплатного периода.
+  yarnStash: boolean;
 }
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false, yarns: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false, yarns: false, yarnStash: false };
 
 const readAccess = (): PremiumAccess => {
   const raw = localStorage.getItem("user_data");
@@ -50,6 +55,7 @@ const readAccess = (): PremiumAccess => {
       // (не ...OrAdmin).
       priceAlert: permissions.includes("PRICE_ALERT"),
       yarns: isAdmin || permissions.includes("PREMIUM_YARNS"),
+      yarnStash: isAdmin || permissions.includes("PREMIUM_YARN_STASH"),
     };
   } catch {
     return NO_ACCESS;

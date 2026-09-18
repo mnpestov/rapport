@@ -3,12 +3,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 20px;
+  /* padding: 10px 20px; */
+  padding-top: 10px;
   font-family: Mulish, sans-serif;
   font-weight: 400;
   font-size: 8px;
   line-height: 1.1;
   color: #1D1C1C;
+  margin-top: 40px;
 }
 
 .footer-source {

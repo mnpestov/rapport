@@ -48,6 +48,17 @@
   margin-top: 20px;
 }
 
+/* .app-footer сам по себе без боковых паддингов (общий для всех страниц,
+   см. Footer.css) — .details-container тоже без них, только внутренние
+   секции носят свои. На мобильном это раньше не восполнялось (было только
+   на десктопных брейкпоинтах ниже), из-за чего подвал прилипал к краям
+   экрана — на 16px уже отбит остальной контент этой страницы
+   (.details-header). */
+.details-container>.app-footer {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
 .details-header {
   padding: 16px;
   position: sticky;

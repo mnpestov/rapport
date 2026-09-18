@@ -73,6 +73,7 @@ model Pattern {
   yarns        PatternYarn[]
   yarnMentions PatternYarnMention[]
   priceAlerts  PriceAlert[]
+  stashUsages  StashUsage[]
 
   @@index([popularityScore, id])
 }
@@ -178,9 +179,21 @@ model Yarn {
   // PENDING — создан автором через POST /author/yarns, ждёт проверки, не
   // виден в suggestYarns. APPROVED — прошёл проверку (или создан админом
   // через POST /admin/yarns — default), виден в справочнике как сейчас.
-  // Не путать с YarnMentionStatus — тоже использует PENDING, но для
-  // PatternYarnMention, не связанная модель.
+  // REJECTED — модератор отклонил личную заявку пользователя из хранилища
+  // пряжи (YARN_STASH_PLAN.md §5.1): карточка не попадает в справочник и не
+  // предлагается другим (suggestYarns фильтрует строго APPROVED), но
+  // StashSkein-ссылки владельца продолжают на неё указывать — в отличие от
+  // авторского PENDING-потока, где rejectPendingYarn удаляет строку
+  // физически, для личных заявок с хранилищем это стало бы потерей данных
+  // пользователя. Не путать с YarnMentionStatus — тоже использует PENDING,
+  // но для PatternYarnMention, не связанная модель.
   status       YarnStatus @default(APPROVED)
+  // Источник заявки — только для PENDING/REJECTED, различает уровень доверия
+  // при модерации: AUTHOR — через существующий POST /author/yarns (узкий,
+  // проверенный круг), STASH_USER — через POST /stash/yarns (потенциально
+  // массовый источник опечаток/дублей, YARN_STASH_PLAN.md §5.4). Default
+  // AUTHOR — весь текущий PENDING-поток на момент миграции идёт от авторов.
+  createdVia   YarnCreatedVia @default(AUTHOR)
   // При слиянии дублей карточка не удаляется, а помечается ссылкой на
   // победителя: связи на неё уже могли разойтись по описаниям, и удаление
   // порвало бы их.
@@ -193,6 +206,7 @@ model Yarn {
   drafts       DraftYarn[]
   suggestedFor PatternYarnMention[] @relation("YarnSuggested")
   resolvedFor  PatternYarnMention[] @relation("YarnResolved")
+  stashSkeins  StashSkein[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -200,6 +214,11 @@ model Yarn {
   @@index([dedupKey])
   @@index([brand])
   @@index([status])
+}
+
+enum YarnCreatedVia {
+  AUTHOR
+  STASH_USER
 }
 
 // Как пряжу пишут люди: опечатки («Lana Gossa»), транслитерации («Сеам»),
@@ -221,6 +240,9 @@ model YarnAlias {
 enum YarnStatus {
   PENDING
   APPROVED
+  // Личная заявка пользователя из хранилища пряжи отклонена модератором —
+  // см. Yarn.status и Yarn.createdVia выше (YARN_STASH_PLAN.md §5.1).
+  REJECTED
 }
 
 enum YarnLinkSource {
@@ -370,6 +392,12 @@ enum Permission {
   // PREMIUM_CORE (фильтр/поиск по артикулу): своя фича со своим правом,
   // выдаётся из админки индивидуально.
   PREMIUM_YARNS
+  // Личное хранилище пряжи пользователя (YARN_STASH_PLAN.md) — не путать с
+  // PREMIUM_YARNS выше (тот гейтит показ справочных артикулов в карточке
+  // ЧУЖОГО описания). Запускается ADMIN-only, без переходного бесплатного
+  // периода (план §5.2) — совершенно новая фича без истории бесплатного
+  // использования.
+  PREMIUM_YARN_STASH
 }
 
 // Что именно произошло с баннером подписки. Append-only лог событий, из
@@ -488,6 +516,7 @@ model User {
   authorApplications AuthorApplication[]
   credential         UserCredential?
   webSessions        WebSession[]
+  stashSkeins        StashSkein[]
 }
 
 model UserFavorite {
@@ -1090,4 +1119,131 @@ model PaywallEvent {
   // индексом и читается.
   @@index([createdAt, type, source])
   @@index([userId])
+}
+
+// ─── Хранилище пряжи пользователя (YARN_STASH_PLAN.md) ────────────────────
+// Один Yarn (артикул из справочника или PENDING-заявка пользователя) может
+// быть представлен несколькими StashSkein — разный цвет/партия одной и той
+// же пряжи (план §1.4 — та же логика "многие записи на один артикул", что у
+// PatternYarn, только в другую сторону: здесь много СВОИХ экземпляров на
+// один справочный Yarn).
+model StashSkein {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  yarnId String
+  yarn   Yarn   @relation(fields: [yarnId], references: [id])
+
+  // Снимок полей Yarn на момент добавления — ВСЕГДА копируется при создании,
+  // независимо от статуса артикула (APPROVED/PENDING). Один путь чтения для
+  // всех карточек: экран хранилища всегда читает отсюда, никогда через
+  // yarn.* напрямую. Если справочник потом уточнит данные (например,
+  // модератор поправит метраж), в карточке пользователя останется снятое
+  // значение, пока он сам не обновит его явным действием «обновить из
+  // справочника» — сознательный компромисс (план §2, актуальность вместо
+  // ветвления по Yarn.status).
+  yarnNameSnapshot    String
+  brandSnapshot       String?
+  mPer100gSnapshot    Int?
+  compositionSnapshot String?
+
+  colorName      String?
+  // Партия/лот окраски — важно, оттенок одной и той же партии красителя
+  // отличается от партии к партии.
+  dyelot         String?
+  // Исходный вес на момент добавления.
+  totalWeightG   Int
+  // Текущий остаток — изменяется ТОЛЬКО атомарно вместе со вставкой/удалением
+  // соответствующей StashUsage в одной транзакции (план §3, UPDATE ... WHERE
+  // guard) — никогда прямым присвоением из контроллера.
+  currentWeightG Int
+  note           String?
+  images         String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  swatches StashSwatch[]
+  usages   StashUsage[]
+
+  @@index([userId])
+  @@index([yarnId])
+}
+
+// Отвязанный образец (свотч) — плотность и спицы конкретной вязки, не самого
+// артикула (у одной и той же пряжи плотность гуляет в зависимости от спиц,
+// натяжения вязальщицы). Несколько на один StashSkein.
+model StashSwatch {
+  id      String     @id @default(uuid())
+  skeinId String
+  skein   StashSkein @relation(fields: [skeinId], references: [id], onDelete: Cascade)
+
+  images        String[] @default([])
+  needleSizeRaw String?
+  // Плотность ДО ВТО — тот же формат чисел, что у Pattern.densityStitches/Rows.
+  densityStitchesBefore Decimal? @db.Decimal(5, 2)
+  densityRowsBefore     Decimal? @db.Decimal(5, 2)
+  // Плотность ПОСЛЕ ВТО.
+  densityStitchesAfter  Decimal? @db.Decimal(5, 2)
+  densityRowsAfter      Decimal? @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([skeinId])
+}
+
+// Лог расхода запаса — append-only, по образцу PatternView/PaywallEvent.
+// patternId опционален: пользователь может списать вес без указания, на что.
+//
+// pattern Pattern? без onDelete был бы RESTRICT по умолчанию в
+// Prisma/Postgres — adminPatternsController.ts уже сегодня делает
+// prisma.pattern.delete() для архивных паттернов, и это удаление начало бы
+// падать FK constraint violation, как только у паттерна появится хотя бы
+// одна StashUsage. Решение (план §2): при удалении Pattern связь не молча
+// обнуляется без следа — SetNull обнуляет только "живую" ссылку patternId,
+// а *Snapshot-поля ниже сохраняют текстовый артефакт независимо от того,
+// удалят ли Pattern позже.
+model StashUsage {
+  id      String     @id @default(uuid())
+  skeinId String
+  skein   StashSkein @relation(fields: [skeinId], references: [id], onDelete: Cascade)
+  // Положительное число — сколько списано, в граммах.
+  amountG Int
+
+  // Основной размер спиц для этого конкретного списания (шаг 1, Figma
+  // node-id=1287:16147, обновлённый макет) — свободный текст (то же "Введите
+  // число", что и остальные размерные поля в проекте), не связан со
+  // StashSwatch.needleSizeRaw: там спицы для образца плотности, здесь —
+  // спицы, которыми реально вязался этот конкретный проект.
+  needleSizeRaw String?
+
+  // Свободный текст «Название проекта» (шаг 2 флоу списания, Figma
+  // node-id=1348:10906) — вводится пользователем сам про свой собственный
+  // проект, НЕ связан с Pattern.title. Показывается в карточке пряжи
+  // (Figma node-id=1326:9970, блок "Связано").
+  projectTitle String?
+
+  // Живая ссылка — используется, пока Pattern существует (переход на
+  // карточку из истории списаний). onDelete: SetNull — при удалении
+  // паттерна это поле обнуляется, но снимок ниже остаётся.
+  patternId String?
+  pattern   Pattern? @relation(fields: [patternId], references: [id], onDelete: SetNull)
+
+  // Снимок — пишется ВСЕГДА в момент создания StashUsage, если patternId
+  // указан (независимо от того, удалят ли Pattern потом). Переживает
+  // удаление паттерна из каталога.
+  patternTitleSnapshot  String?
+  patternAuthorSnapshot String?
+
+  // Опциональные фото готового изделия (шаг 3, Figma node-id=1319:9182) —
+  // тот же upload-пайплайн, что у фото мотка/образца. Массив, а не одно
+  // поле — макет показывает несколько фото с тем же "первое фото — обложка"
+  // паттерном, что и StashSkein.images/StashSwatch.images.
+  finishedPhotos String[] @default([])
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([skeinId])
+  @@index([patternId])
 }

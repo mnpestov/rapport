@@ -1,0 +1,79 @@
+/* Figma node-id=1348:11592 — нижний таб-бар из четырёх пунктов (Описания/
+   Пряжа/Проекты/Избранное), «Проекты» — заглушка без маршрута (следующая
+   фича). Fixed, а не часть обычного потока: должен оставаться на месте при
+   скролле каждой из трёх реальных страниц, как и у любого нижнего
+   таб-бара. */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background: #f3f3f3;
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+}
+
+.tab-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tab-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  /* Touch target — тот же принцип, что и остальные интерактивные элементы
+     мини-аппа (44px минимум), высота задаётся иконкой (48px) + лейблом. */
+  min-width: 48px;
+}
+
+.tab-bar-item--disabled {
+  cursor: default;
+}
+
+.tab-bar-icon-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.tab-bar-item--disabled .tab-bar-icon {
+  opacity: 0.5;
+}
+
+.tab-bar-soon-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-family: Mulish, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1d1c1cc2;
+  background: rgba(255, 255, 255, 0);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.tab-bar-icon {
+  width: 100%;
+  height: 22px;
+  object-fit: contain;
+}
+
+.tab-bar-label {
+  font-family: Mulish, sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.1;
+  color: #9B9A9A;
+  white-space: nowrap;
+  margin-top: 6px;
+}

@@ -1,0 +1,80 @@
+.stash-paywall-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.stash-paywall-panel {
+  background: #ffffff;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 40px 20px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.stash-paywall-lock {
+  color: #1d1c1c;
+}
+
+.stash-paywall-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.stash-paywall-body {
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.stash-paywall-cta,
+.stash-paywall-close {
+  width: 100%;
+  height: 58px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.stash-paywall-cta {
+  background: #a9ae36;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  margin-top: 8px;
+}
+
+.stash-paywall-cta:disabled {
+  opacity: 0.9;
+  cursor: default;
+}
+
+.stash-paywall-price {
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.stash-paywall-close {
+  background: #f3f3f3;
+  color: #1d1c1c;
+  font-size: 15px;
+  font-weight: 400;
+}

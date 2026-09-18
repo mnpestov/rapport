@@ -34,6 +34,6 @@ router.post("/drafts/:id/submit", submitDraft);
 router.post("/patterns/:id/edit", createEditDraft);
 router.post("/patterns/:id/archive", archivePattern);
 
-router.post("/yarns", createAuthorYarn);
+router.post("/yarns", (req, res) => createAuthorYarn(req, res, "AUTHOR"));
 
 export default router;

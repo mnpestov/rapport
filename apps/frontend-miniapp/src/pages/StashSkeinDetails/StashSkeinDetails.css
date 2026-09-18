@@ -1,0 +1,454 @@
+.stash-details-container {
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  font-family: Mulish, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #ffffff;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.stash-details-header {
+  padding: 12px 0;
+}
+
+.stash-details-error {
+  color: #c0392b;
+  margin-top: 16px;
+}
+
+.stash-details-image-wrapper {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.stash-details-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 359 / 300;
+  border-radius: 2px;
+  background: #f3f3f3;
+  overflow: hidden;
+}
+
+.stash-details-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stash-details-image-placeholder img {
+  width: 40%;
+  height: 40%;
+  object-fit: contain;
+}
+
+.stash-details-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.stash-details-image-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.stash-details-image-track::-webkit-scrollbar {
+  display: none;
+}
+
+.stash-details-image-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  scroll-snap-align: start;
+}
+
+.stash-details-image-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.stash-details-image-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, width 0.15s;
+}
+
+.stash-details-image-dot--active {
+  background: #ffffff;
+  width: 16px;
+  border-radius: 3px;
+}
+
+.stash-details-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.stash-details-name {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #001e00;
+  margin: 0;
+}
+
+.stash-details-row {
+  font-family: Mulish, sans-serif;
+  font-size: 17px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.stash-details-row b {
+  color: #9b9a9a;
+  margin-right: 4px;
+}
+
+.stash-details-remainder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stash-progress-bar {
+  height: 6px;
+  width: 100%;
+  background: #9b9a9a;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stash-progress-fill {
+  height: 100%;
+  background: #bec1f4;
+  border-radius: 10px;
+}
+
+.stash-details-section-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: #001e00;
+  margin: 0 0 8px;
+}
+
+.stash-details-swatches,
+.stash-details-notes,
+.stash-details-usages,
+.stash-details-matches {
+  margin-bottom: 20px;
+}
+
+.stash-usage-card {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: #ffffff;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stash-details-usages .swipe-to-delete {
+  margin-bottom: 12px;
+}
+
+.stash-usage-image {
+  position: relative;
+  width: 80px;
+  height: 110px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #f3f3f3;
+}
+
+.stash-usage-image > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stash-usage-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stash-usage-image-placeholder img {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+}
+
+.stash-usage-image-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.stash-usage-image-track::-webkit-scrollbar {
+  display: none;
+}
+
+.stash-usage-image-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  scroll-snap-align: start;
+}
+
+.stash-usage-image-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.stash-usage-image-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, width 0.15s;
+}
+
+.stash-usage-image-dot--active {
+  background: #ffffff;
+  width: 10px;
+  border-radius: 2px;
+}
+
+.stash-usage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stash-usage-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.stash-usage-row {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.stash-usage-row b {
+  color: #9b9a9a;
+  font-weight: 400;
+  margin-right: 4px;
+}
+
+.stash-usage-pattern-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #1d1c1c;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.stash-swatch-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  border: none;
+  background: #ffffff;
+  padding: 0;
+  text-align: left;
+  cursor: default;
+}
+
+.stash-details-swatches .swipe-to-delete {
+  margin-bottom: 12px;
+}
+
+.stash-add-swatch-btn {
+  width: 100%;
+  border: 1px solid #e5e5e5;
+  background: none;
+  padding: 12px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #9b9a9a;
+  cursor: pointer;
+}
+
+.stash-notes-text {
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 8px 20px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.stash-matches-list {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.stash-matches-list::-webkit-scrollbar {
+  display: none;
+}
+
+.stash-match-card {
+  width: 175px;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stash-match-image {
+  width: 175px;
+  height: 216px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+/* Обёртка с overflow:hidden — filter: blur на самом <img> размывает и его
+   границы (выходит за края на несколько px), из-за чего прямоугольник
+   карточки выглядит нечётким. Обрезаем размытие рамкой того же размера,
+   что и сама картинка — границы карточки остаются чёткими (Figma
+   node-id=1360:21430, "Mask group"). */
+.stash-match-image-frame {
+  position: relative;
+  width: 175px;
+  height: 216px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.stash-match-image-frame .stash-match-image {
+  width: 100%;
+  height: 100%;
+}
+
+.stash-match-image--locked {
+  filter: blur(10px);
+  transform: scale(1.1);
+}
+
+.stash-match-card--locked {
+  cursor: pointer;
+}
+
+.stash-match-lock-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #9b9a9a;
+}
+
+.stash-match-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #1d1c1c;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stash-match-author {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #9b9a9a;
+  margin: 0;
+}
+
+.stash-details-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+}
+
+.stash-action-btn {
+  width: 100%;
+  height: 50px;
+  border-radius: 2px;
+  font-size: 15px;
+}
+
+.stash-action-btn--primary {
+  background: #bec1f4;
+  color: #1d1c1c;
+}
+
+.stash-action-btn--secondary {
+  background: #f3f3f3;
+  color: #1d1c1c;
+}
+
+.stash-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -335,7 +335,6 @@ export const Catalog: React.FC = () => {
       <SearchFilterBar
         searchInput={searchInput}
         onSearchChange={setSearchInput}
-        showFavoritesButton
         onFavoritesClick={() => {
           sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
           navigate('/favorites');
@@ -366,7 +365,7 @@ export const Catalog: React.FC = () => {
           видит склейку из "Загрузка каталога...", списка сверху и скачка
           вниз. "Загрузка каталога..." в этом случае тоже не показываем —
           это тот же самый лишний кадр, просто с текстом вместо карточек. */}
-      <div style={isRestoringVisible ? { visibility: 'hidden' } : undefined}>
+      <div className="catalog-body" style={isRestoringVisible ? { visibility: 'hidden' } : undefined}>
         {loading && !isRestoringVisible && <p className="loading-message">Загрузка каталога...</p>}
         {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
 
