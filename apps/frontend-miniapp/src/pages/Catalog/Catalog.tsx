@@ -8,6 +8,7 @@ import { InstallPrompt } from '../../components/InstallPrompt/InstallPrompt';
 import { SortModal, SortOption } from '../../components/SortModal/SortModal';
 import { Footer } from '../../components/Footer/Footer';
 import { trackSearchQuery } from '../../api/analyticsApi';
+import { usePremiumAccess } from '../../hooks/usePremiumAccess';
 import './Catalog.css';
 
 const LOGGED_SEARCHES_KEY = 'catalog_logged_searches';
@@ -34,6 +35,13 @@ function markSearchLogged(query: string): void {
 export const Catalog: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  // TabBar (с пунктом «Избранное») сейчас виден только ADMIN — период
+  // тестирования хранилища пряжи (App.tsx, isStashTestingAccess). Пока это
+  // так, обычным пользователям нужна точечная кнопка избранного здесь же,
+  // как было до появления TabBar — иначе для них пропадает единственный
+  // вход в раздел. Убрать это условие вместе со снятием ADMIN-only гейта в
+  // App.tsx (тогда TabBar будет виден всем, и точечная кнопка не нужна).
+  const { isAdmin } = usePremiumAccess();
   // Set by PatternDetails' author link (navigate('/', { state: {...} })) —
   // a request to show ONLY this author's catalog, replacing whatever search/
   // filters were active before (see the initializers below, all of which
@@ -335,6 +343,7 @@ export const Catalog: React.FC = () => {
       <SearchFilterBar
         searchInput={searchInput}
         onSearchChange={setSearchInput}
+        showFavoritesButton={!isAdmin}
         onFavoritesClick={() => {
           sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
           navigate('/favorites');
