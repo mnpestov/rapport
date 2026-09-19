@@ -1,7 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import { normalizeUploadedImage } from "../utils/imagePipeline";
 import { Permission } from "@prisma/client";
 import { requireAuth } from "../middlewares/auth";
 import { requireAdmin } from "../middlewares/requireAdmin";
@@ -119,13 +121,18 @@ if (isDevBypass) {
 // Registered before the global requireAdmin middleware so that the
 // requirePermissionOrAdmin check runs instead of requireAdmin for this route.
 // ---------------------------------------------------------------------------
+const UPLOADS_DIR = path.join(__dirname, "../../uploads/patterns");
+
+// multer сохраняет во временный файл под своим именем/расширением — сам он
+// на диске не остаётся: normalizeUploadedImage ниже читает его через sharp
+// и пишет результат под НОВЫМ именем, temp-обработчик удаляет исходник.
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, "../../uploads/patterns"));
+    cb(null, UPLOADS_DIR);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname) || ".webp";
-    cb(null, `${uuidv4()}${ext}`);
+    cb(null, `tmp-${uuidv4()}${ext}`);
   },
 });
 
@@ -155,11 +162,22 @@ const uploadHandler = [
       next();
     });
   },
-  (req: any, res: any) => {
+  async (req: any, res: any) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-    res.json({ url: `/uploads/patterns/${req.file.filename}` });
+    // Приводим оригинал к detail-пределу (image-pipeline.config.json) —
+    // раньше сохранялся как есть, любого размера/веса, что раздувало
+    // страницу описания на телефонах авторов, снимающих на камеру.
+    try {
+      const filename = await normalizeUploadedImage(req.file.path, UPLOADS_DIR);
+      res.json({ url: `/uploads/patterns/${filename}` });
+    } catch (error) {
+      console.error("[admin/upload] Failed to normalize image:", error);
+      res.status(400).json({ error: "Invalid or corrupt image" });
+    } finally {
+      fs.unlink(req.file.path, () => {});
+    }
   },
 ];
 

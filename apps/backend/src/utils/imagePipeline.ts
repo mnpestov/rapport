@@ -99,3 +99,26 @@ export const generateThumbnailUrl = (sourceRelativeUrl: string): Promise<string 
 
 export const generateDetailUrl = (sourceRelativeUrl: string): Promise<string | null> =>
   generateVariantUrl(sourceRelativeUrl, "detail");
+
+// Приводит только что загруженный оригинал (admin/upload, кабинет автора и
+// VK-импорт) к тому же пределу, что и detail-вариант (см. config.detail) —
+// раньше оригинал сохранялся как есть, любого размера/веса/формата, и
+// именно ЕГО (не thumbnail/detail) видит пользователь без подписки на
+// странице описания (imageUrl остаётся полноразмерным по контракту, см.
+// Pattern.imageUrl в schema.prisma). В отличие от generateVariantUrl —
+// перезаписывает исходный файл на диске под НОВЫМ именем (не производная
+// рядом со старой), исходный временный файл удаляет вызывающая сторона.
+//
+// Как и остальной pipeline: .rotate() без аргументов нормализует EXIF-
+// поворот, withoutEnlargement не апскейлит уже маленькие изображения.
+export async function normalizeUploadedImage(sourcePath: string, destDir: string): Promise<string> {
+  const { maxDimension, quality } = config.detail;
+  const filename = `${crypto.randomUUID()}.${config.format}`;
+  const outputPath = path.join(destDir, filename);
+  await sharp(sourcePath)
+    .rotate()
+    .resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true })
+    .webp({ quality })
+    .toFile(outputPath);
+  return filename;
+}
