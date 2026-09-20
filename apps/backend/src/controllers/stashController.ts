@@ -278,19 +278,28 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
   // req.skein — здесь дозагружаем swatches/usages одним запросом.
   const id = req.skein!.id;
   try {
-    const skein = await prisma.stashSkein.findUnique({
-      where: { id },
-      select: {
-        ...SKEIN_SELECT,
-        swatches: {
-          orderBy: { createdAt: "asc" },
+    const [skein, pendingSuggestion] = await Promise.all([
+      prisma.stashSkein.findUnique({
+        where: { id },
+        select: {
+          ...SKEIN_SELECT,
+          swatches: {
+            orderBy: { createdAt: "asc" },
+          },
+          usages: {
+            orderBy: { createdAt: "desc" },
+          },
         },
-        usages: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-    res.json(skein);
+      }),
+      // Не даём подать вторую заявку на тот же артикул, пока первая ещё не
+      // рассмотрена — фронт скрывает форму дозаполнения и показывает "на
+      // рассмотрении" (кнопка "Дозаполнить" на карточке пряжи).
+      prisma.yarnFieldSuggestion.findFirst({
+        where: { yarnId: req.skein!.yarnId, status: "PENDING" },
+        select: { id: true, mPer100g: true, composition: true },
+      }),
+    ]);
+    res.json({ ...skein, pendingYarnFieldSuggestion: pendingSuggestion });
   } catch (error) {
     console.error("[Stash] getSkein failed:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -766,3 +775,83 @@ export const suggestYarns = suggestYarnsHandler;
  */
 export const createStashYarn = (req: Request, res: Response) =>
   createAuthorYarn(req, res, "STASH_USER");
+
+/**
+ * POST /stash/skeins/:id/suggest-yarn-fix — заявка на дозаполнение пустых
+ * полей (метраж/состав) справочного артикула, на который ссылается
+ * req.skein.yarnId. Отдельная сущность YarnFieldSuggestion, а не новая
+ * Yarn-строка со status: PENDING: это не новый артикул, а дельта-правка к
+ * уже APPROVED-записи, попавшей в личное хранилище пользователя как есть
+ * (см. комментарий над *Snapshot-полями StashSkein наверху файла).
+ *
+ * Ограничения:
+ * - Ничего не предлагаем поверх уже заполненного значения — иначе рядовой
+ *   пользователь мог бы тихо "исправить" верно указанный админом метраж.
+ * - Одна PENDING-заявка на артикул одновременно (проверено в getSkein для
+ *   фронта, здесь — авторитетная проверка на запись).
+ */
+export const suggestYarnFields = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const skein = req.skein!;
+  const body = req.body ?? {};
+
+  const mPer100g = body.mPer100g !== undefined && body.mPer100g !== null && body.mPer100g !== ""
+    ? Number(body.mPer100g)
+    : null;
+  const composition = typeof body.composition === "string" && body.composition.trim()
+    ? body.composition.trim()
+    : null;
+
+  if (mPer100g === null && composition === null) {
+    res.status(400).json({ error: "Укажите хотя бы одно значение" });
+    return;
+  }
+  if (mPer100g !== null && (!Number.isFinite(mPer100g) || mPer100g <= 0)) {
+    res.status(400).json({ error: "Метраж должен быть положительным числом" });
+    return;
+  }
+
+  try {
+    const yarn = await prisma.yarn.findUnique({
+      where: { id: skein.yarnId },
+      select: { mPer100g: true, composition: true },
+    });
+    if (!yarn) {
+      res.status(404).json({ error: "Артикул пряжи не найден" });
+      return;
+    }
+
+    // Не принимаем предложение по полю, которое уже заполнено — форма на
+    // фронте и так скрывает такие поля, это защита на случай гонки (кто-то
+    // другой дозаполнил тот же артикул между открытием формы и сабмитом).
+    const finalMPer100g = yarn.mPer100g == null ? mPer100g : null;
+    const finalComposition = yarn.composition == null ? composition : null;
+    if (finalMPer100g === null && finalComposition === null) {
+      res.status(409).json({ error: "Эти поля уже заполнены в справочнике" });
+      return;
+    }
+
+    const existing = await prisma.yarnFieldSuggestion.findFirst({
+      where: { yarnId: skein.yarnId, status: "PENDING" },
+      select: { id: true },
+    });
+    if (existing) {
+      res.status(409).json({ error: "Заявка по этому артикулу уже на рассмотрении" });
+      return;
+    }
+
+    const suggestion = await prisma.yarnFieldSuggestion.create({
+      data: {
+        yarnId: skein.yarnId,
+        suggestedById: userId,
+        stashSkeinId: skein.id,
+        mPer100g: finalMPer100g,
+        composition: finalComposition,
+      },
+    });
+    res.status(201).json(suggestion);
+  } catch (error) {
+    console.error("[Stash] suggestYarnFields failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

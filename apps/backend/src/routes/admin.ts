@@ -106,6 +106,9 @@ import {
   getPatternYarns,
   setPatternYarns,
   resolveMention,
+  listYarnFieldSuggestions,
+  approveYarnFieldSuggestion,
+  rejectYarnFieldSuggestion,
 } from "../controllers/yarnsController";
 import { getYarnStats } from "../controllers/yarnStatsController";
 
@@ -241,6 +244,9 @@ router.delete("/yarns/:id", deleteYarn);
 router.post("/yarns/:id/merge", mergeYarn);
 router.patch("/yarns/:id/approve", approveYarn);
 router.patch("/yarns/:id/reject", rejectPendingYarn);
+router.get("/yarn-field-suggestions", listYarnFieldSuggestions);
+router.patch("/yarn-field-suggestions/:id/approve", approveYarnFieldSuggestion);
+router.patch("/yarn-field-suggestions/:id/reject", rejectYarnFieldSuggestion);
 router.get("/patterns/:id/yarns", getPatternYarns);
 router.put("/patterns/:id/yarns", setPatternYarns);
 router.post("/yarn-mentions/:id/resolve", resolveMention);

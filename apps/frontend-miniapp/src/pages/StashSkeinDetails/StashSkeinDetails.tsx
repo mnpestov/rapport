@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
-import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
+import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { Footer } from '../../components/Footer/Footer';
 import { SwipeToDelete } from '../../components/SwipeToDelete/SwipeToDelete';
@@ -32,6 +32,11 @@ export const StashSkeinDetails: React.FC = () => {
   const [isDeletingSwatch, setIsDeletingSwatch] = useState(false);
   const [matchesLocked, setMatchesLocked] = useState(false);
   const [isMatchesPaywallOpen, setIsMatchesPaywallOpen] = useState(false);
+  const [isYarnFixFormOpen, setIsYarnFixFormOpen] = useState(false);
+  const [yarnFixMPer100g, setYarnFixMPer100g] = useState('');
+  const [yarnFixComposition, setYarnFixComposition] = useState('');
+  const [isSubmittingYarnFix, setIsSubmittingYarnFix] = useState(false);
+  const [yarnFixError, setYarnFixError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -101,6 +106,30 @@ export const StashSkeinDetails: React.FC = () => {
     }
   };
 
+  const handleSubmitYarnFix = async () => {
+    if (!skein || isSubmittingYarnFix) return;
+    const mPer100gValue = yarnFixMPer100g.trim() ? Number(yarnFixMPer100g) : undefined;
+    const compositionValue = yarnFixComposition.trim() || undefined;
+    if (mPer100gValue === undefined && compositionValue === undefined) {
+      setYarnFixError('Укажите хотя бы одно значение');
+      return;
+    }
+    setIsSubmittingYarnFix(true);
+    setYarnFixError(null);
+    try {
+      await suggestYarnFields(skein.id, { mPer100g: mPer100gValue, composition: compositionValue });
+      setSkein((prev) => prev && {
+        ...prev,
+        pendingYarnFieldSuggestion: { id: 'pending', mPer100g: mPer100gValue ?? null, composition: compositionValue ?? null },
+      });
+      setIsYarnFixFormOpen(false);
+    } catch (err) {
+      setYarnFixError(err instanceof Error ? err.message : 'Не удалось отправить заявку');
+    } finally {
+      setIsSubmittingYarnFix(false);
+    }
+  };
+
   if (loading) {
     return <p className="loading-message">Загрузка...</p>;
   }
@@ -157,6 +186,71 @@ export const StashSkeinDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {(skein.mPer100gSnapshot == null || skein.compositionSnapshot == null) && (
+        <div className="stash-details-yarn-fix">
+          {skein.pendingYarnFieldSuggestion ? (
+            <p className="stash-details-yarn-fix-pending">
+              Заявка на дозаполнение данных пряжи отправлена и ждёт проверки модератором.
+            </p>
+          ) : isYarnFixFormOpen ? (
+            <div className="stash-details-yarn-fix-form">
+              <p className="stash-details-section-title">Дозаполнить данные пряжи</p>
+              <p className="stash-details-yarn-fix-hint">
+                В справочнике не хватает части данных об этом артикуле — если знаете точные значения, предложите их. Модератор проверит перед добавлением в справочник.
+              </p>
+              {skein.mPer100gSnapshot == null && (
+                <div className="stash-details-yarn-fix-field">
+                  <label className="stash-details-yarn-fix-label">Метраж, м/100г</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="stash-details-yarn-fix-input"
+                    value={yarnFixMPer100g}
+                    onChange={(e) => setYarnFixMPer100g(e.target.value)}
+                    placeholder="Например, 240"
+                  />
+                </div>
+              )}
+              {skein.compositionSnapshot == null && (
+                <div className="stash-details-yarn-fix-field">
+                  <label className="stash-details-yarn-fix-label">Состав</label>
+                  <input
+                    type="text"
+                    className="stash-details-yarn-fix-input"
+                    value={yarnFixComposition}
+                    onChange={(e) => setYarnFixComposition(e.target.value)}
+                    placeholder="Например, 50% шерсть, 50% акрил"
+                  />
+                </div>
+              )}
+              {yarnFixError && <p className="stash-details-yarn-fix-error">{yarnFixError}</p>}
+              <div className="stash-details-yarn-fix-actions">
+                <button
+                  type="button"
+                  className="btn stash-action-btn stash-action-btn--primary"
+                  onClick={handleSubmitYarnFix}
+                  disabled={isSubmittingYarnFix}
+                >
+                  {isSubmittingYarnFix ? 'Отправка...' : 'Отправить на проверку'}
+                </button>
+                <button
+                  type="button"
+                  className="btn stash-action-btn stash-action-btn--secondary"
+                  onClick={() => { setIsYarnFixFormOpen(false); setYarnFixError(null); }}
+                  disabled={isSubmittingYarnFix}
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="stash-details-yarn-fix-button" onClick={() => setIsYarnFixFormOpen(true)}>
+              Дозаполнить данные пряжи
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="stash-details-swatches">
         <p className="stash-details-section-title">Образец</p>

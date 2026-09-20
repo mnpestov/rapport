@@ -330,6 +330,87 @@
   cursor: pointer;
 }
 
+.stash-details-yarn-fix {
+  margin-bottom: 20px;
+}
+
+.stash-details-yarn-fix-button {
+  width: 100%;
+  border: 1px dashed #bec1f4;
+  background: none;
+  padding: 12px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.stash-details-yarn-fix-pending {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #9b9a9a;
+  background: #f3f3f3;
+  border-radius: 2px;
+  padding: 12px;
+  margin: 0;
+}
+
+.stash-details-yarn-fix-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 12px;
+}
+
+.stash-details-yarn-fix-hint {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #9b9a9a;
+  margin: 0;
+}
+
+.stash-details-yarn-fix-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stash-details-yarn-fix-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #001e00;
+}
+
+.stash-details-yarn-fix-input {
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  border: 1.5px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 10px 12px;
+  color: #1d1c1c;
+}
+
+.stash-details-yarn-fix-error {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #d8520f;
+  margin: 0;
+}
+
+.stash-details-yarn-fix-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.stash-details-yarn-fix-actions .stash-action-btn {
+  height: 44px;
+  font-size: 14px;
+}
+
 .stash-notes-text {
   font-family: Mulish, sans-serif;
   font-size: 14px;

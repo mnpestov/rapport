@@ -21,6 +21,7 @@ import {
   getMatches,
   suggestYarns,
   createStashYarn,
+  suggestYarnFields,
 } from "../controllers/stashController";
 
 const router = Router();
@@ -118,6 +119,7 @@ router.patch("/swatches/:id", loadOwnedSwatch, updateSwatch);
 router.delete("/swatches/:id", loadOwnedSwatch, deleteSwatch);
 
 router.get("/skeins/:id/matches", loadOwnedSkein, getMatches);
+router.post("/skeins/:id/suggest-yarn-fix", loadOwnedSkein, suggestYarnFields);
 
 router.get("/yarns/suggest", suggestYarns);
 router.post("/yarns", createStashYarn);

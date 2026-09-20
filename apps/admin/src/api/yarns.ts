@@ -149,6 +149,32 @@ export const rejectPendingYarn = async (id: string): Promise<void> => {
   await json(await fetchWithAuth(`${API_URL}/admin/yarns/${id}/reject`, { method: "PATCH" }));
 };
 
+// Заявки на дозаполнение метража/состава уже существующего (APPROVED)
+// артикула — предложены владельцами личного хранилища пряжи. Отдельная
+// очередь от Yarn.status PENDING выше: та про новые артикулы, эта про
+// дельта-правки к живым записям.
+export interface YarnFieldSuggestionItem {
+  id: string;
+  yarnId: string;
+  mPer100g: number | null;
+  composition: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  yarn: { id: string; name: string; brand: string | null; mPer100g: number | null; composition: string | null };
+  suggestedBy: { id: string; firstName: string; lastName: string | null; username: string | null };
+}
+
+export const getYarnFieldSuggestions = async (): Promise<YarnFieldSuggestionItem[]> =>
+  json(await fetchWithAuth(`${API_URL}/admin/yarn-field-suggestions`));
+
+export const approveYarnFieldSuggestion = async (id: string): Promise<void> => {
+  await json(await fetchWithAuth(`${API_URL}/admin/yarn-field-suggestions/${id}/approve`, { method: "PATCH" }));
+};
+
+export const rejectYarnFieldSuggestion = async (id: string): Promise<void> => {
+  await json(await fetchWithAuth(`${API_URL}/admin/yarn-field-suggestions/${id}/reject`, { method: "PATCH" }));
+};
+
 // POST /author/yarns — тот же контракт, что createYarn, но status всегда
 // PENDING на бэкенде вне зависимости от переданных данных.
 export const createAuthorYarn = async (data: Partial<YarnItem>): Promise<YarnItem> =>

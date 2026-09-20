@@ -44,9 +44,19 @@ export interface StashUsage {
   createdAt: string;
 }
 
+// Заявка владельца на дозаполнение метража/состава справочного артикула
+// (yarnId), пока она ждёт рассмотрения — не даём подать вторую поверх
+// первой, показываем "на рассмотрении" вместо формы.
+export interface PendingYarnFieldSuggestion {
+  id: string;
+  mPer100g: number | null;
+  composition: string | null;
+}
+
 export interface StashSkeinDetail extends StashSkein {
   swatches: StashSwatch[];
   usages: StashUsage[];
+  pendingYarnFieldSuggestion: PendingYarnFieldSuggestion | null;
 }
 
 export interface FetchStashSkeinsResponse {
@@ -296,6 +306,26 @@ export const undoStashUsage = async (usageId: string): Promise<void> => {
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error || `Failed to undo stash usage: ${response.status}`);
+  }
+};
+
+export interface SuggestYarnFieldsPayload {
+  mPer100g?: number;
+  composition?: string;
+}
+
+// Заявка на дозаполнение метража/состава справочного артикула, на который
+// ссылается конкретный моток пользователя — уходит на модерацию (админка →
+// Пряжа → «Заявки на дозаполнение»), не меняет справочник напрямую.
+export const suggestYarnFields = async (skeinId: string, payload: SuggestYarnFieldsPayload): Promise<void> => {
+  const response = await authorizedFetch(`${API_URL}/stash/skeins/${skeinId}/suggest-yarn-fix`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 10000);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `Failed to suggest yarn fields: ${response.status}`);
   }
 };
 

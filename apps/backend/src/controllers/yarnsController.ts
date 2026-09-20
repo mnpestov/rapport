@@ -405,6 +405,67 @@ export async function deleteYarn(req: Request, res: Response) {
   res.json({ ok: true });
 }
 
+// ─── Заявки на дозаполнение полей (YarnFieldSuggestion) ────────────────────
+//
+// Отдельная очередь от Yarn.status PENDING выше — та про НОВЫЕ артикулы,
+// здесь про дельта-правки к уже APPROVED-записям, предложенные владельцами
+// личного хранилища пряжи через POST /stash/skeins/:id/suggest-yarn-fix.
+
+const YARN_FIELD_SUGGESTION_SELECT = {
+  id: true,
+  yarnId: true,
+  mPer100g: true,
+  composition: true,
+  status: true,
+  createdAt: true,
+  yarn: { select: { id: true, name: true, brand: true, mPer100g: true, composition: true } },
+  suggestedBy: { select: { id: true, firstName: true, lastName: true, username: true } },
+} satisfies Prisma.YarnFieldSuggestionSelect;
+
+export async function listYarnFieldSuggestions(_req: Request, res: Response) {
+  const suggestions = await prisma.yarnFieldSuggestion.findMany({
+    where: { status: "PENDING" },
+    select: YARN_FIELD_SUGGESTION_SELECT,
+    orderBy: { createdAt: "asc" },
+  });
+  res.json(suggestions);
+}
+
+export async function approveYarnFieldSuggestion(req: Request, res: Response) {
+  const { id } = req.params;
+  const suggestion = await prisma.yarnFieldSuggestion.findUnique({ where: { id } });
+  if (!suggestion) return res.status(404).json({ error: "Заявка не найдена" });
+  if (suggestion.status !== "PENDING") {
+    return res.status(409).json({ error: "Заявка уже рассмотрена" });
+  }
+
+  // Только заполняем то, что предложено (и только если поле ВСЁ ЕЩЁ пусто —
+  // с момента подачи заявки его мог заполнить кто-то другой), никогда не
+  // перетираем существующее значение справочника.
+  const data: Prisma.YarnUpdateInput = {};
+  const yarn = await prisma.yarn.findUnique({ where: { id: suggestion.yarnId }, select: { mPer100g: true, composition: true } });
+  if (!yarn) return res.status(404).json({ error: "Артикул не найден" });
+  if (suggestion.mPer100g != null && yarn.mPer100g == null) data.mPer100g = suggestion.mPer100g;
+  if (suggestion.composition != null && yarn.composition == null) data.composition = suggestion.composition;
+
+  await prisma.$transaction([
+    prisma.yarn.update({ where: { id: suggestion.yarnId }, data }),
+    prisma.yarnFieldSuggestion.update({ where: { id }, data: { status: "APPROVED" } }),
+  ]);
+  res.json({ ok: true });
+}
+
+export async function rejectYarnFieldSuggestion(req: Request, res: Response) {
+  const { id } = req.params;
+  const suggestion = await prisma.yarnFieldSuggestion.findUnique({ where: { id }, select: { status: true } });
+  if (!suggestion) return res.status(404).json({ error: "Заявка не найдена" });
+  if (suggestion.status !== "PENDING") {
+    return res.status(409).json({ error: "Заявка уже рассмотрена" });
+  }
+  await prisma.yarnFieldSuggestion.update({ where: { id }, data: { status: "REJECTED" } });
+  res.json({ ok: true });
+}
+
 // ─── Связи описания ────────────────────────────────────────────────────────
 
 export async function getPatternYarns(req: Request, res: Response) {

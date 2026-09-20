@@ -88,14 +88,14 @@ model Author {
   user        User?              @relation("UserAuthor")
 
   // Свободный текст для админа, пользователям не виден.
-  comment String?
+  comment                    String?
   // Мы запросили у автора разрешение публиковать его контент. Ставит админ вручную.
   contentPermissionRequested Boolean @default(false)
   // Автор попросил удалить себя из Раппорта. Ставит админ вручную. Пока
   // стоит — новинки автора (AuthorSyncReport) не показываются админу в
   // очереди модерации. Парсинг author_sync.py продолжается: автор может
   // передумать, снятие флага возвращает всё как было.
-  removalRequested Boolean @default(false)
+  removalRequested           Boolean @default(false)
 }
 
 model ProductType {
@@ -175,7 +175,7 @@ model Yarn {
 
   sourceName   String?
   sourceUrl    String?
-  isActive     Boolean    @default(true)
+  isActive     Boolean        @default(true)
   // PENDING — создан автором через POST /author/yarns, ждёт проверки, не
   // виден в suggestYarns. APPROVED — прошёл проверку (или создан админом
   // через POST /admin/yarns — default), виден в справочнике как сейчас.
@@ -187,7 +187,7 @@ model Yarn {
   // физически, для личных заявок с хранилищем это стало бы потерей данных
   // пользователя. Не путать с YarnMentionStatus — тоже использует PENDING,
   // но для PatternYarnMention, не связанная модель.
-  status       YarnStatus @default(APPROVED)
+  status       YarnStatus     @default(APPROVED)
   // Источник заявки — только для PENDING/REJECTED, различает уровень доверия
   // при модерации: AUTHOR — через существующий POST /author/yarns (узкий,
   // проверенный круг), STASH_USER — через POST /stash/yarns (потенциально
@@ -198,15 +198,16 @@ model Yarn {
   // победителя: связи на неё уже могли разойтись по описаниям, и удаление
   // порвало бы их.
   mergedIntoId String?
-  mergedInto   Yarn?   @relation("YarnMerge", fields: [mergedIntoId], references: [id])
-  mergedFrom   Yarn[]  @relation("YarnMerge")
+  mergedInto   Yarn?          @relation("YarnMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom   Yarn[]         @relation("YarnMerge")
 
-  aliases      YarnAlias[]
-  patterns     PatternYarn[]
-  drafts       DraftYarn[]
-  suggestedFor PatternYarnMention[] @relation("YarnSuggested")
-  resolvedFor  PatternYarnMention[] @relation("YarnResolved")
-  stashSkeins  StashSkein[]
+  aliases          YarnAlias[]
+  patterns         PatternYarn[]
+  drafts           DraftYarn[]
+  suggestedFor     PatternYarnMention[]  @relation("YarnSuggested")
+  resolvedFor      PatternYarnMention[]  @relation("YarnResolved")
+  stashSkeins      StashSkein[]
+  fieldSuggestions YarnFieldSuggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -219,6 +220,52 @@ model Yarn {
 enum YarnCreatedVia {
   AUTHOR
   STASH_USER
+}
+
+// Заявка пользователя хранилища пряжи на дозаполнение пустых полей УЖЕ
+// СУЩЕСТВУЮЩЕГО справочного артикула (metraж/состав/спицы и т.п.) — не
+// новый артикул на модерации (для этого есть Yarn.status: PENDING), а
+// именно дельта-предложение к живой APPROVED-записи. Разделены намеренно:
+// смешать оба случая в одном Yarn.status привело бы к путанице "это новый
+// артикул или правка старого?" прямо в очереди модерации.
+//
+// Поля-кандидаты — те же самые характеристики, что у Yarn, но ВСЕ nullable
+// здесь независимо от Yarn: пользователь мог знать только метраж, не зная
+// состав, тогда предлагается только mPer100g, остальные остаются null и не
+// затрагиваются при одобрении.
+model YarnFieldSuggestion {
+  id     String @id @default(uuid())
+  yarnId String
+  yarn   Yarn   @relation(fields: [yarnId], references: [id], onDelete: Cascade)
+
+  suggestedById String
+  suggestedBy   User   @relation(fields: [suggestedById], references: [id])
+
+  // Тот же StashSkein, из карточки которого пользователь увидел пробел в
+  // данных — не обязателен (заявка переживает удаление скейна), но полезен
+  // модератору как контекст ("почему вообще предложили это значение").
+  stashSkeinId String?
+
+  mPer100g      Int?
+  composition   String?
+  needleSizeRaw String?
+  densityRaw    String?
+  ballWeightG   Int?
+  ballLengthM   Int?
+
+  status YarnFieldSuggestionStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([yarnId])
+  @@index([status])
+}
+
+enum YarnFieldSuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // Как пряжу пишут люди: опечатки («Lana Gossa»), транслитерации («Сеам»),
@@ -432,24 +479,24 @@ enum PaymentStatus {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  telegramId   BigInt    @unique
-  firstName    String
-  lastName     String?
-  username     String?
-  languageCode String?
-  isPremium    Boolean   @default(false)
-  role         UserRole  @default(USER)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastSeenAt   DateTime?
+  id              String    @id @default(uuid())
+  telegramId      BigInt    @unique
+  firstName       String
+  lastName        String?
+  username        String?
+  languageCode    String?
+  isPremium       Boolean   @default(false)
+  role            UserRole  @default(USER)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastSeenAt      DateTime?
   // Канал последнего входа: "tg" (Mini App) или "web" (браузер). Пишется
   // в тех же местах, что и lastSeenAt (authController, createWebSession,
   // refresh). null — у пользователей, не заходивших после раскатки поля.
   lastSeenChannel String?
-  platform     String?
-  tgVersion    String?
-  userAgent    String?
+  platform        String?
+  tgVersion       String?
+  userAgent       String?
 
   // Paywall banner "1 in 7 days" gate — see PAYWALL_BANNER_PLAN.md §3.
   // lastPaywallClickedAt is not read anywhere yet, kept purely for future
@@ -513,10 +560,11 @@ model User {
   closedDrafts  Draft[]          @relation("DraftClosedBy")
   refreshTokens RefreshToken[]
 
-  authorApplications AuthorApplication[]
-  credential         UserCredential?
-  webSessions        WebSession[]
-  stashSkeins        StashSkein[]
+  authorApplications   AuthorApplication[]
+  credential           UserCredential?
+  webSessions          WebSession[]
+  stashSkeins          StashSkein[]
+  yarnFieldSuggestions YarnFieldSuggestion[]
 }
 
 model UserFavorite {
@@ -632,7 +680,7 @@ model SearchQuery {
   // Откуда пришло событие: 'miniapp' (Telegram) или 'web' (браузер).
   // Nullable — события до появления браузерной версии платформы не знают,
   // все они фактически из Mini App (BROWSER_ACCESS_PLAN.md §4.5, P2).
-  platform  String?
+  platform     String?
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -821,7 +869,7 @@ model AuthorApplication {
   // self-serve логина: approve для них придумывает логин из имени, как раньше.
   desiredLogin String?
 
-  status ApplicationStatus @default(PENDING)
+  status       ApplicationStatus @default(PENDING)
   // Set by an admin on needs-info/reject; explains what's missing or why.
   adminComment String?
   // The applicant's free-text reply to adminComment, submitted via the bot's
@@ -874,11 +922,11 @@ model UserCredential {
   // True on every credential issuance (approve, direct grant, resend) —
   // forces a change before the temp password can be used for anything past
   // /change-password. See implementation_plan.md §3.2 step 8.
-  mustChangePassword Boolean @default(true)
+  mustChangePassword Boolean   @default(true)
   // Set after MAX_LOGIN_ATTEMPTS consecutive failures; cleared on success or
   // on a password change/reset. Not the same as a permanent ban — this is a
   // rolling lockout window (see webAuthController.ts's LOGIN_LOCK_MS).
-  lockedUntil DateTime?
+  lockedUntil        DateTime?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1178,8 +1226,8 @@ model StashSwatch {
   skeinId String
   skein   StashSkein @relation(fields: [skeinId], references: [id], onDelete: Cascade)
 
-  images        String[] @default([])
-  needleSizeRaw String?
+  images                String[] @default([])
+  needleSizeRaw         String?
   // Плотность ДО ВТО — тот же формат чисел, что у Pattern.densityStitches/Rows.
   densityStitchesBefore Decimal? @db.Decimal(5, 2)
   densityRowsBefore     Decimal? @db.Decimal(5, 2)

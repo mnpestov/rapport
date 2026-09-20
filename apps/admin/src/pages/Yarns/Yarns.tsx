@@ -14,12 +14,16 @@ import {
   mergeYarn,
   approveYarn,
   rejectPendingYarn,
+  YarnFieldSuggestionItem,
+  getYarnFieldSuggestions,
+  approveYarnFieldSuggestion,
+  rejectYarnFieldSuggestion,
 } from "../../api/yarns";
 import { YarnEditModal } from "./YarnEditModal";
 import { YarnMergeModal } from "./YarnMergeModal";
 import styles from "./Yarns.module.css";
 
-type TabValue = "catalog" | "pending";
+type TabValue = "catalog" | "pending" | "field-suggestions";
 
 /**
  * Справочник артикулов пряжи. В отличие от Dictionaries — 2778 строк, поэтому
@@ -63,6 +67,13 @@ export function Yarns() {
   const [rejectingItem, setRejectingItem] = useState<YarnItem | null>(null);
   const [rejecting, setRejecting] = useState(false);
 
+  // Заявки на дозаполнение метража/состава уже существующих (APPROVED)
+  // артикулов — предложены владельцами личного хранилища пряжи. Отдельная
+  // очередь от pendingItems выше: та про новые артикулы, эта про дельту к
+  // живым записям справочника.
+  const [fieldSuggestions, setFieldSuggestions] = useState<YarnFieldSuggestionItem[]>([]);
+  const [fieldSuggestionsLoading, setFieldSuggestionsLoading] = useState(true);
+
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 300);
     return () => clearTimeout(t);
@@ -105,6 +116,43 @@ export function Yarns() {
   useEffect(() => {
     loadPending();
   }, [loadPending]);
+
+  const loadFieldSuggestions = useCallback(async () => {
+    setFieldSuggestionsLoading(true);
+    try {
+      const res = await getYarnFieldSuggestions();
+      setFieldSuggestions(res);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось загрузить заявки");
+    } finally {
+      setFieldSuggestionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFieldSuggestions();
+  }, [loadFieldSuggestions]);
+
+  const handleApproveFieldSuggestion = async (item: YarnFieldSuggestionItem) => {
+    try {
+      await approveYarnFieldSuggestion(item.id);
+      toast.success(`Данные «${item.yarn.name}» дозаполнены`);
+      loadFieldSuggestions();
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось одобрить");
+    }
+  };
+
+  const handleRejectFieldSuggestion = async (item: YarnFieldSuggestionItem) => {
+    try {
+      await rejectYarnFieldSuggestion(item.id);
+      toast.success("Заявка отклонена");
+      loadFieldSuggestions();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось отклонить");
+    }
+  };
 
   const handleSave = async (data: Partial<YarnItem>) => {
     try {
@@ -200,6 +248,7 @@ export function Yarns() {
         tabs={[
           { value: "catalog", label: "Справочник" },
           { value: "pending", label: "На проверке", count: pendingItems.length || undefined },
+          { value: "field-suggestions", label: "Заявки на дозаполнение", count: fieldSuggestions.length || undefined },
         ]}
         activeTab={tab}
         onTabChange={(v) => setTab(v as TabValue)}
@@ -218,12 +267,12 @@ export function Yarns() {
                 Добавить
               </Button>
             </>
-          ) : (
+          ) : tab === "pending" ? (
             <label className={styles.checkbox}>
               <input type="checkbox" checked={stashOnly} onChange={(e) => setStashOnly(e.target.checked)} />
               Только из хранилища
             </label>
-          )
+          ) : undefined
         }
       />
 
@@ -289,7 +338,7 @@ export function Yarns() {
             </div>
           )}
         </>
-      ) : (
+      ) : tab === "pending" ? (
         <div className={styles.table}>
           <div className={styles.headRow}>
             <span>Название</span>
@@ -349,6 +398,46 @@ export function Yarns() {
             <div className={styles.empty}>
               {stashOnly ? "Нет заявок из хранилища пряжи" : "Нет артикулов на проверке"}
             </div>
+          )}
+        </div>
+      ) : (
+        <div className={styles.table}>
+          <div className={styles.headRow}>
+            <span>Артикул</span>
+            <span>Предложенный метраж</span>
+            <span>Предложенный состав</span>
+            <span>Кто предложил</span>
+            <span />
+          </div>
+          {fieldSuggestions.map((s) => (
+            <div key={s.id} className={styles.row}>
+              <span className={styles.nameCell}>
+                <span className={styles.name}>{s.yarn.name}</span>
+                {s.yarn.brand && <span className={styles.clip}>{s.yarn.brand}</span>}
+              </span>
+              <span className={s.mPer100g == null ? styles.missing : undefined}>
+                {s.mPer100g != null ? `${s.mPer100g} м/100 г` : "—"}
+              </span>
+              <span className={styles.clip} title={s.composition || ""}>{s.composition || "—"}</span>
+              <span className={styles.clip}>
+                {s.suggestedBy.username ? `@${s.suggestedBy.username}` : `${s.suggestedBy.firstName} ${s.suggestedBy.lastName || ""}`.trim()}
+              </span>
+              <span className={styles.actions}>
+                <IconButton onClick={() => handleApproveFieldSuggestion(s)} title="Одобрить" style={{ color: "var(--brand)" }}>
+                  <Check size={16} />
+                </IconButton>
+                <IconButton
+                  onClick={() => handleRejectFieldSuggestion(s)}
+                  title="Отклонить"
+                  style={{ color: "var(--danger)" }}
+                >
+                  <X size={16} />
+                </IconButton>
+              </span>
+            </div>
+          ))}
+          {!fieldSuggestionsLoading && fieldSuggestions.length === 0 && (
+            <div className={styles.empty}>Нет заявок на дозаполнение</div>
           )}
         </div>
       )}
