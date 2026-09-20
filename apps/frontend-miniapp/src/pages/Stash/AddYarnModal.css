@@ -123,6 +123,13 @@
   color: #001e00;
 }
 
+.add-yarn-field-hint {
+  font-family: Mulish, sans-serif;
+  font-size: 11px;
+  color: #9b9a9a;
+  margin: 0;
+}
+
 .add-yarn-input,
 .add-yarn-textarea {
   font-family: Mulish, sans-serif;
