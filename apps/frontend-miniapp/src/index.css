@@ -166,12 +166,11 @@ body {
 body.has-tab-bar {
   /* Реальная высота .tab-bar (TabBar.css): 22px иконка + 6px margin-top
      лейбла + ~11px текст лейбла (line-height 1.1 при font-size 10px) +
-     10px верхний padding + 10px нижний padding (до safe-area) ≈ 59px,
-     округлено вверх до 60px. Раньше был указан устаревший расчёт (36px
-     иконка) — итоговое число (77px) резервировало на ~17px больше
-     реального таб-бара, из-за чего футер каждой страницы отступал от него
-     дальше, чем нужно. */
-  --tab-bar-reserve: calc(60px + env(safe-area-inset-bottom));
+     10px верхний padding + 40px нижний padding (до safe-area) ≈ 89px,
+     округлено вверх до 90px. Нижний padding увеличен с 10px до 40px —
+     держать эту сумму синхронно с .tab-bar { padding } в TabBar.css,
+     иначе Footer снова окажется на неверном расстоянии от таб-бара. */
+  --tab-bar-reserve: calc(90px + env(safe-area-inset-bottom));
 }
 
 h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {
