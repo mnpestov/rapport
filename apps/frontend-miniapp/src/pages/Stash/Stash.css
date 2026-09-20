@@ -46,7 +46,7 @@
    поиском). */
 .stash-summary-row {
   display: grid;
-  grid-template-columns: 5fr 2fr;
+  grid-template-columns: 6fr 2fr;
   align-items: stretch;
   gap: 10px;
   margin: 7px 0;
