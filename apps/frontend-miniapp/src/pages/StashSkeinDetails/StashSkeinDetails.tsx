@@ -265,7 +265,7 @@ export const StashSkeinDetails: React.FC = () => {
                   Дозаполнить данные пряжи
                 </button>
               )
-            )}
+            }
           </div>
         );
       })()}
