@@ -2,7 +2,7 @@
    и на Catalog/Favorites — var(--tab-bar-reserve) уже резервирует его
    реальную высоту (включая safe-area, см. index.css). */
 .stash-container {
-  padding: 0 16px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
+  padding: 0 16px calc(20px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
   font-family: Mulish, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   min-height: 100vh;
@@ -22,7 +22,7 @@
    Селектор через .stash-container>.app-footer, а не голый .app-footer,
    чтобы не задеть Footer на других страницах, где это поведение не
    проверялось. */
-.stash-container > .app-footer {
+.stash-container>.app-footer {
   margin-top: auto;
 }
 
@@ -187,7 +187,7 @@
   display: flex;
   gap: 8px;
   align-items: stretch;
-  background: #f3f3f3;
+  background: #ffffff;
   border: none;
   border-radius: 2px;
   padding: 0;
@@ -196,8 +196,13 @@
   width: 100%;
 }
 
+/* Высота фиксирована явно — раньше её задавал только img (height: 100%),
+   которая наследует высоту от родителя, но родителю (.stash-card, flex
+   align-items: stretch) её было неоткуда взять, кроме самой img — карточки
+   "скакали" по высоте вслед за пропорциями конкретного фото пряжи. */
 .stash-card-image {
   width: 90px;
+  height: 90px;
   flex-shrink: 0;
   background: #f3f3f3;
   border-radius: 2px;

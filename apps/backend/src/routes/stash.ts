@@ -1,10 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middlewares/auth";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { loadOwnedSkein, loadOwnedSwatch, loadOwnedUsage } from "../middlewares/loadOwnedSkein";
+import { normalizeUploadedImage } from "../utils/imagePipeline";
 import {
   listSkeins,
   createSkein,
@@ -42,13 +44,15 @@ router.use(requireAuth, requireAdmin);
 // размера), но пишет в другую папку и требует PREMIUM_YARN_STASH, а не
 // AUTHOR_CABINET — тот гейт уже применён общим router.use() выше.
 // ---------------------------------------------------------------------------
+const STASH_UPLOADS_DIR = path.join(__dirname, "../../uploads/yarn-stash");
+
 const stashStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, "../../uploads/yarn-stash"));
+    cb(null, STASH_UPLOADS_DIR);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname) || ".webp";
-    cb(null, `${uuidv4()}${ext}`);
+    cb(null, `tmp-${uuidv4()}${ext}`);
   },
 });
 
@@ -80,12 +84,23 @@ router.post(
       next();
     });
   },
-  (req, res) => {
+  async (req, res) => {
     if (!req.file) {
       res.status(400).json({ error: "No file uploaded" });
       return;
     }
-    res.json({ url: `/uploads/yarn-stash/${req.file.filename}` });
+    // Тот же detail-предел, что и у admin/upload (описания) — раньше фото
+    // хранилища сохранялись как есть, любого размера/пропорций, из-за чего
+    // карточки в списке "скакали" по высоте вслед за исходным фото.
+    try {
+      const filename = await normalizeUploadedImage(req.file.path, STASH_UPLOADS_DIR);
+      res.json({ url: `/uploads/yarn-stash/${filename}` });
+    } catch (error) {
+      console.error("[stash/upload] Failed to normalize image:", error);
+      res.status(400).json({ error: "Invalid or corrupt image" });
+    } finally {
+      fs.unlink(req.file.path, () => {});
+    }
   }
 );
 
