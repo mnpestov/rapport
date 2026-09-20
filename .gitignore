@@ -126,6 +126,21 @@ BACKLOG.md
 SECURITY_FIXES_PLAN.md
 CODE_REVIEW_BACKLOG.md
 
+# Планы/брифы фич и локальный dev-инфраструктурный файл — только упоминаются
+# в комментариях кода как справочные ссылки (§N), ни один рантайм/скрипт их
+# не читает программно. Не нужны на проде (git pull разворачивает их туда
+# бессмысленно), история решений остаётся в старых коммитах git.
+AUTHOR_CABINET.md
+DESIGNER_BRIEF_public_pages.md
+DESIGN_SYSTEM.md
+PAID_TIER_PERMISSIONS_PLAN.md
+PAID_TIER_ROLLOUT_PLAN.md
+PAYMENTS_ROBOKASSA_PLAN.md
+YARN_ARTICLES_PLAN.md
+YARN_STASH_PLAN.md
+pattern_images_plan.md
+docker-compose.yml
+
 # Сохранённые страницы чужих сайтов, из которых собирался справочник
 # (Malabrigo, Астра Премиум, ARTLAND). В репозитории им не место: это
 # десятки мегабайт чужой вёрстки и картинок. Воспроизводимость держится
