@@ -162,7 +162,7 @@ export const StashSkeinDetails: React.FC = () => {
           Назад
         </button>
         <button type="button" className="stash-details-edit-button" onClick={() => setIsEditOpen(true)} aria-label="Редактировать">
-          <SquarePen size={24} strokeWidth={1.5} />
+          <SquarePen size={24} strokeWidth={1.5} stroke="#9B9A9A" />
         </button>
       </div>
 
