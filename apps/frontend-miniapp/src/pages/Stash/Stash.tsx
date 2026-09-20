@@ -7,6 +7,7 @@ import { AddYarnModal } from './AddYarnModal';
 import { SwipeableStashCard } from './SwipeableStashCard';
 import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
+import yarnIcon from '../../components/TabBar/icons/yarn-inactive.svg';
 import './Stash.css';
 
 function formatWeight(grams: number): string {
@@ -111,8 +112,21 @@ export const Stash: React.FC = () => {
       </div>
 
       {!loading && (
-        <div className="stash-total-weight">
-          Общий вес пряжи: <strong>{formatWeight(totalWeight)}</strong>
+        <div className="stash-summary-row">
+          <div className="stash-total-weight">
+            <img src={yarnIcon} alt="" className="stash-total-weight-icon" />
+            <div className="stash-total-weight-text">
+              <p className="stash-total-weight-label">Общий вес пряжи:</p>
+              <p className="stash-total-weight-value">{formatWeight(totalWeight)}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`stash-tab${showArchived ? ' stash-tab--active' : ''}`}
+            onClick={() => setShowArchived((v) => !v)}
+          >
+            Архив
+          </button>
         </div>
       )}
 
@@ -130,13 +144,6 @@ export const Stash: React.FC = () => {
             onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
-        <button
-          type="button"
-          className={`stash-tab${showArchived ? ' stash-tab--active' : ''}`}
-          onClick={() => setShowArchived((v) => !v)}
-        >
-          Архив
-        </button>
       </div>
 
       {!loading && !error && (
