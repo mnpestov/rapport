@@ -7,7 +7,7 @@ import { AddYarnModal } from './AddYarnModal';
 import { SwipeableStashCard } from './SwipeableStashCard';
 import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
-import yarnIcon from '../../components/TabBar/icons/yarn-inactive.svg';
+import yarnIcon from '../../assets/stash/yarn-icon-black.svg';
 import './Stash.css';
 
 function formatWeight(grams: number): string {
