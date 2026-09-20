@@ -264,6 +264,19 @@ export const createStashSwatch = async (skeinId: string, payload: CreateStashSwa
   return withImageUrls(await response.json());
 };
 
+export const updateStashSwatch = async (id: string, payload: CreateStashSwatchPayload): Promise<StashSwatch> => {
+  const response = await authorizedFetch(`${API_URL}/stash/swatches/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 10000);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `Failed to update swatch: ${response.status}`);
+  }
+  return withImageUrls(await response.json());
+};
+
 export const deleteStashSwatch = async (id: string): Promise<void> => {
   const response = await authorizedFetch(`${API_URL}/stash/swatches/${id}`, { method: 'DELETE' }, 10000);
   if (!response.ok) {
