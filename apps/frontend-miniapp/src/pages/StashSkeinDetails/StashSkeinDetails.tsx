@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, Plus, SquarePen } from 'lucide-react';
 import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { Footer } from '../../components/Footer/Footer';
@@ -8,10 +8,12 @@ import { SwipeToDelete } from '../../components/SwipeToDelete/SwipeToDelete';
 import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { AddSwatchModal } from './AddSwatchModal';
+import { EditSkeinModal } from './EditSkeinModal';
 import { LogUsageWizard } from './LogUsageWizard';
 import { StashImageCarousel } from './StashImageCarousel';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
-import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
+// import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
+import yarnPlaceholder from '../../components/TabBar/icons/project.svg';
 import './StashSkeinDetails.css';
 
 export const StashSkeinDetails: React.FC = () => {
@@ -23,6 +25,7 @@ export const StashSkeinDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddSwatchOpen, setIsAddSwatchOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLogUsageOpen, setIsLogUsageOpen] = useState(false);
   const [openSwipeUsageId, setOpenSwipeUsageId] = useState<string | null>(null);
   const [deleteUsageTarget, setDeleteUsageTarget] = useState<StashUsage | null>(null);
@@ -157,6 +160,9 @@ export const StashSkeinDetails: React.FC = () => {
           <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
           Назад
         </button>
+        <button type="button" className="stash-details-edit-button" onClick={() => setIsEditOpen(true)} aria-label="Редактировать">
+          <SquarePen size={24} strokeWidth={1.5} />
+        </button>
       </div>
 
       <div className="stash-details-image-wrapper">
@@ -260,7 +266,7 @@ export const StashSkeinDetails: React.FC = () => {
             isOpen={openSwipeSwatchId === swatch.id}
             onSwipeOpen={() => setOpenSwipeSwatchId(swatch.id)}
             onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
-            onTap={() => {}}
+            onTap={() => { }}
             onRequestDelete={() => setDeleteSwatchTarget(swatch)}
             cardClassName="stash-swatch-block"
           >
@@ -277,8 +283,9 @@ export const StashSkeinDetails: React.FC = () => {
             )}
           </SwipeToDelete>
         ))}
-        <button type="button" className="stash-add-swatch-btn" onClick={() => setIsAddSwatchOpen(true)}>
-          + Добавить образец
+        <button type="button" className="stash-add-button" onClick={() => setIsAddSwatchOpen(true)}>
+          <Plus size={32} strokeWidth={1} className="stash-add-button-plus" />
+          Добавить образец
         </button>
       </div>
 
@@ -381,6 +388,16 @@ export const StashSkeinDetails: React.FC = () => {
         onClose={() => setIsAddSwatchOpen(false)}
         onCreated={() => {
           setIsAddSwatchOpen(false);
+          load();
+        }}
+      />
+
+      <EditSkeinModal
+        isOpen={isEditOpen}
+        skein={skein}
+        onClose={() => setIsEditOpen(false)}
+        onSaved={() => {
+          setIsEditOpen(false);
           load();
         }}
       />

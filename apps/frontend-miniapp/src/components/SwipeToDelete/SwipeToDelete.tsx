@@ -37,27 +37,50 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef<number | null>(null);
+  const startYRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
   // Отличает свайп от тапа — тап должен сработать, свайп не должен.
   const movedRef = useRef(false);
+  // null — направление ещё не определено (движение только начинается,
+  // слишком маленькое, чтобы понять намерение). true — жест распознан как
+  // вертикальный скролл, горизонтальный сдвиг карточки в этом касании
+  // больше не применяется вообще (не просто "малое движение": однажды
+  // определённый как скролл жест остаётся скроллом до touchend, иначе
+  // рука, слегка выправившая траекторию на середине скролла, дёргала бы
+  // карточку). false — жест распознан как горизонтальный свайп.
+  const isVerticalScrollRef = useRef<boolean | null>(null);
 
   const baseOffset = isOpen ? -DELETE_BUTTON_WIDTH : 0;
   const offset = isDragging ? dragX : baseOffset;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startXRef.current = e.touches[0].clientX;
+    startYRef.current = e.touches[0].clientY;
     draggingRef.current = true;
     setIsDragging(true);
     movedRef.current = false;
+    isVerticalScrollRef.current = null;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (startXRef.current == null) return;
-    const delta = e.touches[0].clientX - startXRef.current;
-    if (Math.abs(delta) > 4) movedRef.current = true;
+    if (startXRef.current == null || startYRef.current == null) return;
+    const deltaX = e.touches[0].clientX - startXRef.current;
+    const deltaY = e.touches[0].clientY - startYRef.current;
+
+    if (isVerticalScrollRef.current === null) {
+      // Ждём, пока жест наберёт хотя бы 8px в одном из направлений —
+      // на паре первых пикселей направление ещё шумит (палец не двигается
+      // идеально прямо), решать по ним рано.
+      if (Math.hypot(deltaX, deltaY) < 8) return;
+      isVerticalScrollRef.current = Math.abs(deltaY) > Math.abs(deltaX);
+    }
+
+    if (isVerticalScrollRef.current) return; // это скролл страницы, карточку не двигаем
+
+    if (Math.abs(deltaX) > 4) movedRef.current = true;
     // Свайп только влево из закрытого состояния, только вправо (закрытие)
     // из открытого — не даём утянуть карточку за пределы [-width, 0].
-    const next = Math.min(0, Math.max(-DELETE_BUTTON_WIDTH, baseOffset + delta));
+    const next = Math.min(0, Math.max(-DELETE_BUTTON_WIDTH, baseOffset + deltaX));
     setDragX(next);
   };
 
@@ -65,6 +88,15 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     draggingRef.current = false;
     setIsDragging(false);
     startXRef.current = null;
+    startYRef.current = null;
+    if (isVerticalScrollRef.current) {
+      // Скролл — оставляем карточку в текущем состоянии как было (баг:
+      // без этой ветки onSwipeClose() ниже закрывал бы уже открытую
+      // карточку на каждый вертикальный скролл мимо нее).
+      isVerticalScrollRef.current = null;
+      return;
+    }
+    isVerticalScrollRef.current = null;
     if (dragX <= -OPEN_THRESHOLD) {
       onSwipeOpen();
     } else {

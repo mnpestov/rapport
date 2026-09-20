@@ -7,8 +7,23 @@
   margin: 0 auto;
 }
 
+/* Figma node-id=1234:7949 — "Назад" слева, кнопка редактирования справа. */
 .stash-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 12px 0;
+}
+
+.stash-details-edit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #1d1c1c;
+  cursor: pointer;
 }
 
 .stash-details-error {
@@ -39,8 +54,8 @@
 }
 
 .stash-details-image-placeholder img {
-  width: 40%;
-  height: 40%;
+  /* width: 40%;
+  height: 40%; */
   object-fit: contain;
 }
 
@@ -191,7 +206,7 @@
   background: #f3f3f3;
 }
 
-.stash-usage-image > img {
+.stash-usage-image>img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -206,8 +221,8 @@
 }
 
 .stash-usage-image-placeholder img {
-  width: 60%;
-  height: 60%;
+  width: 80%;
+  /* height: 60%; */
   object-fit: contain;
 }
 
@@ -318,16 +333,26 @@
   margin-bottom: 12px;
 }
 
-.stash-add-swatch-btn {
+/* Тот же паттерн, что "Добавить пряжу" в списке хранилища (Stash.css) —
+   пользователь попросил свёрстать идентично. */
+.stash-add-button {
+  display: flex;
+  align-items: center;
+  gap: 20px;
   width: 100%;
   border: 1px solid #e5e5e5;
   background: none;
-  padding: 12px;
+  padding: 5px 20px;
   border-radius: 2px;
   font-family: Mulish, sans-serif;
   font-size: 14px;
-  color: #9b9a9a;
+  color: #1d1c1c;
   cursor: pointer;
+}
+
+.stash-add-button-plus {
+  color: #9b9a9a;
+  flex-shrink: 0;
 }
 
 .stash-details-yarn-fix {
