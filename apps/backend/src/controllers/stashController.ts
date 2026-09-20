@@ -358,8 +358,21 @@ export const updateSkein = async (req: Request, res: Response): Promise<void> =>
 export const deleteSkein = async (req: Request, res: Response): Promise<void> => {
   const id = req.skein!.id;
   try {
-    // onDelete: Cascade на StashSwatch/StashUsage.skein — удаляет их вместе.
-    await prisma.stashSkein.delete({ where: { id } });
+    // stashSkeinId у YarnFieldSuggestion — не настоящая Prisma-связь (нет FK,
+    // намеренно: "заявка переживает удаление скейна", см. комментарий у
+    // suggestYarnFields), поэтому без явной очистки здесь PENDING-заявка
+    // осиротела бы: её mPer100g/composition уже записаны в snapshot
+    // удаляемого мотка и пропадут вместе с ним, а "одна PENDING-заявка на
+    // артикул" продолжала бы блокировать дозаполнение этого же артикула
+    // другими мотками пользователя (или другими пользователями) навсегда.
+    await prisma.$transaction([
+      prisma.yarnFieldSuggestion.updateMany({
+        where: { stashSkeinId: id, status: "PENDING" },
+        data: { status: "REJECTED" },
+      }),
+      // onDelete: Cascade на StashSwatch/StashUsage.skein — удаляет их вместе.
+      prisma.stashSkein.delete({ where: { id } }),
+    ]);
     res.json({ ok: true });
   } catch (error) {
     console.error("[Stash] deleteSkein failed:", error);
@@ -784,6 +797,16 @@ export const createStashYarn = (req: Request, res: Response) =>
  * уже APPROVED-записи, попавшей в личное хранилище пользователя как есть
  * (см. комментарий над *Snapshot-полями StashSkein наверху файла).
  *
+ * Значение видно владельцу СРАЗУ (mPer100gSnapshot/compositionSnapshot
+ * этого конкретного StashSkein обновляются в той же транзакции, что и
+ * заявка) — параллельно уходит на модерацию для попадания в общий
+ * справочник. Если админ отклонит YarnFieldSuggestion, Yarn.mPer100g/
+ * composition НЕ трогаются (rejectYarnFieldSuggestion просто помечает
+ * status: REJECTED), а снапшот у владельца, уже обновлённый здесь,
+ * остаётся как есть — тот же принцип "снапшот как единственный источник
+ * для отображения", что и у остальных *Snapshot-полей: справочник и личная
+ * карточка расходятся сознательно, а не по багу.
+ *
  * Ограничения:
  * - Ничего не предлагаем поверх уже заполненного значения — иначе рядовой
  *   пользователь мог бы тихо "исправить" верно указанный админом метраж.
@@ -840,15 +863,22 @@ export const suggestYarnFields = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const suggestion = await prisma.yarnFieldSuggestion.create({
-      data: {
-        yarnId: skein.yarnId,
-        suggestedById: userId,
-        stashSkeinId: skein.id,
-        mPer100g: finalMPer100g,
-        composition: finalComposition,
-      },
-    });
+    const skeinSnapshotUpdate: Prisma.StashSkeinUpdateInput = {};
+    if (finalMPer100g !== null) skeinSnapshotUpdate.mPer100gSnapshot = finalMPer100g;
+    if (finalComposition !== null) skeinSnapshotUpdate.compositionSnapshot = finalComposition;
+
+    const [suggestion] = await prisma.$transaction([
+      prisma.yarnFieldSuggestion.create({
+        data: {
+          yarnId: skein.yarnId,
+          suggestedById: userId,
+          stashSkeinId: skein.id,
+          mPer100g: finalMPer100g,
+          composition: finalComposition,
+        },
+      }),
+      prisma.stashSkein.update({ where: { id: skein.id }, data: skeinSnapshotUpdate }),
+    ]);
     res.status(201).json(suggestion);
   } catch (error) {
     console.error("[Stash] suggestYarnFields failed:", error);
