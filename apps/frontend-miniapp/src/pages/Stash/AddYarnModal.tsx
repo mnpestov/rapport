@@ -4,6 +4,7 @@ import {
   createStashSkein,
   createStashSwatch,
   suggestStashYarns,
+  suggestYarnFields,
   uploadStashImage,
   StashLimitReachedError,
   StashSkein,
@@ -223,6 +224,30 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             }),
       });
 
+      // Артикул уже существовал (selectedYarn), но пользователь дозаполнил
+      // пустое поле метража/состава — createSkein снапшотит Yarn as-is и
+      // это значение из формы никуда не сохраняет (см. AddYarnModal disabled
+      // логику выше), поэтому шлём отдельной заявкой на модерацию, тем же
+      // путём, что и кнопка "Дозаполнить" на карточке пряжи. Бэкенд пишет
+      // значение в snapshot этого же мотка сразу (видно владельцу
+      // немедленно, справочник обновится только после одобрения) —
+      // отражаем это в локальном объекте перед onCreated, иначе карточка в
+      // списке хранилища показала бы "нет данных" до следующей перезагрузки.
+      if (selectedYarn) {
+        const suggestedMPer100g = selectedYarn.mPer100g == null && mPer100g.trim() ? Number(mPer100g) : undefined;
+        const suggestedComposition = !selectedYarn.composition && composition.trim() ? composition.trim() : undefined;
+        if (suggestedMPer100g !== undefined || suggestedComposition !== undefined) {
+          try {
+            await suggestYarnFields(skein.id, { mPer100g: suggestedMPer100g, composition: suggestedComposition });
+            if (suggestedMPer100g !== undefined) skein.mPer100gSnapshot = suggestedMPer100g;
+            if (suggestedComposition !== undefined) skein.compositionSnapshot = suggestedComposition;
+          } catch {
+            // Моток уже создан — не блокируем создание из-за необязательной
+            // заявки на дозаполнение (тот же принцип, что у образцов ниже).
+          }
+        }
+      }
+
       for (const swatch of swatches) {
         const hasData =
           swatch.needleSizeRaw.trim() || swatch.stitchesBefore || swatch.rowsBefore ||
@@ -331,8 +356,13 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 placeholder="Введите текст..."
                 inputMode="numeric"
                 onChange={(e) => setMPer100g(e.target.value)}
-                disabled={!!selectedYarn}
+                disabled={!!selectedYarn && selectedYarn.mPer100g != null}
               />
+              {selectedYarn && selectedYarn.mPer100g == null && (
+                <p className="add-yarn-field-hint">
+                  В справочнике это поле не заполнено — укажите значение, оно уйдёт на проверку модератору.
+                </p>
+              )}
             </div>
 
             <div className="add-yarn-field">
@@ -342,8 +372,13 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 value={composition}
                 placeholder="Введите текст..."
                 onChange={(e) => setComposition(e.target.value)}
-                disabled={!!selectedYarn}
+                disabled={!!selectedYarn && !!selectedYarn.composition}
               />
+              {selectedYarn && !selectedYarn.composition && (
+                <p className="add-yarn-field-hint">
+                  В справочнике это поле не заполнено — укажите значение, оно уйдёт на проверку модератору.
+                </p>
+              )}
             </div>
 
             <div className="add-yarn-field">
