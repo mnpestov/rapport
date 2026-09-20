@@ -12,8 +12,8 @@ import { EditSkeinModal } from './EditSkeinModal';
 import { LogUsageWizard } from './LogUsageWizard';
 import { StashImageCarousel } from './StashImageCarousel';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
-// import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
-import yarnPlaceholder from '../../components/TabBar/icons/project.svg';
+import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
+import projectPlaceholder from '../../components/TabBar/icons/project.svg';
 import './StashSkeinDetails.css';
 
 export const StashSkeinDetails: React.FC = () => {
@@ -326,7 +326,7 @@ export const StashSkeinDetails: React.FC = () => {
                   <StashImageCarousel images={usage.finishedPhotos} alt={usage.projectTitle || 'Готовое изделие'} classPrefix="stash-usage-image" />
                 ) : (
                   <div className="stash-usage-image-placeholder">
-                    <img src={yarnPlaceholder} alt="" />
+                    <img src={projectPlaceholder} alt="" />
                   </div>
                 )}
               </div>
