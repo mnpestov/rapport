@@ -41,41 +41,6 @@
   gap: 16px;
 }
 
-/* На мобильном — невидимые обёртки (display:contents), секции идут одна под
-   другой как раньше. На широком экране (форма — тот же add-yarn-panel,
-   max-width:1200px, что у остальных широких экранов приложения) становятся
-   реальными колонками: Фото — узкая sticky-колонка слева, остальные секции
-   (Пряжа/Образец/Заметки) — колонка справа, той же ширины полей ~420px, что
-   и у StashSkeinDetails, для визуальной консистентности форм и карточки. */
-.add-yarn-col-left,
-.add-yarn-col-right {
-  display: contents;
-}
-
-@media (min-width: 768px) {
-  .add-yarn-body {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 32px;
-  }
-
-  .add-yarn-col-left {
-    display: block;
-    flex: 0 0 300px;
-    position: sticky;
-    top: 0;
-  }
-
-  .add-yarn-col-right {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    flex: 1;
-    min-width: 0;
-    max-width: 420px;
-  }
-}
-
 .add-yarn-section {
   display: flex;
   flex-direction: column;

@@ -260,33 +260,30 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
         </div>
 
         <div className="add-yarn-body">
-          <div className="add-yarn-col-left">
-            <div className="add-yarn-section">
-              <p className="add-yarn-section-title">Фото</p>
-              <div className="add-yarn-photos">
-                {images.map((url) => (
-                  <div key={url} className="add-yarn-photo-thumb">
-                    <img src={url.startsWith('/') ? `${API_URL}${url}` : url} alt="" />
-                    <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
-                  </div>
-                ))}
-                {images.length < MAX_IMAGES && (
-                  <button type="button" className="add-yarn-photo-add" onClick={handleAddPhotoClick} disabled={isUploading}>
-                    +
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  style={{ display: 'none' }}
-                  onChange={handleFileSelected}
-                />
-              </div>
+          <div className="add-yarn-section">
+            <p className="add-yarn-section-title">Фото</p>
+            <div className="add-yarn-photos">
+              {images.map((url) => (
+                <div key={url} className="add-yarn-photo-thumb">
+                  <img src={url.startsWith('/') ? `${API_URL}${url}` : url} alt="" />
+                  <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+                </div>
+              ))}
+              {images.length < MAX_IMAGES && (
+                <button type="button" className="add-yarn-photo-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                  +
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={handleFileSelected}
+              />
             </div>
           </div>
 
-          <div className="add-yarn-col-right">
           <div className="add-yarn-section">
             <p className="add-yarn-section-title">Пряжа</p>
 
@@ -467,7 +464,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
           </div>
 
           {error && <p className="add-yarn-error">{error}</p>}
-          </div>
         </div>
 
         <div className="add-yarn-footer">

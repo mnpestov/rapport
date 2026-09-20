@@ -7,69 +7,6 @@
   margin: 0 auto;
 }
 
-@media (min-width: 768px) {
-  .stash-details-container {
-    padding: 0 24px calc(24px + env(safe-area-inset-bottom));
-  }
-}
-
-@media (min-width: 1024px) {
-  .stash-details-container {
-    padding: 0 32px calc(24px + env(safe-area-inset-bottom));
-  }
-}
-
-/* Тот же приём, что .details-body/.details-right у PatternDetails.css: на
-   мобильном display:contents делает обёртки невидимыми для потока (порядок
-   в DOM не меняется — фото/инфо/образцы/заметки/связано идут друг под
-   другом как раньше), на широком экране становится реальным flex-рядом —
-   фото sticky-колонкой слева, весь остальной контент — колонкой справа. */
-.stash-details-body {
-  display: contents;
-}
-
-.stash-details-left,
-.stash-details-right {
-  display: contents;
-}
-
-@media (min-width: 768px) {
-  .stash-details-body {
-    display: flex;
-    align-items: flex-start;
-    gap: 32px;
-    margin-bottom: 20px;
-  }
-
-  .stash-details-left {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    flex: 0 0 44%;
-    position: sticky;
-    top: 24px;
-  }
-
-  .stash-details-image-wrapper {
-    margin-bottom: 0;
-  }
-
-  .stash-details-right {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-width: 0;
-    max-width: 420px;
-  }
-}
-
-/* Полноширинная секция под обеими колонками (подбор описаний) — как
-   .details-below у PatternDetails. На мобильном ничего не меняет: обычный
-   блок в потоке. */
-.stash-details-below {
-  width: 100%;
-}
-
 /* Figma node-id=1234:7949 — "Назад" слева, кнопка редактирования справа. */
 .stash-details-header {
   display: flex;

@@ -26,22 +26,6 @@
   margin-top: auto;
 }
 
-/* Тот же брейкпоинт-паттерн, что у Catalog/Favorites — расширяем боковые
-   отступы на планшете/десктопе, ширина текста/контролов не меняется
-   (letter-spacing/шрифты остаются как на мобильном), только больше воздуха
-   по краям на широком экране. */
-@media (min-width: 768px) {
-  .stash-container {
-    padding: 0 24px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
-  }
-}
-
-@media (min-width: 1024px) {
-  .stash-container {
-    padding: 0 32px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
-  }
-}
-
 .stash-header {
   padding: 0;
   margin: 17px auto 6px;
@@ -243,24 +227,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-/* Карточка остаётся горизонтальной строкой (фото слева, текст справа) —
-   меняем только раскладку СПИСКА карточек, не саму карточку: на широком
-   экране одна колонка растягивала бы карточку на всю ширину контейнера
-   (до 1200px), делая её визуально непропорционально длинной. */
-@media (min-width: 768px) {
-  .stash-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .stash-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 .stash-card {

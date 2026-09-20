@@ -25,20 +25,6 @@
   flex-shrink: 0;
 }
 
-/* Визард показывает один шаг за раз (не фото+форма, как AddYarnModal) — тут
-   нет естественной пары колонок для split-layout, только один блок полей.
-   На широком экране просто ограничиваем ширину читаемой колонкой вместо
-   растягивания на все 1200px панели. */
-@media (min-width: 768px) {
-  .log-usage-header,
-  .log-usage-body,
-  .log-usage-footer {
-    width: 100%;
-    max-width: 420px;
-    margin: 0 auto;
-  }
-}
-
 .log-usage-step {
   font-family: Mulish, sans-serif;
   font-weight: 700;

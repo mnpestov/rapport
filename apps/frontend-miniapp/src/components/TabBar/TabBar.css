@@ -13,16 +13,10 @@
   padding: 10px 20px calc(40px + env(safe-area-inset-bottom));
 }
 
-/* max-width/margin — тот же контейнер-паттерн, что у Catalog/Stash/
-   Favorites (max-width: 1200px, центрирование): без него на широких
-   десктопных экранах 4 пункта растягивались бы space-between на всю
-   ширину окна, а не только на ширину остального контента. */
 .tab-bar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .tab-bar-item {
