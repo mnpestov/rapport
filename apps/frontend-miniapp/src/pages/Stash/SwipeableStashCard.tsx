@@ -23,6 +23,10 @@ export const SwipeableStashCard: React.FC<SwipeableStashCardProps> = ({
   onSwipeOpen,
   onSwipeClose,
 }) => {
+  const remainderPercent = item.totalWeightG > 0
+    ? Math.round((item.currentWeightG / item.totalWeightG) * 100)
+    : 0;
+
   return (
     <SwipeToDelete
       isOpen={isOpen}
@@ -46,9 +50,14 @@ export const SwipeableStashCard: React.FC<SwipeableStashCardProps> = ({
         {item.mPer100gSnapshot != null && (
           <p className="stash-card-row"><b>Метраж:</b> {item.mPer100gSnapshot}м/100г</p>
         )}
-        <p className="stash-card-row stash-card-remainder">
-          <b>Остаток:</b> {item.currentWeightG} г из {item.totalWeightG} г
-        </p>
+        <div className="stash-card-remainder">
+          <p className="stash-card-row">
+            <b>Остаток:</b> {item.currentWeightG} г из {item.totalWeightG} г
+          </p>
+          <div className="stash-card-progress-bar">
+            <div className="stash-card-progress-fill" style={{ width: `${remainderPercent}%` }} />
+          </div>
+        </div>
       </div>
     </SwipeToDelete>
   );

@@ -260,6 +260,27 @@
   margin-right: 4px;
 }
 
-/* .stash-card-remainder {
+/* Figma node-id=1411:13319 ("YarnCardCompact") — полоса остатка под текстом,
+   тот же паттерн, что в карточке пряжи StashSkeinDetails.css
+   (.stash-progress-bar/.stash-progress-fill), только компактнее. */
+.stash-card-remainder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
   margin-top: 2px;
-} */
+}
+
+.stash-card-progress-bar {
+  height: 3px;
+  width: 100%;
+  background: #9b9a9a;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stash-card-progress-fill {
+  height: 100%;
+  background: #bec1f4;
+  border-radius: 10px;
+}
