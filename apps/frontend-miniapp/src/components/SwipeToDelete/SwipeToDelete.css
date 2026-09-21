@@ -17,6 +17,8 @@
   background: #d8520f;
   color: #ffffff;
   cursor: pointer;
+  margin: 0 0 5px 0;
+  padding: 0;
 }
 
 /* Вторая кнопка (опциональная, только когда родитель передал onRequestEdit)
