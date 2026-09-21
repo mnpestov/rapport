@@ -82,6 +82,9 @@ export interface StashMatchItem {
   thumbnailUrl: string;
   authorName: string;
   instruments: string[];
+  // Первая категория описания — карточка "Что можно связать" в
+  // StashSkeinDetails.tsx показывает название/категорию/инструмент.
+  category: string | null;
   matchedBy: ('exact' | 'thickness' | 'density')[];
 }
 

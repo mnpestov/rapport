@@ -650,6 +650,11 @@ interface MatchItem {
   // через запятую, тем же способом, что и остальные "показать список одной
   // строкой" места в проекте.
   instruments: string[];
+  // Первая категория описания (Pattern.categories — many-to-many на
+  // ProductType, первая — как primaryProductType в patternsController.ts) —
+  // карточка "Что можно связать" в StashSkeinDetails.tsx показывает
+  // название/категорию/инструмент, не название/автора.
+  category: string | null;
   matchedBy: ("exact" | "thickness" | "density")[];
 }
 
@@ -753,6 +758,7 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
         id: true, title: true, imageUrl: true, thumbnailUrl: true,
         author: { select: { name: true } },
         instruments: { select: { name: true } },
+        categories: { select: { name: true } },
       },
     });
 
@@ -763,6 +769,7 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
       thumbnailUrl: p.thumbnailUrl || p.imageUrl,
       authorName: p.author.name,
       instruments: p.instruments.map((i) => i.name),
+      category: p.categories[0]?.name ?? null,
       matchedBy: [...(matchedIds.get(p.id) ?? [])],
     }));
 

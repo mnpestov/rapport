@@ -371,7 +371,10 @@ export const StashSkeinDetails: React.FC = () => {
                   <>
                     <img src={m.thumbnailUrl} alt="" className="stash-match-image" />
                     <p className="stash-match-title">{m.title}</p>
-                    <p className="stash-match-author">{m.authorName}</p>
+                    <div className="stash-match-meta">
+                      <p className="stash-match-category">{m.category ?? '—'}</p>
+                      <p className="stash-match-instrument">{m.instruments[0] ?? '—'}</p>
+                    </div>
                   </>
                 )}
               </button>
