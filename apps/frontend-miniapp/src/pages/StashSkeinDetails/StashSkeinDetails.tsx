@@ -9,6 +9,7 @@ import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteCo
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { AddSwatchModal } from './AddSwatchModal';
 import { EditSkeinModal } from './EditSkeinModal';
+import { EditUsageModal } from './EditUsageModal';
 import { LogUsageWizard } from './LogUsageWizard';
 import { StashImageCarousel } from './StashImageCarousel';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
@@ -30,6 +31,14 @@ export const StashSkeinDetails: React.FC = () => {
   const [openSwipeUsageId, setOpenSwipeUsageId] = useState<string | null>(null);
   const [deleteUsageTarget, setDeleteUsageTarget] = useState<StashUsage | null>(null);
   const [isDeletingUsage, setIsDeletingUsage] = useState(false);
+  const [editUsageTarget, setEditUsageTarget] = useState<StashUsage | null>(null);
+  // EditUsageModal остаётся смонтированной во время анимации закрытия
+  // (useSheetTransition), поэтому usage для неё берём из ПОСЛЕДНЕГО
+  // ненулевого значения editUsageTarget, а не из самого editUsageTarget —
+  // обнуление на close иначе унесло бы с собой usage раньше, чем шторка
+  // успеет доиграть выезд вниз (тот же паттерн, что был бы нужен и для
+  // условного рендера по editUsageTarget && <..>, только без размонтирования).
+  const [lastEditUsage, setLastEditUsage] = useState<StashUsage | null>(null);
   const [openSwipeSwatchId, setOpenSwipeSwatchId] = useState<string | null>(null);
   const [deleteSwatchTarget, setDeleteSwatchTarget] = useState<StashSwatch | null>(null);
   const [isDeletingSwatch, setIsDeletingSwatch] = useState(false);
@@ -319,6 +328,7 @@ export const StashSkeinDetails: React.FC = () => {
               onSwipeClose={() => setOpenSwipeUsageId((cur) => (cur === usage.id ? null : cur))}
               onTap={() => { if (usage.patternId) navigate(`/pattern/${usage.patternId}`); }}
               onRequestDelete={() => setDeleteUsageTarget(usage)}
+              onRequestEdit={() => { setEditUsageTarget(usage); setLastEditUsage(usage); }}
               cardClassName="stash-usage-card"
             >
               <div className="stash-usage-image">
@@ -426,6 +436,19 @@ export const StashSkeinDetails: React.FC = () => {
           load();
         }}
       />
+
+      {lastEditUsage && (
+        <EditUsageModal
+          isOpen={!!editUsageTarget}
+          skein={skein}
+          usage={lastEditUsage}
+          onClose={() => setEditUsageTarget(null)}
+          onSaved={() => {
+            setEditUsageTarget(null);
+            load();
+          }}
+        />
+      )}
 
       <DeleteConfirmModal
         isOpen={!!deleteUsageTarget}

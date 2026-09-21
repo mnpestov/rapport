@@ -593,6 +593,78 @@ export const logUsage = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/**
+ * PATCH /stash/usage/:id — редактирование уже списанного проекта. Вес
+ * (amountG) сознательно НЕ редактируется здесь — он завязан на
+ * StashSkein.currentWeightG (см. logUsage/undoUsage), менять его
+ * потребовало бы того же atomic-guard пересчёта остатка; если нужно
+ * исправить количество, пользователь отменяет списание (undoUsage) и
+ * списывает заново. Здесь — только описательные поля.
+ */
+export const updateUsage = async (req: Request, res: Response): Promise<void> => {
+  const usage = req.usage!;
+  const userId = req.user!.userId;
+  const body = req.body ?? {};
+
+  const data: Prisma.StashUsageUpdateInput = {};
+  if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
+  if ("projectTitle" in body) data.projectTitle = body.projectTitle ? String(body.projectTitle) : null;
+  if ("note" in body) data.note = body.note ? String(body.note) : null;
+
+  if ("finishedPhotos" in body) {
+    const finishedPhotos: string[] = Array.isArray(body.finishedPhotos) ? body.finishedPhotos.map(String) : [];
+    if (finishedPhotos.length > MAX_STASH_IMAGES_PER_SKEIN) {
+      res.status(400).json({ error: `Не более ${MAX_STASH_IMAGES_PER_SKEIN} фото готового изделия` });
+      return;
+    }
+    if (finishedPhotos.length > 0) {
+      const originsCheck = validateNewStashImageOrigins(finishedPhotos);
+      if (!originsCheck.ok) {
+        res.status(400).json({ error: originsCheck.error });
+        return;
+      }
+    }
+    data.finishedPhotos = finishedPhotos;
+  }
+
+  // Смена привязки к описанию (patternId) или ручных автора/названия — та
+  // же логика снимка, что в logUsage: patternId побеждает, если указан,
+  // ручные поля игнорируются в этом случае. "patternId" со значением null
+  // в теле — явный разрыв связи с каталогом (переход на ручной ввод).
+  if ("patternId" in body || "manualAuthorName" in body || "manualDescriptionTitle" in body) {
+    const unlimited = await hasUnlimitedStashAccess(userId);
+    const patternId = unlimited && typeof body.patternId === "string" ? body.patternId : null;
+
+    if (patternId) {
+      const pattern = await prisma.pattern.findUnique({
+        where: { id: patternId },
+        select: { title: true, author: { select: { name: true } } },
+      });
+      if (!pattern) {
+        res.status(404).json({ error: "Pattern not found" });
+        return;
+      }
+      data.pattern = { connect: { id: patternId } };
+      data.patternTitleSnapshot = pattern.title;
+      data.patternAuthorSnapshot = pattern.author.name;
+    } else {
+      const manualAuthorName = typeof body.manualAuthorName === "string" ? body.manualAuthorName.trim() : "";
+      const manualDescriptionTitle = typeof body.manualDescriptionTitle === "string" ? body.manualDescriptionTitle.trim() : "";
+      data.pattern = { disconnect: true };
+      data.patternTitleSnapshot = manualDescriptionTitle || null;
+      data.patternAuthorSnapshot = manualAuthorName || null;
+    }
+  }
+
+  try {
+    const updated = await prisma.stashUsage.update({ where: { id: usage.id }, data });
+    res.json(updated);
+  } catch (error) {
+    console.error("[Stash] updateUsage failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 class InsufficientStashError extends Error {
   constructor(public currentWeightG: number) {
     super("Insufficient stash");

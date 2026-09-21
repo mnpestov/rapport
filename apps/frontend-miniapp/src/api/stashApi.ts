@@ -325,6 +325,31 @@ export const undoStashUsage = async (usageId: string): Promise<void> => {
   }
 };
 
+// amountG сознательно нет — вес списания не редактируется (см. комментарий
+// у updateUsage на бэкенде), только описательные поля.
+export interface UpdateStashUsagePayload {
+  needleSizeRaw?: string;
+  projectTitle?: string;
+  patternId?: string;
+  manualAuthorName?: string;
+  manualDescriptionTitle?: string;
+  finishedPhotos?: string[];
+  note?: string;
+}
+
+export const updateStashUsage = async (usageId: string, payload: UpdateStashUsagePayload): Promise<StashUsage> => {
+  const response = await authorizedFetch(`${API_URL}/stash/usage/${usageId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 10000);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `Failed to update stash usage: ${response.status}`);
+  }
+  return response.json();
+};
+
 export interface SuggestYarnFieldsPayload {
   mPer100g?: number;
   composition?: string;

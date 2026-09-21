@@ -9,14 +9,22 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 88px;
+  width: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: #d8520f;
   color: #ffffff;
-  font-family: Mulish, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
   cursor: pointer;
+}
+
+/* Вторая кнопка (опциональная, только когда родитель передал onRequestEdit)
+   стоит левее «Удалить» — right: 56px сдвигает её ровно на ширину той
+   кнопки, вплотную, без зазора. */
+.swipe-to-delete-button--edit {
+  right: 56px;
+  background: #9b9a9a;
 }
 
 .swipe-to-delete-content {
