@@ -163,7 +163,9 @@
 }
 
 @keyframes add-yarn-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .add-yarn-input,
@@ -302,6 +304,7 @@
   font-size: 11px;
   color: #9b9a9a;
   margin-top: 2px;
+  display: none;
 }
 
 .add-yarn-swatch-draft {
