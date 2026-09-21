@@ -9,6 +9,7 @@ import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteCo
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { AddSwatchModal } from './AddSwatchModal';
 import { EditSkeinModal } from './EditSkeinModal';
+import { EditSwatchModal } from './EditSwatchModal';
 import { EditUsageModal } from './EditUsageModal';
 import { LogUsageWizard } from './LogUsageWizard';
 import { StashImageCarousel } from './StashImageCarousel';
@@ -42,6 +43,10 @@ export const StashSkeinDetails: React.FC = () => {
   const [openSwipeSwatchId, setOpenSwipeSwatchId] = useState<string | null>(null);
   const [deleteSwatchTarget, setDeleteSwatchTarget] = useState<StashSwatch | null>(null);
   const [isDeletingSwatch, setIsDeletingSwatch] = useState(false);
+  const [editSwatchTarget, setEditSwatchTarget] = useState<StashSwatch | null>(null);
+  // Тот же паттерн, что lastEditUsage выше — EditSwatchModal должна
+  // оставаться смонтированной во время анимации закрытия.
+  const [lastEditSwatch, setLastEditSwatch] = useState<StashSwatch | null>(null);
   const [matchesLocked, setMatchesLocked] = useState(false);
   const [isMatchesPaywallOpen, setIsMatchesPaywallOpen] = useState(false);
   const [isYarnFixFormOpen, setIsYarnFixFormOpen] = useState(false);
@@ -289,6 +294,7 @@ export const StashSkeinDetails: React.FC = () => {
             onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
             onTap={() => { }}
             onRequestDelete={() => setDeleteSwatchTarget(swatch)}
+            onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
             cardClassName="stash-swatch-block"
           >
             {swatch.needleSizeRaw && <p className="stash-details-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
@@ -416,6 +422,18 @@ export const StashSkeinDetails: React.FC = () => {
           load();
         }}
       />
+
+      {lastEditSwatch && (
+        <EditSwatchModal
+          isOpen={!!editSwatchTarget}
+          swatch={lastEditSwatch}
+          onClose={() => setEditSwatchTarget(null)}
+          onSaved={() => {
+            setEditSwatchTarget(null);
+            load();
+          }}
+        />
+      )}
 
       <EditSkeinModal
         isOpen={isEditOpen}

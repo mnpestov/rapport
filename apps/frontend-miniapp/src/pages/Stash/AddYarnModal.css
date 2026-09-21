@@ -182,24 +182,26 @@
   align-items: center;
 }
 
+/* Тот же вид, что у "Добавить образец"/"Добавить пряжу" в карточке пряжи
+   (StashSkeinDetails.css .stash-add-button/-plus, Stash.css) — пользователь
+   попросил свёрстать идентично: иконка Plus из lucide-react вместо
+   текстового "+", тёмный текст вместо приглушённого. */
 .add-yarn-category-chip {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   width: 100%;
   border: 1px solid #e5e5e5;
   background: none;
-  padding: 8px 20px;
+  padding: 5px 20px;
   border-radius: 2px;
   font-family: Mulish, sans-serif;
   font-size: 14px;
-  color: #9b9a9a;
+  color: #1d1c1c;
   cursor: pointer;
 }
 
 .add-yarn-category-chip-plus {
-  font-size: 20px;
-  line-height: 1;
   color: #9b9a9a;
   flex-shrink: 0;
 }

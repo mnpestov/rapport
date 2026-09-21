@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
 import {
   updateStashSkein,
@@ -448,7 +449,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             ))}
 
             <button type="button" className="add-yarn-category-chip" onClick={handleAddSwatch}>
-              <span className="add-yarn-category-chip-plus">+</span>
+              <Plus size={32} strokeWidth={1} className="add-yarn-category-chip-plus" />
               {swatches.length > 0 ? 'Добавить ещё образец' : 'Добавить образец'}
             </button>
           </div>
