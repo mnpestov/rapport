@@ -111,11 +111,15 @@ export const generateDetailUrl = (sourceRelativeUrl: string): Promise<string | n
 //
 // Как и остальной pipeline: .rotate() без аргументов нормализует EXIF-
 // поворот, withoutEnlargement не апскейлит уже маленькие изображения.
-export async function normalizeUploadedImage(sourcePath: string, destDir: string): Promise<string> {
+export async function normalizeUploadedImage(source: string | Buffer, destDir: string): Promise<string> {
   const { maxDimension, quality } = config.detail;
   const filename = `${crypto.randomUUID()}.${config.format}`;
   const outputPath = path.join(destDir, filename);
-  await sharp(sourcePath)
+  // sharp() accepts either a file path (existing multer temp-file callers)
+  // or a Buffer (Ravelry-fallback: photo bytes downloaded straight from
+  // their CDN, never written to a temp file at all) — same pipeline either
+  // way, no separate code path needed.
+  await sharp(source)
     .rotate()
     .resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true })
     .webp({ quality })

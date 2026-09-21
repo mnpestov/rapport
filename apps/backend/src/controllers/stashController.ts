@@ -14,7 +14,12 @@ import { Request, Response } from "express";
 import { Prisma, YarnStatus, UserRole, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
-import { suggestYarns as suggestYarnsHandler, createAuthorYarn } from "./yarnsController";
+import { createAuthorYarn } from "./yarnsController";
+import {
+  searchRavelryPreview,
+  importRavelryYarn,
+  enrichYarnFromRavelrySearch,
+} from "../services/ravelryYarnFallback";
 import {
   MAX_STASH_IMAGES_PER_SKEIN,
   MAX_STASH_IMAGES_PER_SWATCH,
@@ -714,7 +719,16 @@ class UndoWouldExceedTotalError extends Error {}
 
 // ─── Подбор описаний («что можно связать») — T14, план §4 ────────────────
 
-const YARN_RANGE_TOLERANCE = 0.08; // ±8%
+const YARN_RANGE_TOLERANCE = 0.125; // ±12.5% (был ±8% — расширено, см. комментарий у перебора сложений ниже)
+// Вязание в несколько сложений (N нитей вместе) — реальный сценарий, не
+// учтённый исходной проверкой "толщина ±X% от mPer100g мотка как есть":
+// тонкая нить, сложенная вдвое-впятеро, даёт совсем другой ЭФФЕКТИВНЫЙ
+// метраж (800м/100г в 3 нити ≈ 267м/100г), и описание с целевой толщиной
+// не находилось вообще, даже с расширенным допуском. Складывать в N нитей
+// имеет смысл только для исходно ТОНКОЙ нити (500м/100г и выше) — толстую
+// пряжу никто не сдваивает, это исказило бы совпадения без надобности.
+const MIN_STRAND_MPER100G = 500;
+const MAX_STRANDS = 5;
 
 interface MatchItem {
   id: string;
@@ -734,6 +748,11 @@ interface MatchItem {
   // название/категорию/инструмент, не название/автора.
   category: string | null;
   matchedBy: ("exact" | "thickness" | "density")[];
+  // Заполнено только когда совпадение по толщине нашлось со сложением > 1
+  // нити (matchedBy содержит "thickness") — карточка подписывается "При
+  // вязании в N сложений". null — совпадение по толщине не было, либо было
+  // найдено в 1 нить (обычный случай, подписи не нужно).
+  strandsCount: number | null;
 }
 
 /**
@@ -777,6 +796,10 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
       if (!matchedIds.has(id)) matchedIds.set(id, new Set());
       matchedIds.get(id)!.add(kind);
     };
+    // Наименьшее N сложений, при котором нашлось совпадение по толщине, на
+    // паттерн — используется на фронте для подписи "При вязании в N
+    // сложений". Не трогается для совпадений по exact/density.
+    const strandsByPattern = new Map<string, number>();
 
     // (1) Точный артикул.
     const exactMatches = await prisma.patternYarn.findMany({
@@ -785,24 +808,41 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
     });
     for (const m of exactMatches) addMatch(m.patternId, "exact");
 
-    // (2) Толщина ±8% — сравнение с РЕАЛЬНЫМ mPer100g конкретных артикулов
+    // (2) Толщина ±12% — сравнение с РЕАЛЬНЫМ mPer100g конкретных артикулов
     // пряжи, залинкованных на описание через PatternYarn (status: ACTIVE),
     // а не с категориальным диапазоном Pattern.yarnRanges (та метка —
     // ручной выбор автора при создании описания, не факт о толщине
     // конкретного привязанного артикула). Совпадение — если хотя бы один
     // залинкованный артикул попадает в допуск.
+    //
+    // Перебор N=1..MAX_STRANDS сложений: сложенная вдвое-впятеро нить
+    // становится ТОЛЩЕ, то есть эффективный метраж мотка ПАДАЕТ в N раз
+    // (800м/100г, сложенная в 3 нити, "работает" как 800/3≈267м/100г).
+    // Допуск ±12.5% строится симметрично вокруг ЭТОГО эффективного
+    // метража — та же логика, что и раньше для N=1 (mPer100g×1), просто
+    // теперь mPer100g/strands вместо голого mPer100g. N>1 применяется
+    // только если исходная нить тонкая (mPer100g >= MIN_STRAND_MPER100G) —
+    // толстую пряжу не сдваивают. Наименьшее подходящее N сохраняется как
+    // самое правдоподобное.
     if (mPer100g != null) {
-      const lo = mPer100g * (1 - YARN_RANGE_TOLERANCE);
-      const hi = mPer100g * (1 + YARN_RANGE_TOLERANCE);
-      const thicknessMatches = await prisma.patternYarn.findMany({
-        where: {
-          status: "ACTIVE",
-          pattern: { isVisible: true },
-          yarn: { mPer100g: { gte: lo, lte: hi } },
-        },
-        select: { patternId: true },
-      });
-      for (const m of thicknessMatches) addMatch(m.patternId, "thickness");
+      const maxStrands = mPer100g >= MIN_STRAND_MPER100G ? MAX_STRANDS : 1;
+      for (let strands = 1; strands <= maxStrands; strands++) {
+        const effectiveMPer100g = mPer100g / strands;
+        const lo = effectiveMPer100g * (1 - YARN_RANGE_TOLERANCE);
+        const hi = effectiveMPer100g * (1 + YARN_RANGE_TOLERANCE);
+        const thicknessMatches = await prisma.patternYarn.findMany({
+          where: {
+            status: "ACTIVE",
+            pattern: { isVisible: true },
+            yarn: { mPer100g: { gte: lo, lte: hi } },
+          },
+          select: { patternId: true },
+        });
+        for (const m of thicknessMatches) {
+          addMatch(m.patternId, "thickness");
+          if (!strandsByPattern.has(m.patternId)) strandsByPattern.set(m.patternId, strands);
+        }
+      }
     }
 
     // (3) Плотность последнего образца ПОСЛЕ ВТО, ±1 петля/±1 ряд.
@@ -840,16 +880,20 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
       },
     });
 
-    const items: MatchItem[] = patterns.map((p) => ({
-      id: p.id,
-      title: p.title,
-      imageUrl: p.imageUrl,
-      thumbnailUrl: p.thumbnailUrl || p.imageUrl,
-      authorName: p.author.name,
-      instruments: p.instruments.map((i) => i.name),
-      category: p.categories[0]?.name ?? null,
-      matchedBy: [...(matchedIds.get(p.id) ?? [])],
-    }));
+    const items: MatchItem[] = patterns.map((p) => {
+      const strands = strandsByPattern.get(p.id);
+      return {
+        id: p.id,
+        title: p.title,
+        imageUrl: p.imageUrl,
+        thumbnailUrl: p.thumbnailUrl || p.imageUrl,
+        authorName: p.author.name,
+        instruments: p.instruments.map((i) => i.name),
+        category: p.categories[0]?.name ?? null,
+        matchedBy: [...(matchedIds.get(p.id) ?? [])],
+        strandsCount: strands != null && strands > 1 ? strands : null,
+      };
+    });
 
     res.json({ items, isLocked });
   } catch (error) {
@@ -861,10 +905,156 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
 // ─── Тонкие обёртки над yarnsController (план §3) ────────────────────────
 
 /**
- * GET /stash/yarns/suggest — переиспользует suggestYarns() as-is, только
- * APPROVED (тот уже фильтрует так сам).
+ * GET /stash/yarns/suggest — та же логика поиска, что и общий
+ * suggestYarns() в yarnsController.ts (только APPROVED), плюс Ravelry API —
+ * специфика именно хранилища пряжи, поэтому не переиспользует тот хендлер
+ * as-is, как раньше: (а) ВСЕГДА (не только когда своих нет) дополнительно
+ * показываем до 5 вариантов из Ravelry (без создания записей — см.
+ * searchRavelryPreview, YarnSuggestion.ravelryId без id) — найденное у нас
+ * может не подходить пользователю (другой бренд с похожим названием), и
+ * скрывать Ravelry-альтернативы только потому, что нашлась хоть одна своя
+ * запись, было бы навязчиво; выбор конкретного варианта импортирует его
+ * через POST /stash/yarns/import-ravelry; (б) если топовое СВОЁ совпадение
+ * пусты metraж/состав, ищем в Ravelry по тому же имени и дозаполняем
+ * именно эту запись. Best-effort — сбой похода в Ravelry не должен ломать
+ * обычный автокомплит.
  */
-export const suggestYarns = suggestYarnsHandler;
+export const suggestYarns = async (req: Request, res: Response): Promise<void> => {
+  const q = String(req.query.q || "").trim();
+  if (q.length < 3) {
+    res.json({ items: [] });
+    return;
+  }
+  const key = normalizeYarnKey(q);
+  if (!key) {
+    res.json({ items: [] });
+    return;
+  }
+
+  const items = await prisma.yarn.findMany({
+    where: {
+      mergedIntoId: null,
+      isActive: true,
+      status: YarnStatus.APPROVED,
+      OR: [
+        { normalizedKey: { contains: key } },
+        { aliases: { some: { normalizedAlias: { contains: key } } } },
+      ],
+    },
+    select: {
+      id: true, name: true, brand: true, mPer100g: true, composition: true,
+      normalizedKey: true, isGeneric: true, photoUrl: true, _count: { select: { patterns: true } },
+    },
+    orderBy: [{ patterns: { _count: "desc" } }, { name: "asc" }],
+    take: 20,
+  });
+
+  // fromRavelry/ravelryId на КОНКРЕТНОМ элементе — на фронте показывается
+  // как подпись "Данные с Ravelry" рядом именно с той подсказкой: (а) для
+  // preview-вариантов (ravelryId задан, id ещё нет — запись не создана),
+  // (б) когда существующая карточка была дозаполнена прямо сейчас.
+  // Остальные элементы списка (наш обычный справочник) подписи не
+  // получают.
+  const itemsWithSource: Array<
+    Partial<typeof items[number]> &
+      Pick<typeof items[number], "name" | "brand" | "normalizedKey" | "isGeneric" | "mPer100g" | "composition" | "photoUrl" | "_count"> & {
+        fromRavelry: boolean;
+        ravelryId?: number;
+      }
+  > = items.map((item) => ({ ...item, fromRavelry: false }));
+
+  try {
+    // Дозаполнение топового СВОЕГО совпадения — только если оно у нас есть
+    // и в нём пусто. Не блокирует показ Ravelry-альтернатив ниже: это
+    // разные операции над разными результатами.
+    if (itemsWithSource.length > 0) {
+      const top = itemsWithSource[0];
+      if (top.mPer100g == null || top.composition == null || top.photoUrl == null) {
+        const enrichedExisting = await enrichYarnFromRavelrySearch(
+          // Non-null: top === itemsWithSource[0] в этой ветке — всегда наша
+          // запись из items (Ravelry-варианты добавляются в массив ПОСЛЕ
+          // этого блока), id у них всегда есть.
+          { id: top.id!, mPer100g: top.mPer100g, composition: top.composition, photoUrl: top.photoUrl ?? null },
+          q
+        );
+        if (enrichedExisting) {
+          // Дозаполнение уже применилось в БД — перечитываем ту же
+          // запись, чтобы клиент увидел новые значения без второго
+          // round-trip запроса.
+          const refreshed = await prisma.yarn.findUnique({
+            where: { id: top.id },
+            select: { mPer100g: true, composition: true, photoUrl: true },
+          });
+          if (refreshed) {
+            top.mPer100g = refreshed.mPer100g;
+            top.composition = refreshed.composition;
+            top.photoUrl = refreshed.photoUrl;
+            top.fromRavelry = true;
+          }
+        }
+      }
+    }
+
+    // Ravelry-альтернативы — всегда, не только когда своих 0. Исключаем
+    // варианты, чей normalizedKey уже есть в нашем списке (то же имя,
+    // просто с другого источника) — не дублируем в подсказках то, что
+    // пользователь и так уже видит из нашего справочника.
+    const ownKeys = new Set(itemsWithSource.map((i) => i.normalizedKey));
+    const preview = await searchRavelryPreview(q);
+    const newFromRavelry = preview.filter((p) => !ownKeys.has(normalizeYarnKey(p.name)));
+
+    itemsWithSource.push(
+      ...newFromRavelry.map((p) => ({
+        // id намеренно ОТСУТСТВУЕТ — записи ещё нет в БД, фронт не должен
+        // пытаться выбрать это как обычную подсказку без импорта.
+        ravelryId: p.ravelryId,
+        name: p.name,
+        brand: p.brand,
+        mPer100g: null,
+        composition: null,
+        normalizedKey: normalizeYarnKey(p.name),
+        isGeneric: false,
+        photoUrl: null,
+        _count: { patterns: 0 },
+        fromRavelry: true,
+      }))
+    );
+  } catch (error) {
+    // Ravelry недоступен/ошибся — не роняем автокомплит, пользователь
+    // просто не получит фолбэк-данные в этот раз.
+    console.error("[Stash] Ravelry fallback failed:", error);
+  }
+
+  res.json({ items: itemsWithSource });
+};
+
+/**
+ * POST /stash/yarns/import-ravelry — шаг 2 Ravelry-фолбэка (см. комментарий
+ * над searchRavelryPreview в ravelryYarnFallback.ts): создаёт (или находит
+ * уже созданную кем-то раньше) запись в нашем справочнике по конкретному
+ * ravelryId, который пользователь ЯВНО выбрал из превью-подсказок. Вызывать
+ * до этого явного выбора нельзя — именно преждевременное создание по
+ * первому результату поиска и было причиной бага "выбрал не тот вариант,
+ * вернуться к остальным нельзя".
+ */
+export const importRavelryYarnHandler = async (req: Request, res: Response): Promise<void> => {
+  const ravelryId = Number(req.body?.ravelryId);
+  if (!Number.isFinite(ravelryId)) {
+    res.status(400).json({ error: "ravelryId must be a number" });
+    return;
+  }
+  try {
+    const yarn = await importRavelryYarn(ravelryId);
+    if (!yarn) {
+      res.status(502).json({ error: "Не удалось импортировать пряжу из Ravelry" });
+      return;
+    }
+    res.status(201).json(yarn);
+  } catch (error) {
+    console.error("[Stash] importRavelryYarn failed:", error);
+    res.status(502).json({ error: "Не удалось импортировать пряжу из Ravelry" });
+  }
+};
 
 /**
  * POST /stash/yarns — переиспользует createAuthorYarn() as-is, только под

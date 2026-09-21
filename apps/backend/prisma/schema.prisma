@@ -175,6 +175,17 @@ model Yarn {
 
   sourceName   String?
   sourceUrl    String?
+  // Дедуп для повторных fallback-запросов к Ravelry (YARN_STASH_PLAN.md
+  // Ravelry-fallback) — прежде чем идти за пряжей в их API снова, ищем по
+  // этому полю: если карточка уже импортирована, просто дополняем её, а не
+  // создаём дубль. sourceUrl не годится как ключ дедупа — там URL, который
+  // Ravelry может переформатировать, id стабильнее.
+  ravelryId    Int?           @unique
+  // Справочное фото — предзаполняет StashSkein.images при выборе этой
+  // пряжи в хранилище (сам Yarn до Ravelry-fallback фото не имел вообще,
+  // фото жило только на конкретном мотке пользователя). Тот же
+  // /uploads/yarn-stash/ пайплайн, что и фото мотка — см. imagePipeline.ts.
+  photoUrl     String?
   isActive     Boolean        @default(true)
   // PENDING — создан автором через POST /author/yarns, ждёт проверки, не
   // виден в suggestYarns. APPROVED — прошёл проверку (или создан админом

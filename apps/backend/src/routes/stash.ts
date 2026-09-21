@@ -21,6 +21,7 @@ import {
   deleteSwatch,
   getMatches,
   suggestYarns,
+  importRavelryYarnHandler,
   createStashYarn,
   suggestYarnFields,
 } from "../controllers/stashController";
@@ -124,6 +125,7 @@ router.get("/skeins/:id/matches", loadOwnedSkein, getMatches);
 router.post("/skeins/:id/suggest-yarn-fix", loadOwnedSkein, suggestYarnFields);
 
 router.get("/yarns/suggest", suggestYarns);
+router.post("/yarns/import-ravelry", importRavelryYarnHandler);
 router.post("/yarns", createStashYarn);
 
 export default router;

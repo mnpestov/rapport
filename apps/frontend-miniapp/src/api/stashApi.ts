@@ -86,10 +86,23 @@ export interface StashMatchItem {
   // StashSkeinDetails.tsx показывает название/категорию/инструмент.
   category: string | null;
   matchedBy: ('exact' | 'thickness' | 'density')[];
+  // Заполнено, только когда совпадение по толщине нашлось при сложении в
+  // несколько нитей (matchedBy содержит 'thickness') — карточка
+  // подписывается "При вязании в N сложений". null — сложение не при чём.
+  strandsCount: number | null;
 }
 
 export interface YarnSuggestion {
-  id: string;
+  // Отсутствует у Ravelry-preview вариантов (ravelryId задан вместо) —
+  // запись ещё не создана в нашей БД, выбор такой подсказки должен
+  // сначала импортировать её через importRavelryYarn(ravelryId), а не
+  // сразу заполнять форму как для обычной подсказки.
+  id?: string;
+  // Задан только у Ravelry-preview вариантов — до 5 штук, как и сам поиск
+  // Ravelry отдаёт (не 1, как было раньше: пряжу типа "Homespun" делают
+  // сразу 5+ разных брендов, показывать только первый результат не давало
+  // пользователю выбрать нужный).
+  ravelryId?: number;
   name: string;
   brand: string | null;
   mPer100g: number | null;
@@ -97,6 +110,15 @@ export interface YarnSuggestion {
   normalizedKey: string;
   isGeneric: boolean;
   _count: { patterns: number };
+  // true — карточка создана/дозаполнена Ravelry, либо это ещё не
+  // импортированный preview-вариант — фронт подписывает такую подсказку
+  // "Данные с Ravelry".
+  fromRavelry: boolean;
+  // Справочное фото (своё или скачанное из Ravelry) — предзаполняет
+  // images мотка при выборе этой подсказки в AddYarnModal. Относительный
+  // URL, тот же формат, что uploadStashImage() возвращает при обычной
+  // загрузке — см. suggestStashYarns ниже.
+  photoUrl: string | null;
 }
 
 function withImageUrls<T extends { images: string[] }>(item: T): T {
@@ -230,7 +252,30 @@ export const suggestStashYarns = async (query: string): Promise<YarnSuggestion[]
     throw new Error(`Failed to suggest yarns: ${response.status}`);
   }
   const data: { items: YarnSuggestion[] } = await response.json();
+  // photoUrl остаётся ОТНОСИТЕЛЬНЫМ, как и есть с бэкенда — тот же формат,
+  // что uploadStashImage() возвращает при обычной загрузке фото: AddYarnModal
+  // рендерит images напрямую (<img src={url}>) без API_URL-префикса, и при
+  // сабмите в createStashSkein ожидается тот же относительный путь.
   return data.items;
+};
+
+// Шаг 2 Ravelry-фолбэка — вызывается, когда пользователь ЯВНО выбрал один
+// из preview-вариантов (YarnSuggestion.ravelryId без id) в подсказках
+// suggestStashYarns. Создаёт (или находит уже созданную) запись в нашем
+// справочнике; ДО этого выбора запись не существует — иначе выбор не того
+// из нескольких вариантов с одинаковым названием блокировал бы доступ к
+// остальным (unique-конфликт при повторном fallback на тот же запрос).
+export const importRavelryYarn = async (ravelryId: number): Promise<YarnSuggestion> => {
+  const response = await authorizedFetch(`${API_URL}/stash/yarns/import-ravelry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ravelryId }),
+  }, 15000);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `Failed to import yarn from Ravelry: ${response.status}`);
+  }
+  return response.json();
 };
 
 // Возвращает ОТНОСИТЕЛЬНЫЙ путь (как отдаёт бэкенд) — именно его, не

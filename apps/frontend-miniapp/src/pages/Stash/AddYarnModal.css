@@ -130,6 +130,42 @@
   margin: 0;
 }
 
+/* .add-yarn-input-wrap оборачивает ТОЛЬКО <input> (не label/подсказки) —
+   так спиннер центрируется строго по высоте самого поля, не завися от
+   остального содержимого .add-yarn-field. width:100% нужен явно: внутри
+   flex-колонки .add-yarn-field сам <input> раньше растягивался через
+   flex stretch, но теперь это блочный ребёнок обычного div, а не
+   flex-item, автоматического растягивания на ширину родителя нет. */
+.add-yarn-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* Крутится, пока suggestStashYarns/importRavelryYarn ждут ответ — от
+   нашего справочника и, при пустом результате, от Ravelry (заметно
+   дольше обычного debounce-автокомплита). Позиционирование
+   (top:50%+translateY) и вращение (keyframes rotate) — РАЗНЫЕ элементы:
+   transform одного правила перезаписывает transform другого на том же
+   элементе, а не комбинируется, поэтому вращение "съедало" центрирование
+   без вложенной обёртки. */
+.add-yarn-input-spinner-wrap {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.add-yarn-input-spinner {
+  display: block;
+  color: #9b9a9a;
+  animation: add-yarn-spin 0.8s linear infinite;
+}
+
+@keyframes add-yarn-spin {
+  to { transform: rotate(360deg); }
+}
+
 .add-yarn-input,
 .add-yarn-textarea {
   font-family: Mulish, sans-serif;
@@ -139,6 +175,14 @@
   padding: 12px 16px;
   color: #1d1c1c;
   background: #ffffff;
+  /* <input> — inline-block по умолчанию, не растягивается на ширину
+     родителя сам по себе (в отличие от block-элементов). Раньше это
+     маскировал flex align-items:stretch на .add-yarn-field — теперь
+     <input> внутри .add-yarn-input-wrap (обычный div), stretch на него
+     больше не действует, нужен явный width. box-sizing — чтобы padding
+     не раздувал итоговую ширину за 100%. */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .add-yarn-input:disabled {
@@ -239,6 +283,16 @@
 
 .add-yarn-suggestion:hover {
   background: #f3f3f3;
+}
+
+/* Подпись у подсказок, созданных/дозаполненных Ravelry-фолбэком (не из
+   нашего проверенного справочника) — небольшая приглушённая строка под
+   названием, тот же приём, что hint-строки у полей формы. */
+.add-yarn-suggestion-source {
+  display: block;
+  font-size: 11px;
+  color: #9b9a9a;
+  margin-top: 2px;
 }
 
 .add-yarn-swatch-draft {

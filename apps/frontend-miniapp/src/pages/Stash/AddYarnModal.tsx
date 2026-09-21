@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
 import {
   createStashSkein,
   createStashSwatch,
   suggestStashYarns,
+  importRavelryYarn,
   suggestYarnFields,
   uploadStashImage,
   StashLimitReachedError,
@@ -59,6 +60,15 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   const [suggestions, setSuggestions] = useState<YarnSuggestion[]>([]);
   const [selectedYarn, setSelectedYarn] = useState<YarnSuggestion | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // Запрос идёт не только в наш справочник, но и (best-effort) в Ravelry,
+  // если своих подсказок не нашлось — заметно дольше обычного debounce-
+  // автокомплита, пользователю нужно понимать, что идёт загрузка, а не что
+  // поле просто не реагирует.
+  const [isSearchingYarn, setIsSearchingYarn] = useState(false);
+  // Отдельный индикатор для шага 2 Ravelry-фолбэка — выбор preview-
+  // варианта требует ещё одного запроса (импорт в наш справочник), прежде
+  // чем форма заполнится его данными.
+  const [isImportingYarn, setIsImportingYarn] = useState(false);
 
   const [brand, setBrand] = useState('');
   const [mPer100g, setMPer100g] = useState('');
@@ -102,29 +112,69 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     if (selectedYarn) return; // уже выбрали существующий артикул — не ищем заново
     if (nameQuery.trim().length < 3) {
       setSuggestions([]);
+      setIsSearchingYarn(false);
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Отменяет спиннер от УСТАРЕВШЕГО запроса — пользователь допечатал
+    // дальше, пока предыдущий ещё летел (Ravelry-фолбэк заметно медленнее
+    // обычного debounce), и его ответ пришёл позже нового ввода.
+    let cancelled = false;
     debounceRef.current = setTimeout(async () => {
+      setIsSearchingYarn(true);
       try {
         const items = await suggestStashYarns(nameQuery.trim());
-        setSuggestions(items);
+        if (!cancelled) setSuggestions(items);
       } catch {
-        setSuggestions([]);
+        if (!cancelled) setSuggestions([]);
+      } finally {
+        if (!cancelled) setIsSearchingYarn(false);
       }
     }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [nameQuery, selectedYarn]);
 
   if (!isMounted) return null;
 
-  const handlePickSuggestion = (item: YarnSuggestion) => {
+  const applySuggestion = (item: YarnSuggestion) => {
     setSelectedYarn(item);
     setNameQuery(item.name);
     setBrand(item.brand || '');
     setMPer100g(item.mPer100g != null ? String(item.mPer100g) : '');
     setComposition(item.composition || '');
+    // Предзаполняем справочным фото (своим или скачанным из Ravelry-
+    // фолбэка), только если пользователь ещё ничего сам не загрузил — не
+    // затираем его собственные фото выбором подсказки.
+    if (item.photoUrl) {
+      setImages((prev) => (prev.length === 0 ? [item.photoUrl!] : prev));
+    }
+  };
+
+  const handlePickSuggestion = async (item: YarnSuggestion) => {
     setShowSuggestions(false);
+    // Preview-вариант из Ravelry (ravelryId без id) — записи ещё нет в
+    // нашей БД. Импортируем ТОЛЬКО сейчас, по явному выбору пользователя —
+    // не раньше (см. комментарий над searchRavelryPreview на бэкенде: до
+    // этого рефакторинга запись создавалась уже на этапе поиска по
+    // первому результату, и выбор не того варианта из нескольких блокировал
+    // доступ к остальным).
+    if (!item.id && item.ravelryId != null) {
+      setIsImportingYarn(true);
+      setNameQuery(item.name);
+      try {
+        const imported = await importRavelryYarn(item.ravelryId);
+        applySuggestion(imported);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить данные пряжи');
+      } finally {
+        setIsImportingYarn(false);
+      }
+      return;
+    }
+    applySuggestion(item);
   };
 
   const handleNameChange = (value: string) => {
@@ -320,18 +370,32 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
 
             <div className="add-yarn-field add-yarn-field--autocomplete">
               <label className="add-yarn-label">Название*</label>
-              <input
-                className="add-yarn-input"
-                value={nameQuery}
-                placeholder="Введите текст..."
-                onChange={(e) => handleNameChange(e.target.value)}
-                onFocus={() => setShowSuggestions(true)}
-              />
+              <div className="add-yarn-input-wrap">
+                <input
+                  className="add-yarn-input"
+                  value={nameQuery}
+                  placeholder="Введите текст..."
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                />
+                {(isSearchingYarn || isImportingYarn) && (
+                  <span className="add-yarn-input-spinner-wrap">
+                    <Loader2 size={18} strokeWidth={2} className="add-yarn-input-spinner" />
+                  </span>
+                )}
+              </div>
               {showSuggestions && suggestions.length > 0 && (
                 <div className="add-yarn-suggestions">
                   {suggestions.map((s) => (
-                    <button key={s.id} type="button" className="add-yarn-suggestion" onClick={() => handlePickSuggestion(s)}>
+                    <button
+                      key={s.id ?? `ravelry-${s.ravelryId}`}
+                      type="button"
+                      className="add-yarn-suggestion"
+                      onClick={() => handlePickSuggestion(s)}
+                      disabled={isImportingYarn}
+                    >
                       {s.name}{s.brand ? ` — ${s.brand}` : ''}
+                      {s.fromRavelry && <span className="add-yarn-suggestion-source">Данные с Ravelry</span>}
                     </button>
                   ))}
                 </div>
