@@ -540,6 +540,20 @@
   text-overflow: ellipsis;
 }
 
+/* Показывается только когда описание найдено толщиной в несколько сложений
+   нити (strandsCount > 1) — отдельная строка под категорией/инструментом,
+   приглушённая: это уточнение, не основная характеристика карточки. */
+.stash-match-strands {
+  font-family: Mulish, sans-serif;
+  font-size: 10px;
+  color: #9b9a9a;
+  margin: 2px 0 0;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .stash-details-actions {
   display: flex;
   flex-direction: column;

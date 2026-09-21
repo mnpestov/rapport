@@ -391,6 +391,9 @@ export const StashSkeinDetails: React.FC = () => {
                       <p className="stash-match-category">{m.category ?? '—'}</p>
                       <p className="stash-match-instrument">{m.instruments[0] ?? '—'}</p>
                     </div>
+                    {m.strandsCount != null && (
+                      <p className="stash-match-strands">При вязании в {m.strandsCount} сложений</p>
+                    )}
                   </>
                 )}
               </button>
