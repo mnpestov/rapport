@@ -140,9 +140,13 @@ export type PaywallMetric =
   | "CLOSED"
   | "BUTTON_OPENED"
   | "PAID"
-  // Верх воронки удержания — платные подписчики за период (User по
-  // premiumExpiresAt), не PaywallEvent/Payment.
+  // Верх воронки удержания — платные подписчики за период (была активна
+  // КОГДА-ТО в периоде, даже если уже истекла), User по premiumExpiresAt,
+  // не PaywallEvent/Payment.
   | "ACTIVE_SUBSCRIBERS"
+  // Сводка в шапке — активна ПРЯМО СЕЙЧАС. Не то же самое, что
+  // ACTIVE_SUBSCRIBERS выше — см. комментарий в paywallStatsController.ts.
+  | "CURRENTLY_ACTIVE_SUBSCRIBERS"
   // Сводка в шапке — подписка истекла в период и сейчас не активна.
   | "CHURNED_SUBSCRIBERS";
 

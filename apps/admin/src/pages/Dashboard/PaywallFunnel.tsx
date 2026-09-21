@@ -121,7 +121,7 @@ export function PaywallFunnel({ stats, onDrilldown }: Props) {
           <button
             type="button"
             className={styles.summaryStat}
-            onClick={() => onDrilldown({ metric: "ACTIVE_SUBSCRIBERS", scope: "all", title: "Всего действующих платных подписчиков" })}
+            onClick={() => onDrilldown({ metric: "CURRENTLY_ACTIVE_SUBSCRIBERS", scope: "all", title: "Всего действующих платных подписчиков" })}
             disabled={summary.activeSubscribers === 0}
           >
             <span className={styles.summaryValue}>{summary.activeSubscribers}</span>

@@ -140,6 +140,21 @@ async function countChurnedSubscribers(range: { from?: Date; to?: Date }): Promi
   });
 }
 
+// Сводка в шапке ("Действующих подписчиков" рядом с "Отказались") — в
+// отличие от countActiveSubscribers выше (который "была активна КОГДА-ТО в
+// периоде", нужен для % продлений в воронке), тут требуется буквально
+// "активна ПРЯМО СЕЙЧАС": иначе тот, кто истёк вчера, засчитывался бы
+// одновременно и как действующий (истекло позже range.from), и как
+// отказавшийся (истекло раньше now) — те же самые люди в обеих графах.
+async function countCurrentlyActiveSubscribers(): Promise<number> {
+  return prisma.user.count({
+    where: {
+      excludeFromStats: false,
+      premiumExpiresAt: { gte: new Date() },
+    },
+  });
+}
+
 // GET /admin/paywall-stats
 export const getPaywallStats = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -159,6 +174,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       retentionShown,
       retentionClick,
       retentionPaid,
+      currentlyActiveSubscribers,
       churnedSubscribers,
       // Платежи без источника — созданные до появления аналитики. Показываем
       // отдельно, чтобы сумма по воронкам не выглядела расходящейся с общим
@@ -183,6 +199,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_AUTO_SHOWN_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, RETENTION_SOURCES),
       countPayingUsers(range, RETENTION_SOURCES),
+      countCurrentlyActiveSubscribers(),
       countChurnedSubscribers(range),
 
       prisma.payment.count({
@@ -208,8 +225,12 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       },
       // Сводка для шапки виджета — не часть воронки удержания: "сколько
       // сейчас платят" и "сколько ушло за период", а не шаги конверсии.
+      // activeSubscribers тут намеренно НЕ retentionActiveSubscribers — тот
+      // считает "была активна когда-то в периоде" (даже если уже истекла),
+      // что при пересечении с churnedSubscribers дало бы одних и тех же
+      // людей в обеих графах.
       summary: {
-        activeSubscribers: retentionActiveSubscribers,
+        activeSubscribers: currentlyActiveSubscribers,
         churnedSubscribers,
       },
       paidWithoutSource,
@@ -300,6 +321,41 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
       const where = {
         excludeFromStats: false,
         premiumExpiresAt: { gte: range.from ?? new Date(0) },
+      };
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          orderBy: { premiumExpiresAt: order },
+          take,
+          skip,
+          select: { id: true, telegramId: true, firstName: true, lastName: true, username: true, premiumExpiresAt: true },
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      res.json({
+        total,
+        items: users.map((u) => ({
+          userId: u.id,
+          telegramId: u.telegramId.toString(),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username,
+          count: 1,
+          lastAt: u.premiumExpiresAt?.toISOString() ?? null,
+        })),
+      });
+      return;
+    }
+
+    // Сводка "Действующих подписчиков" — тот же критерий, что
+    // countCurrentlyActiveSubscribers выше: активна ПРЯМО СЕЙЧАС, не
+    // путать с ACTIVE_SUBSCRIBERS (drilldown шага воронки, "была активна
+    // когда-то в периоде").
+    if (metric === "CURRENTLY_ACTIVE_SUBSCRIBERS") {
+      const where = {
+        excludeFromStats: false,
+        premiumExpiresAt: { gte: new Date() },
       };
       const [users, total] = await Promise.all([
         prisma.user.findMany({
