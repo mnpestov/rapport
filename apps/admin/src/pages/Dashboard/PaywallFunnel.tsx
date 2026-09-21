@@ -27,6 +27,10 @@ interface FunnelRow {
   // Подпись под процентом ("от увидевших"/"от подписчиков") — у первого
   // шага (i===0) процента нет, он и есть база расчёта для остальных.
   shareOfLabel?: string;
+  // Переопределяет scope воронки для конкретной строки — нужно "Показали
+  // баннер продления" в retention: цифра там уже без ручных открытий
+  // (source=ACTIVE), drilldown должен вести тех же людей.
+  scope?: PaywallScope;
 }
 
 // Удержание — воронка "% продлений": верх не показы баннера, а платные
@@ -34,7 +38,10 @@ interface FunnelRow {
 function retentionRows(retention: RetentionFunnelStep): FunnelRow[] {
   return [
     { label: "Платные подписчики", value: retention.activeSubscribers },
-    { label: "Показали баннер продления", value: retention.shown, metric: "SHOWN", shareOfLabel: "от подписчиков" },
+    // Только автопоказ (EXPIRING_3_DAYS/EXPIRING_1_DAY) — ручное открытие
+    // подписчиком через кнопку у поиска (source=ACTIVE) в эту цифру не
+    // входит, хотя оно тоже "источник удержания" и учитывается в шагах ниже.
+    { label: "Показали баннер продления", value: retention.shown, metric: "SHOWN", shareOfLabel: "от подписчиков", scope: "retention_auto_shown" },
     { label: "Нажали «Оформить»", value: retention.subscribeClick, metric: "SUBSCRIBE_CLICK", shareOfLabel: "от подписчиков" },
     { label: "Оплатили", value: retention.paid, metric: "PAID", shareOfLabel: "от подписчиков" },
   ];
@@ -67,7 +74,7 @@ function Funnel({
             className={styles.step}
             onClick={() => {
               if (!row.metric) return;
-              onDrilldown({ metric: row.metric, scope, title: `${title}: ${row.label.toLowerCase()}` });
+              onDrilldown({ metric: row.metric, scope: row.scope ?? scope, title: `${title}: ${row.label.toLowerCase()}` });
             }}
             disabled={row.value === 0 || !row.metric}
             title={!row.metric ? undefined : row.value === 0 ? "Нет данных" : "Показать пользователей"}

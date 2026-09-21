@@ -133,7 +133,16 @@ export type PaywallMetric =
   | "BUTTON_OPENED"
   | "PAID";
 
-export type PaywallScope = "all" | "acquisition" | "retention" | "filter_lock" | "search_button";
+export type PaywallScope =
+  | "all"
+  | "acquisition"
+  | "retention"
+  // Шаг "показали баннер продления" в воронке удержания — исключает
+  // source=ACTIVE (ручное открытие кнопкой у поиска подписчиком), см.
+  // RETENTION_AUTO_SHOWN_SOURCES на бэкенде.
+  | "retention_auto_shown"
+  | "filter_lock"
+  | "search_button";
 
 export interface PaywallStatsUser {
   userId: string;

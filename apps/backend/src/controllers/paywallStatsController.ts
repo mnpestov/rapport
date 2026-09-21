@@ -73,6 +73,17 @@ const RETENTION_SOURCES: PaywallSource[] = [
   PaywallSource.EXPIRING_1_DAY,
   PaywallSource.ACTIVE,
 ];
+// Именно для шага "показали баннер" ACTIVE исключён: в PaywallModal.tsx
+// variant='active' выставляется ТОЛЬКО при ручном открытии кнопкой у
+// поиска (App.tsx onOpenPaywall) — автопоказа с этим вариантом в коде не
+// существует. Значит source=ACTIVE на SHOWN — это всегда "пользователь сам
+// открыл", а не "мы показали". Клик/оплату при этом всё ещё считаем по
+// полному RETENTION_SOURCES — воронка ниже верхнего шага не должна терять
+// людей, продливших подписку вручную.
+const RETENTION_AUTO_SHOWN_SOURCES: PaywallSource[] = [
+  PaywallSource.EXPIRING_3_DAYS,
+  PaywallSource.EXPIRING_1_DAY,
+];
 
 async function countPayingUsers(
   range: { from?: Date; to?: Date },
@@ -148,7 +159,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countPayingUsers(range, ACQUISITION_SOURCES),
 
       countActiveSubscribers(range),
-      countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_SOURCES),
+      countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_AUTO_SHOWN_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, RETENTION_SOURCES),
       countPayingUsers(range, RETENTION_SOURCES),
 
@@ -190,12 +201,16 @@ const SCOPE_SOURCES: Record<string, PaywallSource[] | undefined> = {
   all: undefined,
   acquisition: ACQUISITION_SOURCES,
   retention: RETENTION_SOURCES,
+  // Тот же смысл, что RETENTION_AUTO_SHOWN_SOURCES выше — drilldown по
+  // шагу "показали баннер продления" должен вести тех же людей, что попали
+  // в саму цифру (без ручных открытий с source=ACTIVE).
+  retention_auto_shown: RETENTION_AUTO_SHOWN_SOURCES,
   filter_lock: FILTER_LOCK_SOURCES,
   search_button: SEARCH_BUTTON_SOURCES,
 };
 
 // GET /admin/paywall-stats/users?metric=SHOWN|...|PAID
-//   &scope=all|acquisition|retention|filter_lock|search_button
+//   &scope=all|acquisition|retention|retention_auto_shown|filter_lock|search_button
 export const getPaywallStatsUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const range = parsePeriod(req);
