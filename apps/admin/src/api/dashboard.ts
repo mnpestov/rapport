@@ -167,7 +167,16 @@ export interface PaywallStatsUsersResponse {
 }
 
 export const getPaywallStatsUsers = async (
-  params: FetchParams & { metric: PaywallMetric; scope?: PaywallScope; limit?: number; offset?: number }
+  params: FetchParams & {
+    metric: PaywallMetric;
+    scope?: PaywallScope;
+    limit?: number;
+    offset?: number;
+    // Только для ACTIVE_SUBSCRIBERS — клик по заголовку "Срок действия" в
+    // PaywallUsersModal. Другие метрики сортируются как раньше (по времени
+    // последнего события), бэкенд игнорирует параметр для них.
+    sortOrder?: "asc" | "desc";
+  }
 ): Promise<PaywallStatsUsersResponse> => {
   const q = new URLSearchParams();
   if ("from" in params) {
@@ -180,6 +189,7 @@ export const getPaywallStatsUsers = async (
   if (params.scope) q.set("scope", params.scope);
   if (params.limit != null) q.set("limit", String(params.limit));
   if (params.offset != null) q.set("offset", String(params.offset));
+  if (params.sortOrder) q.set("sortOrder", params.sortOrder);
 
   const response = await fetchWithAuth(`${API_URL}/admin/paywall-stats/users?${q}`);
   if (!response.ok) {

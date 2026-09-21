@@ -46,11 +46,16 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
+  // Только для ACTIVE_SUBSCRIBERS — клик по заголовку "Срок действия"
+  // переключает направление. Для остальных метрик заголовок не кликабелен,
+  // сортировка не применяется (bэкенд игнорирует sortOrder для них).
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Сброс постранички при смене цели — иначе, открыв вторую метрику после
   // пролистывания первой, попадёшь сразу на её третью страницу.
   useEffect(() => {
     setOffset(0);
+    setSortOrder("desc");
   }, [target && "metric" in target ? target.metric : undefined, target && "scope" in target ? target.scope : undefined, target && "patternId" in target ? target.patternId : undefined]);
 
   useEffect(() => {
@@ -66,7 +71,7 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
               period === "custom" && appliedRange
                 ? { from: appliedRange.from, to: appliedRange.to }
                 : { period: period as Exclude<Period, "custom"> };
-            return getPaywallStatsUsers({ ...periodParams, metric: target.metric, scope: target.scope, limit: PAGE, offset });
+            return getPaywallStatsUsers({ ...periodParams, metric: target.metric, scope: target.scope, limit: PAGE, offset, sortOrder });
           })();
 
     request
@@ -79,12 +84,13 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
       .finally(() => { if (isMounted) setLoading(false); });
 
     return () => { isMounted = false; };
-  }, [target, period, appliedRange, offset]);
+  }, [target, period, appliedRange, offset, sortOrder]);
 
   // Подписчики на цену не постранично (их не так много) — пагинация ниже
   // скрыта для них через pageCount.
   const isPriceAlertPattern = target?.kind === "priceAlertPattern";
   const isPaid = !isPriceAlertPattern && target?.metric === "PAID";
+  const isActiveSubscribers = !isPriceAlertPattern && target?.metric === "ACTIVE_SUBSCRIBERS";
   const pageCount = Math.ceil(total / PAGE);
   const currentPage = Math.floor(offset / PAGE) + 1;
 
@@ -107,8 +113,17 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
               <tr>
                 <th>Пользователь</th>
                 <th>Telegram</th>
-                {isPaid ? <th>Счёт</th> : !isPriceAlertPattern && <th>Раз</th>}
-                <th>{isPaid ? "Оплачен" : isPriceAlertPattern ? "Подписан" : "Последний раз"}</th>
+                {isPaid ? <th>Счёт</th> : !isPriceAlertPattern && !isActiveSubscribers && <th>Раз</th>}
+                {isActiveSubscribers ? (
+                  <th
+                    className={styles.sortable}
+                    onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+                  >
+                    Срок действия {sortOrder === "desc" ? "↓" : "↑"}
+                  </th>
+                ) : (
+                  <th>{isPaid ? "Оплачен" : isPriceAlertPattern ? "Подписан" : "Последний раз"}</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -124,7 +139,7 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
                       №{u.invId}
                       <div className={styles.tgId}>{u.amount} ₽</div>
                     </td>
-                  ) : !isPriceAlertPattern && (
+                  ) : !isPriceAlertPattern && !isActiveSubscribers && (
                     <td className={styles.center}>{u.count}</td>
                   )}
                   <td className={styles.meta}>{formatDateTime(u.lastAt)}</td>

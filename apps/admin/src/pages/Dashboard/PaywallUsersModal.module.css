@@ -39,6 +39,15 @@
   white-space: nowrap;
 }
 
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  color: var(--text);
+}
+
 .table td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--surface-alt);

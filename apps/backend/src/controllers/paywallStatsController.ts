@@ -214,7 +214,8 @@ const SCOPE_SOURCES: Record<string, PaywallSource[] | undefined> = {
 export const getPaywallStatsUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const range = parsePeriod(req);
-    const { metric, scope = "all", limit = "50", offset = "0" } = req.query as Record<string, string>;
+    const { metric, scope = "all", limit = "50", offset = "0", sortOrder = "desc" } = req.query as Record<string, string>;
+    const order = sortOrder === "asc" ? "asc" : "desc";
 
     const take = Math.min(parseInt(limit, 10) || 50, 200);
     const skip = parseInt(offset, 10) || 0;
@@ -275,7 +276,7 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
       const [users, total] = await Promise.all([
         prisma.user.findMany({
           where,
-          orderBy: { premiumExpiresAt: "desc" },
+          orderBy: { premiumExpiresAt: order },
           take,
           skip,
           select: { id: true, telegramId: true, firstName: true, lastName: true, username: true, premiumExpiresAt: true },
