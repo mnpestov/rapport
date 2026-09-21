@@ -558,14 +558,20 @@ export const logUsage = async (req: Request, res: Response): Promise<void> => {
         throw new InsufficientStashError(current?.currentWeightG ?? 0);
       }
 
+      const patternTitleSnapshot = patternSnapshot?.title ?? (manualDescriptionTitle || null);
       return tx.stashUsage.create({
         data: {
           skeinId,
           amountG,
           needleSizeRaw,
-          projectTitle,
+          // Название проекта (шаг 2) необязательно — если пользователь его не
+          // ввёл, но выбрал/вписал описание, карточка показывает название
+          // описания вместо "Без названия" (fallback только здесь: сам
+          // patternTitleSnapshot ниже остаётся источником правды для поля
+          // "Описание" в карточке, не подменяется).
+          projectTitle: projectTitle ?? patternTitleSnapshot,
           patternId,
-          patternTitleSnapshot: patternSnapshot?.title ?? (manualDescriptionTitle || null),
+          patternTitleSnapshot,
           patternAuthorSnapshot: patternSnapshot?.authorName ?? (manualAuthorName || null),
           finishedPhotos,
           note: body.note ? String(body.note) : null,
