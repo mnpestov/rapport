@@ -30,19 +30,30 @@ interface FunnelRow {
   // баннер продления" в retention: цифра там уже без ручных открытий
   // (source=ACTIVE), drilldown должен вести тех же людей.
   scope?: PaywallScope;
+  // Переопределяет базу расчёта % и ширины полоски для ЭТОЙ строки —
+  // по умолчанию (undefined) база одна на всю воронку (верхний шаг, rows[0]).
+  // Нужно retention: "Платные подписчики" — знаменатель для % продлений,
+  // но "Нажали «Оформить»"/"Оплатили" — конверсия от того, кому реально
+  // показали баннер (rows[1]), а не от общего числа подписчиков.
+  shareBase?: number;
 }
 
-// Удержание — воронка "% продлений": верх не показы баннера, а платные
-// подписчики за период, проценты остальных шагов считаются от них.
+// Удержание — воронка "% продлений": верх — платные подписчики за период
+// (знаменатель метрики "% продлений" в заголовке), но конверсия по шагам
+// ниже баннера считается от самого баннера (кому его реально показали), не
+// от подписчиков — иначе шаги, не относящиеся к показу баннера напрямую
+// (E.g. кто-то оформил из другого места), искажали бы % относительно того,
+// что человек увидел.
 function retentionRows(retention: RetentionFunnelStep): FunnelRow[] {
+  const shown = retention.shown;
   return [
     { label: "Платные подписчики", value: retention.activeSubscribers, metric: "ACTIVE_SUBSCRIBERS" },
     // Только автопоказ (EXPIRING_3_DAYS/EXPIRING_1_DAY) — ручное открытие
     // подписчиком через кнопку у поиска (source=ACTIVE) в эту цифру не
     // входит, хотя оно тоже "источник удержания" и учитывается в шагах ниже.
-    { label: "Показали баннер продления", value: retention.shown, metric: "SHOWN", shareOfLabel: "от подписчиков", scope: "retention_auto_shown" },
-    { label: "Нажали «Оформить»", value: retention.subscribeClick, metric: "SUBSCRIBE_CLICK", shareOfLabel: "от подписчиков" },
-    { label: "Оплатили", value: retention.paid, metric: "PAID", shareOfLabel: "от подписчиков" },
+    { label: "Показали баннер продления", value: shown, metric: "SHOWN", shareOfLabel: "от подписчиков", scope: "retention_auto_shown" },
+    { label: "Нажали «Оформить»", value: retention.subscribeClick, metric: "SUBSCRIBE_CLICK", shareOfLabel: "от увидевших баннер", shareBase: shown },
+    { label: "Оплатили", value: retention.paid, metric: "PAID", shareOfLabel: "от увидевших баннер", shareBase: shown },
   ];
 }
 
@@ -91,7 +102,7 @@ function Funnel({
                 style={{ width: top === 0 ? "0%" : `${(row.value / top) * 100}%` }}
               />
             </div>
-            {i > 0 && <div className={styles.stepShare}>{share(row.value, top)} {row.shareOfLabel}</div>}
+            {i > 0 && <div className={styles.stepShare}>{share(row.value, row.shareBase ?? top)} {row.shareOfLabel}</div>}
           </button>
         ))}
       </div>
