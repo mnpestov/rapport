@@ -100,16 +100,43 @@ function Funnel({
 }
 
 export function PaywallFunnel({ stats, onDrilldown }: Props) {
-  const { events, acquisition, retention, paidWithoutSource } = stats;
+  const { events, acquisition, retention, summary, paidWithoutSource } = stats;
 
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
-        <span className={styles.title}>Подписка: воронка и события</span>
-        {/* Считаются уникальные пользователи, а не события: один человек
-            видит баннер ~4 раза в месяц, и по событиям конверсия была бы
-            занижена в разы. */}
-        <span className={styles.subtitle}>Уникальные пользователи за выбранный период</span>
+        <div className={styles.headerText}>
+          <span className={styles.title}>Подписка: воронка и события</span>
+          {/* Считаются уникальные пользователи, а не события: один человек
+              видит баннер ~4 раза в месяц, и по событиям конверсия была бы
+              занижена в разы. */}
+          <span className={styles.subtitle}>Уникальные пользователи за выбранный период</span>
+        </div>
+        {/* Статус, а не воронка — "сколько платят сейчас" не зависит от
+            периода (activeSubscribers смотрит только на снизу диапазона,
+            см. countActiveSubscribers), "отказались" — сколько за период
+            истекло без продления. Оба кликабельны — тот же drilldown, что
+            у шагов воронки. */}
+        <div className={styles.headerSummary}>
+          <button
+            type="button"
+            className={styles.summaryStat}
+            onClick={() => onDrilldown({ metric: "ACTIVE_SUBSCRIBERS", scope: "all", title: "Всего действующих платных подписчиков" })}
+            disabled={summary.activeSubscribers === 0}
+          >
+            <span className={styles.summaryValue}>{summary.activeSubscribers}</span>
+            <span className={styles.summaryLabel}>Действующих подписчиков</span>
+          </button>
+          <button
+            type="button"
+            className={styles.summaryStat}
+            onClick={() => onDrilldown({ metric: "CHURNED_SUBSCRIBERS", scope: "all", title: "Отказались от продления" })}
+            disabled={summary.churnedSubscribers === 0}
+          >
+            <span className={styles.summaryValue}>{summary.churnedSubscribers}</span>
+            <span className={styles.summaryLabel}>Отказались</span>
+          </button>
+        </div>
       </div>
 
       <div className={styles.funnels}>

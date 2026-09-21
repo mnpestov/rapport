@@ -101,6 +101,14 @@ export interface PaywallStatsResponse {
   // смысл, складывать нельзя.
   acquisition: PaywallFunnelStep;
   retention: RetentionFunnelStep;
+  // Сводка в шапке виджета — "сейчас платят" vs "ушли за период", отдельно
+  // от воронки (там шаги конверсии, тут статус). activeSubscribers дублирует
+  // retention.activeSubscribers намеренно — так шапка не зависит от формы
+  // воронки, если та когда-нибудь изменится.
+  summary: {
+    activeSubscribers: number;
+    churnedSubscribers: number;
+  };
   // Оплаты, созданные до появления атрибуции — источника у них нет и задним
   // числом не будет. Показываются отдельно, чтобы сумма по воронкам не
   // выглядела расходящейся с общим числом оплат.
@@ -134,7 +142,9 @@ export type PaywallMetric =
   | "PAID"
   // Верх воронки удержания — платные подписчики за период (User по
   // premiumExpiresAt), не PaywallEvent/Payment.
-  | "ACTIVE_SUBSCRIBERS";
+  | "ACTIVE_SUBSCRIBERS"
+  // Сводка в шапке — подписка истекла в период и сейчас не активна.
+  | "CHURNED_SUBSCRIBERS";
 
 export type PaywallScope =
   | "all"

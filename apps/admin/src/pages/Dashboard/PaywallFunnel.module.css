@@ -10,10 +10,17 @@
 
 .header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
   padding: 20px 28px;
   border-bottom: 1px solid var(--border);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .title {
@@ -27,6 +34,64 @@
   font-family: 'Mulish', sans-serif;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* Сводка справа от заголовка — статус, а не шаг воронки, поэтому визуально
+   отделена (surface-muted карточки), не просто ещё две .step-строки. */
+.headerSummary {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.summaryStat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.summaryStat:hover:not(:disabled) {
+  background: var(--surface-alt);
+}
+
+.summaryStat:disabled {
+  cursor: default;
+}
+
+.summaryValue {
+  font-family: 'Mulish', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.summaryLabel {
+  font-family: 'Mulish', sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .headerSummary {
+    align-self: stretch;
+  }
+
+  .summaryStat {
+    flex: 1;
+    align-items: flex-start;
+  }
 }
 
 .funnels {

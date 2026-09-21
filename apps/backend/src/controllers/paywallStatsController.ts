@@ -120,6 +120,26 @@ async function countActiveSubscribers(range: { from?: Date; to?: Date }): Promis
   });
 }
 
+// "Отказались" — подписка истекла В ВЫБРАННЫЙ ПЕРИОД и сейчас всё ещё не
+// активна (не продлили после истечения). Обе границы обязательны:
+// premiumExpiresAt внутри [range.from, range.to] — иначе, например, при
+// period=all сюда попал бы вообще любой когда-либо переставший быть
+// подписчиком, без привязки к периоду. range.to по умолчанию — текущий
+// момент (period без явного "to", т.е. 7d/30d/90d/all).
+async function countChurnedSubscribers(range: { from?: Date; to?: Date }): Promise<number> {
+  const now = new Date();
+  // "Сейчас не активна" — верхняя граница периода не может быть позже
+  // текущего момента: если period.to в будущем (или не задан), реальный
+  // предел всё равно now().
+  const upperBound = range.to && range.to < now ? range.to : now;
+  return prisma.user.count({
+    where: {
+      excludeFromStats: false,
+      premiumExpiresAt: { gte: range.from ?? new Date(0), lt: upperBound },
+    },
+  });
+}
+
 // GET /admin/paywall-stats
 export const getPaywallStats = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -139,6 +159,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       retentionShown,
       retentionClick,
       retentionPaid,
+      churnedSubscribers,
       // Платежи без источника — созданные до появления аналитики. Показываем
       // отдельно, чтобы сумма по воронкам не выглядела расходящейся с общим
       // числом оплат.
@@ -162,6 +183,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_AUTO_SHOWN_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, RETENTION_SOURCES),
       countPayingUsers(range, RETENTION_SOURCES),
+      countChurnedSubscribers(range),
 
       prisma.payment.count({
         where: {
@@ -183,6 +205,12 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
         shown: retentionShown,
         subscribeClick: retentionClick,
         paid: retentionPaid,
+      },
+      // Сводка для шапки виджета — не часть воронки удержания: "сколько
+      // сейчас платят" и "сколько ушло за период", а не шаги конверсии.
+      summary: {
+        activeSubscribers: retentionActiveSubscribers,
+        churnedSubscribers,
       },
       paidWithoutSource,
     });
@@ -272,6 +300,41 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
       const where = {
         excludeFromStats: false,
         premiumExpiresAt: { gte: range.from ?? new Date(0) },
+      };
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          orderBy: { premiumExpiresAt: order },
+          take,
+          skip,
+          select: { id: true, telegramId: true, firstName: true, lastName: true, username: true, premiumExpiresAt: true },
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      res.json({
+        total,
+        items: users.map((u) => ({
+          userId: u.id,
+          telegramId: u.telegramId.toString(),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username,
+          count: 1,
+          lastAt: u.premiumExpiresAt?.toISOString() ?? null,
+        })),
+      });
+      return;
+    }
+
+    // "Отказались" — тот же критерий, что countChurnedSubscribers выше:
+    // подписка истекла внутри периода и сейчас не активна.
+    if (metric === "CHURNED_SUBSCRIBERS") {
+      const now = new Date();
+      const upperBound = range.to && range.to < now ? range.to : now;
+      const where = {
+        excludeFromStats: false,
+        premiumExpiresAt: { gte: range.from ?? new Date(0), lt: upperBound },
       };
       const [users, total] = await Promise.all([
         prisma.user.findMany({
