@@ -93,6 +93,22 @@ async function countPayingUsers(
   return rows.length;
 }
 
+// Верх воронки "Удержание" — не показы баннера, а платные подписчики за
+// период: те, у кого подписка была активна хотя бы день в выбранном
+// диапазоне. premiumExpiresAt — единственная метка подписки на User (нет
+// subscriptionStartedAt), поэтому "активна в период" проверяется только
+// снизу: подписка не истекла до начала периода. Верхняя граница диапазона
+// не нужна — подписчик, чья подписка истекает уже ПОСЛЕ периода, всё равно
+// была активна внутри него.
+async function countActiveSubscribers(range: { from?: Date; to?: Date }): Promise<number> {
+  return prisma.user.count({
+    where: {
+      excludeFromStats: false,
+      premiumExpiresAt: { gte: range.from ?? new Date(0) },
+    },
+  });
+}
+
 // GET /admin/paywall-stats
 export const getPaywallStats = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -108,6 +124,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       acquisitionShown,
       acquisitionClick,
       acquisitionPaid,
+      retentionActiveSubscribers,
       retentionShown,
       retentionClick,
       retentionPaid,
@@ -130,6 +147,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, ACQUISITION_SOURCES),
       countPayingUsers(range, ACQUISITION_SOURCES),
 
+      countActiveSubscribers(range),
       countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, RETENTION_SOURCES),
       countPayingUsers(range, RETENTION_SOURCES),
@@ -149,7 +167,12 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
     res.json({
       events: { shown, scrolledToEnd, subscribeClick, closed, buttonOpened, buttonOpenedFromFilters },
       acquisition: { shown: acquisitionShown, subscribeClick: acquisitionClick, paid: acquisitionPaid },
-      retention: { shown: retentionShown, subscribeClick: retentionClick, paid: retentionPaid },
+      retention: {
+        activeSubscribers: retentionActiveSubscribers,
+        shown: retentionShown,
+        subscribeClick: retentionClick,
+        paid: retentionPaid,
+      },
       paidWithoutSource,
     });
   } catch (error) {

@@ -77,6 +77,14 @@ export interface PaywallFunnelStep {
   paid: number;
 }
 
+// Удержание — воронка "% продлений": верх не показы баннера, а платные
+// подписчики за период (у кого подписка была активна в диапазоне), дальше
+// те же шаги, что у привлечения (показали баннер продления → нажали
+// «Оформить» → оплатили).
+export interface RetentionFunnelStep extends PaywallFunnelStep {
+  activeSubscribers: number;
+}
+
 export interface PaywallStatsResponse {
   events: {
     shown: number;
@@ -92,7 +100,7 @@ export interface PaywallStatsResponse {
   // Привлечение и удержание разделены: у них разный знаменатель и разный
   // смысл, складывать нельзя.
   acquisition: PaywallFunnelStep;
-  retention: PaywallFunnelStep;
+  retention: RetentionFunnelStep;
   // Оплаты, созданные до появления атрибуции — источника у них нет и задним
   // числом не будет. Показываются отдельно, чтобы сумма по воронкам не
   // выглядела расходящейся с общим числом оплат.

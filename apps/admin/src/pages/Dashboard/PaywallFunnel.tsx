@@ -1,4 +1,4 @@
-import { PaywallStatsResponse, PaywallFunnelStep, PaywallMetric, PaywallScope } from "../../api/dashboard";
+import { PaywallStatsResponse, RetentionFunnelStep, PaywallMetric, PaywallScope } from "../../api/dashboard";
 import { DrilldownTarget } from "./PaywallUsersModal";
 import styles from "./PaywallFunnel.module.css";
 
@@ -17,24 +17,43 @@ function share(value: number, total: number): string {
   return `${Math.round((value / total) * 1000) / 10}%`;
 }
 
+interface FunnelRow {
+  label: string;
+  value: number;
+  // Платные подписчики (верх воронки удержания) — это User, а не
+  // PaywallEvent/Payment, для них нет готового drilldown-эндпоинта.
+  // metric отсутствует → строка не кликабельна.
+  metric?: PaywallMetric;
+  // Подпись под процентом ("от увидевших"/"от подписчиков") — у первого
+  // шага (i===0) процента нет, он и есть база расчёта для остальных.
+  shareOfLabel?: string;
+}
+
+// Удержание — воронка "% продлений": верх не показы баннера, а платные
+// подписчики за период, проценты остальных шагов считаются от них.
+function retentionRows(retention: RetentionFunnelStep): FunnelRow[] {
+  return [
+    { label: "Платные подписчики", value: retention.activeSubscribers },
+    { label: "Показали баннер продления", value: retention.shown, metric: "SHOWN", shareOfLabel: "от подписчиков" },
+    { label: "Нажали «Оформить»", value: retention.subscribeClick, metric: "SUBSCRIBE_CLICK", shareOfLabel: "от подписчиков" },
+    { label: "Оплатили", value: retention.paid, metric: "PAID", shareOfLabel: "от подписчиков" },
+  ];
+}
+
 function Funnel({
   title,
   hint,
-  step,
+  rows,
   scope,
   onDrilldown,
 }: {
   title: string;
   hint: string;
-  step: PaywallFunnelStep;
+  rows: FunnelRow[];
   scope: PaywallScope;
   onDrilldown: (target: DrilldownTarget) => void;
 }) {
-  const rows: { label: string; value: number; metric: PaywallMetric }[] = [
-    { label: "Увидели баннер", value: step.shown, metric: "SHOWN" },
-    { label: "Нажали «Оформить»", value: step.subscribeClick, metric: "SUBSCRIBE_CLICK" },
-    { label: "Оплатили", value: step.paid, metric: "PAID" },
-  ];
+  const top = rows[0]?.value ?? 0;
 
   return (
     <div className={styles.funnel}>
@@ -46,9 +65,12 @@ function Funnel({
             type="button"
             key={row.label}
             className={styles.step}
-            onClick={() => onDrilldown({ metric: row.metric, scope, title: `${title}: ${row.label.toLowerCase()}` })}
-            disabled={row.value === 0}
-            title={row.value === 0 ? "Нет данных" : "Показать пользователей"}
+            onClick={() => {
+              if (!row.metric) return;
+              onDrilldown({ metric: row.metric, scope, title: `${title}: ${row.label.toLowerCase()}` });
+            }}
+            disabled={row.value === 0 || !row.metric}
+            title={!row.metric ? undefined : row.value === 0 ? "Нет данных" : "Показать пользователей"}
           >
             <div className={styles.stepHeader}>
               <span className={styles.stepLabel}>{row.label}</span>
@@ -60,10 +82,10 @@ function Funnel({
                 // Ширина от верха воронки — полоски визуально сужаются,
                 // как и положено воронке. При нулевом верхе рисуем пусто,
                 // а не делим на ноль.
-                style={{ width: step.shown === 0 ? "0%" : `${(row.value / step.shown) * 100}%` }}
+                style={{ width: top === 0 ? "0%" : `${(row.value / top) * 100}%` }}
               />
             </div>
-            {i > 0 && <div className={styles.stepShare}>{share(row.value, step.shown)} от увидевших</div>}
+            {i > 0 && <div className={styles.stepShare}>{share(row.value, top)} {row.shareOfLabel}</div>}
           </button>
         ))}
       </div>
@@ -88,14 +110,22 @@ export function PaywallFunnel({ stats, onDrilldown }: Props) {
         <Funnel
           title="Привлечение"
           hint="Автопоказ баннера, кнопка у поиска и замки в фильтрах"
-          step={acquisition}
+          rows={[
+            { label: "Увидели баннер", value: acquisition.shown, metric: "SHOWN" },
+            { label: "Нажали «Оформить»", value: acquisition.subscribeClick, metric: "SUBSCRIBE_CLICK", shareOfLabel: "от увидевших" },
+            { label: "Оплатили", value: acquisition.paid, metric: "PAID", shareOfLabel: "от увидевших" },
+          ]}
           scope="acquisition"
           onDrilldown={onDrilldown}
         />
+        {/* % продлений: верх воронки — не показы баннера, а платные
+            подписчики за период, дальше баннер продления → «Оформить» →
+            оплата. Проценты остальных шагов считаются от подписчиков —
+            это и есть доля продливших подписку. */}
         <Funnel
           title="Удержание"
-          hint="Продление: предупреждения об окончании и шторка активной подписки"
-          step={retention}
+          hint="% продлений: платные подписчики → баннер продления → «Оформить» → оплата"
+          rows={retentionRows(retention)}
           scope="retention"
           onDrilldown={onDrilldown}
         />
