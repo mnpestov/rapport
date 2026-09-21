@@ -485,7 +485,7 @@ export function Users() {
       />
 
       <div className={styles.tableWrapper}>
-        <UserRowHeader sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+        <UserRowHeader sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} showSubscription={filter === "paid"} />
         {isLoading && (
           <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "32px" }}>Загрузка...</div>
         )}
@@ -493,7 +493,7 @@ export function Users() {
           <div style={{ textAlign: "center", color: "var(--text-subtle)", padding: "32px" }}>Пользователи не найдены</div>
         )}
         {!isLoading && users.map((u) => (
-          <UserRow key={u.id} user={u} onClick={setSelected} onEdit={setSelected} />
+          <UserRow key={u.id} user={u} onClick={setSelected} onEdit={setSelected} showSubscription={filter === "paid"} />
         ))}
       </div>
 

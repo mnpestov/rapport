@@ -22,6 +22,10 @@ export interface AdminUser {
   tgVersion: string | null;
   userAgent: string | null;
   favoritesCount: number;
+  // Дата, до которой действует платная подписка — null у бесплатных, а
+  // также у тех, кому premium выдан вручную в админке (без даты, см.
+  // комментарий у PREMIUM_PERMISSIONS в usersController.ts).
+  premiumExpiresAt: string | null;
 }
 
 export interface AdminUserDetail extends AdminUser {
@@ -43,7 +47,7 @@ export interface UsersResponse {
   counts: { all: number; paid: number; web: number };
 }
 
-export type SortField = "firstName" | "lastSeenAt" | "lastSeenChannel" | "createdAt" | "favoritesCount";
+export type SortField = "firstName" | "lastSeenAt" | "lastSeenChannel" | "createdAt" | "favoritesCount" | "premiumExpiresAt";
 export type SortOrder = "asc" | "desc";
 
 export const getUsers = async (params: {

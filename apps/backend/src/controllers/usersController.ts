@@ -3,7 +3,7 @@ import { Permission, UserRole } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { checkTelegramSubscriptionOnce } from "../utils/checkSubscription";
 
-const SORT_FIELDS = ["firstName", "lastSeenAt", "lastSeenChannel", "createdAt", "favoritesCount"] as const;
+const SORT_FIELDS = ["firstName", "lastSeenAt", "lastSeenChannel", "createdAt", "favoritesCount", "premiumExpiresAt"] as const;
 const SORT_ORDERS = ["asc", "desc"] as const;
 type SortField = typeof SORT_FIELDS[number];
 type SortOrder = typeof SORT_ORDERS[number];
@@ -47,7 +47,12 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
       : field === "lastSeenChannel"
         // nulls last: пользователи без входов после раскатки поля — в конце
         ? { lastSeenChannel: { sort: order, nulls: "last" } }
-        : { [field]: order };
+        : field === "premiumExpiresAt"
+          // nulls last: бесплатные (или premium без даты — ручная выдача в
+          // админке, см. комментарий у PREMIUM_PERMISSIONS выше) не должны
+          // перемешиваться с теми, у кого срок подписки реально задан.
+          ? { premiumExpiresAt: { sort: order, nulls: "last" } }
+          : { [field]: order };
 
   // Общий кусок для всех вкладок — только поиск. Счётчики вкладок и сама
   // выборка строятся поверх него.
@@ -89,6 +94,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
         createdAt: true,
         lastSeenAt: true,
         lastSeenChannel: true,
+        premiumExpiresAt: true,
         platform: true,
         tgVersion: true,
         userAgent: true,

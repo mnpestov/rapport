@@ -24,6 +24,15 @@ function formatDate(iso: string | null): string {
     " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Срок подписки — только дата, без времени: в отличие от "Последний вход"
+// точность до минуты тут не нужна и не задана самим значением (Robokassa
+// продлевает на N дней от полудня оплаты, показывать время создавало бы
+// ложное впечатление точности).
+function formatSubscriptionDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function fullName(u: Pick<AdminUser, "firstName" | "lastName">): string {
   return [u.firstName, u.lastName].filter(Boolean).join(" ") || "—";
 }
@@ -41,9 +50,13 @@ interface UserRowHeaderProps {
   sortBy: SortField;
   sortOrder: SortOrder;
   onSort: (field: SortField) => void;
+  // Столбец «Срок подписки» имеет смысл только на вкладке «Платные» —
+  // у остальных вкладок premiumExpiresAt почти всегда null (см. комментарий
+  // у AdminUser.premiumExpiresAt).
+  showSubscription?: boolean;
 }
 
-export function UserRowHeader({ sortBy, sortOrder, onSort }: UserRowHeaderProps) {
+export function UserRowHeader({ sortBy, sortOrder, onSort, showSubscription }: UserRowHeaderProps) {
   return (
     <div className={styles.header}>
       <button className={`${styles.colName} ${styles.sortable}`} onClick={() => onSort("firstName")}>
@@ -61,6 +74,11 @@ export function UserRowHeader({ sortBy, sortOrder, onSort }: UserRowHeaderProps)
       <button className={`${styles.colFav} ${styles.sortable}`} onClick={() => onSort("favoritesCount")}>
         Избранное <SortIcon field="favoritesCount" sortBy={sortBy} sortOrder={sortOrder} />
       </button>
+      {showSubscription && (
+        <button className={`${styles.colSubscription} ${styles.sortable}`} onClick={() => onSort("premiumExpiresAt")}>
+          Срок подписки <SortIcon field="premiumExpiresAt" sortBy={sortBy} sortOrder={sortOrder} />
+        </button>
+      )}
       <span className={styles.colEdit} />
     </div>
   );
@@ -72,9 +90,10 @@ interface UserRowProps {
   user: AdminUser;
   onClick: (user: AdminUser) => void;
   onEdit: (user: AdminUser) => void;
+  showSubscription?: boolean;
 }
 
-export function UserRow({ user, onClick, onEdit }: UserRowProps) {
+export function UserRow({ user, onClick, onEdit, showSubscription }: UserRowProps) {
   return (
     <div className={styles.row} onClick={() => onClick(user)}>
       <span className={`${styles.colName} ${styles.cellBold}`}>{fullName(user)}</span>
@@ -107,6 +126,11 @@ export function UserRow({ user, onClick, onEdit }: UserRowProps) {
           <span className={styles.cellMuted}>—</span>
         )}
       </span>
+      {showSubscription && (
+        <span className={`${styles.colSubscription} ${styles.cellMuted}`}>
+          {formatSubscriptionDate(user.premiumExpiresAt)}
+        </span>
+      )}
       <span className={styles.colEdit}>
         <IconButton
           title="Редактировать"

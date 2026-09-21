@@ -61,6 +61,9 @@
 .colDate     { flex: 1.75 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .colChannel  { flex: 0.7 1 0; white-space: nowrap; }
 .colFav      { flex: 1 1 0; }
+/* Появляется только на вкладке «Платные» (нет в исходной Figma-раскладке
+   строки 56) — та же ширина, что у .colDate, тот же тип содержимого. */
+.colSubscription { flex: 1.75 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .colEdit     { flex: 0 0 40px; display: flex; justify-content: flex-end; }
 
 /* Cell variants */
@@ -80,7 +83,8 @@
 @media (max-width: 768px) {
   .colAuthor,
   .colChannel,
-  .colFav {
+  .colFav,
+  .colSubscription {
     display: none !important;
   }
 }
