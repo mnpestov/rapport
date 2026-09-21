@@ -103,17 +103,29 @@ export interface RavelryPreviewYarn {
   brand: string | null;
 }
 
+export interface RavelryPreviewPage {
+  items: RavelryPreviewYarn[];
+  hasMore: boolean;
+}
+
 /**
- * Шаг 1 — просто показывает варианты, ничего не пишет в БД. Вызывается,
- * когда наш собственный поиск не нашёл ничего вообще.
+ * Шаг 1 — просто показывает варианты, ничего не пишет в БД. Показывается
+ * ВСЕГДА рядом со своими результатами (см. комментарий в
+ * suggestYarns/stashController.ts), не только когда своих 0. page — для
+ * infinite scroll в подсказках: 30 штук за раз (RAVELRY_PAGE_SIZE в
+ * ravelryClient.ts), фронт запрашивает следующую страницу по доскроллу до
+ * конца списка.
  */
-export async function searchRavelryPreview(query: string): Promise<RavelryPreviewYarn[]> {
-  const results = await searchRavelryYarns(query);
-  return results.map((r) => ({
-    ravelryId: r.id,
-    name: r.yarn_company_name ? `${r.yarn_company_name} ${r.name}` : r.name,
-    brand: r.yarn_company_name,
-  }));
+export async function searchRavelryPreview(query: string, page = 1): Promise<RavelryPreviewPage> {
+  const { yarns, hasMore } = await searchRavelryYarns(query, page);
+  return {
+    items: yarns.map((r) => ({
+      ravelryId: r.id,
+      name: r.yarn_company_name ? `${r.yarn_company_name} ${r.name}` : r.name,
+      brand: r.yarn_company_name,
+    })),
+    hasMore,
+  };
 }
 
 export interface RavelryFallbackYarn {
@@ -192,7 +204,7 @@ export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallb
  * так выбрал из нашего справочника.
  */
 export async function enrichYarnFromRavelrySearch(yarn: YarnLike, query: string): Promise<boolean> {
-  const results = await searchRavelryYarns(query);
-  if (results.length === 0) return false;
-  return enrichExistingYarn(yarn, results[0].id);
+  const { yarns } = await searchRavelryYarns(query);
+  if (yarns.length === 0) return false;
+  return enrichExistingYarn(yarn, yarns[0].id);
 }

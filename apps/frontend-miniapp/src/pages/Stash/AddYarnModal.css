@@ -281,6 +281,15 @@
   cursor: pointer;
 }
 
+/* Внизу списка при подгрузке следующей страницы Ravelry-результатов
+   (инфинити-скролл) — тот же вращающийся Loader2, что у самого поля,
+   просто без обёртки-позиционирования (уже в потоке списка). */
+.add-yarn-suggestions-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
 .add-yarn-suggestion:hover {
   background: #f3f3f3;
 }

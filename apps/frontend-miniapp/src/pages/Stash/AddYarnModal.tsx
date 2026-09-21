@@ -69,6 +69,15 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   // варианта требует ещё одного запроса (импорт в наш справочник), прежде
   // чем форма заполнится его данными.
   const [isImportingYarn, setIsImportingYarn] = useState(false);
+  // Infinite scroll по Ravelry-результатам в списке подсказок — page
+  // отслеживает, какая страница уже загружена, hasMoreFromRavelry/
+  // isLoadingMoreYarn управляют, когда показывать индикатор подгрузки и
+  // разрешать следующий запрос при доскролле до конца списка.
+  const [yarnSuggestPage, setYarnSuggestPage] = useState(1);
+  const [hasMoreFromRavelry, setHasMoreFromRavelry] = useState(false);
+  const [isLoadingMoreYarn, setIsLoadingMoreYarn] = useState(false);
+  const suggestionsListRef = useRef<HTMLDivElement>(null);
+  const autocompleteFieldRef = useRef<HTMLDivElement>(null);
 
   const [brand, setBrand] = useState('');
   const [mPer100g, setMPer100g] = useState('');
@@ -113,6 +122,8 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     if (nameQuery.trim().length < 3) {
       setSuggestions([]);
       setIsSearchingYarn(false);
+      setHasMoreFromRavelry(false);
+      setYarnSuggestPage(1);
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -123,10 +134,22 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     debounceRef.current = setTimeout(async () => {
       setIsSearchingYarn(true);
       try {
-        const items = await suggestStashYarns(nameQuery.trim());
-        if (!cancelled) setSuggestions(items);
+        // Новый текст запроса — всегда с первой страницы, старые
+        // Ravelry-результаты предыдущего запроса больше не релевантны.
+        const { items, hasMoreFromRavelry: more } = await suggestStashYarns(nameQuery.trim(), {
+          page: 1,
+          brand: brand.trim() || undefined,
+        });
+        if (!cancelled) {
+          setSuggestions(items);
+          setHasMoreFromRavelry(more);
+          setYarnSuggestPage(1);
+        }
       } catch {
-        if (!cancelled) setSuggestions([]);
+        if (!cancelled) {
+          setSuggestions([]);
+          setHasMoreFromRavelry(false);
+        }
       } finally {
         if (!cancelled) setIsSearchingYarn(false);
       }
@@ -135,7 +158,48 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
       cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- brand читается
+    // как "значение на момент запроса", не должно перезапускать поиск само
+    // по себе (иначе печать в поле "Бренд" дёргала бы автокомплит названия).
   }, [nameQuery, selectedYarn]);
+
+  // Инфинити-скролл: доскроллили список подсказок почти до конца — грузим
+  // следующую страницу Ravelry-результатов, если она есть.
+  const handleSuggestionsScroll = () => {
+    const el = suggestionsListRef.current;
+    if (!el || isLoadingMoreYarn || !hasMoreFromRavelry) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!nearBottom) return;
+
+    const nextPage = yarnSuggestPage + 1;
+    setIsLoadingMoreYarn(true);
+    suggestStashYarns(nameQuery.trim(), { page: nextPage, brand: brand.trim() || undefined })
+      .then(({ items, hasMoreFromRavelry: more }) => {
+        setSuggestions((prev) => [...prev, ...items]);
+        setHasMoreFromRavelry(more);
+        setYarnSuggestPage(nextPage);
+      })
+      .catch(() => setHasMoreFromRavelry(false))
+      .finally(() => setIsLoadingMoreYarn(false));
+  };
+
+  // Клик вне поля автокомплита — закрывает список подсказок, чтобы
+  // пользователь мог спокойно ввести данные вручную (Бренд/Метраж/Состав),
+  // не отвлекаясь на висящий список поверх остальной формы.
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const handleClickOutside = (e: Event) => {
+      if (autocompleteFieldRef.current && !autocompleteFieldRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showSuggestions]);
 
   if (!isMounted) return null;
 
@@ -368,7 +432,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
           <div className="add-yarn-section">
             <p className="add-yarn-section-title">Пряжа</p>
 
-            <div className="add-yarn-field add-yarn-field--autocomplete">
+            <div className="add-yarn-field add-yarn-field--autocomplete" ref={autocompleteFieldRef}>
               <label className="add-yarn-label">Название*</label>
               <div className="add-yarn-input-wrap">
                 <input
@@ -385,7 +449,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 )}
               </div>
               {showSuggestions && suggestions.length > 0 && (
-                <div className="add-yarn-suggestions">
+                <div className="add-yarn-suggestions" ref={suggestionsListRef} onScroll={handleSuggestionsScroll}>
                   {suggestions.map((s) => (
                     <button
                       key={s.id ?? `ravelry-${s.ravelryId}`}
@@ -398,6 +462,11 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                       {s.fromRavelry && <span className="add-yarn-suggestion-source">Данные с Ravelry</span>}
                     </button>
                   ))}
+                  {isLoadingMoreYarn && (
+                    <div className="add-yarn-suggestions-loading">
+                      <Loader2 size={16} strokeWidth={2} className="add-yarn-input-spinner" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

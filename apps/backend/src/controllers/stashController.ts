@@ -905,49 +905,69 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
 // ─── Тонкие обёртки над yarnsController (план §3) ────────────────────────
 
 /**
- * GET /stash/yarns/suggest — та же логика поиска, что и общий
- * suggestYarns() в yarnsController.ts (только APPROVED), плюс Ravelry API —
- * специфика именно хранилища пряжи, поэтому не переиспользует тот хендлер
- * as-is, как раньше: (а) ВСЕГДА (не только когда своих нет) дополнительно
- * показываем до 5 вариантов из Ravelry (без создания записей — см.
- * searchRavelryPreview, YarnSuggestion.ravelryId без id) — найденное у нас
- * может не подходить пользователю (другой бренд с похожим названием), и
- * скрывать Ravelry-альтернативы только потому, что нашлась хоть одна своя
- * запись, было бы навязчиво; выбор конкретного варианта импортирует его
- * через POST /stash/yarns/import-ravelry; (б) если топовое СВОЁ совпадение
- * пусты metraж/состав, ищем в Ravelry по тому же имени и дозаполняем
- * именно эту запись. Best-effort — сбой похода в Ravelry не должен ломать
- * обычный автокомплит.
+ * GET /stash/yarns/suggest?q=...&page=1&brand=... — та же логика поиска,
+ * что и общий suggestYarns() в yarnsController.ts (только APPROVED), плюс
+ * Ravelry API — специфика именно хранилища пряжи, поэтому не переиспользует
+ * тот хендлер as-is, как раньше: (а) ВСЕГДА (не только когда своих нет)
+ * дополнительно показываем варианты из Ravelry, до 30 штук за страницу
+ * (без создания записей — см. searchRavelryPreview,
+ * YarnSuggestion.ravelryId без id) — найденное у нас может не подходить
+ * пользователю (другой бренд с похожим названием), и скрывать
+ * Ravelry-альтернативы только потому, что нашлась хоть одна своя запись,
+ * было бы навязчиво; выбор конкретного варианта импортирует его через
+ * POST /stash/yarns/import-ravelry; (б) если топовое СВОЁ совпадение пусты
+ * metraж/состав, ищем в Ravelry по тому же имени и дозаполняем именно эту
+ * запись. Best-effort — сбой похода в Ravelry не должен ломать обычный
+ * автокомплит.
+ *
+ * page — только для Ravelry-части (infinite scroll в подсказках): 1-based,
+ * фронт запрашивает page+1 по доскроллу списка до конца, пока
+ * hasMoreFromRavelry не станет false. Наш справочник (items) НЕ
+ * постранично — take:20 фиксирован, как и раньше, там нет UI для листания.
+ *
+ * brand — необязательный, значение соседнего поля "Бренд" в форме
+ * (если пользователь его уже заполнил вручную до выбора описания) —
+ * Ravelry не поддерживает серверную фильтрацию по бренду (проверено
+ * напрямую: параметр company/yarn_company в их /yarns/search.json
+ * игнорируется), поэтому просто поднимаем совпадения по бренду вверх
+ * списка Ravelry-результатов клиентской сортировкой, не теряя остальные.
  */
 export const suggestYarns = async (req: Request, res: Response): Promise<void> => {
   const q = String(req.query.q || "").trim();
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const brandHint = String(req.query.brand || "").trim().toLowerCase();
   if (q.length < 3) {
-    res.json({ items: [] });
+    res.json({ items: [], hasMoreFromRavelry: false });
     return;
   }
   const key = normalizeYarnKey(q);
   if (!key) {
-    res.json({ items: [] });
+    res.json({ items: [], hasMoreFromRavelry: false });
     return;
   }
 
-  const items = await prisma.yarn.findMany({
-    where: {
-      mergedIntoId: null,
-      isActive: true,
-      status: YarnStatus.APPROVED,
-      OR: [
-        { normalizedKey: { contains: key } },
-        { aliases: { some: { normalizedAlias: { contains: key } } } },
-      ],
-    },
-    select: {
-      id: true, name: true, brand: true, mPer100g: true, composition: true,
-      normalizedKey: true, isGeneric: true, photoUrl: true, _count: { select: { patterns: true } },
-    },
-    orderBy: [{ patterns: { _count: "desc" } }, { name: "asc" }],
-    take: 20,
-  });
+  // Наш справочник запрашивается только на первой странице — Ravelry-
+  // пагинация (page>1) листает исключительно Ravelry-часть, наши
+  // APPROVED-совпадения уже все показаны на первой странице разом.
+  const items = page === 1
+    ? await prisma.yarn.findMany({
+        where: {
+          mergedIntoId: null,
+          isActive: true,
+          status: YarnStatus.APPROVED,
+          OR: [
+            { normalizedKey: { contains: key } },
+            { aliases: { some: { normalizedAlias: { contains: key } } } },
+          ],
+        },
+        select: {
+          id: true, name: true, brand: true, mPer100g: true, composition: true,
+          normalizedKey: true, isGeneric: true, photoUrl: true, _count: { select: { patterns: true } },
+        },
+        orderBy: [{ patterns: { _count: "desc" } }, { name: "asc" }],
+        take: 20,
+      })
+    : [];
 
   // fromRavelry/ravelryId на КОНКРЕТНОМ элементе — на фронте показывается
   // как подпись "Данные с Ravelry" рядом именно с той подсказкой: (а) для
@@ -962,6 +982,8 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
         ravelryId?: number;
       }
   > = items.map((item) => ({ ...item, fromRavelry: false }));
+
+  let hasMoreFromRavelry = false;
 
   try {
     // Дозаполнение топового СВОЕГО совпадения — только если оно у нас есть
@@ -995,13 +1017,27 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
       }
     }
 
-    // Ravelry-альтернативы — всегда, не только когда своих 0. Исключаем
-    // варианты, чей normalizedKey уже есть в нашем списке (то же имя,
-    // просто с другого источника) — не дублируем в подсказках то, что
-    // пользователь и так уже видит из нашего справочника.
+    // Ravelry-альтернативы — всегда, не только когда своих 0. На page===1
+    // исключаем варианты, чей normalizedKey уже есть в нашем списке (то же
+    // имя, просто с другого источника) — не дублируем в подсказках то, что
+    // пользователь и так уже видит из нашего справочника; на следующих
+    // страницах своих items нет (см. выше), фильтровать не от чего.
     const ownKeys = new Set(itemsWithSource.map((i) => i.normalizedKey));
-    const preview = await searchRavelryPreview(q);
-    const newFromRavelry = preview.filter((p) => !ownKeys.has(normalizeYarnKey(p.name)));
+    const { items: preview, hasMore } = await searchRavelryPreview(q, page);
+    hasMoreFromRavelry = hasMore;
+    let newFromRavelry = preview.filter((p) => !ownKeys.has(normalizeYarnKey(p.name)));
+
+    // Поднимаем совпадения по уже введённому бренду наверх — Ravelry не
+    // умеет фильтровать по бренду на своей стороне (см. комментарий над
+    // хендлером), поэтому это чисто клиентская пересортировка ОДНОЙ
+    // страницы, не глобальная по всем 30+ результатам сразу.
+    if (brandHint) {
+      newFromRavelry = [...newFromRavelry].sort((a, b) => {
+        const aMatch = a.brand?.toLowerCase().includes(brandHint) ? 0 : 1;
+        const bMatch = b.brand?.toLowerCase().includes(brandHint) ? 0 : 1;
+        return aMatch - bMatch;
+      });
+    }
 
     itemsWithSource.push(
       ...newFromRavelry.map((p) => ({
@@ -1025,7 +1061,7 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
     console.error("[Stash] Ravelry fallback failed:", error);
   }
 
-  res.json({ items: itemsWithSource });
+  res.json({ items: itemsWithSource, hasMoreFromRavelry });
 };
 
 /**

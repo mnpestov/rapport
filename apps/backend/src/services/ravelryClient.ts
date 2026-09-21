@@ -83,16 +83,26 @@ async function ravelryFetch<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface RavelrySearchPage {
+  yarns: RavelrySearchResult[];
+  // true, если есть ещё страницы после этой — фронт использует для
+  // infinite scroll в подсказках (подгружать дальше, только пока есть что).
+  hasMore: boolean;
+}
+
+const RAVELRY_PAGE_SIZE = 30;
+
 // Поиск по названию — та же точка входа, что пользователь видит в
-// подсказках нашего справочника. page_size маленький: это fallback для
-// автокомплита, не полноценный каталог-браузер, первых нескольких
-// совпадений достаточно.
-export async function searchRavelryYarns(query: string): Promise<RavelrySearchResult[]> {
+// подсказках нашего справочника. page — 1-based, как у самого Ravelry API
+// (paginator.page), не 0-based.
+export async function searchRavelryYarns(query: string, page = 1): Promise<RavelrySearchPage> {
   const q = encodeURIComponent(query);
-  const data = await ravelryFetch<{ yarns: RavelrySearchResult[] }>(
-    `/yarns/search.json?query=${q}&page_size=5`
+  const data = await ravelryFetch<{ yarns: RavelrySearchResult[]; paginator?: { page: number; last_page: number } }>(
+    `/yarns/search.json?query=${q}&page=${page}&page_size=${RAVELRY_PAGE_SIZE}`
   );
-  return data.yarns ?? [];
+  const yarns = data.yarns ?? [];
+  const hasMore = data.paginator ? data.paginator.page < data.paginator.last_page : false;
+  return { yarns, hasMore };
 }
 
 export async function getRavelryYarnDetail(id: number): Promise<RavelryYarnDetail> {

@@ -246,17 +246,34 @@ export const fetchStashMatches = async (skeinId: string): Promise<FetchStashMatc
   return { items, isLocked: data.isLocked };
 };
 
-export const suggestStashYarns = async (query: string): Promise<YarnSuggestion[]> => {
-  const response = await authorizedFetch(`${API_URL}/stash/yarns/suggest?q=${encodeURIComponent(query)}`, {}, 10000);
+export interface SuggestStashYarnsResult {
+  items: YarnSuggestion[];
+  // true — есть ещё Ravelry-результаты дальше (следующая страница) — см.
+  // page ниже, инфинити-скролл в списке подсказок AddYarnModal.
+  hasMoreFromRavelry: boolean;
+}
+
+export const suggestStashYarns = async (
+  query: string,
+  // page — только для Ravelry-части (наш справочник не постранично, см.
+  // комментарий над suggestYarns в stashController.ts). brand — значение
+  // соседнего поля "Бренд" в форме, если уже заполнено: поднимает
+  // совпадения по бренду вверх списка Ravelry-результатов.
+  options: { page?: number; brand?: string } = {}
+): Promise<SuggestStashYarnsResult> => {
+  const params = new URLSearchParams({ q: query });
+  if (options.page != null) params.set('page', String(options.page));
+  if (options.brand) params.set('brand', options.brand);
+  const response = await authorizedFetch(`${API_URL}/stash/yarns/suggest?${params.toString()}`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to suggest yarns: ${response.status}`);
   }
-  const data: { items: YarnSuggestion[] } = await response.json();
+  const data: { items: YarnSuggestion[]; hasMoreFromRavelry: boolean } = await response.json();
   // photoUrl остаётся ОТНОСИТЕЛЬНЫМ, как и есть с бэкенда — тот же формат,
   // что uploadStashImage() возвращает при обычной загрузке фото: AddYarnModal
   // рендерит images напрямую (<img src={url}>) без API_URL-префикса, и при
   // сабмите в createStashSkein ожидается тот же относительный путь.
-  return data.items;
+  return { items: data.items, hasMoreFromRavelry: data.hasMoreFromRavelry };
 };
 
 // Шаг 2 Ravelry-фолбэка — вызывается, когда пользователь ЯВНО выбрал один
