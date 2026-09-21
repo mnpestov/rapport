@@ -22,11 +22,9 @@
  * (YARN_STASH_PLAN.md §5.4): Ravelry — доверенный источник, но не настолько,
  * чтобы публиковать в общий справочник без проверки модератором.
  */
-import path from "path";
 import { Prisma, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
-import { normalizeUploadedImage } from "../utils/imagePipeline";
 import {
   searchRavelryYarns,
   getRavelryYarnDetail,
@@ -34,43 +32,26 @@ import {
   formatComposition,
 } from "./ravelryClient";
 
-const YARN_STASH_IMAGES_DIR = path.join(__dirname, "../../uploads/yarn-stash");
-
-// Не блокируем автокомплит пользователя из-за медленной/недоступной
-// Ravelry — best-effort, тот же принцип, что у generateVariantUrl в
-// imagePipeline.ts (деградация без ошибки в ответе API).
-async function downloadRavelryPhoto(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const filename = await normalizeUploadedImage(buffer, YARN_STASH_IMAGES_DIR);
-    return `/uploads/yarn-stash/${filename}`;
-  } catch (error) {
-    console.error("[ravelryYarnFallback] Failed to download photo:", error);
-    return null;
-  }
-}
+// Фото сознательно НЕ подтягиваются из Ravelry (было — убрано): фото на
+// Ravelry привязано к конкретному цвету/партии конкретного загрузившего
+// пользователя, у мотка в личном хранилище может быть совсем другой цвет —
+// показывать чужое неверное фото хуже, чем не показывать никакого. Своё
+// фото пользователь загружает сам, справочная запись остаётся без photoUrl.
 
 interface YarnLike {
   id: string;
   mPer100g: number | null;
   composition: string | null;
-  photoUrl: string | null;
 }
 
 // Дозаполняет ТОЛЬКО пустые поля существующей записи — Ravelry не
 // перетирает то, что уже было проверено/введено раньше (тот же принцип,
 // что у approveYarnFieldSuggestion: "обновляет только если поле ещё
-// пусто"). Фото — отдельный пустой критерий от metraжа/состава: запись
-// может уже иметь оба текстовых поля заполненными (кем-то введены вручную
-// или другим импортом), но так и остаться без фото, если тот более ранний
-// источник фото не предоставлял.
+// пусто").
 async function enrichExistingYarn(yarn: YarnLike, ravelryId: number): Promise<boolean> {
   const needsMPer100g = yarn.mPer100g == null;
   const needsComposition = yarn.composition == null;
-  const needsPhoto = yarn.photoUrl == null;
-  if (!needsMPer100g && !needsComposition && !needsPhoto) return false;
+  if (!needsMPer100g && !needsComposition) return false;
 
   const detail = await getRavelryYarnDetail(ravelryId);
   const data: Prisma.YarnUpdateInput = {};
@@ -81,13 +62,6 @@ async function enrichExistingYarn(yarn: YarnLike, ravelryId: number): Promise<bo
   if (needsComposition) {
     const composition = formatComposition(detail.yarn_fibers);
     if (composition != null) data.composition = composition;
-  }
-  if (needsPhoto) {
-    const photo = detail.photos[0];
-    if (photo) {
-      const photoUrl = await downloadRavelryPhoto(photo.medium2_url || photo.medium_url);
-      if (photoUrl != null) data.photoUrl = photoUrl;
-    }
   }
   if (Object.keys(data).length === 0) return false;
 
@@ -155,9 +129,6 @@ export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallb
   const normalizedKey = normalizeYarnKey(name);
 
   try {
-    const photo = detail.photos[0];
-    const photoUrl = photo ? await downloadRavelryPhoto(photo.medium2_url || photo.medium_url) : null;
-
     return await prisma.yarn.create({
       data: {
         name,
@@ -171,7 +142,6 @@ export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallb
         sourceName: "Ravelry",
         sourceUrl: `https://www.ravelry.com/yarns/library/${detail.permalink}`,
         ravelryId: detail.id,
-        photoUrl,
         status: YarnStatus.PENDING,
         createdVia: "STASH_USER",
       },

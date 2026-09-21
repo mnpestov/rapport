@@ -209,12 +209,10 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     setBrand(item.brand || '');
     setMPer100g(item.mPer100g != null ? String(item.mPer100g) : '');
     setComposition(item.composition || '');
-    // Предзаполняем справочным фото (своим или скачанным из Ravelry-
-    // фолбэка), только если пользователь ещё ничего сам не загрузил — не
-    // затираем его собственные фото выбором подсказки.
-    if (item.photoUrl) {
-      setImages((prev) => (prev.length === 0 ? [item.photoUrl!] : prev));
-    }
+    // Фото справочной записи НЕ предзаполняется — было убрано намеренно:
+    // фото из Ravelry привязано к чужому цвету/партии конкретного мотка,
+    // который загрузил кто-то другой, и часто не соответствует реальной
+    // пряже пользователя. Пользователь загружает своё фото сам.
   };
 
   const handlePickSuggestion = async (item: YarnSuggestion) => {

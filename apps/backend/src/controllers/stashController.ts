@@ -988,15 +988,17 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
   try {
     // Дозаполнение топового СВОЕГО совпадения — только если оно у нас есть
     // и в нём пусто. Не блокирует показ Ravelry-альтернатив ниже: это
-    // разные операции над разными результатами.
+    // разные операции над разными результатами. Фото сознательно НЕ
+    // дозаполняется — Ravelry-фото привязано к чужому цвету/партии, может
+    // не соответствовать реальному мотку пользователя.
     if (itemsWithSource.length > 0) {
       const top = itemsWithSource[0];
-      if (top.mPer100g == null || top.composition == null || top.photoUrl == null) {
+      if (top.mPer100g == null || top.composition == null) {
         const enrichedExisting = await enrichYarnFromRavelrySearch(
           // Non-null: top === itemsWithSource[0] в этой ветке — всегда наша
           // запись из items (Ravelry-варианты добавляются в массив ПОСЛЕ
           // этого блока), id у них всегда есть.
-          { id: top.id!, mPer100g: top.mPer100g, composition: top.composition, photoUrl: top.photoUrl ?? null },
+          { id: top.id!, mPer100g: top.mPer100g, composition: top.composition },
           q
         );
         if (enrichedExisting) {
@@ -1005,12 +1007,11 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
           // round-trip запроса.
           const refreshed = await prisma.yarn.findUnique({
             where: { id: top.id },
-            select: { mPer100g: true, composition: true, photoUrl: true },
+            select: { mPer100g: true, composition: true },
           });
           if (refreshed) {
             top.mPer100g = refreshed.mPer100g;
             top.composition = refreshed.composition;
-            top.photoUrl = refreshed.photoUrl;
             top.fromRavelry = true;
           }
         }
