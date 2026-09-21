@@ -1,12 +1,17 @@
 import React, { useRef, useState } from 'react';
+import { SquarePen, Trash2 } from 'lucide-react';
 import './SwipeToDelete.css';
 
-// Ширина открытой кнопки «Удалить» под карточкой — свайп короче этого
-// расстояния возвращает карточку на место, длиннее — докрывает до конца
-// (тот же порог используется и для открытия, и для решения, довести ли
-// анимацию до конца при отпускании).
-const DELETE_BUTTON_WIDTH = 88;
-const OPEN_THRESHOLD = DELETE_BUTTON_WIDTH / 2;
+// Ширина ОДНОЙ кнопки под карточкой — свайп короче половины итоговой
+// открытой ширины возвращает карточку на место, длиннее — докрывает до
+// конца (тот же порог используется и для открытия, и для решения, довести
+// ли анимацию до конца при отпускании). Итоговая ширина — одна кнопка
+// (только Удалить, как раньше — swatches/карточки пряжи) или две (плюс
+// Редактировать слева от неё — карточки списания), в зависимости от того,
+// передан ли onRequestEdit. Кнопки — иконки (Trash2/SquarePen, та же, что
+// у .stash-details-edit-button), не текст: "Редактировать" не помещалось
+// на компактной ширине кнопки.
+const BUTTON_WIDTH = 56;
 
 interface SwipeToDeleteProps {
   isOpen: boolean;
@@ -15,6 +20,11 @@ interface SwipeToDeleteProps {
   onTap: () => void;
   onRequestDelete: () => void;
   deleteLabel?: string;
+  // Опционально — если не передан, поведение то же, что раньше (одна
+  // кнопка «Удалить»). Передан → под карточкой появляется вторая кнопка
+  // «Редактировать» слева от «Удалить», ширина свайпа увеличивается вдвое.
+  onRequestEdit?: () => void;
+  editLabel?: string;
   children: React.ReactNode;
   cardClassName?: string;
 }
@@ -31,9 +41,13 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   onTap,
   onRequestDelete,
   deleteLabel = 'Удалить',
+  onRequestEdit,
+  editLabel = 'Редактировать',
   children,
   cardClassName = '',
 }) => {
+  const openWidth = onRequestEdit ? BUTTON_WIDTH * 2 : BUTTON_WIDTH;
+  const openThreshold = openWidth / 2;
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef<number | null>(null);
@@ -50,7 +64,7 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   // карточку). false — жест распознан как горизонтальный свайп.
   const isVerticalScrollRef = useRef<boolean | null>(null);
 
-  const baseOffset = isOpen ? -DELETE_BUTTON_WIDTH : 0;
+  const baseOffset = isOpen ? -openWidth : 0;
   const offset = isDragging ? dragX : baseOffset;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -68,10 +82,10 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     const deltaY = e.touches[0].clientY - startYRef.current;
 
     if (isVerticalScrollRef.current === null) {
-      // Ждём, пока жест наберёт хотя бы 8px в одном из направлений —
-      // на паре первых пикселей направление ещё шумит (палец не двигается
-      // идеально прямо), решать по ним рано.
-      if (Math.hypot(deltaX, deltaY) < 8) return;
+      // Ждём, пока жест наберёт хотя бы 16px в одном из направлений — было
+      // 8px, но этого хватало на случайное дрожание руки при обычном
+      // вертикальном скролле, из-за чего карточка открывалась сама.
+      if (Math.hypot(deltaX, deltaY) < 16) return;
       isVerticalScrollRef.current = Math.abs(deltaY) > Math.abs(deltaX);
     }
 
@@ -80,7 +94,7 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     if (Math.abs(deltaX) > 4) movedRef.current = true;
     // Свайп только влево из закрытого состояния, только вправо (закрытие)
     // из открытого — не даём утянуть карточку за пределы [-width, 0].
-    const next = Math.min(0, Math.max(-DELETE_BUTTON_WIDTH, baseOffset + deltaX));
+    const next = Math.min(0, Math.max(-openWidth, baseOffset + deltaX));
     setDragX(next);
   };
 
@@ -97,7 +111,7 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
       return;
     }
     isVerticalScrollRef.current = null;
-    if (dragX <= -OPEN_THRESHOLD) {
+    if (dragX <= -openThreshold) {
       onSwipeOpen();
     } else {
       onSwipeClose();
@@ -113,10 +127,37 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     onTap();
   };
 
+  // Клик по любой кнопке под карточкой должен вернуть её в закрытое
+  // состояние — иначе после закрытия модалки (редактирование/удаление)
+  // пользователь видит ту же открытую карточку с висящими кнопками.
+  const handleRequestDelete = () => {
+    onSwipeClose();
+    onRequestDelete();
+  };
+  const handleRequestEdit = () => {
+    onSwipeClose();
+    onRequestEdit?.();
+  };
+
   return (
     <div className="swipe-to-delete">
-      <button type="button" className="swipe-to-delete-button" onClick={onRequestDelete}>
-        {deleteLabel}
+      {onRequestEdit && (
+        <button
+          type="button"
+          className="swipe-to-delete-button swipe-to-delete-button--edit"
+          onClick={handleRequestEdit}
+          aria-label={editLabel}
+        >
+          <SquarePen size={20} strokeWidth={1.5} />
+        </button>
+      )}
+      <button
+        type="button"
+        className="swipe-to-delete-button"
+        onClick={handleRequestDelete}
+        aria-label={deleteLabel}
+      >
+        <Trash2 size={20} strokeWidth={1.5} />
       </button>
       <button
         type="button"
