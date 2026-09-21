@@ -5,7 +5,7 @@ import urllib.parse
 def get_base_url(u):
     return u[:-2] if u.endswith('-1') else u
 
-_TPRODUCT_ID_RE = re.compile(r'^(.*/tproduct/)\d+-\d+-(.+)$')
+_TPRODUCT_ID_RE = re.compile(r'^.*(/tproduct/)\d+-\d+-(.+)$')
 
 def normalize_url(url):
     try:
@@ -23,6 +23,15 @@ def normalize_url(url):
         # at all (bysergeeva.ru, loonymax.tilda.ws: "<recid>-<productid>"
         # with nothing after) don't match this pattern and are untouched —
         # there's no stable identifier to fall back to for those.
+        #
+        # Everything before "/tproduct/" is discarded too (regex used to keep
+        # it as part of group 1) — tsinbal.ru moved its store from
+        # "/tproduct/..." to "/shop/tproduct/..." between crawls, and since
+        # that prefix survived normalization unchanged, every already-synced
+        # product got a different key than the freshly-scraped one and dedup
+        # flagged all 47 existing patterns as new. The path prefix is a
+        # site-structure detail Tilda can reshuffle anytime, not part of a
+        # product's identity — recid+slug alone is stable across that.
         m = _TPRODUCT_ID_RE.match(path)
         if m:
             path = m.group(1) + m.group(2)
