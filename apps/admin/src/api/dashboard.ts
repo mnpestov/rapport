@@ -131,7 +131,10 @@ export type PaywallMetric =
   | "SUBSCRIBE_CLICK"
   | "CLOSED"
   | "BUTTON_OPENED"
-  | "PAID";
+  | "PAID"
+  // Верх воронки удержания — платные подписчики за период (User по
+  // premiumExpiresAt), не PaywallEvent/Payment.
+  | "ACTIVE_SUBSCRIBERS";
 
 export type PaywallScope =
   | "all"

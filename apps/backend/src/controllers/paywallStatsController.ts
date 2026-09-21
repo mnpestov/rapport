@@ -263,6 +263,41 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
       return;
     }
 
+    // "Платные подписчики" — верх воронки удержания, это User по
+    // premiumExpiresAt, а не PaywallEvent/Payment — третья отдельная ветка,
+    // тот же критерий "активна хотя бы день в периоде", что в
+    // countActiveSubscribers выше.
+    if (metric === "ACTIVE_SUBSCRIBERS") {
+      const where = {
+        excludeFromStats: false,
+        premiumExpiresAt: { gte: range.from ?? new Date(0) },
+      };
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          orderBy: { premiumExpiresAt: "desc" },
+          take,
+          skip,
+          select: { id: true, telegramId: true, firstName: true, lastName: true, username: true, premiumExpiresAt: true },
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      res.json({
+        total,
+        items: users.map((u) => ({
+          userId: u.id,
+          telegramId: u.telegramId.toString(),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username,
+          count: 1,
+          lastAt: u.premiumExpiresAt?.toISOString() ?? null,
+        })),
+      });
+      return;
+    }
+
     if (!(Object.values(PaywallEventType) as string[]).includes(metric)) {
       res.status(400).json({ error: "Unknown metric" });
       return;

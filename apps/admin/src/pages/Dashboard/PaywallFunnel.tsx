@@ -20,9 +20,8 @@ function share(value: number, total: number): string {
 interface FunnelRow {
   label: string;
   value: number;
-  // Платные подписчики (верх воронки удержания) — это User, а не
-  // PaywallEvent/Payment, для них нет готового drilldown-эндпоинта.
-  // metric отсутствует → строка не кликабельна.
+  // metric отсутствует → строка не кликабельна (пока такой не бывает —
+  // все строки воронки сейчас имеют drilldown).
   metric?: PaywallMetric;
   // Подпись под процентом ("от увидевших"/"от подписчиков") — у первого
   // шага (i===0) процента нет, он и есть база расчёта для остальных.
@@ -37,7 +36,7 @@ interface FunnelRow {
 // подписчики за период, проценты остальных шагов считаются от них.
 function retentionRows(retention: RetentionFunnelStep): FunnelRow[] {
   return [
-    { label: "Платные подписчики", value: retention.activeSubscribers },
+    { label: "Платные подписчики", value: retention.activeSubscribers, metric: "ACTIVE_SUBSCRIBERS" },
     // Только автопоказ (EXPIRING_3_DAYS/EXPIRING_1_DAY) — ручное открытие
     // подписчиком через кнопку у поиска (source=ACTIVE) в эту цифру не
     // входит, хотя оно тоже "источник удержания" и учитывается в шагах ниже.
