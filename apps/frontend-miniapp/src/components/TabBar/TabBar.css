@@ -35,6 +35,7 @@
 
 .tab-bar-item--disabled {
   cursor: default;
+  display: none;
 }
 
 .tab-bar-icon-wrap {
