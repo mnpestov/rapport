@@ -2,8 +2,10 @@
  * Ежедневный джоб по платным подпискам (PAYMENTS_ROBOKASSA_PLAN.md §6,
  * §7 шаг 7). Два действия за один прогон:
  *   1. Напоминание за 3 дня до истечения — пока доступ ещё работает.
- *   2. Отключение по истечении: снятие PREMIUM_CORE + PREMIUM_EXTRA и
- *      уведомление о самом факте (решение по §8.2 — шлём оба сообщения).
+ *   2. Отключение по истечении: снятие всех разрешений, которые выдаёт
+ *      completePayment() (PREMIUM_CORE, PREMIUM_EXTRA, PREMIUM_YARNS,
+ *      PRICE_ALERT — см. REVOKED_ON_EXPIRY ниже), и уведомление о самом
+ *      факте (решение по §8.2 — шлём оба сообщения).
  *
  * Запускается обёрткой run_subscription_check.sh из cron, раз в сутки —
  * из суточной частоты и получается тот самый grace period до суток (§6),
@@ -26,6 +28,20 @@ import { prisma } from "../prismaClient";
 import { sendExpiryReminder, sendExpiredNotice } from "../services/subscriptionNotifier";
 
 const REMINDER_DAYS_BEFORE = 3;
+
+// Полный набор разрешений, которые выдаёт completePayment() при оплате
+// (paymentCompletion.ts) — при истечении без продления снимается целиком,
+// чтобы отключение не расходилось с тем, что реально включает оплата.
+// PRICE_ALERT сюда входит осознанно с апдейта 2026-09: раньше оставался
+// навсегда после первой оплаты, теперь отзывается вместе с остальными —
+// существующие подписки на цену (модель PriceAlert) при этом не удаляются,
+// только перестают быть видны/рассылаться до следующей оплаты.
+const REVOKED_ON_EXPIRY: Permission[] = [
+  Permission.PREMIUM_CORE,
+  Permission.PREMIUM_EXTRA,
+  Permission.PREMIUM_YARNS,
+  Permission.PRICE_ALERT,
+];
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
@@ -74,7 +90,7 @@ async function main(): Promise<void> {
     where: {
       premiumExpiresAt: { lt: now },
       role: { not: UserRole.ADMIN },
-      permissions: { some: { permission: { in: [Permission.PREMIUM_CORE, Permission.PREMIUM_EXTRA] } } },
+      permissions: { some: { permission: { in: REVOKED_ON_EXPIRY } } },
     },
     select: { id: true, telegramId: true, premiumExpiresAt: true },
   });
@@ -90,7 +106,7 @@ async function main(): Promise<void> {
     await prisma.userPermission.deleteMany({
       where: {
         userId: user.id,
-        permission: { in: [Permission.PREMIUM_CORE, Permission.PREMIUM_EXTRA] },
+        permission: { in: REVOKED_ON_EXPIRY },
       },
     });
     revoked++;

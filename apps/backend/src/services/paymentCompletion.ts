@@ -87,6 +87,14 @@ export async function completePayment(
       create: { userId: user.id, permission: Permission.PRICE_ALERT },
       update: {},
     });
+    // Артикулы пряжи в карточке описания — тот же принцип, что и PRICE_ALERT
+    // выше: часть платного тарифа, выдаётся автоматически при оплате, а не
+    // только вручную из админки (апдейт 2026-09).
+    await tx.userPermission.upsert({
+      where: { userId_permission: { userId: user.id, permission: Permission.PREMIUM_YARNS } },
+      create: { userId: user.id, permission: Permission.PREMIUM_YARNS },
+      update: {},
+    });
   });
 
   if (!newExpiresAt) return { outcome: "already_paid" };
