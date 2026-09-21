@@ -239,14 +239,14 @@
   border: none;
   border-bottom: 3px solid transparent;
   background: none;
-  padding: 0 0 10px;
+  padding: 0;
   text-align: left;
   cursor: pointer;
   width: 100%;
 }
 
 .log-usage-card-row--selected {
-  border-bottom-color: #a9ae36;
+  border-bottom-color: #83942C;
 }
 
 .log-usage-card-row--locked {
@@ -257,7 +257,7 @@
    геометрические границы, и края карточки выглядят нечёткими. */
 .log-usage-card-row-image-frame {
   position: relative;
-  width: 80px;
+  width: 65px;
   height: 80px;
   flex-shrink: 0;
   border-radius: 2px;
@@ -282,7 +282,7 @@
 }
 
 .log-usage-card-row-image {
-  width: 80px;
+  width: 65px;
   height: 80px;
   flex-shrink: 0;
   object-fit: cover;
