@@ -18,14 +18,16 @@ interface Props {
  * Форма карточки артикула. Поля оставлены минимально необходимые:
  *
  * - Бренд (обязателен, если не родовая карточка) — с autocomplete по существующим
- * - Линейка (обязательна) — с autocomplete по существующим
+ * - Артикул (необязателен) — с autocomplete по существующим
  * - Родовое название (только для админа)
- * - Метраж м/100г (обязателен)
+ * - Метраж м/100г (обязателен при создании новой карточки, необязателен при
+ *   редактировании существующей — в БД есть старые записи без него)
  * - Плотность производителя (необязательна)
- * - Состав (необязателен)
+ * - Состав (обязателен при создании новой карточки, необязателен при
+ *   редактировании существующей — та же причина, что у метража)
  *
- * Имя артикула формируется на бэкенде из бренда + линейки, поэтому поле
- * «Название» убрано: дублирует пару Бренд/Линейка и провоцирует опечатки.
+ * Имя артикула формируется на бэкенде из бренда + артикула, поэтому поле
+ * «Название» убрано: дублирует пару Бренд/Артикул и провоцирует опечатки.
  */
 export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
   const { user } = useAuth();
@@ -64,13 +66,16 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
     };
   };
 
-  // Валидация: бренд обязателен (кроме родовых карточек), линейка обязательна,
-  // метраж обязателен.
+  // Валидация: бренд обязателен всегда (кроме родовых карточек). Метраж и
+  // состав обязательны только при СОЗДАНИИ новой карточки — при
+  // редактировании уже существующей записи они могут быть пусты в БД
+  // (частый случай для старых карточек), и раньше это блокировало
+  // сохранение любых правок, даже если админ менял совсем другое поле.
+  // Артикул необязателен в обоих случаях.
+  const isNew = !yarn;
   const isValid =
     (form.isGeneric || form.brand.trim() !== "") &&
-    form.line.trim() !== "" &&
-    form.mPer100g.trim() !== "" &&
-    form.composition.trim() !== "";
+    (!isNew || (form.mPer100g.trim() !== "" && form.composition.trim() !== ""));
 
   return (
     <Modal isOpen onClose={onClose} title={yarn ? "Артикул" : "Новый артикул"} maxWidth={560}>
@@ -92,14 +97,13 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
           hint={form.isGeneric ? "Родовые карточки без бренда" : undefined}
         />
 
-        {/* Линейка — autocomplete */}
+        {/* Артикул — autocomplete */}
         <AutocompleteField
-          label="Линейка"
+          label="Артикул"
           value={form.line}
           onChange={(v) => set("line", v)}
           fetchSuggestions={getYarnLines}
           placeholder="Angora Gold, Loves You…"
-          required
         />
 
         {/* Чекбокс «Родовое» — только для админа */}
@@ -119,9 +123,9 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
           </label>
         )}
 
-        {/* Метраж — обязательное поле */}
+        {/* Метраж — обязательно при создании новой карточки */}
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Метраж, м/100 г *</span>
+          <span className={styles.fieldLabel}>Метраж, м/100 г{isNew && " *"}</span>
           <input
             className={styles.fieldInput}
             value={form.mPer100g}
@@ -145,9 +149,9 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
           </span>
         </label>
 
-        {/* Состав — необязательное, на всю ширину */}
+        {/* Состав — обязательно при создании новой карточки, на всю ширину */}
         <label className={styles.fieldWide}>
-          <span className={styles.fieldLabel}>Состав *</span>
+          <span className={styles.fieldLabel}>Состав{isNew && " *"}</span>
           <input
             className={styles.fieldInput}
             value={form.composition}
