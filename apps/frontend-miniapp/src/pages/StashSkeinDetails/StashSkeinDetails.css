@@ -198,8 +198,8 @@
 
 .stash-usage-image {
   position: relative;
-  width: 80px;
-  height: 110px;
+  width: 90px;
+  height: 117px;
   flex-shrink: 0;
   border-radius: 2px;
   overflow: hidden;
@@ -449,7 +449,8 @@
 }
 
 .stash-match-card {
-  width: 175px;
+  /* width: 175px; */
+  width: 90px;
   flex-shrink: 0;
   border: none;
   background: none;
@@ -462,8 +463,10 @@
 }
 
 .stash-match-image {
-  width: 175px;
-  height: 216px;
+  /* width: 175px;
+  height: 216px; */
+  width: 90px;
+  height: 117px;
   object-fit: cover;
   border-radius: 2px;
 }
@@ -475,8 +478,10 @@
    node-id=1360:21430, "Mask group"). */
 .stash-match-image-frame {
   position: relative;
-  width: 175px;
-  height: 216px;
+  /* width: 175px;
+  height: 216px; */
+  width: 90px;
+  height: 117px;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -505,7 +510,7 @@
 .stash-match-title {
   font-family: Mulish, sans-serif;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 11px;
   color: #1d1c1c;
   margin: 0;
   white-space: nowrap;
@@ -527,7 +532,7 @@
 .stash-match-category,
 .stash-match-instrument {
   font-family: Mulish, sans-serif;
-  font-size: 12px;
+  font-size: 10px;
   color: #1d1c1c;
   margin: 0;
   white-space: nowrap;
