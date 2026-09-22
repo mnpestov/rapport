@@ -174,6 +174,46 @@ model YarnComposition {
   @@unique([yarnId, fiberTypeId])
 }
 
+// Таблица заменителей волокон — на уровне FiberType.baseFiber (не
+// конкретного канона с подтипом): "Меринос"/"Як"/"Ягнёнок" при поиске
+// заменителей все сводятся к baseFiber "Шерсть", подтип не участвует в
+// скоринге. Seed из rapport_fiber_substitutes.md (экспертная эвристика,
+// сентябрь 2026), но не fixed-список — как и FiberType, может расширяться.
+//
+// Хранится ОДНОЙ строкой на симметричную пару (symmetric: true — читается
+// в обе стороны кодом подбора; редкое исключение — symmetric: false,
+// связь действует только source -> target).
+model FiberSubstitute {
+  id         String               @id @default(uuid())
+  source     String // FiberType.baseFiber
+  target     String // FiberType.baseFiber
+  level      FiberSubstituteLevel // A/B/C — близость; X — явный запрет
+  // По какой причине допустима замена — используется критичным
+  // ограничением "не допускать альтернативу без обязательного
+  // функционального компонента" (functional с долей ≥15% в оригинале,
+  // не найденного среди сопоставленных пар, блокирует всю альтернативу).
+  role       FiberSubstituteRole  @default(MATERIAL)
+  symmetric  Boolean              @default(true)
+
+  @@unique([source, target])
+  @@index([source])
+  @@index([target])
+}
+
+enum FiberSubstituteLevel {
+  A
+  B
+  C
+  X
+}
+
+enum FiberSubstituteRole {
+  MATERIAL
+  FUNCTIONAL
+  VISUAL
+  DECORATIVE
+}
+
 // ─── Артикулы пряжи ────────────────────────────────────────────────────────
 // Отдельная сущность, а не поле у Pattern: на описание приходится в среднем
 // 2,7 артикула, и одно поле выбросило бы больше половины связей. С YarnRange

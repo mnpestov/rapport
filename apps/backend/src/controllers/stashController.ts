@@ -15,6 +15,7 @@ import { Prisma, YarnStatus, UserRole, Permission } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
 import { createAuthorYarn } from "./yarnsController";
+import { scoreComposition, loadSubstituteIndex } from "../utils/compositionMatch";
 import {
   searchRavelryPreview,
   importRavelryYarn,
@@ -753,6 +754,12 @@ interface MatchItem {
   // вязании в N сложений". null — совпадение по толщине не было, либо было
   // найдено в 1 нить (обычный случай, подписи не нужно).
   strandsCount: number | null;
+  // Уровень совместимости состава (A/B/C), заполнен только когда матч
+  // пришёл через "thickness" И у мотка есть структурированный состав —
+  // см. compositionMatch.ts. null — состав не участвовал в этом совпадении
+  // (либо у мотка/кандидата состав не структурирован, либо совпадение
+  // пришло через exact/density, где состав не проверяется отдельно).
+  compositionLevel: "A" | "B" | "C" | null;
 }
 
 /**
@@ -760,10 +767,14 @@ interface MatchItem {
  * критериям, результаты ОБЪЕДИНЯЮТСЯ (не последовательный fallback, план
  * §4): (1) точный артикул через PatternYarn.yarnId (резолвя mergedIntoId —
  * один hop, тем же способом, что и остальной код сегодня); (2) толщина —
- * Pattern.yarnRanges пересекается с [mPer100g×0.92, mPer100g×1.08]; (3)
- * плотность последнего образца ПОСЛЕ ВТО, допуск ±1 петля/±1 ряд. Состав
- * сознательно не участвует (план §4 — ненадёжное текстовое сравнение без
- * словаря синонимов).
+ * Pattern.yarnRanges пересекается с [mPer100g×0.92, mPer100g×1.08], ДОПОЛНИТЕЛЬНО
+ * отфильтрованная по составу (compositionMatch.ts — AND внутри этого
+ * критерия, не отдельный 4-й критерий: толщина совпала, но состав кандидата
+ * даёт X, значит толщина в этот раз не считается совпадением); (3) плотность
+ * последнего образца ПОСЛЕ ВТО, допуск ±1 петля/±1 ряд. Состав применяется
+ * только когда он структурирован (YarnComposition) хотя бы у мотка
+ * пользователя — иначе (сырой текстовый composition, ещё не разобранный)
+ * толщина работает как раньше, без фильтра.
  *
  * Единственное место в /stash/*, которому нужен LIVE join с Yarn (не
  * снимок) — подбору нужны актуальные PatternYarn/mPer100g ЦЕЛЕВОГО (после
@@ -786,10 +797,22 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
     // no-op; single-hop resolve оставлен на случай рассинхронизации.
     const yarn = await prisma.yarn.findUnique({
       where: { id: skein.yarnId },
-      select: { id: true, mergedIntoId: true, mPer100g: true },
+      select: {
+        id: true, mergedIntoId: true, mPer100g: true,
+        compositions: { select: { percentage: true, fiberType: { select: { baseFiber: true } } } },
+      },
     });
     const effectiveYarnId = yarn?.mergedIntoId ?? yarn?.id ?? skein.yarnId;
     const mPer100g = yarn?.mPer100g ?? skein.mPer100gSnapshot;
+    // Состав мотка в терминах baseFiber — сравнение заменителей идёт на
+    // этом уровне (не по конкретному подтипу с гранями/тонкостью), см.
+    // compositionMatch.ts. Пустой массив у карточек без структурированного
+    // состава — фильтр по составу тогда не применяется вовсе (см. ниже).
+    const originalComposition = (yarn?.compositions ?? []).map((c) => ({
+      baseFiber: c.fiberType.baseFiber,
+      percentage: c.percentage,
+    }));
+    const substituteIndex = originalComposition.length > 0 ? await loadSubstituteIndex() : null;
 
     const matchedIds = new Map<string, Set<"exact" | "thickness" | "density">>();
     const addMatch = (id: string, kind: "exact" | "thickness" | "density") => {
@@ -800,6 +823,11 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
     // паттерн — используется на фронте для подписи "При вязании в N
     // сложений". Не трогается для совпадений по exact/density.
     const strandsByPattern = new Map<string, number>();
+    // Лучший (наименьший) уровень совместимости состава, найденный для
+    // паттерна — один паттерн может быть привязан к нескольким артикулам
+    // пряжи с разным составом, берём самый удачный.
+    const compositionLevelByPattern = new Map<string, "A" | "B" | "C">();
+    const COMPOSITION_LEVEL_RANK = { A: 0, B: 1, C: 2 } as const;
 
     // (1) Точный артикул.
     const exactMatches = await prisma.patternYarn.findMany({
@@ -836,9 +864,32 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
             pattern: { isVisible: true },
             yarn: { mPer100g: { gte: lo, lte: hi } },
           },
-          select: { patternId: true },
+          select: {
+            patternId: true,
+            // Состав кандидата — лёгкий join (1-3 строки на артикул),
+            // грузится всегда; фильтруется по нему только когда у самого
+            // мотка есть структурированный состав (substituteIndex != null).
+            yarn: { select: { compositions: { select: { percentage: true, fiberType: { select: { baseFiber: true } } } } } },
+          },
         });
         for (const m of thicknessMatches) {
+          // Состав — доп. фильтр ВНУТРИ критерия толщины (AND), не
+          // отдельный независимый критерий: описание проходит только если
+          // толщина совпала И (состав неизвестен ИЛИ состав дал уровень A/B/C).
+          if (substituteIndex) {
+            const candidateComposition = m.yarn.compositions.map((c) => ({
+              baseFiber: c.fiberType.baseFiber,
+              percentage: c.percentage,
+            }));
+            if (candidateComposition.length > 0) {
+              const result = scoreComposition(originalComposition, candidateComposition, substituteIndex);
+              if (result.level === "X") continue;
+              const prevLevel = compositionLevelByPattern.get(m.patternId);
+              if (!prevLevel || COMPOSITION_LEVEL_RANK[result.level] < COMPOSITION_LEVEL_RANK[prevLevel]) {
+                compositionLevelByPattern.set(m.patternId, result.level);
+              }
+            }
+          }
           addMatch(m.patternId, "thickness");
           if (!strandsByPattern.has(m.patternId)) strandsByPattern.set(m.patternId, strands);
         }
@@ -892,6 +943,7 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
         category: p.categories[0]?.name ?? null,
         matchedBy: [...(matchedIds.get(p.id) ?? [])],
         strandsCount: strands != null && strands > 1 ? strands : null,
+        compositionLevel: compositionLevelByPattern.get(p.id) ?? null,
       };
     });
 

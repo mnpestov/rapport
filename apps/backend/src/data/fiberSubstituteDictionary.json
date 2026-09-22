@@ -1,0 +1,604 @@
+[
+  {
+    "source": "Шерсть",
+    "target": "Альпака",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Кашемир",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Лама",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Альпака",
+    "target": "Лама",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Альпака",
+    "target": "Кашемир",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Альпака",
+    "target": "Мохер",
+    "level": "C",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Кашемир",
+    "target": "Лама",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лама",
+    "target": "Шерсть",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Викунья",
+    "target": "Кашемир",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Викунья",
+    "target": "Альпака",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Викунья",
+    "target": "Шерсть",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Мохер",
+    "target": "Ангора",
+    "level": "B",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Ангора",
+    "target": "Мохер",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Ангора",
+    "target": "Кашемир",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Ангора",
+    "target": "Шерсть",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Пух норки",
+    "target": "Ангора",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Пух норки",
+    "target": "Мохер",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Пух норки",
+    "target": "Кашемир",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Пух норки",
+    "target": "Шерсть",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Козий пух",
+    "target": "Ангора",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Козий пух",
+    "target": "Мохер",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Козий пух",
+    "target": "Кашемир",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Козий пух",
+    "target": "Шерсть",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Пух (вид не уточнён)",
+    "target": "Ангора",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Пух (вид не уточнён)",
+    "target": "Мохер",
+    "level": "A",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Пух (вид не уточнён)",
+    "target": "Кашемир",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Пух (вид не уточнён)",
+    "target": "Шерсть",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шёлк",
+    "target": "Вискоза",
+    "level": "B",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Шёлк",
+    "target": "Лиоцелл",
+    "level": "B",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Шёлк",
+    "target": "Модал",
+    "level": "C",
+    "role": "visual",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Лён",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Конопля",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Вискоза",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Лиоцелл",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Модал",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Бамбук",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лён",
+    "target": "Конопля",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лён",
+    "target": "Крапива",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лён",
+    "target": "Джут",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лён",
+    "target": "Вискоза",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лён",
+    "target": "Лиоцелл",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Конопля",
+    "target": "Крапива",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Конопля",
+    "target": "Джут",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Крапива",
+    "target": "Лён",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Крапива",
+    "target": "Конопля",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Крапива",
+    "target": "Хлопок",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Крапива",
+    "target": "Джут",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Джут",
+    "target": "Конопля",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Джут",
+    "target": "Лён",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Джут",
+    "target": "Крапива",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Джут",
+    "target": "Хлопок",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Вискоза",
+    "target": "Модал",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Вискоза",
+    "target": "Лиоцелл",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Вискоза",
+    "target": "Бамбук",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Лиоцелл",
+    "target": "Модал",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Акрил",
+    "target": "Полиакрил",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Акрил",
+    "target": "ПАН (полиакрилонитрил)",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Акрил",
+    "target": "Полиэстер",
+    "level": "B",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Акрил",
+    "target": "Полиамид",
+    "level": "C",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Полиамид",
+    "target": "Нейлон",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Полиамид",
+    "target": "Полиэстер",
+    "level": "B",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Нейлон",
+    "target": "Полиэстер",
+    "level": "B",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Нейлон",
+    "target": "Акрил",
+    "level": "C",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Полиэстер",
+    "target": "Акрил",
+    "level": "C",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Полипропилен",
+    "target": "Полиэстер",
+    "level": "B",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Полипропилен",
+    "target": "Полиамид",
+    "level": "B",
+    "role": "functional",
+    "symmetric": true
+  },
+  {
+    "source": "Металлизированная нить",
+    "target": "Пайетки/бисер",
+    "level": "C",
+    "role": "decorative",
+    "symmetric": true
+  },
+  {
+    "source": "Пайетки/бисер",
+    "target": "Металлизированная нить",
+    "level": "B",
+    "role": "decorative",
+    "symmetric": true
+  },
+  {
+    "source": "Бумажное волокно",
+    "target": "Джут",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Бумажное волокно",
+    "target": "Лён",
+    "level": "B",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Бумажное волокно",
+    "target": "Хлопок",
+    "level": "C",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Хлопок",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Лён",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Полиэстер",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Полиамид",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шерсть",
+    "target": "Акрил",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Альпака",
+    "target": "Хлопок",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Альпака",
+    "target": "Лён",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Альпака",
+    "target": "Полиэстер",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Кашемир",
+    "target": "Полиэстер",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Кашемир",
+    "target": "Хлопок",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Кашемир",
+    "target": "Полиамид",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Мохер",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Хлопок",
+    "target": "Полиэстер",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шёлк",
+    "target": "Полиамид",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Шёлк",
+    "target": "Акрил",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  }
+]
