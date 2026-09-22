@@ -250,6 +250,17 @@ export function Authors() {
     cabinetFilter === "all" ? true : cabinetFilter === "with" ? !!a.cabinet : !a.cabinet
   );
 
+  // Суммарное число описаний по вкладке — patternsCount уже есть у каждого
+  // автора (используется и для запрета удаления, строка ~223), просто
+  // складываем по тому же разбиению, что и count авторов выше. Author -
+  // Pattern связь прямая (authorId FK, один автор на описание), поэтому
+  // сумма across авторов вкладки не задваивает записи.
+  const totalDescriptionsCount = authors.reduce((sum, a) => sum + a.patternsCount, 0);
+  const withCabinetDescriptionsCount = authors
+    .filter((a) => a.cabinet)
+    .reduce((sum, a) => sum + a.patternsCount, 0);
+  const withoutCabinetDescriptionsCount = totalDescriptionsCount - withCabinetDescriptionsCount;
+
   if (isLoading && authors.length === 0) {
     return <div className={styles.centerState}>Загрузка...</div>;
   }
@@ -277,9 +288,9 @@ export function Authors() {
         <div className={styles.leftControls}>
           <Tabs
             tabs={[
-              { value: "all", label: "Все", count: authors.length },
-              { value: "with", label: "С ЛК", count: withCabinetCount },
-              { value: "without", label: "Без ЛК", count: withoutCabinetCount },
+              { value: "all", label: `Все · ${totalDescriptionsCount} опис.`, count: authors.length },
+              { value: "with", label: `С ЛК · ${withCabinetDescriptionsCount} опис.`, count: withCabinetCount },
+              { value: "without", label: `Без ЛК · ${withoutCabinetDescriptionsCount} опис.`, count: withoutCabinetCount },
             ]}
             value={cabinetFilter}
             onChange={(v) => setCabinetFilter(v as "all" | "with" | "without")}
