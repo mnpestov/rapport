@@ -90,7 +90,12 @@ export function PaywallUsersModal({ target, period, appliedRange, onClose }: Pro
   // скрыта для них через pageCount.
   const isPriceAlertPattern = target?.kind === "priceAlertPattern";
   const isPaid = !isPriceAlertPattern && target?.metric === "PAID";
-  const isActiveSubscribers = !isPriceAlertPattern && target?.metric === "ACTIVE_SUBSCRIBERS";
+  // ELIGIBLE_FOR_RENEWAL_BANNER — та же форма ответа, что ACTIVE_SUBSCRIBERS
+  // (User по premiumExpiresAt, count всегда 1, lastAt = дата истечения) —
+  // общая колонка "Срок действия" с сортировкой подходит без изменений.
+  const isActiveSubscribers =
+    !isPriceAlertPattern &&
+    (target?.metric === "ACTIVE_SUBSCRIBERS" || target?.metric === "ELIGIBLE_FOR_RENEWAL_BANNER");
   const pageCount = Math.ceil(total / PAGE);
   const currentPage = Math.floor(offset / PAGE) + 1;
 

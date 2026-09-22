@@ -155,6 +155,26 @@ async function countCurrentlyActiveSubscribers(): Promise<number> {
   });
 }
 
+// "Подходит срок продления" — верхняя граница воронки "Показали баннер":
+// кому баннер ДОЛЖЕН был показаться (premiumExpiresAt в ближайшие 3 дня
+// прямо сейчас), а не кому реально показался. Баннер выставляется только
+// в authSession.ts при открытии сессии (см. subscriptionWarning) — кто не
+// заходил в Раппорт в этом окне, никогда не получает PaywallEvent(SHOWN),
+// и "Показали баннер" тогда недосчитывает реальный охват. Мгновенное
+// состояние "сейчас", как countCurrentlyActiveSubscribers — выбранный на
+// дашборде период (7d/30d/90d/all) на эту графу не влияет: нельзя
+// ретроспективно иметь "осталось 3 дня" за произвольный диапазон.
+async function countEligibleForRenewalBanner(): Promise<number> {
+  const now = new Date();
+  const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  return prisma.user.count({
+    where: {
+      excludeFromStats: false,
+      premiumExpiresAt: { gte: now, lte: in3Days },
+    },
+  });
+}
+
 // GET /admin/paywall-stats
 export const getPaywallStats = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -171,6 +191,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       acquisitionClick,
       acquisitionPaid,
       retentionActiveSubscribers,
+      retentionEligibleForBanner,
       retentionShown,
       retentionClick,
       retentionPaid,
@@ -196,6 +217,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countPayingUsers(range, ACQUISITION_SOURCES),
 
       countActiveSubscribers(range),
+      countEligibleForRenewalBanner(),
       countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_AUTO_SHOWN_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, RETENTION_SOURCES),
       countPayingUsers(range, RETENTION_SOURCES),
@@ -219,6 +241,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       acquisition: { shown: acquisitionShown, subscribeClick: acquisitionClick, paid: acquisitionPaid },
       retention: {
         activeSubscribers: retentionActiveSubscribers,
+        eligibleForBanner: retentionEligibleForBanner,
         shown: retentionShown,
         subscribeClick: retentionClick,
         paid: retentionPaid,
@@ -321,6 +344,42 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
       const where = {
         excludeFromStats: false,
         premiumExpiresAt: { gte: range.from ?? new Date(0) },
+      };
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          orderBy: { premiumExpiresAt: order },
+          take,
+          skip,
+          select: { id: true, telegramId: true, firstName: true, lastName: true, username: true, premiumExpiresAt: true },
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      res.json({
+        total,
+        items: users.map((u) => ({
+          userId: u.id,
+          telegramId: u.telegramId.toString(),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username,
+          count: 1,
+          lastAt: u.premiumExpiresAt?.toISOString() ?? null,
+        })),
+      });
+      return;
+    }
+
+    // "Подходит срок продления" — тот же критерий, что
+    // countEligibleForRenewalBanner выше: мгновенный снимок "сейчас", без
+    // привязки к range (в отличие от ACTIVE_SUBSCRIBERS чуть выше).
+    if (metric === "ELIGIBLE_FOR_RENEWAL_BANNER") {
+      const now = new Date();
+      const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const where = {
+        excludeFromStats: false,
+        premiumExpiresAt: { gte: now, lte: in3Days },
       };
       const [users, total] = await Promise.all([
         prisma.user.findMany({

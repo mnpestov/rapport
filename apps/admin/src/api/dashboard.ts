@@ -83,6 +83,12 @@ export interface PaywallFunnelStep {
 // «Оформить» → оплатили).
 export interface RetentionFunnelStep extends PaywallFunnelStep {
   activeSubscribers: number;
+  // Кому баннер ДОЛЖЕН показаться прямо сейчас (premiumExpiresAt ≤ 3 дня
+  // от текущего момента) — часть подписчиков не заходит в Раппорт в этом
+  // окне и никогда не попадает в "shown" (тот считается по PaywallEvent,
+  // который создаётся только при открытии сессии). Мгновенный снимок, не
+  // зависит от периода на дашборде.
+  eligibleForBanner: number;
 }
 
 export interface PaywallStatsResponse {
@@ -144,6 +150,9 @@ export type PaywallMetric =
   // КОГДА-ТО в периоде, даже если уже истекла), User по premiumExpiresAt,
   // не PaywallEvent/Payment.
   | "ACTIVE_SUBSCRIBERS"
+  // Строка над "Показали баннер" — кому баннер ДОЛЖЕН показаться прямо
+  // сейчас (premiumExpiresAt в ближайшие 3 дня), не привязано к периоду.
+  | "ELIGIBLE_FOR_RENEWAL_BANNER"
   // Сводка в шапке — активна ПРЯМО СЕЙЧАС. Не то же самое, что
   // ACTIVE_SUBSCRIBERS выше — см. комментарий в paywallStatsController.ts.
   | "CURRENTLY_ACTIVE_SUBSCRIBERS"

@@ -45,13 +45,22 @@ interface FunnelRow {
 // (E.g. кто-то оформил из другого места), искажали бы % относительно того,
 // что человек увидел.
 function retentionRows(retention: RetentionFunnelStep): FunnelRow[] {
+  const eligible = retention.eligibleForBanner;
   const shown = retention.shown;
   return [
     { label: "Платные подписчики", value: retention.activeSubscribers, metric: "ACTIVE_SUBSCRIBERS" },
+    // Кому баннер ДОЛЖЕН показаться прямо сейчас (≤3 дня до истечения) —
+    // часть этих людей не заходит в Раппорт в этом окне и никогда не
+    // попадает в PaywallEvent(SHOWN) ниже, поэтому "Показали баннер" в
+    // реальности недосчитывает охват. Мгновенный снимок, не зависит от
+    // выбранного периода на дашборде (в отличие от остальных строк).
+    { label: "Подходит срок продления", value: eligible, metric: "ELIGIBLE_FOR_RENEWAL_BANNER", shareOfLabel: "от подписчиков" },
     // Только автопоказ (EXPIRING_3_DAYS/EXPIRING_1_DAY) — ручное открытие
     // подписчиком через кнопку у поиска (source=ACTIVE) в эту цифру не
     // входит, хотя оно тоже "источник удержания" и учитывается в шагах ниже.
-    { label: "Показали баннер продления", value: shown, metric: "SHOWN", shareOfLabel: "от подписчиков", scope: "retention_auto_shown" },
+    // База % — строка выше ("Подходит срок"), а не "Платные подписчики":
+    // так видно долю ОХВАТА среди тех, кому баннер вообще актуален.
+    { label: "Показали баннер продления", value: shown, metric: "SHOWN", shareOfLabel: "от подходящих по сроку", shareBase: eligible, scope: "retention_auto_shown" },
     { label: "Нажали «Оформить»", value: retention.subscribeClick, metric: "SUBSCRIBE_CLICK", shareOfLabel: "от увидевших баннер", shareBase: shown },
     { label: "Оплатили", value: retention.paid, metric: "PAID", shareOfLabel: "от увидевших баннер", shareBase: shown },
   ];
