@@ -11,6 +11,7 @@ import {
 } from '../controllers/authorApplicationController';
 import { createUserCredential, lookupUserCredential } from '../controllers/userCredentialController';
 import { notifyPriceChanged } from '../controllers/priceAlertsController';
+import { recordWinbackResponse, optOutWinback, grantWinbackBonus } from '../controllers/winbackController';
 
 const router = Router();
 
@@ -33,5 +34,11 @@ router.post('/bot/user-credentials/lookup', requireBotApiKey, lookupUserCredenti
 // check_price_updates.py дёргает после апдейта цены описания — рассылка
 // подписчикам PRICE_ALERT (implementation_plan.md, вариант B).
 router.post('/bot/price-changed', requireBotApiKey, notifyPriceChanged);
+
+// Ответы на winback-опрос (план в чате, сентябрь 2026) — нажатие кнопки
+// под сообщением checkWinback.ts, обрабатывается support-bot'ом.
+router.post('/bot/winback/response', requireBotApiKey, recordWinbackResponse);
+router.post('/bot/winback/opt-out', requireBotApiKey, optOutWinback);
+router.post('/bot/winback/grant-bonus', requireBotApiKey, grantWinbackBonus);
 
 export default router;

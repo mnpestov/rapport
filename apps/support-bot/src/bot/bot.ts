@@ -25,6 +25,12 @@ import {
   handleWebAccessCancel,
   handleWebAccessForgot,
 } from './handlers/webAccess';
+import {
+  handleWinbackDidntFind,
+  handleWinbackHardToUse,
+  handleWinbackAllGood,
+  handleWinbackOptOut,
+} from './handlers/winback';
 
 // Shown in Telegram's "Menu" button next to the message input — the only
 // UI surface where a user can discover /become_author without being told
@@ -66,6 +72,10 @@ export function createBot(): Bot<CustomContext> {
   bot.callbackQuery('author_app:submit', handleAuthorAppSubmit);
   bot.callbackQuery('author_app:cancel', handleAuthorAppCancel);
   bot.callbackQuery('author_app:respond_submit', handleAuthorAppRespondSubmit);
+  bot.callbackQuery('winback:didnt_find', handleWinbackDidntFind);
+  bot.callbackQuery('winback:hard_to_use', handleWinbackHardToUse);
+  bot.callbackQuery('winback:all_good', handleWinbackAllGood);
+  bot.callbackQuery('winback:opt_out', handleWinbackOptOut);
   bot.on('message', handleFallback);
 
   return bot;

@@ -640,6 +640,23 @@ model User {
   // период снова получил своё напоминание (paymentsController.ts).
   premiumReminderSentAt DateTime?
 
+  // Winback-опрос: мягкий чекин платным подписчикам, не заходившим ~12
+  // дней (сентябрь 2026, план в чате) — независимо от premiumExpiresAt,
+  // не пересекается с напоминанием о продлении выше. Временный кулдаун:
+  // "протухает" (cron шлёт заново), если lastSeenAt обновился ПОСЛЕ этой
+  // отметки — то есть человек заходил и снова замолчал, новый период
+  // неактивности заслуживает новый чекин. В отличие от
+  // premiumReminderSentAt, сброса на конкретное событие ("новая оплата")
+  // нет — критерий сброса тут "заходил ли пользователь с тех пор".
+  winbackCheckinSentAt DateTime?
+  // Постоянный отказ ("Не спрашивать больше" в клавиатуре чекина) — в
+  // отличие от winbackCheckinSentAt НЕ протухает при следующем визите,
+  // cron исключает такого пользователя навсегда. Отдельное поле, а не
+  // ещё одно значение WinbackReason: это не причина оттока, а отзыв
+  // согласия на саму рассылку, разная семантика для статистики.
+  winbackOptedOutAt DateTime?
+
+  winbackResponses  WinbackResponse[]
   favorites         UserFavorite[]
   patternViews      PatternView[]
   patternLinkClicks PatternLinkClick[]
@@ -1262,6 +1279,30 @@ model PaywallEvent {
   // индексом и читается.
   @@index([createdAt, type, source])
   @@index([userId])
+}
+
+// Ответ на winback-опрос ("Давно вас не было видно…", сентябрь 2026) —
+// первая инфраструктура сбора причин оттока в проекте (раньше не было
+// вообще никакого сигнала, почему платные подписчики перестают заходить).
+// Отдельная строка на каждый ответ, не апдейт единственного поля на User:
+// один и тот же пользователь может отвечать в разные периоды неактивности
+// (см. winbackCheckinSentAt на User), и видеть только последний ответ
+// значило бы терять историю.
+model WinbackResponse {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    WinbackReason
+  createdAt DateTime      @default(now())
+
+  @@index([userId])
+  @@index([createdAt, reason])
+}
+
+enum WinbackReason {
+  DIDNT_FIND_PATTERN
+  HARD_TO_USE
+  ALL_GOOD
 }
 
 // ─── Хранилище пряжи пользователя (YARN_STASH_PLAN.md) ────────────────────

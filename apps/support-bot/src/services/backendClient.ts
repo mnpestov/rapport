@@ -402,4 +402,94 @@ export class BackendClient {
     return (await response.json()) as { login: string; mustChangePassword: boolean };
   }
 
+  // Winback-опрос (план в чате, сентябрь 2026) — нажатие одной из первых
+  // трёх кнопок под сообщением checkWinback.ts на бэкенде.
+  async recordWinbackResponse(
+    telegramId: number,
+    reason: 'DIDNT_FIND_PATTERN' | 'HARD_TO_USE' | 'ALL_GOOD',
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/winback/response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId, reason }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] recordWinbackResponse timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`[BackendClient] recordWinbackResponse ${response.status}: ${text}`);
+    }
+  }
+
+  // Бонус +14 дней подписки за развёрнутый отзыв (ветка "сложно
+  // пользоваться") — выдаётся автоматически по факту текстового ответа,
+  // без модерации (решено в чате, сентябрь 2026).
+  async grantWinbackBonus(telegramId: number): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/winback/grant-bonus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] grantWinbackBonus timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`[BackendClient] grantWinbackBonus ${response.status}: ${text}`);
+    }
+  }
+
+  // Кнопка «Не спрашивать больше» — постоянный отказ от winback-рассылки.
+  async optOutWinback(telegramId: number): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/internal/bot/winback/opt-out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bot-api-key': this.apiKey },
+        body: JSON.stringify({ telegramId }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`[BackendClient] optOutWinback timed out after ${TIMEOUT_MS}ms`);
+      }
+      throw new Error(`[BackendClient] Network error: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`[BackendClient] optOutWinback ${response.status}: ${text}`);
+    }
+  }
+
 }

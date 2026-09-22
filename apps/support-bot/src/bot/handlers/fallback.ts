@@ -5,6 +5,7 @@ import { notifyAdmin } from '../admin';
 import { sendGreeting } from './start';
 import { handleAuthorApplicationStep } from './authorApplication';
 import { handleWebAccessStep } from './webAccess';
+import { handleWinbackFeedbackStep } from './winback';
 
 const backendClient = new BackendClient();
 
@@ -39,6 +40,13 @@ export async function handleFallback(ctx: CustomContext): Promise<void> {
   // обращение в поддержку.
   if (ctx.session.webAccessStep) {
     const consumed = await handleWebAccessStep(ctx);
+    if (consumed) return;
+  }
+
+  // Свободный текст после winback-кнопки ("не нашла описание" / "сложно
+  // пользоваться") — тот же приоритет, что у остальных диалогов выше.
+  if (ctx.session.awaitingWinbackFeedback) {
+    const consumed = await handleWinbackFeedbackStep(ctx);
     if (consumed) return;
   }
 
