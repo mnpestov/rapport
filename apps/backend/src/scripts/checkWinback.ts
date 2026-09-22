@@ -51,24 +51,36 @@ async function main(): Promise<void> {
 
   console.log(`[Winback] Кандидатов: ${candidates.length}`);
   let sent = 0;
+  let permanentlyUnreachable = 0;
 
   for (const user of candidates) {
     if (dryRun) {
       console.log(`[Winback]   (dry-run) чекин → ${user.telegramId}, не заходил с ${user.lastSeenAt?.toISOString()}`);
       continue;
     }
-    const delivered = await sendWinbackCheckin(user.telegramId);
-    if (delivered) {
+    const result = await sendWinbackCheckin(user.telegramId);
+    if (result.delivered) {
       // Метка только при подтверждённой доставке — как в checkSubscriptions.ts,
       // иначе недоставленное сообщение молча пометится как отправленное.
       await prisma.user.update({ where: { id: user.id }, data: { winbackCheckinSentAt: new Date() } });
       sent++;
+    } else if (result.permanentlyUnreachable) {
+      // Бот заблокирован / чат не найден — слать сюда больше нет смысла.
+      // winbackOptedOutAt — тот же флаг, что и у ручного "Не спрашивать
+      // больше": человек физически недостижим, разница в причине cron не
+      // важна, важно что кампания его больше не трогает.
+      await prisma.user.update({ where: { id: user.id }, data: { winbackOptedOutAt: new Date() } });
+      permanentlyUnreachable++;
+      console.error(`[Winback]   чекин недоставим НАВСЕГДА → ${user.telegramId}, исключён из рассылки`);
     } else {
       console.error(`[Winback]   чекин НЕ доставлен → ${user.telegramId}, повторим завтра`);
     }
   }
 
-  console.log(`[Winback] Итог: отправлено ${sent}/${candidates.length}${dryRun ? " (dry-run, изменений нет)" : ""}`);
+  console.log(
+    `[Winback] Итог: отправлено ${sent}/${candidates.length}, недостижимо навсегда ${permanentlyUnreachable}` +
+      `${dryRun ? " (dry-run, изменений нет)" : ""}`
+  );
 }
 
 main()

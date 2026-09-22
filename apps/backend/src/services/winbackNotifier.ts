@@ -14,17 +14,40 @@ interface InlineKeyboardButton {
   callback_data: string;
 }
 
+export interface SendResult {
+  delivered: boolean;
+  // true — Telegram ответил кодом, означающим "этот чат навсегда
+  // недостижим" (бот заблокирован, аккаунт удалён, чат не найден). Без
+  // этого различения cron пытался бы слать сюда каждый день бесконечно:
+  // winbackCheckinSentAt ставится только при delivered=true, а
+  // недоставленное (delivered=false) — это сигнал "повторим завтра",
+  // корректный только для ВРЕМЕННЫХ ошибок (5xx/таймаут), не для
+  // навсегда заблокированного чата.
+  permanentlyUnreachable: boolean;
+}
+
+// Коды Telegram Bot API, означающие "сюда больше никогда не достучаться":
+// 403 — бот заблокирован пользователем или удалён из чата;
+// 400 с описанием "chat not found" — chat_id стал невалиден (аккаунт
+// удалён/деактивирован). Проверяем оба через тело ответа, а не только код,
+// потому что 400 сам по себе бывает и по другим (временным) причинам.
+function isPermanentFailure(status: number, body: string): boolean {
+  if (status === 403) return true;
+  if (status === 400 && /chat not found/i.test(body)) return true;
+  return false;
+}
+
 async function sendMessage(
   telegramId: bigint,
   text: string,
   replyMarkup: { inline_keyboard: InlineKeyboardButton[][] }
-): Promise<boolean> {
+): Promise<SendResult> {
   const baseUrl = process.env.TELEGRAM_GATEWAY_BASE_URL;
   const botToken = process.env.BOT_TOKEN;
 
   if (!baseUrl || !botToken) {
     console.log(`[WinbackNotifier] Gateway not configured — message for ${telegramId}:\n${text}`);
-    return false;
+    return { delivered: false, permanentlyUnreachable: false };
   }
 
   try {
@@ -40,14 +63,19 @@ async function sendMessage(
     });
 
     if (!response.ok) {
-      console.error(`[WinbackNotifier] Gateway API error: ${response.status} ${response.statusText}`);
-      console.error("[WinbackNotifier] Details:", await response.text());
-      return false;
+      const body = await response.text();
+      const permanentlyUnreachable = isPermanentFailure(response.status, body);
+      console.error(
+        `[WinbackNotifier] Gateway API error for ${telegramId}: ${response.status} ${response.statusText}` +
+          (permanentlyUnreachable ? " (постоянная ошибка — chat недостижим)" : " (временная, повторим завтра)")
+      );
+      console.error("[WinbackNotifier] Details:", body);
+      return { delivered: false, permanentlyUnreachable };
     }
-    return true;
+    return { delivered: true, permanentlyUnreachable: false };
   } catch (err) {
     console.error("[WinbackNotifier] Network error sending message to Gateway:", err);
-    return false;
+    return { delivered: false, permanentlyUnreachable: false };
   }
 }
 
@@ -62,7 +90,7 @@ const KEYBOARD: { inline_keyboard: InlineKeyboardButton[][] } = {
   ],
 };
 
-export async function sendWinbackCheckin(telegramId: bigint): Promise<boolean> {
+export async function sendWinbackCheckin(telegramId: bigint): Promise<SendResult> {
   const text =
     "Давно вас не было видно в Раппорте 🧶\n\n" +
     "Что-то не так, или просто закрутились в делах?";

@@ -66,6 +66,25 @@ export const getRequests = async (): Promise<RequestUser[]> => {
   return res.json();
 };
 
+export interface WinbackResponseItem {
+  id: string;
+  telegramId: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  reason: "DIDNT_FIND_PATTERN" | "HARD_TO_USE" | "ALL_GOOD";
+  createdAt: string;
+  // null для ALL_GOOD (там нет запроса текста) и для случаев, когда
+  // пользователь нажал кнопку, но так и не написал свободный текст.
+  feedbackText: string | null;
+}
+
+export const getWinbackResponses = async (): Promise<WinbackResponseItem[]> => {
+  const res = await fetchWithAuth(`${API_URL}/admin/winback-responses`);
+  if (!res.ok) throw new Error(`Failed to fetch winback responses: ${res.statusText}`);
+  return res.json();
+};
+
 export const markChatAsRead = async (telegramId: string): Promise<void> => {
   await fetchWithAuth(`${API_URL}/admin/chat/${telegramId}/read`, {
     method: "PATCH",
