@@ -7,6 +7,7 @@ import { ControlPanel } from "../../components/ControlPanel/ControlPanel";
 import { ConfirmDialog } from "../../components/Modal/ConfirmDialog";
 import {
   YarnItem,
+  YarnUpdatePayload,
   getYarns,
   createYarn,
   updateYarn,
@@ -154,7 +155,7 @@ export function Yarns() {
     }
   };
 
-  const handleSave = async (data: Partial<YarnItem>) => {
+  const handleSave = async (data: YarnUpdatePayload) => {
     try {
       if (editing === "new") {
         await createYarn(data);

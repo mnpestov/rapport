@@ -6,6 +6,25 @@ export interface YarnAliasItem {
   alias: string;
 }
 
+// Каноническое волокно из справочника FiberType — базовое волокно
+// обязательно, остальные атрибуты уточняют его и часто пусты (у половины
+// composition в источнике указано только базовое волокно без подробностей).
+export interface FiberTypeItem {
+  id: string;
+  baseFiber: string;
+  subtype: string | null;
+  grade: string | null;
+  treatment: string | null;
+  origin: string | null;
+  displayName: string;
+}
+
+export interface YarnCompositionItem {
+  id: string;
+  percentage: number | null;
+  fiberType: FiberTypeItem;
+}
+
 export interface YarnItem {
   id: string;
   brand: string | null;
@@ -14,6 +33,7 @@ export interface YarnItem {
   isGeneric: boolean;
   mPer100g: number | null;
   composition: string | null;
+  compositions: YarnCompositionItem[];
   needleSizeRaw: string | null;
   densityRaw: string | null;
   ballWeightG: number | null;
@@ -108,7 +128,28 @@ export const getYarnBrands = async (q?: string): Promise<{ items: string[] }> =>
 export const getYarnLines = async (q?: string): Promise<{ items: string[] }> =>
   json(await fetchWithAuth(`${API_URL}/admin/yarns/lines${q ? `?q=${encodeURIComponent(q)}` : ``}`));
 
-export const createYarn = async (data: Partial<YarnItem>): Promise<YarnItem> =>
+export const getFiberTypes = async (q?: string): Promise<{ items: FiberTypeItem[] }> =>
+  json(await fetchWithAuth(`${API_URL}/admin/fiber-types${q ? `?q=${encodeURIComponent(q)}` : ``}`));
+
+// Создаёт новое волокно в справочнике (или возвращает уже существующее с
+// тем же displayName — идемпотентно на серверной стороне) прямо из формы
+// одобрения пряжи, когда нужного волокна ещё нет в словаре.
+export const createFiberType = async (data: {
+  baseFiber: string;
+  subtype?: string | null;
+  grade?: string | null;
+  treatment?: string | null;
+  origin?: string | null;
+}): Promise<FiberTypeItem> =>
+  json(
+    await fetchWithAuth(`${API_URL}/admin/fiber-types`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+  );
+
+export const createYarn = async (data: YarnUpdatePayload): Promise<YarnItem> =>
   json(
     await fetchWithAuth(`${API_URL}/admin/yarns`, {
       method: "POST",
@@ -117,7 +158,15 @@ export const createYarn = async (data: Partial<YarnItem>): Promise<YarnItem> =>
     }),
   );
 
-export const updateYarn = async (id: string, data: Partial<YarnItem>): Promise<YarnItem> =>
+// compositions отдельно от Partial<YarnItem>: ответ сервера содержит
+// вложенный fiberType-объект, а запрос принимает только fiberTypeId —
+// это разные формы одних данных, смешивать их в одном типе только
+// запутает вызывающий код.
+export type YarnUpdatePayload = Partial<Omit<YarnItem, "compositions">> & {
+  compositions?: { fiberTypeId: string; percentage: number | null }[];
+};
+
+export const updateYarn = async (id: string, data: YarnUpdatePayload): Promise<YarnItem> =>
   json(
     await fetchWithAuth(`${API_URL}/admin/yarns/${id}`, {
       method: "PATCH",
@@ -177,7 +226,7 @@ export const rejectYarnFieldSuggestion = async (id: string): Promise<void> => {
 
 // POST /author/yarns — тот же контракт, что createYarn, но status всегда
 // PENDING на бэкенде вне зависимости от переданных данных.
-export const createAuthorYarn = async (data: Partial<YarnItem>): Promise<YarnItem> =>
+export const createAuthorYarn = async (data: YarnUpdatePayload): Promise<YarnItem> =>
   json(
     await fetchWithAuth(`${API_URL}/author/yarns`, {
       method: "POST",

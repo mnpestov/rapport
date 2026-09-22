@@ -13,6 +13,11 @@ import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
 
 const PAGE_SIZE = 50;
 
+const FIBER_TYPE_SELECT = {
+  id: true, baseFiber: true, subtype: true, grade: true, treatment: true,
+  origin: true, displayName: true,
+} satisfies Prisma.FiberTypeSelect;
+
 // Что отдаём наружу. Сырые строки характеристик идут рядом с разобранными
 // числами: строку показываем человеку («4,5—5 мм»), числа нужны фильтрам.
 const YARN_SELECT = {
@@ -28,6 +33,9 @@ const YARN_SELECT = {
   createdVia: true,
   aliases: { select: { id: true, alias: true } },
   _count: { select: { patterns: true } },
+  compositions: {
+    select: { id: true, percentage: true, fiberType: { select: FIBER_TYPE_SELECT } },
+  },
 } satisfies Prisma.YarnSelect;
 
 export async function listYarns(req: Request, res: Response) {
@@ -114,6 +122,54 @@ export async function listYarnLines(req: Request, res: Response) {
     take: 30,
   });
   res.json({ items: lines.map((l) => l.line as string) });
+}
+
+/**
+ * Справочник канонических волокон — автокомплит в редакторе состава формы
+ * одобрения пряжи. Ищем по displayName (готовая склейка "Мериносовая
+ * шерсть экстрафайн супервош"), а не по отдельным baseFiber/subtype/…:
+ * админ видит и ищет по итоговому названию, не по внутренней структуре.
+ */
+export async function listFiberTypes(req: Request, res: Response) {
+  const q = String(req.query.q || "").trim();
+  const items = await prisma.fiberType.findMany({
+    where: q ? { displayName: { contains: q, mode: "insensitive" } } : undefined,
+    select: FIBER_TYPE_SELECT,
+    orderBy: [{ sortOrder: "asc" }, { displayName: "asc" }],
+    take: 30,
+  });
+  res.json({ items });
+}
+
+/**
+ * Создание нового волокна прямо из формы одобрения, когда нужного нет в
+ * словаре (121+ позиций на момент миграции — не исчерпывающий список,
+ * новые составы будут встречаться). displayName — то же уникальное поле,
+ * что и у остальных 121: коллизия здесь означает "такое волокно уже есть",
+ * а не ошибку.
+ */
+export async function createFiberType(req: Request, res: Response) {
+  const body = req.body as Record<string, unknown>;
+  const baseFiber = String(body.baseFiber || "").trim();
+  if (!baseFiber) return res.status(400).json({ error: "Базовое волокно обязательно" });
+  const subtype = body.subtype ? String(body.subtype).trim() : null;
+  const grade = body.grade ? String(body.grade).trim() : null;
+  const treatment = body.treatment ? String(body.treatment).trim() : null;
+  const origin = body.origin ? String(body.origin).trim() : null;
+  const displayName = String(body.displayName || "").trim() || [baseFiber, subtype, grade, treatment, origin].filter(Boolean).join(" ");
+
+  const existing = await prisma.fiberType.findUnique({ where: { displayName }, select: FIBER_TYPE_SELECT });
+  if (existing) return res.status(200).json(existing);
+
+  const maxSortOrder = await prisma.fiberType.aggregate({ _max: { sortOrder: true } });
+  const created = await prisma.fiberType.create({
+    data: {
+      baseFiber, subtype, grade, treatment, origin, displayName,
+      sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+    },
+    select: FIBER_TYPE_SELECT,
+  });
+  res.status(201).json(created);
 }
 
 /**
@@ -235,6 +291,28 @@ export async function createAuthorYarn(
   res.status(201).json(yarn);
 }
 
+// Разбирает и валидирует req.body.compositions — массив
+// {fiberTypeId, percentage} от формы одобрения. undefined (поле вовсе не
+// прислано) отличаем от [] (админ явно очистил состав): при undefined
+// updateYarn ниже не трогает существующие YarnComposition вообще, при []
+// — стирает все. Иначе клиент, не знающий о новом поле (старый кеш
+// фронта), стёр бы структурированный состав каждым обычным сохранением.
+function parseCompositionRows(
+  body: Record<string, unknown>,
+): { fiberTypeId: string; percentage: number | null }[] | undefined {
+  if (!Array.isArray(body.compositions)) return undefined;
+  const rows: { fiberTypeId: string; percentage: number | null }[] = [];
+  for (const raw of body.compositions) {
+    if (!raw || typeof raw !== "object") continue;
+    const fiberTypeId = String((raw as Record<string, unknown>).fiberTypeId || "").trim();
+    if (!fiberTypeId) continue;
+    const pctRaw = (raw as Record<string, unknown>).percentage;
+    const percentage = pctRaw == null || pctRaw === "" ? null : Number(pctRaw);
+    rows.push({ fiberTypeId, percentage });
+  }
+  return rows;
+}
+
 export async function updateYarn(req: Request, res: Response) {
   const data = yarnFields(req.body);
   if (!data.name) return res.status(400).json({ error: "Название обязательно" });
@@ -243,11 +321,30 @@ export async function updateYarn(req: Request, res: Response) {
   if (clash && clash.id !== req.params.id) {
     return res.status(409).json({ error: `Ключ занят артикулом «${clash.name}»` });
   }
-  const yarn = await prisma.yarn.update({
-    where: { id: req.params.id },
-    data: { ...data, normalizedKey, dedupKey: yarnDedupKey(data.name) },
-    select: YARN_SELECT,
+
+  const compositionRows = parseCompositionRows(req.body);
+
+  const yarn = await prisma.$transaction(async (tx) => {
+    await tx.yarn.update({
+      where: { id: req.params.id },
+      data: { ...data, normalizedKey, dedupKey: yarnDedupKey(data.name) },
+    });
+    if (compositionRows !== undefined) {
+      // Полная замена, а не diff: список короткий (обычно 1-4 волокна),
+      // сравнивать построчно не даёт выигрыша, зато проще и без риска
+      // рассинхронизации с тем, что реально прислала форма.
+      await tx.yarnComposition.deleteMany({ where: { yarnId: req.params.id } });
+      if (compositionRows.length > 0) {
+        await tx.yarnComposition.createMany({
+          data: compositionRows.map((r) => ({ yarnId: req.params.id, ...r })),
+        });
+      }
+    }
+    // select — уже ПОСЛЕ замены composition, иначе yarn.compositions в
+    // ответе отражал бы состав до этого сохранения.
+    return tx.yarn.findUniqueOrThrow({ where: { id: req.params.id }, select: YARN_SELECT });
   });
+
   res.json(yarn);
 }
 

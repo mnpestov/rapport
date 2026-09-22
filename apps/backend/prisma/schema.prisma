@@ -131,6 +131,49 @@ model YarnRange {
   drafts    Draft[]
 }
 
+// Справочник канонических волокон —seed из разбора реального Yarn.composition
+// (~121 позиция на момент миграции), но не fixed-список: в отличие от
+// YarnRange, админ может добавлять новые волокна прямо из формы одобрения
+// пряжи, когда встречается волокно, которого ещё нет в словаре.
+// baseFiber обязателен, остальные атрибуты — уточнения, известные не всегда
+// (у половины исходных composition указано только базовое волокно без
+// подвида/тонкости/обработки/происхождения).
+model FiberType {
+  id          String @id @default(uuid())
+  baseFiber   String // "Шерсть", "Хлопок", "Альпака"…
+  subtype     String? // "Меринос", "Бэби", "Сури"…
+  grade       String? // "Экстрафайн", "Суперфайн"…
+  treatment   String? // "Супервош", "Мерсеризация"…
+  origin      String? // "Австралия", "Органическая"…
+  // Готовое для UI/поиска имя — то же самое, что дал бы человек, глядя на
+  // baseFiber+subtype+grade+treatment+origin, но не пересчитывается на
+  // лету, чтобы не тянуть склейку в каждый список/автокомплит.
+  displayName String  @unique
+  sortOrder   Int     @default(0)
+
+  compositions YarnComposition[]
+
+  @@index([baseFiber])
+}
+
+// Разложение Yarn.composition на волокна с долями — один Yarn может иметь
+// несколько строк (пряжа-смесь, «70% меринос, 30% полиамид»).
+// Yarn.composition (сырой текст) не заменяется и не удаляется: он остаётся
+// источником для парсинга и подсказкой админу при дозаполнении, пока не всё
+// распознано автоматически.
+model YarnComposition {
+  id          String    @id @default(uuid())
+  yarnId      String
+  yarn        Yarn      @relation(fields: [yarnId], references: [id], onDelete: Cascade)
+  fiberTypeId String
+  fiberType   FiberType @relation(fields: [fiberTypeId], references: [id])
+  // Доля не всегда известна из исходного текста ("шерсть, полиамид" без
+  // процентов) — null, а не 0, означает именно «не указано».
+  percentage  Int?
+
+  @@unique([yarnId, fiberTypeId])
+}
+
 // ─── Артикулы пряжи ────────────────────────────────────────────────────────
 // Отдельная сущность, а не поле у Pattern: на описание приходится в среднем
 // 2,7 артикула, и одно поле выбросило бы больше половины связей. С YarnRange
@@ -219,6 +262,7 @@ model Yarn {
   resolvedFor      PatternYarnMention[]  @relation("YarnResolved")
   stashSkeins      StashSkein[]
   fieldSuggestions YarnFieldSuggestion[]
+  compositions     YarnComposition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
