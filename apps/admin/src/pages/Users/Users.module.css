@@ -65,7 +65,7 @@
   font-family: 'Mulish', sans-serif;
   font-size: clamp(9px, 0.67vw, 12px);
   font-weight: 700;
-  color: var(--c-muted);
+  color: black;
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
@@ -139,6 +139,23 @@
   gap: clamp(12px, 0.97vw, 20px);
 }
 
+/* Заголовок группы внутри списка разрешений — тот же стиль, что у
+   .sectionTitle («Разрешения»), но с отступом сверху для отделения от
+   предыдущей группы (кроме самой первой — ей отступ не нужен). */
+.permGroupTitle {
+  font-family: 'Mulish', sans-serif;
+  font-size: clamp(9px, 0.67vw, 12px);
+  font-weight: 700;
+  color: black;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 6px;
+}
+
+.permGroupTitle:first-of-type {
+  margin-top: 0;
+}
+
 .roleSelect {
   height: clamp(26px, 1.94vw, 36px);
   padding: 0 8px;
@@ -192,15 +209,15 @@
   transition: transform 0.15s ease;
 }
 
-.toggleSwitch input:checked + .toggleSlider {
+.toggleSwitch input:checked+.toggleSlider {
   background: var(--brand-bright);
 }
 
-.toggleSwitch input:checked + .toggleSlider::before {
+.toggleSwitch input:checked+.toggleSlider::before {
   transform: translateX(calc(clamp(30px, 2.42vw, 44px) - clamp(17px, 1.36vw, 24px)));
 }
 
-.toggleSwitch input:focus-visible + .toggleSlider {
+.toggleSwitch input:focus-visible+.toggleSlider {
   outline: 2px solid var(--c-title);
   outline-offset: 2px;
 }

@@ -160,31 +160,44 @@ function PermissionsSection({
         </select>
       </div>
 
+      {/* Группировка чисто визуальная (заголовки-разделители) — state,
+          сохранение и isDirty ниже не меняются, каждый тумблер по-прежнему
+          свой отдельный Permission/поле. */}
+      <div className={styles.permGroupTitle}>Платные разрешения Раппорт</div>
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Плотность и толщина пряжи</span>
         <ToggleSwitch checked={premiumCore} onChange={setPremiumCore} />
       </div>
       <div className={styles.permRow}>
-        <span className={styles.rowLabel}>Подробности</span>
-        <ToggleSwitch checked={premiumDetails} onChange={setPremiumDetails} />
-      </div>
-      <div className={styles.permRow}>
         <span className={styles.rowLabel}>Артикулы пряжи в карточке</span>
         <ToggleSwitch checked={premiumYarns} onChange={setPremiumYarns} />
-      </div>
-      {/* Личное хранилище пряжи (YARN_STASH_PLAN.md) — ADMIN-only запуск,
-          выдаётся вручную здесь же, без отдельного тумблера доступности:
-          пока нет переходного бесплатного периода для всех пользователей
-          (план §5.2), это разрешение включает и таб-бар «Пряжа» целиком. */}
-      <div className={styles.permRow}>
-        <span className={styles.rowLabel}>Хранилище пряжи</span>
-        <ToggleSwitch checked={premiumYarnStash} onChange={setPremiumYarnStash} />
       </div>
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Максимальный</span>
         <ToggleSwitch checked={premiumExtra} onChange={setPremiumExtra} />
       </div>
+      {/* Подписка на снижение цены описания — уведомления в бот. Выдаётся
+          платным пользователям (implementation_plan.md «Подписка на цены»). */}
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Подписка на цены</span>
+        <ToggleSwitch checked={priceAlert} onChange={setPriceAlert} />
+      </div>
 
+      {/* Личное хранилище пряжи (YARN_STASH_PLAN.md) — ADMIN-only запуск,
+          выдаётся вручную здесь же, без отдельного тумблера доступности:
+          пока нет переходного бесплатного периода для всех пользователей
+          (план §5.2), это разрешение включает и таб-бар «Пряжа» целиком. */}
+      <div className={styles.permGroupTitle}>Хранилище пряжи</div>
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Хранилище пряжи</span>
+        <ToggleSwitch checked={premiumYarnStash} onChange={setPremiumYarnStash} />
+      </div>
+
+      <div className={styles.permGroupTitle}>Другие</div>
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Подробности</span>
+        <ToggleSwitch checked={premiumDetails} onChange={setPremiumDetails} />
+      </div>
       {/* Вход в браузерную версию на rapport.su. Выдаётся автоматически,
           когда человек получает логин в боте; здесь — ручное управление.
           Выключение отзывает и активные браузерные сессии. Авторам доступ
@@ -193,14 +206,6 @@ function PermissionsSection({
         <span className={styles.rowLabel}>Доступ в браузере</span>
         <ToggleSwitch checked={webAccess} onChange={setWebAccess} />
       </div>
-
-      {/* Подписка на снижение цены описания — уведомления в бот. Выдаётся
-          платным пользователям (implementation_plan.md «Подписка на цены»). */}
-      <div className={styles.permRow}>
-        <span className={styles.rowLabel}>Подписка на цены</span>
-        <ToggleSwitch checked={priceAlert} onChange={setPriceAlert} />
-      </div>
-
       {/* Не разрешение, а отметка "это наш/тестовый аккаунт" — влияет
           только на воронку подписки, доступа не меняет. Стоит в этом же
           блоке, потому что редактируется там же, где роль. */}
