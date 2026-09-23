@@ -66,23 +66,47 @@ export const getRequests = async (): Promise<RequestUser[]> => {
   return res.json();
 };
 
-export interface WinbackResponseItem {
+export interface WinbackResponseInfo {
   id: string;
-  telegramId: string;
-  username: string | null;
-  firstName: string | null;
-  lastName: string | null;
   reason: "DIDNT_FIND_PATTERN" | "HARD_TO_USE" | "ALL_GOOD";
   createdAt: string;
   // null для ALL_GOOD (там нет запроса текста) и для случаев, когда
   // пользователь нажал кнопку, но так и не написал свободный текст.
   feedbackText: string | null;
+  isRead: boolean;
 }
 
-export const getWinbackResponses = async (): Promise<WinbackResponseItem[]> => {
+// Одна строка — один пользователь, кому отправлен чекин (не одна строка на
+// ответ): видно и тех, кто ещё не ответил (response: null), чтобы была
+// понятна вся картина отправок, не только реакции.
+export interface WinbackSendItem {
+  userId: string;
+  telegramId: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  sentAt: string;
+  optedOut: boolean;
+  response: WinbackResponseInfo | null;
+}
+
+export const getWinbackResponses = async (): Promise<WinbackSendItem[]> => {
   const res = await fetchWithAuth(`${API_URL}/admin/winback-responses`);
   if (!res.ok) throw new Error(`Failed to fetch winback responses: ${res.statusText}`);
   return res.json();
+};
+
+export const markWinbackResponseAsRead = async (responseId: string): Promise<void> => {
+  await fetchWithAuth(`${API_URL}/admin/winback-responses/${responseId}/read`, {
+    method: "PATCH",
+  });
+};
+
+export const getUnreadWinbackCount = async (): Promise<number> => {
+  const res = await fetchWithAuth(`${API_URL}/admin/winback-responses/unread-count`);
+  if (!res.ok) throw new Error(`Failed to fetch unread winback count: ${res.statusText}`);
+  const data = await res.json();
+  return data.count;
 };
 
 export const markChatAsRead = async (telegramId: string): Promise<void> => {

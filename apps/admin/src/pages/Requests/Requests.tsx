@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { Tabs } from "../../components/Tabs/Tabs";
-import { getRequests, RequestUser, getWinbackResponses, WinbackResponseItem } from "../../api/chat";
+import {
+  getRequests,
+  RequestUser,
+  getWinbackResponses,
+  WinbackSendItem,
+  WinbackResponseInfo,
+  markWinbackResponseAsRead,
+} from "../../api/chat";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { ChatPanel } from "../Whitelist/ChatPanel";
 import { useUnread } from "../../contexts/UnreadContext";
@@ -8,13 +15,13 @@ import styles from "./Requests.module.css";
 
 type Filter = "all" | "unread" | "winback";
 
-const WINBACK_REASON_LABEL: Record<WinbackResponseItem["reason"], string> = {
+const WINBACK_REASON_LABEL: Record<WinbackResponseInfo["reason"], string> = {
   DIDNT_FIND_PATTERN: "Не нашла описание",
   HARD_TO_USE: "Сложно пользоваться",
   ALL_GOOD: "Всё хорошо",
 };
 
-const WINBACK_REASON_CLASS: Record<WinbackResponseItem["reason"], string> = {
+const WINBACK_REASON_CLASS: Record<WinbackResponseInfo["reason"], string> = {
   DIDNT_FIND_PATTERN: "winbackReasonDidntFind",
   HARD_TO_USE: "winbackReasonHardToUse",
   ALL_GOOD: "winbackReasonAllGood",
@@ -57,10 +64,22 @@ export function Requests() {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { allUsers: unreadSet, refresh: refreshUnread } = useUnread();
+  const { allUsers: unreadSet, winbackUnreadCount, refresh: refreshUnread } = useUnread();
 
-  const [winbackItems, setWinbackItems] = useState<WinbackResponseItem[]>([]);
+  const [winbackItems, setWinbackItems] = useState<WinbackSendItem[]>([]);
   const [winbackLoading, setWinbackLoading] = useState(false);
+
+  const loadWinback = useCallback(async () => {
+    setWinbackLoading(true);
+    try {
+      const data = await getWinbackResponses();
+      setWinbackItems(data);
+    } catch {
+      // silent — тот же паттерн, что у load() выше
+    } finally {
+      setWinbackLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -79,26 +98,32 @@ export function Requests() {
     return () => clearInterval(id);
   }, [load]);
 
-  // Winback-ответы грузятся только при активной вкладке — не нужны на
-  // остальных двух, не гоняем лишний запрос каждые 20с фоном.
+  // Winback грузится только при активной вкладке — не нужен на остальных
+  // двух, не гоняем лишний запрос каждые 20с фоном.
   useEffect(() => {
     if (filter !== "winback") return;
-    let cancelled = false;
-    setWinbackLoading(true);
-    getWinbackResponses()
-      .then((data) => {
-        if (!cancelled) setWinbackItems(data);
-      })
-      .catch(() => {
-        // silent — тот же паттерн, что у load() выше
-      })
-      .finally(() => {
-        if (!cancelled) setWinbackLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [filter]);
+    loadWinback();
+  }, [filter, loadWinback]);
+
+  const handleOpenWinbackResponse = async (item: WinbackSendItem) => {
+    if (!item.response || item.response.isRead) return;
+    // Оптимистично — тот же UX, что и у обычных обращений (открыл чат →
+    // сразу пропала точка, не дожидаясь ответа сервера).
+    setWinbackItems((prev) =>
+      prev.map((i) =>
+        i.userId === item.userId && i.response
+          ? { ...i, response: { ...i.response, isRead: true } }
+          : i
+      )
+    );
+    try {
+      await markWinbackResponseAsRead(item.response.id);
+      refreshUnread();
+    } catch {
+      // silent — как и остальные мутации на этой странице; следующий
+      // poll refreshUnread всё равно подтянет реальное состояние
+    }
+  };
 
   const filtered = users.filter((u) => {
     if (filter === "unread" && u.unreadCount === 0) return false;
@@ -130,7 +155,7 @@ export function Requests() {
           // Счётчик показываем, только когда есть что считать: «Непрочитанные (0)»
           // выглядит как ошибка загрузки.
           { value: "unread", label: "Непрочитанные", ...(unreadCount > 0 ? { count: unreadCount } : {}) },
-          { value: "winback", label: "Winback" },
+          { value: "winback", label: "Winback", ...(winbackUnreadCount > 0 ? { count: winbackUnreadCount } : {}) },
         ]}
         value={filter}
         onChange={(v) => setFilter(v as Filter)}
@@ -142,29 +167,64 @@ export function Requests() {
           <div className={styles.winbackList}>
             {winbackLoading && <div className={styles.empty}>Загрузка...</div>}
             {!winbackLoading && winbackItems.length === 0 && (
-              <div className={styles.empty}>Пока нет ответов на winback-опрос</div>
+              <div className={styles.empty}>Пока никому не отправлен winback-чекин</div>
             )}
-            {winbackItems.map((item) => (
-              <div key={item.id} className={styles.winbackCard}>
-                <div className={styles.winbackTop}>
-                  <span className={styles.winbackName}>
-                    {item.firstName || (item.username ? `@${item.username}` : item.telegramId)}
-                  </span>
-                  <span className={styles.winbackTime}>{formatTime(item.createdAt)}</span>
-                </div>
-                <div className={styles.cardTgId}>{item.telegramId}</div>
-                <span className={`${styles.winbackReason} ${styles[WINBACK_REASON_CLASS[item.reason]]}`}>
-                  {WINBACK_REASON_LABEL[item.reason]}
-                </span>
-                {item.feedbackText ? (
-                  <div className={styles.winbackFeedback}>{item.feedbackText}</div>
-                ) : (
-                  item.reason !== "ALL_GOOD" && (
-                    <div className={styles.winbackNoFeedback}>Текст не оставлен</div>
-                  )
-                )}
+            {!winbackLoading && winbackItems.length > 0 && (
+              <div className={styles.winbackSummary}>
+                Отправлено <strong>{winbackItems.length}</strong>, ответили{" "}
+                <strong>{winbackItems.filter((i) => i.response).length}</strong>
+                {" "}({Math.round((winbackItems.filter((i) => i.response).length / winbackItems.length) * 100)}%)
               </div>
-            ))}
+            )}
+            {winbackItems.map((item) => {
+              const isUnread = !!item.response && !item.response.isRead;
+              return (
+                <div
+                  key={item.userId}
+                  className={`${styles.winbackCard} ${item.response ? styles.winbackCardClickable : ""}`}
+                  onClick={() => handleOpenWinbackResponse(item)}
+                >
+                  <div className={styles.winbackTop}>
+                    <span className={styles.winbackName}>
+                      {item.firstName || (item.username ? `@${item.username}` : item.telegramId)}
+                      {isUnread && <span className={styles.unreadDot} />}
+                    </span>
+                    <span className={styles.winbackTime}>
+                      {formatTime(item.response?.createdAt ?? item.sentAt)}
+                    </span>
+                  </div>
+                  <div className={styles.cardTgId}>{item.telegramId}</div>
+                  <div className={styles.winbackStatusRow}>
+                    <span className={styles.winbackSentLabel}>
+                      Чекин отправлен {formatTime(item.sentAt)}
+                    </span>
+                    {item.optedOut && (
+                      <span className={`${styles.winbackReason} ${styles.winbackReasonOptOut}`}>
+                        Отказался от рассылки
+                      </span>
+                    )}
+                  </div>
+                  {item.response ? (
+                    <>
+                      <span className={`${styles.winbackReason} ${styles[WINBACK_REASON_CLASS[item.response.reason]]}`}>
+                        {WINBACK_REASON_LABEL[item.response.reason]}
+                      </span>
+                      {item.response.feedbackText ? (
+                        <div className={styles.winbackFeedback}>{item.response.feedbackText}</div>
+                      ) : (
+                        item.response.reason !== "ALL_GOOD" && (
+                          <div className={styles.winbackNoFeedback}>Текст не оставлен</div>
+                        )
+                      )}
+                    </>
+                  ) : (
+                    !item.optedOut && (
+                      <div className={styles.winbackNoFeedback}>Пока не ответил(а)</div>
+                    )
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { getUnreadMessages } from "../api/chat";
+import { getUnreadMessages, getUnreadWinbackCount } from "../api/chat";
 
 import { getPendingReports } from "../api/authors";
 import { getAuthorApplications } from "../api/authorApplications";
@@ -13,6 +13,7 @@ interface UnreadContextValue {
   syncReportsCount: number;
   pendingApplicationsCount: number;
   pendingYarnsCount: number;
+  winbackUnreadCount: number;
   refresh: () => void;
 }
 
@@ -24,6 +25,7 @@ const UnreadContext = createContext<UnreadContextValue>({
   syncReportsCount: 0,
   pendingApplicationsCount: 0,
   pendingYarnsCount: 0,
+  winbackUnreadCount: 0,
   refresh: () => {},
 });
 
@@ -35,6 +37,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const [syncReportsCount, setSyncReportsCount] = useState(0);
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
   const [pendingYarnsCount, setPendingYarnsCount] = useState(0);
+  const [winbackUnreadCount, setWinbackUnreadCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
@@ -56,6 +59,9 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
       // что использует Yarns.tsx для вкладки «На проверке».
       const yarns = await getYarns({ pending: true });
       setPendingYarnsCount(yarns.total);
+
+      const winbackCount = await getUnreadWinbackCount();
+      setWinbackUnreadCount(winbackCount);
     } catch {
       // silent
     }
@@ -83,6 +89,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
         syncReportsCount,
         pendingApplicationsCount,
         pendingYarnsCount,
+        winbackUnreadCount,
         refresh: poll,
       }}
     >

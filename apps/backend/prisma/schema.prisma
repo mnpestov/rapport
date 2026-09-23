@@ -1299,9 +1299,17 @@ model WinbackResponse {
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   reason    WinbackReason
   createdAt DateTime      @default(now())
+  // Просмотрен ли ответ админом на вкладке Winback (Обращения) — тот же
+  // смысл, что unreadCount у обычных обращений (chatController.ts),
+  // отдельное поле здесь, а не общий механизм: WinbackResponse и
+  // BotInboundMessage — разные таблицы, объединять их состояние
+  // "прочитано" через общий AdminChatState было бы сложнее, чем один
+  // булев флаг на саму запись.
+  isRead    Boolean       @default(false)
 
   @@index([userId])
   @@index([createdAt, reason])
+  @@index([isRead])
 }
 
 enum WinbackReason {

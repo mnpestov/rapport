@@ -90,7 +90,7 @@ import {
   notifyWhitelistUser,
 } from "../controllers/whitelistController";
 import { getChatHistory, sendChatMessage, getChatFile, getUnreadMessages, markChatAsRead, getRequests } from "../controllers/chatController";
-import { getWinbackResponses } from "../controllers/winbackAdminController";
+import { getWinbackResponses, markWinbackResponseAsRead, getUnreadWinbackCount } from "../controllers/winbackAdminController";
 import { getUsers, getUserById, updateUser, getUserSubscription } from "../controllers/usersController";
 import { getPriceCheckRuns, getPriceCheckStatus, triggerPriceCheck, getConfirmedAuthors } from "../controllers/priceCheckController";
 import {
@@ -295,6 +295,8 @@ router.patch("/chat/:telegramId/read", markChatAsRead);
 
 router.get("/requests", getRequests);
 router.get("/winback-responses", getWinbackResponses);
+router.patch("/winback-responses/:id/read", markWinbackResponseAsRead);
+router.get("/winback-responses/unread-count", getUnreadWinbackCount);
 
 router.get("/users", getUsers);
 router.get("/users/:telegramId/subscription", getUserSubscription);

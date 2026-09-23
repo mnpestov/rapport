@@ -215,6 +215,44 @@
   font-size: 14px;
   font-weight: 600;
   color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.winbackSummary {
+  padding: 10px 16px;
+  font-family: 'Mulish', sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--surface-alt);
+}
+
+.winbackCardClickable {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.winbackCardClickable:hover {
+  background: var(--surface-muted);
+}
+
+.winbackStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.winbackSentLabel {
+  font-family: 'Mulish', sans-serif;
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+
+.winbackReasonOptOut {
+  background: var(--surface-muted);
+  color: var(--text-subtle);
 }
 
 .winbackTime {
