@@ -288,9 +288,9 @@ export function Authors() {
         <div className={styles.leftControls}>
           <Tabs
             tabs={[
-              { value: "all", label: `Все · ${totalDescriptionsCount} опис.`, count: authors.length },
-              { value: "with", label: `С ЛК · ${withCabinetDescriptionsCount} опис.`, count: withCabinetCount },
-              { value: "without", label: `Без ЛК · ${withoutCabinetDescriptionsCount} опис.`, count: withoutCabinetCount },
+              { value: "all", label: "Все", count: authors.length, suffix: `(${totalDescriptionsCount} описаний)` },
+              { value: "with", label: "С ЛК", count: withCabinetCount, suffix: `(${withCabinetDescriptionsCount} описаний)` },
+              { value: "without", label: "Без ЛК", count: withoutCabinetCount, suffix: `(${withoutCabinetDescriptionsCount} описаний)` },
             ]}
             value={cabinetFilter}
             onChange={(v) => setCabinetFilter(v as "all" | "with" | "without")}

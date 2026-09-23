@@ -7,6 +7,8 @@ export interface Tab {
   prefix?: ReactNode;
   prefixColor?: string;
   count?: number;
+  /** Текст после бейджа count, например "(552 описания)" — доп. метрика, не сам счётчик вкладки. */
+  suffix?: string;
 }
 
 interface TabsProps {
@@ -42,7 +44,7 @@ export function Tabs({ tabs, value, onChange, mobileLabel }: TabsProps) {
       >
         {tabs.map((tab) => (
           <option key={tab.value} value={tab.value}>
-            {tab.label} {tab.count !== undefined ? `(${tab.count})` : ""}
+            {tab.label} {tab.count !== undefined ? `(${tab.count})` : ""} {tab.suffix ?? ""}
           </option>
         ))}
       </select>
@@ -70,6 +72,7 @@ export function Tabs({ tabs, value, onChange, mobileLabel }: TabsProps) {
           )}
           {tab.label}
           {tab.count !== undefined && <span className={styles.badge}>{tab.count}</span>}
+          {tab.suffix && <span className={styles.tabSuffix}>{tab.suffix}</span>}
         </button>
       ))}
     </div>
