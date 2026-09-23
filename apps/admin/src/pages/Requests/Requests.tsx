@@ -40,6 +40,14 @@ function formatTime(iso: string): string {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+// "Ответил" = дал любую реакцию на чекин: выбрал причину (WinbackResponse)
+// ИЛИ нажал «Не спрашивать больше» (тоже осознанный ответ на сообщение).
+// Автоматический опт-аут из-за недостижимости (UNREACHABLE) не считается —
+// это не реакция человека, а факт недоставки.
+function hasWinbackAnswered(item: WinbackSendItem): boolean {
+  return !!item.response || (item.optedOut && item.optOutReason === "USER");
+}
+
 function displayName(user: RequestUser): string {
   return user.firstName || (user.username ? `@${user.username}` : user.telegramId);
 }
@@ -177,8 +185,8 @@ export function Requests() {
               <div className={styles.winbackSummary}>
                 <span>
                   Отправлено <strong>{winbackItems.length}</strong>, ответили{" "}
-                  <strong>{winbackItems.filter((i) => i.response).length}</strong>
-                  {" "}({Math.round((winbackItems.filter((i) => i.response).length / winbackItems.length) * 100)}%)
+                  <strong>{winbackItems.filter(hasWinbackAnswered).length}</strong>
+                  {" "}({Math.round((winbackItems.filter(hasWinbackAnswered).length / winbackItems.length) * 100)}%)
                 </span>
                 <div className={styles.winbackSubFilter}>
                   <button
@@ -199,7 +207,7 @@ export function Requests() {
               </div>
             )}
             {winbackItems
-              .filter((item) => winbackSubFilter === "all" || !!item.response)
+              .filter((item) => winbackSubFilter === "all" || hasWinbackAnswered(item))
               .map((item) => {
               const isUnread = !!item.response && !item.response.isRead;
               return (
