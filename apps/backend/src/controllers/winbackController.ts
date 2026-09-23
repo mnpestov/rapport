@@ -93,6 +93,9 @@ export async function optOutWinback(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { winbackOptedOutAt: new Date() } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { winbackOptedOutAt: new Date(), winbackOptOutReason: "USER" },
+  });
   res.json({ ok: true });
 }

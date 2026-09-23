@@ -87,6 +87,10 @@ export interface WinbackSendItem {
   lastName: string | null;
   sentAt: string;
   optedOut: boolean;
+  // USER — сам нажал «Не спрашивать больше». UNREACHABLE — бот
+  // заблокирован/чат не найден, checkWinback.ts пометил автоматически.
+  // null, пока optedOut === false.
+  optOutReason: "USER" | "UNREACHABLE" | null;
   response: WinbackResponseInfo | null;
 }
 

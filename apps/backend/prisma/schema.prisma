@@ -659,7 +659,13 @@ model User {
   // cron исключает такого пользователя навсегда. Отдельное поле, а не
   // ещё одно значение WinbackReason: это не причина оттока, а отзыв
   // согласия на саму рассылку, разная семантика для статистики.
-  winbackOptedOutAt DateTime?
+  winbackOptedOutAt    DateTime?
+  // Причина отказа — USER (нажал «Не спрашивать больше») или
+  // UNREACHABLE (checkWinback.ts не смог доставить: бот заблокирован,
+  // чат не найден). Разные продуктовые выводы: USER — не хочет получать
+  // сообщения, UNREACHABLE — технически недостижим, это не отказ по
+  // содержанию. null, пока winbackOptedOutAt тоже null.
+  winbackOptOutReason  WinbackOptOutReason?
 
   winbackResponses  WinbackResponse[]
   favorites         UserFavorite[]
@@ -1316,6 +1322,11 @@ enum WinbackReason {
   DIDNT_FIND_PATTERN
   HARD_TO_USE
   ALL_GOOD
+}
+
+enum WinbackOptOutReason {
+  USER
+  UNREACHABLE
 }
 
 // ─── Хранилище пряжи пользователя (YARN_STASH_PLAN.md) ────────────────────

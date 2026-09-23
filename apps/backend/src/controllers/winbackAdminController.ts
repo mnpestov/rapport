@@ -37,6 +37,7 @@ export const getWinbackResponses = async (_req: Request, res: Response): Promise
       lastName: true,
       winbackCheckinSentAt: true,
       winbackOptedOutAt: true,
+      winbackOptOutReason: true,
     },
   });
 
@@ -74,6 +75,7 @@ export const getWinbackResponses = async (_req: Request, res: Response): Promise
         lastName: u.lastName,
         sentAt: u.winbackCheckinSentAt!.toISOString(),
         optedOut: !!u.winbackOptedOutAt,
+        optOutReason: u.winbackOptOutReason,
         response: response
           ? {
               id: response.id,

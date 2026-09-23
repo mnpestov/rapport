@@ -68,6 +68,10 @@ export function Requests() {
 
   const [winbackItems, setWinbackItems] = useState<WinbackSendItem[]>([]);
   const [winbackLoading, setWinbackLoading] = useState(false);
+  // Подфильтр внутри вкладки Winback — список отправок легко разрастается
+  // до сотен строк, а отвечает обычно малая доля, без фильтра приходится
+  // долго скроллить в поисках ответивших.
+  const [winbackSubFilter, setWinbackSubFilter] = useState<"all" | "answered">("all");
 
   const loadWinback = useCallback(async () => {
     setWinbackLoading(true);
@@ -171,12 +175,32 @@ export function Requests() {
             )}
             {!winbackLoading && winbackItems.length > 0 && (
               <div className={styles.winbackSummary}>
-                Отправлено <strong>{winbackItems.length}</strong>, ответили{" "}
-                <strong>{winbackItems.filter((i) => i.response).length}</strong>
-                {" "}({Math.round((winbackItems.filter((i) => i.response).length / winbackItems.length) * 100)}%)
+                <span>
+                  Отправлено <strong>{winbackItems.length}</strong>, ответили{" "}
+                  <strong>{winbackItems.filter((i) => i.response).length}</strong>
+                  {" "}({Math.round((winbackItems.filter((i) => i.response).length / winbackItems.length) * 100)}%)
+                </span>
+                <div className={styles.winbackSubFilter}>
+                  <button
+                    type="button"
+                    className={winbackSubFilter === "all" ? styles.winbackSubFilterActive : styles.winbackSubFilterBtn}
+                    onClick={() => setWinbackSubFilter("all")}
+                  >
+                    Все
+                  </button>
+                  <button
+                    type="button"
+                    className={winbackSubFilter === "answered" ? styles.winbackSubFilterActive : styles.winbackSubFilterBtn}
+                    onClick={() => setWinbackSubFilter("answered")}
+                  >
+                    Ответили
+                  </button>
+                </div>
               </div>
             )}
-            {winbackItems.map((item) => {
+            {winbackItems
+              .filter((item) => winbackSubFilter === "all" || !!item.response)
+              .map((item) => {
               const isUnread = !!item.response && !item.response.isRead;
               return (
                 <div
@@ -200,7 +224,7 @@ export function Requests() {
                     </span>
                     {item.optedOut && (
                       <span className={`${styles.winbackReason} ${styles.winbackReasonOptOut}`}>
-                        Отказался от рассылки
+                        {item.optOutReason === "UNREACHABLE" ? "Заблокировал бота" : "Отказался от рассылки"}
                       </span>
                     )}
                   </div>

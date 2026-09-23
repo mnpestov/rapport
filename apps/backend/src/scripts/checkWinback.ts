@@ -67,9 +67,14 @@ async function main(): Promise<void> {
     } else if (result.permanentlyUnreachable) {
       // Бот заблокирован / чат не найден — слать сюда больше нет смысла.
       // winbackOptedOutAt — тот же флаг, что и у ручного "Не спрашивать
-      // больше": человек физически недостижим, разница в причине cron не
-      // важна, важно что кампания его больше не трогает.
-      await prisma.user.update({ where: { id: user.id }, data: { winbackOptedOutAt: new Date() } });
+      // больше" (cron их больше не трогает одинаково), но
+      // winbackOptOutReason=UNREACHABLE отличает "технически недостижим"
+      // от "сам попросил не писать" — разные продуктовые выводы в
+      // админке (Requests.tsx, вкладка Winback).
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { winbackOptedOutAt: new Date(), winbackOptOutReason: "UNREACHABLE" },
+      });
       permanentlyUnreachable++;
       console.error(`[Winback]   чекин недоставим НАВСЕГДА → ${user.telegramId}, исключён из рассылки`);
     } else {
