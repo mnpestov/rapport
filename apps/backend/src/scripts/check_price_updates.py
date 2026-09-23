@@ -108,7 +108,7 @@ from bs4 import BeautifulSoup
 from author_sync_lib.confirmed_authors import CONFIRMED_AUTHORS
 from author_sync_lib.hooks import extract_price_any_known_platform
 from author_sync_lib.handlers import SITE_HANDLERS, SUPPLEMENTAL_STORE_HANDLERS
-from author_sync_lib.utils import normalize_url, get_base_url, normalize_free_price
+from author_sync_lib.utils import normalize_url, get_base_url, normalize_free_price, has_eiwi_forced_redirect
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -452,6 +452,19 @@ def check_prices(target_author_names=None):
                                     # только 404 — см. обсуждение с
                                     # пользователем.
                                     raise ValueError(f"ссылка недоступна: HTTP {resp.status_code}")
+                                if has_eiwi_forced_redirect(resp.text):
+                                    # Та же ситуация, что в author_sync.py
+                                    # crawlers.py (см. чат, сентябрь 2026) —
+                                    # eiwi.ru отдаёт 200 с валидной вёрсткой
+                                    # товара, но безусловным JS-редиректом на
+                                    # страницу автора. Цену с такой страницы
+                                    # можно извлечь технически, но проверять
+                                    # её бессмысленно: ссылка для реального
+                                    # пользователя ведёт не туда. Тот же
+                                    # текст-категория "ссылка недоступна",
+                                    # что и у HTTP-ошибок выше — тот же
+                                    # смысл для отчёта/эскалации.
+                                    raise ValueError("ссылка недоступна: eiwi.ru редиректит на страницу автора (товар снят с продажи)")
                                 soup = BeautifulSoup(resp.text, 'html.parser')
                                 new_price, new_old_price = extract_price_any_known_platform(soup, url, HEADERS)
                             finally:

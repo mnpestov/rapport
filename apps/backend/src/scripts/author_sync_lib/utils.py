@@ -114,3 +114,51 @@ def _nearest_clause_boundary(text, region_start, region_end, from_right):
             return p
     return -1
 
+
+# eiwi.ru (DLE-платформа) иногда отдаёт валидную страницу товара — тот же
+# 200, тот же полный HTML с ценой/описанием/галереей, — но с безусловным
+# `location.href='...'` прямо в теле <script>, без обёртки в if/условие.
+# requests/BeautifulSoup не выполняют JS, поэтому скрапер видит "нормальную"
+# страницу товара, а реальный пользователь в браузере сразу же улетает на
+# страницу автора (https://eiwi.ru/<автор>/) — товар для него недоступен.
+# Найдено вручную на живых страницах (сентябрь 2026): 7604, 7608 у автора
+# Knitwork_rnd редиректят, 7605 у того же автора — нет, значит это
+# состояние КОНКРЕТНОГО товара (снят с продажи/удалён автором), а не всей
+# площадки — нельзя просто забанить домен целиком.
+#
+# Сайт легитимно использует условный `location.href=` внутри onclick и
+# внутри функций (например, ydalitSave — удаление товара автором, срабатывает
+# только после AJAX-ответа) — те не должны матчиться, иначе распознавание
+# ложно сработает почти на каждой странице eiwi.ru. Матчим ТОЛЬКО
+# безусловный редирект: `location.href='...'` как первую непустую
+# инструкцию внутри отдельного <script>...</script>, без предшествующего
+# `if`/условия в том же теге.
+def has_eiwi_forced_redirect(html):
+    """
+    True, если страница eiwi.ru содержит безусловный JS-редирект (товар
+    снят с продажи автором на стороне площадки, ссылка ведёт в никуда для
+    реального пользователя). Вызывающий код должен пропустить такой товар
+    целиком — см. crawlers.py fetch_and_parse_detail и
+    check_price_updates.py.
+
+    Ищем <script> блок, где ПЕРВАЯ непустая строка — сам `location.href=`,
+    без предшествующего `if`: страница из живого теста выглядела как
+        <script>
+           location.href='https://eiwi.ru/Knitwork_rnd/';
+        </script>
+    Дословный regex-поиск такой формы, а не общий "есть ли вообще
+    location.href в скрипте" — иначе матчились бы и легитимные условные
+    редиректы (внутри if/после AJAX), которых на площадке большинство.
+    """
+    if 'eiwi.ru' not in html.lower():
+        return False
+    for script_match in re.finditer(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.IGNORECASE | re.DOTALL):
+        script_body = script_match.group(1)
+        stripped = script_body.strip()
+        if not stripped:
+            continue
+        first_statement = stripped.split('\n', 1)[0].strip()
+        if re.match(r'^(?:window\.)?location\.href\s*=\s*[\'"]https?://eiwi\.ru/', first_statement, re.IGNORECASE):
+            return True
+    return False
+

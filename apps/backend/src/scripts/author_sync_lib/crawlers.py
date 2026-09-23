@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import concurrent.futures
 
-from .utils import normalize_url, get_base_url
+from .utils import normalize_url, get_base_url, has_eiwi_forced_redirect
 from .parsers import parse_yarn, parse_density, detect_instruments, is_machine_knitting
 from .hooks import _extract_details_text, extract_price_any_known_platform, _generic_extract_gallery, _get_crawl_hooks
 from .handlers import SITE_HANDLERS, DISCOVERY_HANDLERS, SUPPLEMENTAL_STORE_HANDLERS
@@ -18,6 +18,19 @@ def fetch_and_parse_detail(p, yarn_ranges_db, instruments_db, hooks=None):
     }
     try:
         detail_resp = requests.get(p['url'], headers=headers, timeout=10)
+
+        # eiwi.ru иногда отдаёт валидный HTML товара (200, полное описание,
+        # цена) с безусловным JS-редиректом на страницу автора — requests
+        # не выполняет JS, поэтому без этой проверки скрапер завёл бы
+        # описание с рабочими на вид данными на ссылку, которая для
+        # реального пользователя сразу уводит в другое место (см. чат,
+        # сентябрь 2026 — товары 7604/7608 автора Knitwork_rnd). Пропускаем
+        # товар целиком — как решили, не создавать/не обновлять описание
+        # с заведомо нерабочей ссылкой.
+        if has_eiwi_forced_redirect(detail_resp.text):
+            print(f"Skipping {p['url']}: eiwi.ru forced redirect detected (product likely delisted)")
+            return None
+
         detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
 
         # Extract h1/<title> before the cleanup below (harmless either way — these
@@ -659,7 +672,11 @@ def scrape_author_site(site_url, yarn_ranges_db, instruments_db, all_existing_ba
             futures = [executor.submit(fetch_and_parse_detail, p, yarn_ranges_db, instruments_db, hooks) for p in new_product_links]
             for future in concurrent.futures.as_completed(futures):
                 parsed_p = future.result()
-                items.append(parsed_p)
+                # None — товар пропущен целиком (см. has_eiwi_forced_redirect
+                # в fetch_and_parse_detail): нет смысла заводить описание,
+                # ссылка на которое для пользователя ведёт не туда.
+                if parsed_p is not None:
+                    items.append(parsed_p)
         items.extend(extra_items)
 
     except Exception as e:
