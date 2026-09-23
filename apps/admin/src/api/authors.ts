@@ -24,6 +24,9 @@ export interface AuthorItem {
   comment: string | null;
   // Мы запросили разрешение публиковать контент автора.
   contentPermissionRequested: boolean;
+  // Автор ОТВЕТИЛ согласием — отдельно от факта запроса выше (согласие
+  // можно получить и без явного запроса).
+  contentPermissionGranted: boolean;
   // Автор попросил удалить себя из Раппорта — новинки по нему не показываем.
   removalRequested: boolean;
   patternsCount: number;
@@ -35,6 +38,7 @@ export interface AuthorInput {
   site?: string;
   comment?: string | null;
   contentPermissionRequested?: boolean;
+  contentPermissionGranted?: boolean;
   removalRequested?: boolean;
 }
 

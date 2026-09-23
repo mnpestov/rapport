@@ -96,6 +96,11 @@ model Author {
   // очереди модерации. Парсинг author_sync.py продолжается: автор может
   // передумать, снятие флага возвращает всё как было.
   removalRequested           Boolean @default(false)
+  // Автор ОТВЕТИЛ согласием на размещение его контента — независимо от
+  // contentPermissionRequested выше: то лишь факт, что мы запросили,
+  // это поле про полученный ответ (согласие можно получить и без явного
+  // запроса, если автор написал сам). Ставит админ вручную.
+  contentPermissionGranted   Boolean @default(false)
 }
 
 model ProductType {

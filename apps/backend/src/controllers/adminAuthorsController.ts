@@ -35,6 +35,7 @@ export const getAuthors = async (req: Request, res: Response): Promise<void> => 
       site: a.site,
       comment: a.comment,
       contentPermissionRequested: a.contentPermissionRequested,
+      contentPermissionGranted: a.contentPermissionGranted,
       removalRequested: a.removalRequested,
       patternsCount: a._count.patterns,
       cabinet: a.user
@@ -84,7 +85,7 @@ export const createAuthor = async (req: Request, res: Response): Promise<void> =
 export const updateAuthor = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, site, comment, contentPermissionRequested, removalRequested } = req.body;
+    const { name, site, comment, contentPermissionRequested, contentPermissionGranted, removalRequested } = req.body;
 
     if (!name) {
       res.status(400).json({ error: "Name is required" });
@@ -100,6 +101,7 @@ export const updateAuthor = async (req: Request, res: Response): Promise<void> =
         // обновление из модалки шлёт их всегда, но на всякий случай).
         ...(comment !== undefined ? { comment: comment || null } : {}),
         ...(typeof contentPermissionRequested === "boolean" ? { contentPermissionRequested } : {}),
+        ...(typeof contentPermissionGranted === "boolean" ? { contentPermissionGranted } : {}),
         ...(typeof removalRequested === "boolean" ? { removalRequested } : {}),
       },
     });

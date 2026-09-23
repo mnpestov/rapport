@@ -10,6 +10,22 @@
   background: var(--surface);
 }
 
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortable:hover {
+  color: var(--brand, var(--text));
+}
+
+.sortArrow {
+  font-size: 13px;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -50,6 +66,7 @@
    задан инлайн. */
 .rowRemoval .linkedMark,
 .rowRemoval .permissionMark,
+.rowRemoval .grantedMark,
 .rowRemoval .colActions button {
   color: var(--text-subtle) !important;
 }
@@ -74,6 +91,14 @@
 .permissionMark {
   flex-shrink: 0;
   color: var(--warning);
+}
+
+/* Автор дал согласие на размещение — та же галочка, что у .linkedMark,
+   но серая: независимый признак, не должен визуально спорить с оранжевым
+   маркером кабинета/запроса. */
+.grantedMark {
+  flex-shrink: 0;
+  color: var(--text-subtle);
 }
 
 .colSite {

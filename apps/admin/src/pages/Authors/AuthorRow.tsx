@@ -19,12 +19,35 @@ interface AuthorRowProps {
   isSyncBusy: boolean;
 }
 
-export function AuthorRowHeader() {
+type SortColumn = "name" | "patternsCount";
+
+interface AuthorRowHeaderProps {
+  sortColumn?: SortColumn | null;
+  sortDirection?: "asc" | "desc";
+  onSort?: (column: SortColumn) => void;
+}
+
+function sortIndicator(column: SortColumn, sortColumn?: SortColumn | null, sortDirection?: "asc" | "desc") {
+  if (sortColumn !== column) return null;
+  return <span className={styles.sortArrow}>{sortDirection === "asc" ? "↑" : "↓"}</span>;
+}
+
+export function AuthorRowHeader({ sortColumn, sortDirection, onSort }: AuthorRowHeaderProps = {}) {
   return (
     <div className={styles.header}>
-      <span className={styles.colName}>Имя</span>
+      <span
+        className={onSort ? `${styles.colName} ${styles.sortable}` : styles.colName}
+        onClick={onSort ? () => onSort("name") : undefined}
+      >
+        Имя{sortIndicator("name", sortColumn, sortDirection)}
+      </span>
       <span className={styles.colSite}>Сайт</span>
-      <span className={styles.colCount}>Описаний</span>
+      <span
+        className={onSort ? `${styles.colCount} ${styles.sortable}` : styles.colCount}
+        onClick={onSort ? () => onSort("patternsCount") : undefined}
+      >
+        Описаний{sortIndicator("patternsCount", sortColumn, sortDirection)}
+      </span>
       <span className={styles.colComment}>Комментарий</span>
       <span className={styles.colActions} />
     </div>
@@ -62,8 +85,12 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
     >
       <span className={styles.colName}>
         {author.name}
-        {/* Статус связи с автором: кабинет перекрывает «запросили разрешение».
-            Кабинет есть → галочка. Кабинета нет, но запрос отправлен → ромашка. */}
+        {/* Статус связи с автором: кабинет перекрывает «запросили разрешение»
+            (кабинет есть → галочка, иначе запрос отправлен → ромашка) —
+            это два взаимоисключающих состояния одного процесса. Согласие на
+            размещение — независимый признак, показывается ДОПОЛНИТЕЛЬНО,
+            той же галочкой, но серой (не оранжевой): visually "тот же
+            смысл маркера", другой процесс. */}
         {author.cabinet ? (
           <Check
             size={14}
@@ -79,6 +106,14 @@ export function AuthorRow({ author, hasSyncReport, syncItemsCount, onSync, onEdi
             aria-label="Запросили разрешение постить контент"
           />
         ) : null}
+        {author.contentPermissionGranted && (
+          <Check
+            size={14}
+            strokeWidth={3}
+            className={styles.grantedMark}
+            aria-label="Дал согласие на размещение"
+          />
+        )}
         {hasSyncReport && <span className={styles.unreadDot}>{syncItemsCount || 0}</span>}
       </span>
       <span className={styles.colSite}>

@@ -32,6 +32,7 @@ export function Authors() {
     site: "",
     comment: "",
     contentPermissionRequested: false,
+    contentPermissionGranted: false,
     removalRequested: false,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -42,6 +43,21 @@ export function Authors() {
   // Фильтр по наличию личного кабинета (за автором закреплён пользователь).
   // Чисто клиентский — список авторов уже загружен целиком.
   const [cabinetFilter, setCabinetFilter] = useState<"all" | "with" | "without">("all");
+
+  // Сортировка — тоже чисто клиентская (весь список уже в памяти), сброса
+  // не требует отдельного состояния: null = дефолтный порядок из loadAuthors
+  // (новинки сверху, дальше по алфавиту — см. комментарий там).
+  const [sortColumn, setSortColumn] = useState<"name" | "patternsCount" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (column: "name" | "patternsCount") => {
+    if (sortColumn === column) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -172,7 +188,7 @@ export function Authors() {
 
   const handleOpenCreate = () => {
     setEditingAuthor(null);
-    setFormData({ name: "", site: "", comment: "", contentPermissionRequested: false, removalRequested: false });
+    setFormData({ name: "", site: "", comment: "", contentPermissionRequested: false, contentPermissionGranted: false, removalRequested: false });
     setIsModalOpen(true);
   };
 
@@ -183,6 +199,7 @@ export function Authors() {
       site: author.site ?? "",
       comment: author.comment ?? "",
       contentPermissionRequested: author.contentPermissionRequested,
+      contentPermissionGranted: author.contentPermissionGranted,
       removalRequested: author.removalRequested,
     });
     setIsModalOpen(true);
@@ -204,6 +221,7 @@ export function Authors() {
           site: formData.site.trim(),
           comment: formData.comment.trim() || null,
           contentPermissionRequested: formData.contentPermissionRequested,
+          contentPermissionGranted: formData.contentPermissionGranted,
           removalRequested: formData.removalRequested,
         });
       } else {
@@ -246,9 +264,14 @@ export function Authors() {
 
   const withCabinetCount = authors.filter((a) => a.cabinet).length;
   const withoutCabinetCount = authors.length - withCabinetCount;
-  const visibleAuthors = authors.filter((a) =>
-    cabinetFilter === "all" ? true : cabinetFilter === "with" ? !!a.cabinet : !a.cabinet
-  );
+  const visibleAuthors = authors
+    .filter((a) => (cabinetFilter === "all" ? true : cabinetFilter === "with" ? !!a.cabinet : !a.cabinet))
+    .sort((a, b) => {
+      if (!sortColumn) return 0; // дефолтный порядок из loadAuthors не трогаем
+      const dir = sortDirection === "asc" ? 1 : -1;
+      if (sortColumn === "name") return a.name.localeCompare(b.name, "ru") * dir;
+      return (a.patternsCount - b.patternsCount) * dir;
+    });
 
   // Суммарное число описаний по вкладке — patternsCount уже есть у каждого
   // автора (используется и для запрета удаления, строка ~223), просто
@@ -318,7 +341,7 @@ export function Authors() {
       </div>
 
       <div className={styles.tableWrapper}>
-        <AuthorRowHeader />
+        <AuthorRowHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
         {visibleAuthors.map((author) => {
           const report = syncReports.find(r => r.authorId === author.id);
           return (
@@ -396,6 +419,15 @@ export function Authors() {
                   onChange={(e) => setFormData({ ...formData, contentPermissionRequested: e.target.checked })}
                 />
                 <span>Запросили разрешение постить их контент</span>
+              </label>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={formData.contentPermissionGranted}
+                  onChange={(e) => setFormData({ ...formData, contentPermissionGranted: e.target.checked })}
+                />
+                <span>Дал согласие на размещение</span>
               </label>
 
               <label className={styles.checkboxRow}>
