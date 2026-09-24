@@ -123,6 +123,12 @@
   color: #9b9a9a;
 }
 
+.log-usage-input:focus,
+.log-usage-textarea:focus {
+  outline: none;
+  border: 1.5px solid var(--purple, #BEC1F4);
+}
+
 .log-usage-textarea {
   min-height: 100px;
   resize: vertical;

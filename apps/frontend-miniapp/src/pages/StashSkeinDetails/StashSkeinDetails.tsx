@@ -367,6 +367,17 @@ export const StashSkeinDetails: React.FC = () => {
         </div>
       )}
 
+      <div className="stash-details-actions">
+        <button
+          type="button"
+          className="btn stash-action-btn stash-action-btn--primary"
+          onClick={() => setIsLogUsageOpen(true)}
+          disabled={skein.currentWeightG <= 0}
+        >
+          Списать пряжу
+        </button>
+      </div>
+
       {matches.length > 0 && (
         <div className="stash-details-matches">
           <p className="stash-details-section-title">Что можно связать из этой пряжи</p>
@@ -401,17 +412,6 @@ export const StashSkeinDetails: React.FC = () => {
           </div>
         </div>
       )}
-
-      <div className="stash-details-actions">
-        <button
-          type="button"
-          className="btn stash-action-btn stash-action-btn--primary"
-          onClick={() => setIsLogUsageOpen(true)}
-          disabled={skein.currentWeightG <= 0}
-        >
-          Списать пряжу
-        </button>
-      </div>
 
       <Footer />
 

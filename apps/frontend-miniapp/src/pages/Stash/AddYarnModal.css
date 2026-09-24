@@ -192,6 +192,12 @@
   color: #9b9a9a;
 }
 
+.add-yarn-input:focus,
+.add-yarn-textarea:focus {
+  outline: none;
+  border: 1.5px solid var(--purple, #BEC1F4);
+}
+
 .add-yarn-density-row {
   display: flex;
   align-items: flex-start;
