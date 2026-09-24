@@ -113,6 +113,30 @@
   color: var(--text-muted);
 }
 
+.segmentDelta {
+  margin-top: 4px;
+  font-family: "Mulish", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.deltaUp {
+  color: #1baf7a;
+}
+
+.deltaDown {
+  color: #e34948;
+}
+
+.deltaFlat {
+  color: var(--text-muted);
+}
+
+.deltaHint {
+  font-weight: 400;
+  color: var(--text-subtle);
+}
+
 .segmentHint {
   margin-top: 6px;
   font-family: "Mulish", sans-serif;

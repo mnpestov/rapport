@@ -336,7 +336,7 @@ export const getPatternPriceAlertSubscribers = async (req: Request, res: Respons
 // на каждый рендер.
 export const getUserActivitySegments = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [segments, weekly, cohorts] = await Promise.all([
+    const [segments, segmentsWeekAgo, weekly, cohorts] = await Promise.all([
       prisma.$queryRaw<
         { segment: string; count: bigint }[]
       >`
@@ -357,6 +357,37 @@ export const getUserActivitySegments = async (_req: Request, res: Response): Pro
             WHEN last_view IS NULL THEN 'dead'
             WHEN last_view >= now() - interval '30 days' THEN 'active'
             WHEN last_view >= now() - interval '90 days' THEN 'sleeping'
+            ELSE 'churned'
+          END AS segment,
+          COUNT(*) AS count
+        FROM stats
+        GROUP BY 1
+      `,
+      // Те же 4 сегмента (без paid — тот держит только текущий снимок
+      // premiumExpiresAt, честно "как было неделю назад" из него не
+      // восстановить), пересчитанные на дату "неделю назад": опорная точка
+      // now() - 7d вместо now(), и пользователь ещё не должен был
+      // существовать после этой даты — иначе он "появился бы из будущего".
+      prisma.$queryRaw<
+        { segment: string; count: bigint }[]
+      >`
+        WITH stats AS (
+          SELECT
+            u.id,
+            v.last_view
+          FROM "User" u
+          LEFT JOIN (
+            SELECT "userId", MAX("createdAt") AS last_view FROM "PatternView"
+            WHERE "createdAt" <= now() - interval '7 days'
+            GROUP BY "userId"
+          ) v ON v."userId" = u.id
+          WHERE u."excludeFromStats" = false AND u."createdAt" <= now() - interval '7 days'
+        )
+        SELECT
+          CASE
+            WHEN last_view IS NULL THEN 'dead'
+            WHEN last_view >= now() - interval '7 days' - interval '30 days' THEN 'active'
+            WHEN last_view >= now() - interval '7 days' - interval '90 days' THEN 'sleeping'
             ELSE 'churned'
           END AS segment,
           COUNT(*) AS count
@@ -406,8 +437,14 @@ export const getUserActivitySegments = async (_req: Request, res: Response): Pro
     const segmentCounts: Record<string, number> = { paid: 0, active: 0, sleeping: 0, dead: 0, churned: 0 };
     for (const row of segments) segmentCounts[row.segment] = Number(row.count);
 
+    // paid не входит: честной реконструкции "неделю назад" из живого
+    // premiumExpiresAt нет, см. комментарий у segmentsWeekAgo выше.
+    const segmentCountsWeekAgo: Record<string, number> = { active: 0, sleeping: 0, dead: 0, churned: 0 };
+    for (const row of segmentsWeekAgo) segmentCountsWeekAgo[row.segment] = Number(row.count);
+
     res.json({
       segments: segmentCounts,
+      segmentsWeekAgo: segmentCountsWeekAgo,
       weekly: weekly.map((w) => ({
         week: w.week.toISOString().slice(0, 10),
         newUsers: Number(w.new_users),

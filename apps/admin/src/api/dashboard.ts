@@ -262,6 +262,9 @@ export interface UserActivityCohort {
 
 export interface UserActivitySegmentsResponse {
   segments: UserActivitySegments;
+  // Те же 4 сегмента (без paid — честной реконструкции из живого
+  // premiumExpiresAt на прошлую дату нет), пересчитанные на "неделю назад".
+  segmentsWeekAgo: Omit<UserActivitySegments, "paid">;
   weekly: UserActivityWeeklyPoint[];
   cohorts: UserActivityCohort[];
   generatedAt: string;

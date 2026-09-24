@@ -70,6 +70,9 @@ export function UserActivitySegments() {
             {SEGMENT_META.map((s) => {
               const count = data.segments[s.key];
               const pct = total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
+              const prevCount = s.key === "paid" ? null : data.segmentsWeekAgo[s.key];
+              const delta = prevCount == null ? null : count - prevCount;
+              const deltaPct = prevCount != null && prevCount > 0 ? Math.round((delta! / prevCount) * 1000) / 10 : null;
               return (
                 <div className={styles.segmentCell} key={s.key}>
                   <div className={styles.segmentHeader}>
@@ -77,6 +80,13 @@ export function UserActivitySegments() {
                     <span className={styles.segmentLabel}>{s.label}</span>
                   </div>
                   <div className={styles.segmentValue}>{count.toLocaleString("ru-RU")}</div>
+                  {delta != null && (
+                    <div className={`${styles.segmentDelta} ${delta > 0 ? styles.deltaUp : delta < 0 ? styles.deltaDown : styles.deltaFlat}`}>
+                      {delta > 0 ? "▲" : delta < 0 ? "▼" : "·"} {delta > 0 ? "+" : ""}{delta.toLocaleString("ru-RU")}
+                      {deltaPct != null && <> ({deltaPct > 0 ? "+" : ""}{deltaPct}%)</>}
+                      <span className={styles.deltaHint}> за неделю</span>
+                    </div>
+                  )}
                   <div className={styles.segmentPct}>{pct}% от {total.toLocaleString("ru-RU")}</div>
                   <div className={styles.segmentHint}>{s.hint}</div>
                 </div>
