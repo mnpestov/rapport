@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { AuthorRow, AuthorRowHeader } from "./AuthorRow";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
-import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem, getSyncStatus, checkPendingAuthors, startSync, startAuthorSync } from "../../api/authors";
+import { getAuthors, createAuthor, updateAuthor, deleteAuthor, AuthorItem, getSyncStatus, checkPendingAuthors, startSync, startAuthorSync, getRavelryMatchStatus, startRavelryMatch } from "../../api/authors";
 import { getPendingReports } from "../../api/authors";
 import { Modal } from "../../components/Modal/Modal";
 import { Tabs } from "../../components/Tabs/Tabs";
@@ -68,6 +68,10 @@ export function Authors() {
   const [syncingAuthorId, setSyncingAuthorId] = useState<string | null>(null);
   const [pendingSyncAuthors, setPendingSyncAuthors] = useState<{ isOpen: boolean; authors: string[] }>({ isOpen: false, authors: [] });
 
+  // Добор "Не опознано" через Ravelry — отдельный от isSyncing лок и
+  // поллинг, свой независимый шаг (см. api/authors.ts).
+  const [isMatchingRavelry, setIsMatchingRavelry] = useState(false);
+
   useEffect(() => {
     const checkInitialStatus = async () => {
       try {
@@ -79,7 +83,37 @@ export function Authors() {
       }
     };
     checkInitialStatus();
+
+    const checkInitialRavelryStatus = async () => {
+      try {
+        const { isRunning } = await getRavelryMatchStatus();
+        setIsMatchingRavelry(isRunning);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    checkInitialRavelryStatus();
   }, []);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isMatchingRavelry) {
+      interval = setInterval(async () => {
+        try {
+          const { isRunning, lastResult } = await getRavelryMatchStatus();
+          if (!isRunning) {
+            setIsMatchingRavelry(false);
+            if (lastResult) {
+              toast.success(`Добор через Ravelry завершён: найдено ${lastResult.matched} из ${lastResult.total}`);
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isMatchingRavelry]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -128,6 +162,16 @@ export function Authors() {
       setIsSyncing(true);
       setSyncingAuthorId(null);
       toast.success("Поиск новинок запущен в фоне");
+    } catch (err: any) {
+      toast.error(err.message || "Ошибка при запуске");
+    }
+  };
+
+  const handleRavelryMatch = async () => {
+    try {
+      await startRavelryMatch();
+      setIsMatchingRavelry(true);
+      toast.success("Добор нераспознанной пряжи через Ravelry запущен в фоне");
     } catch (err: any) {
       toast.error(err.message || "Ошибка при запуске");
     }
@@ -333,6 +377,15 @@ export function Authors() {
             style={{ marginRight: "12px" }}
           >
             {isSyncing ? "Синхронизация..." : "Проверить новинки"}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleRavelryMatch}
+            disabled={isMatchingRavelry}
+            style={{ marginRight: "12px" }}
+            title="Найти в Ravelry пряжу, которую не удалось опознать по нашему справочнику, и добавить точные совпадения на согласование"
+          >
+            {isMatchingRavelry ? "Поиск в Ravelry..." : "Добрать «Не опознано» из Ravelry"}
           </Button>
           <Button icon={<Plus size={16} />} onClick={handleOpenCreate}>
             Добавить автора

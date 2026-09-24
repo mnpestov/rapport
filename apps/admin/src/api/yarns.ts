@@ -47,11 +47,12 @@ export interface YarnItem {
   // REJECTED — отклонённая личная заявка из хранилища пряжи, остаётся
   // видимой владельцу, но не в справочнике (YARN_STASH_PLAN.md §5.1).
   status: "PENDING" | "APPROVED" | "REJECTED";
-  // Источник заявки — AUTHOR (узкий проверенный круг через /author/yarns)
-  // или STASH_USER (личное хранилище пряжи через /stash/yarns, потенциально
-  // массовый источник опечаток/дублей — план §5.4). Бейдж в очереди
-  // модерации.
-  createdVia: "AUTHOR" | "STASH_USER";
+  // Источник заявки — AUTHOR (узкий проверенный круг через /author/yarns),
+  // STASH_USER (личное хранилище пряжи через /stash/yarns, потенциально
+  // массовый источник опечаток/дублей — план §5.4) или SCRAPER_RAVELRY
+  // (автодобор нераспознанных артикулов новинок через Ravelry, см.
+  // ravelryUnknownMentionMatcher.ts на бэкенде). Бейдж в очереди модерации.
+  createdVia: "AUTHOR" | "STASH_USER" | "SCRAPER_RAVELRY";
   aliases: YarnAliasItem[];
   _count: { patterns: number };
 }
@@ -107,7 +108,7 @@ export const getYarns = async (params: {
   noMetrage?: boolean;
   generic?: boolean;
   pending?: boolean;
-  createdVia?: "AUTHOR" | "STASH_USER";
+  createdVia?: "AUTHOR" | "STASH_USER" | "SCRAPER_RAVELRY";
 }): Promise<{ items: YarnItem[]; total: number; page: number; pageSize: number }> => {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);

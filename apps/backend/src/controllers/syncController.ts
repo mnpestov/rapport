@@ -15,6 +15,7 @@ import { spawn } from "child_process";
 import { syncCategories, syncTags, syncInstruments, normalizeQuotes } from "../utils/adminShared";
 import { validateImages, validateNewImageOrigins, diffImages, deriveImageUrl, MAX_PATTERN_IMAGES } from "../utils/patternImages";
 import { generateThumbnailUrl } from "../utils/imagePipeline";
+import { matchUnknownMentionsWithRavelry } from "../services/ravelryUnknownMentionMatcher";
 
 let isSyncing = false;
 // Author.id currently being synced, or null when a full (all-authors) sync
@@ -599,4 +600,34 @@ export const startAuthorSync = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "У автора не указан сайт для проверки новинок" });
   }
   runSync(res, id);
+};
+
+// Отдельный лок от isSyncing выше: это не запуск author_sync.py, а
+// последующий добор нераспознанных упоминаний пряжи через Ravelry —
+// независимый ручной шаг (см. ravelryUnknownMentionMatcher.ts), может
+// запускаться и пока сам скрапинг новинок не идёт, и не блокирует его.
+let isMatchingRavelry = false;
+let lastRavelryMatchResult: { matched: number; total: number; finishedAt: string } | null = null;
+
+export const getRavelryMatchStatus = async (_req: Request, res: Response) => {
+  res.json({ isRunning: isMatchingRavelry, lastResult: lastRavelryMatchResult });
+};
+
+export const startRavelryMatch = async (_req: Request, res: Response) => {
+  if (isMatchingRavelry) {
+    return res.status(400).json({ error: "Ravelry match already in progress" });
+  }
+  isMatchingRavelry = true;
+  res.json({ success: true });
+
+  try {
+    const results = await matchUnknownMentionsWithRavelry();
+    const matched = results.filter((r) => r.outcome === "matched_created" || r.outcome === "matched_existing").length;
+    lastRavelryMatchResult = { matched, total: results.length, finishedAt: new Date().toISOString() };
+    console.log(`[RavelryMatch] Обработано ${results.length}, найдено совпадений ${matched}`);
+  } catch (error) {
+    console.error("[RavelryMatch] Прогон упал:", error);
+  } finally {
+    isMatchingRavelry = false;
+  }
 };

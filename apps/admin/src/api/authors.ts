@@ -220,4 +220,27 @@ export const startAuthorSync = async (authorId: string): Promise<{ success: bool
   return response.json();
 };
 
+// Добор нераспознанных упоминаний пряжи ("Не опознано" в карточке новинки)
+// через поиск в Ravelry — отдельный шаг от startSync/startAuthorSync выше,
+// свой лок на бэкенде, запускается вручную после того, как накопились
+// новинки с нераспознанными артикулами.
+export const getRavelryMatchStatus = async (): Promise<{
+  isRunning: boolean;
+  lastResult: { matched: number; total: number; finishedAt: string } | null;
+}> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-ravelry-match-status`);
+  if (!response.ok) throw new Error("Failed to fetch Ravelry match status");
+  return response.json();
+};
+
+export const startRavelryMatch = async (): Promise<{ success: boolean }> => {
+  const response = await fetchWithAuth(`${API_URL}/admin/sync-ravelry-match-start`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to start Ravelry match");
+  }
+  return response.json();
+};
 

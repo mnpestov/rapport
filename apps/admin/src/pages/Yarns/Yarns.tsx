@@ -365,6 +365,11 @@ export function Yarns() {
                     из хранилища
                   </span>
                 )}
+                {y.createdVia === "SCRAPER_RAVELRY" && (
+                  <span className={styles.badge} title="Автоматически найдена в Ravelry по точному совпадению для нераспознанного артикула из новинки">
+                    из Ravelry
+                  </span>
+                )}
               </span>
               <span className={y.mPer100g == null ? styles.missing : undefined}>
                 {y.mPer100g != null ? `${y.mPer100g} м/100 г` : "—"}

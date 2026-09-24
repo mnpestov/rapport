@@ -79,7 +79,9 @@ import {
   checkPendingAuthors,
   startSync,
   startAuthorSync,
-  clearSyncReport
+  clearSyncReport,
+  getRavelryMatchStatus,
+  startRavelryMatch,
 } from "../controllers/syncController";
 import {
   getWhitelist,
@@ -326,6 +328,8 @@ router.get("/sync-status", getSyncStatus);
 router.get("/sync-pending", checkPendingAuthors);
 router.post("/sync-start", startSync);
 router.post("/authors/:id/sync-start", startAuthorSync);
+router.get("/sync-ravelry-match-status", getRavelryMatchStatus);
+router.post("/sync-ravelry-match-start", startRavelryMatch);
 
 // Author applications (login/password + applications feature)
 router.get("/author-applications", getAuthorApplications);

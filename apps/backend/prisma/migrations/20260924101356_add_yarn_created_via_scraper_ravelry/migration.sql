@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "YarnCreatedVia" ADD VALUE 'SCRAPER_RAVELRY';
