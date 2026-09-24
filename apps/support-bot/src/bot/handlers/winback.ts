@@ -68,7 +68,7 @@ export async function handleDormantFeedback(ctx: CallbackCtx): Promise<void> {
 
   ctx.session.awaitingWinbackFeedback = 'dormant_feedback';
 
-  await ctx.reply('Расскажите, что думаете о Раппорте — будем рады любой обратной связи. Просто напишите в ответ.');
+  await ctx.reply('Напишите нам, прямо сюда в чат, что можно улучшить или что вам не понравилось. Мы обязательно прочитаем ❤️');
 }
 
 export async function handleWinbackAllGood(ctx: CallbackCtx): Promise<void> {
