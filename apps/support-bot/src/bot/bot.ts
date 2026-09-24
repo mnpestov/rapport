@@ -30,6 +30,7 @@ import {
   handleWinbackHardToUse,
   handleWinbackAllGood,
   handleWinbackOptOut,
+  handleDormantFeedback,
 } from './handlers/winback';
 
 // Shown in Telegram's "Menu" button next to the message input — the only
@@ -76,6 +77,7 @@ export function createBot(): Bot<CustomContext> {
   bot.callbackQuery('winback:hard_to_use', handleWinbackHardToUse);
   bot.callbackQuery('winback:all_good', handleWinbackAllGood);
   bot.callbackQuery('winback:opt_out', handleWinbackOptOut);
+  bot.callbackQuery('winback:dormant_feedback', handleDormantFeedback);
   bot.on('message', handleFallback);
 
   return bot;

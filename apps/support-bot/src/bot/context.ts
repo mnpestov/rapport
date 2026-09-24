@@ -40,7 +40,12 @@ export interface SessionData {
   // пользоваться". Разные ветки, потому что только вторая даёт бонус
   // +14 дней подписки при получении текста; первая просто сохраняет
   // ответ для учёта в каталоге.
-  awaitingWinbackFeedback?: 'didnt_find' | 'hard_to_use';
+  // 'dormant_feedback' — из checkDormant.ts (сообщение "давно не виделись",
+  // не задаёт вопрос про причину отвала), кнопка "Оставить обратную связь":
+  // просто собирает свободный текст в поддержку, без бонуса и без записи в
+  // WinbackResponse (та таблица — причины ИЗ клавиатуры обычного чекина,
+  // здесь их нет).
+  awaitingWinbackFeedback?: 'didnt_find' | 'hard_to_use' | 'dormant_feedback';
 }
 
 export interface CustomContext extends Context, SessionFlavor<SessionData> {

@@ -55,6 +55,22 @@ export async function handleWinbackHardToUse(ctx: CallbackCtx): Promise<void> {
   );
 }
 
+// Кнопка "Оставить обратную связь" под checkDormant.ts-сообщением (не
+// задаёт вопрос про причину отвала, в отличие от остальных winback-кнопок
+// выше) — просто открывает свободный текстовый ввод, без бонуса и без
+// recordWinbackResponse (WinbackReason не описывает "написал сам, без
+// повода", см. context.ts).
+export async function handleDormantFeedback(ctx: CallbackCtx): Promise<void> {
+  const telegramId = ctx.from.id;
+  logEvent({ event: 'WINBACK_RESPONSE', requestId: ctx.requestId, telegramId, reason: 'DORMANT_FEEDBACK' });
+
+  await ctx.answerCallbackQuery();
+
+  ctx.session.awaitingWinbackFeedback = 'dormant_feedback';
+
+  await ctx.reply('Расскажите, что думаете о Раппорте — будем рады любой обратной связи. Просто напишите в ответ.');
+}
+
 export async function handleWinbackAllGood(ctx: CallbackCtx): Promise<void> {
   const telegramId = ctx.from.id;
   logEvent({ event: 'WINBACK_RESPONSE', requestId: ctx.requestId, telegramId, reason: 'ALL_GOOD' });
@@ -100,6 +116,11 @@ export async function handleWinbackFeedbackStep(ctx: CustomContext): Promise<boo
 
   if (step === 'didnt_find') {
     await ctx.reply('Спасибо! Передали в работу — учтём при пополнении каталога.');
+    return true;
+  }
+
+  if (step === 'dormant_feedback') {
+    await ctx.reply('Спасибо за обратную связь! Обязательно почитаем 🙂');
     return true;
   }
 

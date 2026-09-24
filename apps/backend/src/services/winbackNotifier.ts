@@ -9,10 +9,12 @@
  * callback_query) — см. apps/support-bot/src/bot/handlers/winback.ts.
  */
 
-interface InlineKeyboardButton {
-  text: string;
-  callback_data: string;
-}
+// callback_data ИЛИ url — ровно один из двух, как того требует Telegram
+// Bot API для inline-кнопки; DORMANT_KEYBOARD ниже использует url для
+// "Войти в Раппорт" (открывает mini app напрямую, без support-bot).
+type InlineKeyboardButton =
+  | { text: string; callback_data: string }
+  | { text: string; url: string };
 
 export interface SendResult {
   delivered: boolean;
@@ -97,20 +99,38 @@ export async function sendWinbackCheckin(telegramId: bigint): Promise<SendResult
   return sendMessage(telegramId, text, KEYBOARD);
 }
 
+// Своя клавиатура для checkDormant.ts — DORMANT_KEYBOARD ниже не задаёт
+// вопрос про причину отвала (в отличие от KEYBOARD у обычного чекина),
+// поэтому кнопки-действия, а не кнопки-ответы: перейти в приложение или
+// сразу написать отзыв. "Не спрашивать больше" здесь намеренно нет — это
+// разовое сообщение о росте каталога, не повторяющийся опрос, на который
+// имеет смысл жать отказ.
+const DORMANT_KEYBOARD: { inline_keyboard: InlineKeyboardButton[][] } = {
+  inline_keyboard: [
+    [{ text: "Войти в Раппорт", url: "https://t.me/rapportapp_bot/rapport" }],
+    [{ text: "Оставить обратную связь", callback_data: "winback:dormant_feedback" }],
+  ],
+};
+
 // Отдельный текст для checkDormant.ts (сегмент "Отвалившиеся" — последний
 // просмотр 90+ дней назад, часто почти с запуска проекта): "давно вас не
 // было" тут звучит странно для человека, который толком и не пользовался
-// каталогом в его нынешнем виде — вместо этого называем конкретную причину
-// вернуться (объём каталога сейчас), а не апеллируем к тому, что человек
-// "скучал" по сервису. Та же клавиатура, что и у обычного чекина — причины
-// отвала и опция "не спрашивать больше" одинаково применимы.
+// каталогом в его нынешнем виде. Текст здоровается, объясняет, зачем мы
+// пишем (каталог заметно вырос), и прямо предлагает либо вернуться, либо
+// оставить отзыв — в отличие от обычного чекина, тут нет вопроса "что
+// случилось", поэтому и клавиатура другая (см. DORMANT_KEYBOARD).
 export async function sendDormantCheckin(telegramId: bigint, patternsCount: number): Promise<SendResult> {
   // Округляем вниз до сотен ("больше 3600", не точное "3627") — точность
   // тут не создаёт доверия, а неровное число из рассылки в рассылку (по
   // мере роста каталога) выглядело бы дёргано.
   const roundedCount = Math.floor(patternsCount / 100) * 100;
   const text =
-    `Каталог Раппорта пополнился — сейчас в нём уже больше ${roundedCount.toLocaleString("ru-RU")} описаний, и список растёт каждый день 🧶\n\n` +
-    "Загляните — возможно, теперь найдётся то, чего не было раньше.";
-  return sendMessage(telegramId, text, KEYBOARD);
+    "Привет! Давно не виделись!\n\n" +
+    "За это время Раппорт заметно вырос:\n" +
+    `В каталоге уже более ${roundedCount.toLocaleString("ru-RU")} вязальных описаний\n` +
+    "Появились новые функции\n\n" +
+    "Если вам чего-то не хватило или что-то не понравилось в приложении — напишите нам! " +
+    "Будем рады обратной связи и постараемся всё исправить ❤️\n\n" +
+    "А если давно не заглядывали — самое время заглянуть снова!";
+  return sendMessage(telegramId, text, DORMANT_KEYBOARD);
 }
