@@ -62,7 +62,10 @@ async function main(): Promise<void> {
 
   // Одно число на весь прогон — не пересчитываем на каждого получателя,
   // все письма одной рассылки должны называть одну и ту же цифру.
-  const patternsCount = await prisma.pattern.count();
+  // isVisible: true — тот же фильтр, что у публичного каталога
+  // (patternsController.ts), иначе цифра в письме была бы больше того, что
+  // человек реально увидит, открыв приложение.
+  const patternsCount = await prisma.pattern.count({ where: { isVisible: true } });
 
   let sent = 0;
   let permanentlyUnreachable = 0;
