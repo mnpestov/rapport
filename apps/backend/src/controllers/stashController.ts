@@ -395,6 +395,8 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
 
   const toDecimal = (v: unknown): number | null =>
     v == null || v === "" ? null : Number(v);
+  const toInt = (v: unknown): number | null =>
+    v == null || v === "" ? null : Math.trunc(Number(v));
 
   const images: string[] = Array.isArray(body.images) ? body.images.map(String) : [];
   if (images.length > MAX_STASH_IMAGES_PER_SWATCH) {
@@ -413,6 +415,7 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
         skeinId,
         images,
         needleSizeRaw: body.needleSizeRaw ? String(body.needleSizeRaw) : null,
+        strandsCount: toInt(body.strandsCount),
         densityStitchesBefore: toDecimal(body.densityStitchesBefore),
         densityRowsBefore: toDecimal(body.densityRowsBefore),
         densityStitchesAfter: toDecimal(body.densityStitchesAfter),
@@ -433,6 +436,8 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
 
   const toDecimal = (v: unknown): number | null | undefined =>
     v === undefined ? undefined : v == null || v === "" ? null : Number(v);
+  const toInt = (v: unknown): number | null | undefined =>
+    v === undefined ? undefined : v == null || v === "" ? null : Math.trunc(Number(v));
 
   const data: Prisma.StashSwatchUpdateInput = {};
   if ("images" in body) {
@@ -449,6 +454,8 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
     data.images = images;
   }
   if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
+  const sc = toInt(body.strandsCount);
+  if (sc !== undefined) data.strandsCount = sc;
   const dsb = toDecimal(body.densityStitchesBefore);
   if (dsb !== undefined) data.densityStitchesBefore = dsb;
   const drb = toDecimal(body.densityRowsBefore);

@@ -23,6 +23,7 @@ export interface StashSwatch {
   skeinId: string;
   images: string[];
   needleSizeRaw: string | null;
+  strandsCount: number | null;
   densityStitchesBefore: string | null;
   densityRowsBefore: string | null;
   densityStitchesAfter: string | null;
@@ -310,6 +311,7 @@ export const deleteStashSkein = async (id: string): Promise<void> => {
 export interface CreateStashSwatchPayload {
   images?: string[];
   needleSizeRaw?: string;
+  strandsCount?: number;
   densityStitchesBefore?: number;
   densityRowsBefore?: number;
   densityStitchesAfter?: number;

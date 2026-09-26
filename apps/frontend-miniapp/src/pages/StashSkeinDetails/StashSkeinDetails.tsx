@@ -298,6 +298,7 @@ export const StashSkeinDetails: React.FC = () => {
             cardClassName="stash-swatch-block"
           >
             {swatch.needleSizeRaw && <p className="stash-details-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
+            {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
             {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
               <p className="stash-details-row">
                 <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.

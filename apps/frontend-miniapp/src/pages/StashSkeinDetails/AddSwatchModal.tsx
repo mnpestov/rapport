@@ -19,6 +19,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
 
   const [needleSizeRaw, setNeedleSizeRaw] = useState('');
+  const [strandsCount, setStrandsCount] = useState('');
   const [stitchesBefore, setStitchesBefore] = useState('');
   const [rowsBefore, setRowsBefore] = useState('');
   const [stitchesAfter, setStitchesAfter] = useState('');
@@ -33,6 +34,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
   useEffect(() => {
     if (!isOpen) return;
     setNeedleSizeRaw('');
+    setStrandsCount('');
     setStitchesBefore('');
     setRowsBefore('');
     setStitchesAfter('');
@@ -68,6 +70,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
       await createStashSwatch(skeinId, {
         images,
         needleSizeRaw: needleSizeRaw.trim() || undefined,
+        strandsCount: strandsCount ? Number(strandsCount) : undefined,
         densityStitchesBefore: stitchesBefore ? Number(stitchesBefore) : undefined,
         densityRowsBefore: rowsBefore ? Number(rowsBefore) : undefined,
         densityStitchesAfter: stitchesAfter ? Number(stitchesAfter) : undefined,
@@ -110,6 +113,11 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
           <div className="add-yarn-field">
             <label className="add-yarn-label">Размер спицы</label>
             <input className="add-yarn-input" value={needleSizeRaw} placeholder="Введите текст..." onChange={(e) => setNeedleSizeRaw(e.target.value)} />
+          </div>
+
+          <div className="add-yarn-field">
+            <label className="add-yarn-label">Количество нитей</label>
+            <input className="add-yarn-input" value={strandsCount} placeholder="Введите число..." inputMode="numeric" onChange={(e) => setStrandsCount(e.target.value)} />
           </div>
 
           <div className="add-yarn-field">

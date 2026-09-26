@@ -1404,6 +1404,10 @@ model StashSwatch {
 
   images                String[] @default([])
   needleSizeRaw         String?
+  // В сколько нитей вязался образец (сложение нескольких мотков/секций в
+  // одну нить) — параметр вязания, тот же смысл, что и needleSizeRaw, не
+  // результат измерения, поэтому целое число, не Decimal, как у плотности.
+  strandsCount          Int?
   // Плотность ДО ВТО — тот же формат чисел, что у Pattern.densityStitches/Rows.
   densityStitchesBefore Decimal? @db.Decimal(5, 2)
   densityRowsBefore     Decimal? @db.Decimal(5, 2)
