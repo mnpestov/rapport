@@ -156,21 +156,35 @@ async function countCurrentlyActiveSubscribers(): Promise<number> {
 }
 
 // "Подходит срок продления" — верхняя граница воронки "Показали баннер":
-// кому баннер ДОЛЖЕН был показаться (premiumExpiresAt в ближайшие 3 дня
-// прямо сейчас), а не кому реально показался. Баннер выставляется только
-// в authSession.ts при открытии сессии (см. subscriptionWarning) — кто не
-// заходил в Раппорт в этом окне, никогда не получает PaywallEvent(SHOWN),
-// и "Показали баннер" тогда недосчитывает реальный охват. Мгновенное
-// состояние "сейчас", как countCurrentlyActiveSubscribers — выбранный на
-// дашборде период (7d/30d/90d/all) на эту графу не влияет: нельзя
-// ретроспективно иметь "осталось 3 дня" за произвольный диапазон.
-async function countEligibleForRenewalBanner(): Promise<number> {
+// кому баннер ДОЛЖЕН был показаться (был внутри окна "осталось ≤3 дня") в
+// выбранном периоде, а не кому реально показался. "Показали баннер" —
+// накопление уникальных пользователей ЗА ПЕРИОД (countUniqueUsers), а не
+// мгновенный снимок — если бы эта граница считалась только "сейчас", она
+// была бы систематически меньше при периоде шире пары дней: например за
+// 30 дней баннер видят десятки разных когорт "осталось 3 дня", а "сейчас"
+// показывает только одну последнюю — истёкшие и не продлившие внутри
+// периода выпадали бы из знаменателя конверсии, хотя баннер им честно
+// показывался.
+//
+// premiumExpiresAt — единственная метка на User (нет истории "было 3 дня
+// до истечения такого-то числа"), поэтому окно реконструируется тем же
+// способом, что и countActiveSubscribers/countChurnedSubscribers выше:
+// пользователь МОГ быть в окне "≤3 дня" где-то внутри [from, to], если его
+// текущий premiumExpiresAt лежит в [from, to + 3 дня] — то есть его срок
+// истечения (или последний известный срок, если с тех пор не продлевал)
+// попадает не раньше чем на 3 дня до конца периода и не позже конца
+// периода + 3 дня отставания. range.to по умолчанию — текущий момент
+// (как и в countChurnedSubscribers), сам "сейчас" остаётся частным
+// случаем при range = {} (period=all без from/to).
+async function countEligibleForRenewalBanner(range: { from?: Date; to?: Date }): Promise<number> {
   const now = new Date();
-  const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const upperBound = range.to && range.to < now ? range.to : now;
+  const windowStart = range.from ?? new Date(0);
+  const windowEnd = new Date(upperBound.getTime() + 3 * 24 * 60 * 60 * 1000);
   return prisma.user.count({
     where: {
       excludeFromStats: false,
-      premiumExpiresAt: { gte: now, lte: in3Days },
+      premiumExpiresAt: { gte: windowStart, lte: windowEnd },
     },
   });
 }
@@ -217,7 +231,7 @@ export const getPaywallStats = async (req: Request, res: Response): Promise<void
       countPayingUsers(range, ACQUISITION_SOURCES),
 
       countActiveSubscribers(range),
-      countEligibleForRenewalBanner(),
+      countEligibleForRenewalBanner(range),
       countUniqueUsers(PaywallEventType.SHOWN, range, RETENTION_AUTO_SHOWN_SOURCES),
       countUniqueUsers(PaywallEventType.SUBSCRIBE_CLICK, range, RETENTION_SOURCES),
       countPayingUsers(range, RETENTION_SOURCES),
@@ -372,14 +386,17 @@ export const getPaywallStatsUsers = async (req: Request, res: Response): Promise
     }
 
     // "Подходит срок продления" — тот же критерий, что
-    // countEligibleForRenewalBanner выше: мгновенный снимок "сейчас", без
-    // привязки к range (в отличие от ACTIVE_SUBSCRIBERS чуть выше).
+    // countEligibleForRenewalBanner выше: попадал в окно "≤3 дня до
+    // истечения" где-то внутри range, не только "сейчас" — иначе drilldown
+    // разошёлся бы с цифрой на дашборде, которая тоже теперь за period.
     if (metric === "ELIGIBLE_FOR_RENEWAL_BANNER") {
       const now = new Date();
-      const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const upperBound = range.to && range.to < now ? range.to : now;
+      const windowStart = range.from ?? new Date(0);
+      const windowEnd = new Date(upperBound.getTime() + 3 * 24 * 60 * 60 * 1000);
       const where = {
         excludeFromStats: false,
-        premiumExpiresAt: { gte: now, lte: in3Days },
+        premiumExpiresAt: { gte: windowStart, lte: windowEnd },
       };
       const [users, total] = await Promise.all([
         prisma.user.findMany({
