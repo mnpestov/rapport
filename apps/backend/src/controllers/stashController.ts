@@ -924,12 +924,33 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
     }
 
     if (matchedIds.size === 0) {
-      res.json({ items: [] satisfies MatchItem[], isLocked });
+      res.json({ items: [] satisfies MatchItem[], isLocked, hasMore: false });
       return;
     }
 
+    // Карточка пряжи грузила ВСЕ подходящие описания разом (включая их
+    // thumbnail) — при щедром совпадении по толщине список разрастался до
+    // десятков штук, и страница ощутимо тормозила на одновременной загрузке
+    // такого числа картинок. Пагинируем: сортируем один раз по числу
+    // совпавших критериев (exact+thickness+density вместе надёжнее, чем
+    // один критерий; при равенстве порядок не важен для пользователя), а
+    // дальше режем на страницы ПОСЛЕ сортировки — так порядок стабилен
+    // между запросами и один и тот же паттерн не съедет на другую страницу.
+    const sortedIds = [...matchedIds.keys()].sort(
+      (a, b) => matchedIds.get(b)!.size - matchedIds.get(a)!.size
+    );
+
+    const FIRST_PAGE_SIZE = 20;
+    const NEXT_PAGE_SIZE = 10;
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+    // Первая страница шире последующих — те же 20 карточек, что видел
+    // пользователь до пагинации, дальше подгружаем по 10 при доскролле.
+    const limit = offset === 0 ? FIRST_PAGE_SIZE : NEXT_PAGE_SIZE;
+    const pageIds = sortedIds.slice(offset, offset + limit);
+    const hasMore = offset + limit < sortedIds.length;
+
     const patterns = await prisma.pattern.findMany({
-      where: { id: { in: [...matchedIds.keys()] } },
+      where: { id: { in: pageIds } },
       select: {
         id: true, title: true, imageUrl: true, thumbnailUrl: true,
         author: { select: { name: true } },
@@ -937,10 +958,15 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
         categories: { select: { name: true } },
       },
     });
+    // Prisma не гарантирует порядок результата для `id: { in: [...] }` —
+    // без этого пересортировки страницы перемешивались бы между запросами.
+    const patternById = new Map(patterns.map((p) => [p.id, p]));
 
-    const items: MatchItem[] = patterns.map((p) => {
+    const items: MatchItem[] = pageIds.flatMap((id) => {
+      const p = patternById.get(id);
+      if (!p) return [];
       const strands = strandsByPattern.get(p.id);
-      return {
+      return [{
         id: p.id,
         title: p.title,
         imageUrl: p.imageUrl,
@@ -951,10 +977,10 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
         matchedBy: [...(matchedIds.get(p.id) ?? [])],
         strandsCount: strands != null && strands > 1 ? strands : null,
         compositionLevel: compositionLevelByPattern.get(p.id) ?? null,
-      };
+      }];
     });
 
-    res.json({ items, isLocked });
+    res.json({ items, isLocked, hasMore });
   } catch (error) {
     console.error("[Stash] getMatches failed:", error);
     res.status(500).json({ error: "Internal server error" });

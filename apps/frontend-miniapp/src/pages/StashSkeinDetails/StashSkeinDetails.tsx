@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Lock, Plus, SquarePen } from 'lucide-react';
 import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
@@ -48,6 +48,8 @@ export const StashSkeinDetails: React.FC = () => {
   // оставаться смонтированной во время анимации закрытия.
   const [lastEditSwatch, setLastEditSwatch] = useState<StashSwatch | null>(null);
   const [matchesLocked, setMatchesLocked] = useState(false);
+  const [matchesHasMore, setMatchesHasMore] = useState(false);
+  const [isLoadingMoreMatches, setIsLoadingMoreMatches] = useState(false);
   const [isMatchesPaywallOpen, setIsMatchesPaywallOpen] = useState(false);
   const [isYarnFixFormOpen, setIsYarnFixFormOpen] = useState(false);
   const [yarnFixMPer100g, setYarnFixMPer100g] = useState('');
@@ -62,11 +64,12 @@ export const StashSkeinDetails: React.FC = () => {
     try {
       const [skeinData, matchesResult] = await Promise.all([
         fetchStashSkeinById(id),
-        fetchStashMatches(id).catch(() => ({ items: [], isLocked: false })),
+        fetchStashMatches(id).catch(() => ({ items: [], isLocked: false, hasMore: false })),
       ]);
       setSkein(skeinData);
       setMatches(matchesResult.items);
       setMatchesLocked(matchesResult.isLocked);
+      setMatchesHasMore(matchesResult.hasMore);
     } catch {
       setError('Не удалось загрузить карточку пряжи.');
     } finally {
@@ -75,6 +78,38 @@ export const StashSkeinDetails: React.FC = () => {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Автодогрузка по скроллу (без кнопки "показать ещё") — первая страница
+  // (20 карточек) уже пришла через load() выше, дальше по 10 за раз, пока
+  // observerRef ниже не увидит последнюю карточку во вьюпорте.
+  const loadMoreMatches = useCallback(async () => {
+    if (!id || isLoadingMoreMatches || !matchesHasMore) return;
+    setIsLoadingMoreMatches(true);
+    try {
+      const result = await fetchStashMatches(id, matches.length);
+      setMatches((prev) => [...prev, ...result.items]);
+      setMatchesHasMore(result.hasMore);
+    } catch {
+      // Тихо — это доп. страница, не критично для уже открытой карточки;
+      // observer попробует снова, если карточка всё ещё видна.
+    } finally {
+      setIsLoadingMoreMatches(false);
+    }
+  }, [id, matches.length, isLoadingMoreMatches, matchesHasMore]);
+
+  const matchesObserverRef = useRef<IntersectionObserver | null>(null);
+  const lastMatchElementRef = useCallback((node: HTMLButtonElement | null) => {
+    if (isLoadingMoreMatches) return;
+    if (matchesObserverRef.current) matchesObserverRef.current.disconnect();
+
+    matchesObserverRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && matchesHasMore) {
+        loadMoreMatches();
+      }
+    });
+
+    if (node) matchesObserverRef.current.observe(node);
+  }, [isLoadingMoreMatches, matchesHasMore, loadMoreMatches]);
 
   const handleBack = () => {
     if (canGoBackInApp()) navigate(-1);
@@ -383,21 +418,22 @@ export const StashSkeinDetails: React.FC = () => {
         <div className="stash-details-matches">
           <p className="stash-details-section-title">Что можно связать из этой пряжи</p>
           <div className="stash-matches-list">
-            {matches.map((m) => (
+            {matches.map((m, i) => (
               <button
                 key={m.id}
+                ref={i === matches.length - 1 ? lastMatchElementRef : undefined}
                 type="button"
                 className={`stash-match-card${matchesLocked ? ' stash-match-card--locked' : ''}`}
                 onClick={() => (matchesLocked ? setIsMatchesPaywallOpen(true) : navigate(`/pattern/${m.id}`))}
               >
                 {matchesLocked ? (
                   <div className="stash-match-image-frame">
-                    <img src={m.thumbnailUrl} alt="" className="stash-match-image stash-match-image--locked" />
+                    <img src={m.thumbnailUrl} alt="" loading="lazy" className="stash-match-image stash-match-image--locked" />
                     <Lock size={16} strokeWidth={1.5} className="stash-match-lock-icon" />
                   </div>
                 ) : (
                   <>
-                    <img src={m.thumbnailUrl} alt="" className="stash-match-image" />
+                    <img src={m.thumbnailUrl} alt="" loading="lazy" className="stash-match-image" />
                     <p className="stash-match-title">{m.title}</p>
                     <div className="stash-match-meta">
                       <p className="stash-match-category">{m.category ?? '—'}</p>

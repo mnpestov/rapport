@@ -231,20 +231,26 @@ export interface FetchStashMatchesResponse {
   // блокирует данные, а говорит фронту, размывать ли карточки и показывать
   // замок вместо перехода по клику (обновлённая модель платного доступа).
   isLocked: boolean;
+  // Есть ли ещё страницы после этой — фронт использует для автодогрузки по
+  // скроллу (без кнопки "показать ещё"), см. StashSkeinDetails.tsx.
+  hasMore: boolean;
 }
 
-export const fetchStashMatches = async (skeinId: string): Promise<FetchStashMatchesResponse> => {
-  const response = await authorizedFetch(`${API_URL}/stash/skeins/${skeinId}/matches`, {}, 10000);
+// offset=0 (по умолчанию) — первая страница (20 карточек на бэкенде),
+// offset>0 — следующие страницы (по 10). Сам размер страницы решает
+// backend (stashController.ts::getMatches) — фронт только передаёт offset.
+export const fetchStashMatches = async (skeinId: string, offset = 0): Promise<FetchStashMatchesResponse> => {
+  const response = await authorizedFetch(`${API_URL}/stash/skeins/${skeinId}/matches?offset=${offset}`, {}, 10000);
   if (!response.ok) {
     throw new Error(`Failed to fetch stash matches: ${response.status}`);
   }
-  const data: { items: StashMatchItem[]; isLocked: boolean } = await response.json();
+  const data: { items: StashMatchItem[]; isLocked: boolean; hasMore: boolean } = await response.json();
   const items = data.items.map((item) => ({
     ...item,
     imageUrl: item.imageUrl.startsWith('/') ? `${API_URL}${item.imageUrl}` : item.imageUrl,
     thumbnailUrl: item.thumbnailUrl.startsWith('/') ? `${API_URL}${item.thumbnailUrl}` : item.thumbnailUrl,
   }));
-  return { items, isLocked: data.isLocked };
+  return { items, isLocked: data.isLocked, hasMore: data.hasMore };
 };
 
 export interface SuggestStashYarnsResult {
