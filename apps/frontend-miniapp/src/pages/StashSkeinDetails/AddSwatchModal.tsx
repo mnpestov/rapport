@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
-import { createStashSwatch, updateStashSkein, uploadStashImage } from '../../api/stashApi';
-import { API_URL } from '../../api/config';
+import { createStashSwatch, uploadStashImage } from '../../api/stashApi';
 import '../../styles/sheet.css';
 import '../Stash/AddYarnModal.css';
 
@@ -10,12 +9,11 @@ const MAX_IMAGES = 5;
 interface AddSwatchModalProps {
   isOpen: boolean;
   skeinId: string;
-  existingSkeinImages: string[];
   onClose: () => void;
   onCreated: () => void;
 }
 
-export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId, existingSkeinImages, onClose, onCreated }) => {
+export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId, onClose, onCreated }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
 
   const [needleSizeRaw, setNeedleSizeRaw] = useState('');
@@ -76,23 +74,6 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
         densityStitchesAfter: stitchesAfter ? Number(stitchesAfter) : undefined,
         densityRowsAfter: rowsAfter ? Number(rowsAfter) : undefined,
       });
-
-      // Фото образца дублируются в общую галерею мотка — пользователь
-      // ожидает видеть их на карточке пряжи, а не только внутри блока
-      // "Образец". Дописываем к уже существующим фото (не перезаписываем),
-      // относительными путями (API_URL склеен только для отображения).
-      if (images.length > 0) {
-        const relativeExisting = existingSkeinImages.map((url) =>
-          url.startsWith(API_URL) ? url.slice(API_URL.length) : url
-        );
-        const combined = [...new Set([...relativeExisting, ...images])].slice(0, MAX_IMAGES);
-        try {
-          await updateStashSkein(skeinId, { images: combined });
-        } catch {
-          // Образец уже сохранён — не блокируем закрытие формы, если только
-          // обновление галереи мотка не удалось.
-        }
-      }
 
       onCreated();
     } catch (err) {

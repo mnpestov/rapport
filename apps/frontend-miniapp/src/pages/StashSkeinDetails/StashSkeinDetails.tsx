@@ -15,6 +15,7 @@ import { LogUsageWizard } from './LogUsageWizard';
 import { StashImageCarousel } from './StashImageCarousel';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
+import swatchPlaceholder from '../../assets/stash/swatchPlaceholder.svg';
 import projectPlaceholder from '../../components/TabBar/icons/project.svg';
 import './StashSkeinDetails.css';
 
@@ -332,18 +333,29 @@ export const StashSkeinDetails: React.FC = () => {
             onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
             cardClassName="stash-swatch-block"
           >
-            {swatch.needleSizeRaw && <p className="stash-details-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
-            {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
-            {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
-              <p className="stash-details-row">
-                <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
-              </p>
-            )}
-            {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
-              <p className="stash-details-row">
-                <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
-              </p>
-            )}
+            <div className="stash-swatch-image">
+              {swatch.images.length > 0 ? (
+                <StashImageCarousel images={swatch.images} alt="Образец" classPrefix="stash-swatch-image" />
+              ) : (
+                <div className="stash-swatch-image-placeholder">
+                  <img src={swatchPlaceholder} alt="" />
+                </div>
+              )}
+            </div>
+            <div className="stash-swatch-body">
+              {swatch.needleSizeRaw && <p className="stash-details-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
+              {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
+              {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
+                <p className="stash-details-row">
+                  <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
+                </p>
+              )}
+              {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
+                <p className="stash-details-row">
+                  <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
+                </p>
+              )}
+            </div>
           </SwipeToDelete>
         ))}
         <button type="button" className="stash-add-button" onClick={() => setIsAddSwatchOpen(true)}>
@@ -455,7 +467,6 @@ export const StashSkeinDetails: React.FC = () => {
       <AddSwatchModal
         isOpen={isAddSwatchOpen}
         skeinId={skein.id}
-        existingSkeinImages={skein.images}
         onClose={() => setIsAddSwatchOpen(false)}
         onCreated={() => {
           setIsAddSwatchOpen(false);

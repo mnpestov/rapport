@@ -317,16 +317,111 @@
   cursor: pointer;
 }
 
+/* Своя миниатюра на карточке образца — тот же макет, что у
+   .stash-usage-card (список/карусель фото слева, данные справа), фото
+   образца больше не дублируется в общую галерею мотка (см. комментарий в
+   AddSwatchModal.tsx). */
 .stash-swatch-block {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   width: 100%;
   border: none;
   background: #ffffff;
   padding: 0;
   text-align: left;
   cursor: default;
+}
+
+.stash-swatch-image {
+  position: relative;
+  width: 90px;
+  height: 116px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #f3f3f3;
+}
+
+.stash-swatch-image>img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Классы ниже адресуются через classPrefix StashImageCarousel — тот же
+   приём, что stash-usage-image-track/-slide/-dots(-active) у карточки
+   списания. */
+.stash-swatch-image-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.stash-swatch-image-track::-webkit-scrollbar {
+  display: none;
+}
+
+.stash-swatch-image-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  scroll-snap-align: start;
+}
+
+.stash-swatch-image-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.stash-swatch-image-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, width 0.15s;
+}
+
+.stash-swatch-image-dot--active {
+  background: #ffffff;
+  width: 10px;
+  border-radius: 2px;
+}
+
+.stash-swatch-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stash-swatch-image-placeholder img {
+  width: 70%;
+  object-fit: contain;
+}
+
+.stash-swatch-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  min-width: 0;
 }
 
 .stash-details-swatches .swipe-to-delete {
