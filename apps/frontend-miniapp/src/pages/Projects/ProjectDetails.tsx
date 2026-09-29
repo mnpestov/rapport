@@ -9,11 +9,13 @@ import {
   removeProjectYarn,
   deleteProjectSwatch,
   updateProject,
+  openProjectDocumentExternally,
   ProjectDetail as ProjectDetailType,
   ProjectDocument,
   ProjectSwatch,
   ProjectStatus,
 } from '../../api/projectsApi';
+import { getMode } from '../../api/authSession';
 import { fetchStashSkeins, StashSkein } from '../../api/stashApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { Footer } from '../../components/Footer/Footer';
@@ -84,21 +86,25 @@ export const ProjectDetails: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  // Список запасов показывается сразу при открытии поля поиска
+  // (isYarnSearchOpen — включается кнопкой "Привязать пряжу"), не
+  // дожидаясь ввода первых символов — пустой search отдаёт первую страницу
+  // всех мотков.
   useEffect(() => {
-    if (yarnQuery.trim().length < 2) {
+    if (!isYarnSearchOpen) {
       setYarnResults([]);
       setIsSearchingYarn(false);
       return;
     }
     setIsSearchingYarn(true);
     const timer = setTimeout(() => {
-      fetchStashSkeins({ search: yarnQuery.trim() })
+      fetchStashSkeins({ search: yarnQuery.trim() || undefined })
         .then((res) => setYarnResults(res.items))
         .catch(() => setYarnResults([]))
         .finally(() => setIsSearchingYarn(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [yarnQuery]);
+  }, [yarnQuery, isYarnSearchOpen]);
 
   const handleBack = () => {
     if (canGoBackInApp()) navigate(-1);
@@ -120,6 +126,17 @@ export const ProjectDetails: React.FC = () => {
       </div>
     );
   }
+
+  // В Telegram — просто открыть файл (без canvas-редактора, см. комментарий
+  // у openProjectDocumentExternally), в обычном браузере — полноценный
+  // PdfViewerModal с выделением/пером.
+  const handleOpenDocument = (doc: ProjectDocument) => {
+    if (getMode() === 'telegram') {
+      openProjectDocumentExternally(doc.id, doc.originalFileName).catch(() => setError('Не удалось открыть файл.'));
+    } else {
+      setViewingDocument(doc);
+    }
+  };
 
   const handlePickStatus = async (status: ProjectStatus) => {
     setIsStatusMenuOpen(false);
@@ -347,9 +364,11 @@ export const ProjectDetails: React.FC = () => {
                 ))}
               </div>
             )}
-            {!isSearchingYarn && yarnQuery.trim().length >= 2 && yarnResults.length === 0 && (
+            {!isSearchingYarn && yarnResults.length === 0 && (
               <>
-                <p className="add-project-empty-text">Ничего не найдено</p>
+                <p className="add-project-empty-text">
+                  {yarnQuery.trim() ? 'Ничего не найдено' : 'В хранилище пока пусто'}
+                </p>
                 <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
                   <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
                   Добавить пряжу
@@ -425,7 +444,7 @@ export const ProjectDetails: React.FC = () => {
           <p className="stash-details-section-title">Описание, файл</p>
           {project.documents.map((doc) => (
             <div key={doc.id} className="add-project-pdf-row">
-              <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
+              <button type="button" className="add-project-pdf-link" onClick={() => handleOpenDocument(doc)}>
                 #{doc.originalFileName}
               </button>
             </div>

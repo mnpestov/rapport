@@ -80,6 +80,9 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
   const [yarnQuery, setYarnQuery] = useState('');
   const [yarnResults, setYarnResults] = useState<StashSkein[]>([]);
   const [isSearchingYarn, setIsSearchingYarn] = useState(false);
+  // Список запасов показывается уже по фокусу на поле, не дожидаясь ввода
+  // первых символов — см. тот же паттерн в AddProjectModal.tsx.
+  const [isYarnFieldFocused, setIsYarnFieldFocused] = useState(false);
   const [isAttachingYarn, setIsAttachingYarn] = useState(false);
   const [isAddYarnOpen, setIsAddYarnOpen] = useState(false);
   const [isYarnLimitPaywallOpen, setIsYarnLimitPaywallOpen] = useState(false);
@@ -171,7 +174,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
   }, [patternQuery]);
 
   useEffect(() => {
-    if (yarnQuery.trim().length < 2) {
+    if (!isYarnFieldFocused && yarnQuery.trim().length === 0) {
       setYarnResults([]);
       return;
     }
@@ -179,7 +182,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
     yarnDebounceRef.current = setTimeout(async () => {
       setIsSearchingYarn(true);
       try {
-        const res = await fetchStashSkeins({ search: yarnQuery.trim() });
+        const res = await fetchStashSkeins({ search: yarnQuery.trim() || undefined });
         setYarnResults(res.items);
       } catch {
         setYarnResults([]);
@@ -188,7 +191,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
       }
     }, 300);
     return () => { if (yarnDebounceRef.current) clearTimeout(yarnDebounceRef.current); };
-  }, [yarnQuery]);
+  }, [yarnQuery, isYarnFieldFocused]);
 
   if (!isMounted) return null;
 
@@ -438,13 +441,26 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                   value={yarnQuery}
                   placeholder="Найдите пряжу в хранилище"
                   onChange={(e) => setYarnQuery(e.target.value)}
+                  onFocus={() => setIsYarnFieldFocused(true)}
+                  onBlur={() => setIsYarnFieldFocused(false)}
                 />
               </div>
               {isSearchingYarn && <p className="loading-message">Загрузка...</p>}
               {!isSearchingYarn && yarnResults.length > 0 && (
                 <div className="log-usage-cards-vertical">
                   {yarnResults.map((s) => (
-                    <button key={s.id} type="button" className="log-usage-card-row" onClick={() => handlePickYarn(s)} disabled={isAttachingYarn}>
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="log-usage-card-row"
+                      disabled={isAttachingYarn}
+                      // onMouseDown, не onClick — onBlur инпута (выше)
+                      // срабатывает раньше onClick при клике по кнопке
+                      // (blur — часть смены фокуса на mousedown), список
+                      // успел бы скрыться до того, как клик дойдёт до
+                      // кнопки.
+                      onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
+                    >
                       {s.images[0] && <img src={s.images[0]} alt="" className="log-usage-card-row-image" />}
                       <div className="log-usage-card-row-body">
                         <p className="log-usage-card-row-title">{s.yarnNameSnapshot}</p>
@@ -454,9 +470,11 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                   ))}
                 </div>
               )}
-              {!isSearchingYarn && yarnQuery.trim().length >= 2 && yarnResults.length === 0 && (
+              {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
                 <>
-                  <p className="log-usage-empty-text">В ваших запасах ничего не найдено</p>
+                  <p className="log-usage-empty-text">
+                    {yarnQuery.trim() ? 'В ваших запасах ничего не найдено' : 'В хранилище пока пусто'}
+                  </p>
                   <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
                     <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
                     Добавить новую пряжу

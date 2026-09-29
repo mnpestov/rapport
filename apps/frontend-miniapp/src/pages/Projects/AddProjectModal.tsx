@@ -11,6 +11,7 @@ import {
   createProjectSwatch,
   uploadProjectDocument,
   deleteProjectDocument,
+  openProjectDocumentExternally,
   ProjectDetail,
   ProjectDocument,
   ProjectInstrumentInput,
@@ -18,6 +19,7 @@ import {
   ProjectLimitReachedError,
   YarnUsageInput,
 } from '../../api/projectsApi';
+import { getMode } from '../../api/authSession';
 import { fetchPatterns, fetchPatternById, fetchFilters, Pattern, FilterOption } from '../../api/patternsApi';
 import { fetchStashSkeins, uploadStashImage, StashSkein } from '../../api/stashApi';
 
@@ -124,6 +126,12 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const [yarnQuery, setYarnQuery] = useState('');
   const [yarnResults, setYarnResults] = useState<StashSkein[]>([]);
   const [isSearchingYarn, setIsSearchingYarn] = useState(false);
+  // Список запасов показывается уже по фокусу на поле, не дожидаясь ввода
+  // первых символов — пустой search в fetchStashSkeins отдаёт первую
+  // страницу всех мотков. isYarnFieldFocused отдельно от yarnResults.length,
+  // чтобы список гарантированно скрывался при потере фокуса без ввода
+  // (blur без клика по карточке — просто закрыли клавиатуру).
+  const [isYarnFieldFocused, setIsYarnFieldFocused] = useState(false);
   const [selectedYarns, setSelectedYarns] = useState<SelectedYarn[]>([]);
   const [isAddYarnOpen, setIsAddYarnOpen] = useState(false);
   const [isYarnLimitPaywallOpen, setIsYarnLimitPaywallOpen] = useState(false);
@@ -303,8 +311,13 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     return () => { if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current); };
   }, [patternQuery]);
 
+  // Запускается и по вводу текста, и по самому факту фокуса на поле
+  // (isYarnFieldFocused) — пустой yarnQuery + фокус означает "показать все
+  // запасы", не дожидаясь первых символов. Дебаунс всё равно нужен: даже
+  // при пустом query фокус может смениться туда-обратно (открыли/закрыли
+  // клавиатуру), незачем слать запрос на каждое такое дрожание.
   useEffect(() => {
-    if (yarnQuery.trim().length < 2) {
+    if (!isYarnFieldFocused && yarnQuery.trim().length === 0) {
       setYarnResults([]);
       return;
     }
@@ -312,7 +325,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     yarnDebounceRef.current = setTimeout(async () => {
       setIsSearchingYarn(true);
       try {
-        const res = await fetchStashSkeins({ search: yarnQuery.trim() });
+        const res = await fetchStashSkeins({ search: yarnQuery.trim() || undefined });
         setYarnResults(res.items);
       } catch {
         setYarnResults([]);
@@ -321,7 +334,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       }
     }, 300);
     return () => { if (yarnDebounceRef.current) clearTimeout(yarnDebounceRef.current); };
-  }, [yarnQuery]);
+  }, [yarnQuery, isYarnFieldFocused]);
 
   if (!isMounted) return null;
 
@@ -468,6 +481,17 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
+    }
+  };
+
+  // В Telegram — просто открыть файл (без canvas-редактора, см. комментарий
+  // у openProjectDocumentExternally), в обычном браузере — полноценный
+  // PdfViewerModal с выделением/пером.
+  const handleOpenDocument = (doc: ProjectDocument) => {
+    if (getMode() === 'telegram') {
+      openProjectDocumentExternally(doc.id, doc.originalFileName).catch(() => setError('Не удалось открыть файл'));
+    } else {
+      setViewingDocument(doc);
     }
   };
 
@@ -870,13 +894,25 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                   value={yarnQuery}
                   placeholder="Выбрать пряжу из моих запасов"
                   onChange={(e) => setYarnQuery(e.target.value)}
+                  onFocus={() => setIsYarnFieldFocused(true)}
+                  onBlur={() => setIsYarnFieldFocused(false)}
                 />
               </div>
               {isSearchingYarn && <p className="loading-message">Загрузка...</p>}
               {!isSearchingYarn && yarnResults.length > 0 && (
                 <div className="add-project-cards-vertical">
                   {yarnResults.map((s) => (
-                    <button key={s.id} type="button" className="add-project-yarn-search-card" onClick={() => handlePickYarn(s)}>
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="add-project-yarn-search-card"
+                      // onMouseDown, не onClick — onBlur инпута (выше)
+                      // срабатывает раньше onClick этой кнопки при клике по
+                      // ней (blur — часть mousedown/focus-смены), список
+                      // успел бы скрыться до того, как клик дойдёт до
+                      // кнопки. mousedown происходит раньше blur.
+                      onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
+                    >
                       <div className="add-project-yarn-card-image">
                         {s.images[0] ? <img src={s.images[0]} alt="" /> : null}
                       </div>
@@ -990,7 +1026,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
               <>
                 {documents.map((doc) => (
                   <div key={doc.id} className="add-project-pdf-row">
-                    <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
+                    <button type="button" className="add-project-pdf-link" onClick={() => handleOpenDocument(doc)}>
                       #{doc.originalFileName}
                     </button>
                     <button type="button" className="add-project-pdf-remove" onClick={() => handleDeleteDocument(doc.id)} aria-label="Удалить файл">
