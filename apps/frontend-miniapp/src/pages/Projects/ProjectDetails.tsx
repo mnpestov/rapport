@@ -52,6 +52,11 @@ export const ProjectDetails: React.FC = () => {
   const [yarnResults, setYarnResults] = useState<StashSkein[]>([]);
   const [isYarnSearchOpen, setIsYarnSearchOpen] = useState(false);
   const [isSearchingYarn, setIsSearchingYarn] = useState(false);
+  // Тот же паттерн, что в AddProjectModal.tsx: список результатов скрыт,
+  // если поле потеряло фокус без ввода — иначе список остаётся видимым
+  // навсегда после первого открытия формы поиска (isYarnSearchOpen сам по
+  // себе про показ ИНПУТА, не про показ списка под ним).
+  const [isYarnFieldFocused, setIsYarnFieldFocused] = useState(false);
   const [isAddYarnOpen, setIsAddYarnOpen] = useState(false);
   const [isYarnLimitPaywallOpen, setIsYarnLimitPaywallOpen] = useState(false);
   const [openSwipeYarnId, setOpenSwipeYarnId] = useState<string | null>(null);
@@ -84,12 +89,11 @@ export const ProjectDetails: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // Список запасов показывается сразу при открытии поля поиска
-  // (isYarnSearchOpen — включается кнопкой "Привязать пряжу"), не
-  // дожидаясь ввода первых символов — пустой search отдаёт первую страницу
-  // всех мотков.
+  // Список запасов показывается сразу по фокусу на поле (не дожидаясь
+  // ввода первых символов — пустой search отдаёт первую страницу всех
+  // мотков), тот же паттерн, что в AddProjectModal.tsx.
   useEffect(() => {
-    if (!isYarnSearchOpen) {
+    if (!isYarnFieldFocused && yarnQuery.trim().length === 0) {
       setYarnResults([]);
       setIsSearchingYarn(false);
       return;
@@ -102,7 +106,7 @@ export const ProjectDetails: React.FC = () => {
         .finally(() => setIsSearchingYarn(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [yarnQuery, isYarnSearchOpen]);
+  }, [yarnQuery, isYarnFieldFocused]);
 
   const handleBack = () => {
     if (canGoBackInApp()) navigate(-1);
@@ -222,58 +226,60 @@ export const ProjectDetails: React.FC = () => {
         </div>
       </div>
 
-      <div className="stash-details-info">
+      <div className="stash-details-info add-details-info">
         <h1 className="stash-details-name">{project.title}</h1>
 
         <div className="stash-details-status-row">
           <p className="add-project-section-title">Статус</p>
           <div className="add-project-status-dropdown-wrap">
-            {(() => { const Icon = STATUS_ICON[project.status]; return (
-              <button
-                type="button"
-                className="status-badge"
-                style={{ background: STATUS_COLOR[project.status] }}
-                onClick={() => setIsStatusMenuOpen((v) => !v)}
-              >
-                <span className="projects-status-icon-wrap">
-                  <Icon size={13} strokeWidth={1.5} color="#ffffff" />
-                </span>
-                {STATUS_LABEL[project.status]}
-              </button>
-            ); })()}
+            {(() => {
+              const Icon = STATUS_ICON[project.status]; return (
+                <button
+                  type="button"
+                  className="status-badge"
+                  style={{ background: STATUS_COLOR[project.status] }}
+                  onClick={() => setIsStatusMenuOpen((v) => !v)}
+                >
+                  <span className="projects-status-icon-wrap">
+                    <Icon size={13} strokeWidth={1.5} color="#ffffff" />
+                  </span>
+                  {STATUS_LABEL[project.status]}
+                </button>
+              );
+            })()}
             <ChevronDown size={24} strokeWidth={1.5} onClick={() => setIsStatusMenuOpen((v) => !v)} style={{ cursor: 'pointer' }} />
             {isStatusMenuOpen && (
               <div className="status-dropdown-list">
-              {STATUS_ORDER
-                .filter((s) => s !== project.status)
-                .map((s) => {
-                  const Icon = STATUS_ICON[s];
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      className="status-badge"
-                      style={{ background: STATUS_COLOR[s] }}
-                      onClick={() => handlePickStatus(s)}
-                    >
-                      <span className="projects-status-icon-wrap">
-                        <Icon size={13} strokeWidth={1.5} color="#ffffff" />
-                      </span>
-                      {STATUS_LABEL[s]}
-                    </button>
-                  );
-                })}
+                {STATUS_ORDER
+                  .filter((s) => s !== project.status)
+                  .map((s) => {
+                    const Icon = STATUS_ICON[s];
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        className="status-badge"
+                        style={{ background: STATUS_COLOR[s] }}
+                        onClick={() => handlePickStatus(s)}
+                      >
+                        <span className="projects-status-icon-wrap">
+                          <Icon size={13} strokeWidth={1.5} color="#ffffff" />
+                        </span>
+                        {STATUS_LABEL[s]}
+                      </button>
+                    );
+                  })}
               </div>
             )}
           </div>
         </div>
 
         <div className="stash-details-dates-row">
-          <div className="stash-details-date-col">
+          <div className="stash-details-date-col add-details-date-col">
             <p className="stash-details-date-label">Начало</p>
             <p className="stash-details-date-value">{new Date(project.startedAt).toLocaleDateString('ru-RU')}</p>
           </div>
-          <div className="stash-details-date-col stash-details-date-col--end">
+          <div className="stash-details-date-col add-details-date-col stash-details-date-col--end">
             <p className="stash-details-date-label">Завершено</p>
             <p className="stash-details-date-value">{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ru-RU') : '__.__.____'}</p>
           </div>
@@ -336,13 +342,24 @@ export const ProjectDetails: React.FC = () => {
               value={yarnQuery}
               placeholder="Найдите моток в хранилище"
               onChange={(e) => setYarnQuery(e.target.value)}
+              onFocus={() => setIsYarnFieldFocused(true)}
+              onBlur={() => setIsYarnFieldFocused(false)}
               autoFocus
             />
             {isSearchingYarn && <p className="loading-message">Загрузка...</p>}
             {!isSearchingYarn && yarnResults.length > 0 && (
               <div className="add-project-cards-vertical">
                 {yarnResults.map((s) => (
-                  <button key={s.id} type="button" className="add-project-card-row" onClick={() => handlePickYarn(s)}>
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="add-project-card-row"
+                    // onMouseDown, не onClick — onBlur инпута (выше)
+                    // срабатывает раньше onClick при клике по кнопке (blur
+                    // — часть смены фокуса на mousedown), список успел бы
+                    // скрыться до того, как клик дойдёт до кнопки.
+                    onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
+                  >
                     <div className="add-project-card-row-body">
                       <p className="add-project-card-row-title">{s.yarnNameSnapshot}</p>
                       <p className="add-project-card-row-meta">Остаток: {s.currentWeightG} г</p>
@@ -351,7 +368,7 @@ export const ProjectDetails: React.FC = () => {
                 ))}
               </div>
             )}
-            {!isSearchingYarn && yarnResults.length === 0 && (
+            {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
               <>
                 <p className="add-project-empty-text">
                   {yarnQuery.trim() ? 'Ничего не найдено' : 'В хранилище пока пусто'}
@@ -379,7 +396,7 @@ export const ProjectDetails: React.FC = () => {
             isOpen={openSwipeSwatchId === swatch.id}
             onSwipeOpen={() => setOpenSwipeSwatchId(swatch.id)}
             onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
-            onTap={() => {}}
+            onTap={() => { }}
             onRequestDelete={() => setDeleteSwatchTarget(swatch)}
             onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
             cardClassName="stash-swatch-block"
@@ -444,7 +461,7 @@ export const ProjectDetails: React.FC = () => {
           <p className="stash-details-section-title">Референс</p>
           <div className="add-project-photos">
             {project.referencePhotos.map((url) => (
-              <div key={url} className="add-project-photo-thumb">
+              <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
                 <img src={url} alt="" />
               </div>
             ))}

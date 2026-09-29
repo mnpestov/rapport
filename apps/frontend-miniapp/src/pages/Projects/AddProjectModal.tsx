@@ -914,9 +914,11 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                   ))}
                 </div>
               )}
-              {!isSearchingYarn && yarnQuery.trim().length >= 2 && yarnResults.length === 0 && (
+              {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
                 <>
-                  <p className="add-project-empty-text">В ваших запасах ничего не найдено</p>
+                  <p className="add-project-empty-text">
+                    {yarnQuery.trim() ? 'В ваших запасах ничего не найдено' : 'В хранилище пока пусто'}
+                  </p>
                   <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
                     <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
                     Добавить новую пряжу
