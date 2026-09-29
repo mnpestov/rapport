@@ -99,6 +99,12 @@
   height: fit-content;
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  /* pan-y — вертикальный скролл страницы (.pdf-viewer-body overflow:auto)
+     остаётся браузерным жестом одним пальцем; двухпальцевый pinch
+     перехватывается нашим JS-обработчиком (handlePinchMove вызывает
+     preventDefault сам). Без этого правила мобильный Safari пытается
+     смасштабировать всю СТРАНИЦУ приложения тем же жестом, а не canvas. */
+  touch-action: pan-y;
 }
 
 .pdf-viewer-canvas {
@@ -227,11 +233,47 @@
 .pdf-viewer-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 16px;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid #e5e5e5;
   flex-shrink: 0;
+}
+
+.pdf-viewer-zoom-controls,
+.pdf-viewer-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pdf-viewer-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1d1c1c;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pdf-viewer-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pdf-viewer-zoom-indicator {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+  margin: 0;
+  min-width: 42px;
+  text-align: center;
 }
 
 .pdf-viewer-nav-btn {

@@ -88,7 +88,25 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // в момент готовности viewport, без дублирования самого объекта в state.
   const [viewportVersion, setViewportVersion] = useState(0);
 
+  // Зум поверх "базового" масштаба (100% = подогнано под ширину
+  // контейнера, как было раньше). MIN/MAX — разумные пределы для PDF
+  // страницы: меньше 1 не имеет смысла (документ и так по ширине экрана),
+  // больше 4 растровый canvas на телефоне становится непрактично тяжёлым.
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  // Пока идёт pinch-жест, canvas визуально масштабируется дешёвым CSS
+  // transform (см. handlePinchMove) — полный перерендер в новом разрешении
+  // происходит только после того, как жест закончился (см. useEffect на
+  // zoom ниже, debounce). isPinchingRef разделяет "визуальный" зум
+  // (transform) от "растрового" (React state zoom, вызывающего реальный
+  // рендер) — без этого разделения слушатель touchmove на каждый кадр
+  // жеста заново рендерил бы canvas, что на телефоне заметно тормозит.
+  const isPinchingRef = useRef(false);
+  const pinchStartDistRef = useRef(0);
+  const pinchStartZoomRef = useRef(1);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
@@ -130,85 +148,145 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     return () => { cancelled = true; };
   }, [isOpen, documentId]);
 
+  // Отменяет "устаревшие" рендеры: каждый вызов renderPageAtZoom
+  // запоминает свой номер при старте, и после каждого await сверяет его с
+  // актуальным — если за время ожидания стартовал более новый рендер
+  // (сменили страницу/зум ещё раз), текущий молча прекращается. Проще и
+  // надёжнее, чем прокидывать cancel-флаг наружу через замыкание из
+  // async-функции (тот вариант ломается: caller не может пометить
+  // cancelled=true ДО завершения await'ов — флаг живёт только внутри
+  // самой функции).
+  const renderTokenRef = useRef(0);
+
+  // Полный рендер страницы в растр (canvas) под конкретный zoom-множитель
+  // поверх fitScale. Общая функция для двух случаев: смена страницы
+  // (zoomMultiplier всегда 1 — сбрасываем зум) и debounced завершение
+  // pinch-жеста/клик по +/− (текущий zoomRef.current). shouldResetZoom
+  // отдельным флагом, а не просто "смена страницы = zoom 1" по факту вызова
+  // — иначе пришлось бы дублировать сброс zoomRef/setZoom в двух местах.
+  const renderPageAtZoom = async (zoomMultiplier: number, shouldResetZoom: boolean): Promise<void> => {
+    const page = pageRef.current;
+    if (!page) return;
+    const myToken = ++renderTokenRef.current;
+
+    if (shouldResetZoom) {
+      zoomRef.current = 1;
+      setZoom(1);
+    }
+
+    const containerWidth = containerRef.current?.clientWidth ?? 350;
+    const baseViewport = page.getViewport({ scale: 1 });
+    const fitScale = containerWidth / baseViewport.width;
+    const scale = fitScale * zoomMultiplier;
+    const viewport = page.getViewport({ scale });
+    viewportRef.current = viewport;
+
+    const canvas = canvasRef.current;
+    const textLayerEl = textLayerRef.current;
+    if (!canvas || !textLayerEl) return;
+
+    // Сбрасываем CSS transform от pinch-жеста (см. handlePinchMove) — canvas
+    // теперь рендерится в новом разрешении нативно, масштабировать
+    // отображение больше не нужно.
+    if (pageWrapRef.current) pageWrapRef.current.style.transform = '';
+
+    // devicePixelRatio — без этого canvas рендерится 1:1 в CSS-пикселях и
+    // браузер растягивает его на физические пиксели экрана, отсюда
+    // размытость на Retina/HiDPI (особенно заметно на телефоне, где DPR
+    // почти всегда 2-3). Растровый буфер (canvas.width/height) больше
+    // отображаемого CSS-размера в dpr раз, а видимый размер (style)
+    // остаётся прежним — ctx.setTransform ниже компенсирует разницу при
+    // рисовании.
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(viewport.width * dpr);
+    canvas.height = Math.floor(viewport.height * dpr);
+    canvas.style.width = `${viewport.width}px`;
+    canvas.style.height = `${viewport.height}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    renderTaskRef.current?.cancel();
+    const renderTask = page.render({ canvas, canvasContext: ctx, viewport } as any);
+    renderTaskRef.current = renderTask;
+    await renderTask.promise;
+    if (renderTokenRef.current !== myToken) return;
+
+    textLayerEl.innerHTML = '';
+    textLayerEl.style.width = `${viewport.width}px`;
+    textLayerEl.style.height = `${viewport.height}px`;
+    textLayerEl.style.setProperty('--total-scale-factor', String(scale));
+
+    const textContent = await page.getTextContent();
+    if (renderTokenRef.current !== myToken) return;
+    const textLayer = new TextLayer({
+      textContentSource: textContent,
+      container: textLayerEl,
+      viewport,
+    });
+    await textLayer.render();
+    if (renderTokenRef.current !== myToken) return;
+
+    if (highlightLayerRef.current) {
+      highlightLayerRef.current.style.width = `${viewport.width}px`;
+      highlightLayerRef.current.style.height = `${viewport.height}px`;
+    }
+    if (drawingCanvasRef.current) {
+      drawingCanvasRef.current.width = viewport.width;
+      drawingCanvasRef.current.height = viewport.height;
+      drawingCanvasRef.current.style.width = `${viewport.width}px`;
+      drawingCanvasRef.current.style.height = `${viewport.height}px`;
+    }
+    // Триггерит ре-рендер, чтобы JSX (который читает viewportRef.current
+    // напрямую) точно перечитал уже готовый viewport — см. комментарий у
+    // объявления viewportVersion выше. Без этого пометки, загруженные ДО
+    // завершения этого эффекта, остаются невидимыми до случайного
+    // следующего ре-рендера по другой причине.
+    setViewportVersion((v) => v + 1);
+  };
+
   // Рендер текущей страницы: canvas + текстовый слой. Пересоздаётся при
-  // смене страницы или после первой загрузки документа.
+  // смене страницы или после первой загрузки документа — всегда со
+  // сбросом зума на 100% (см. renderPageAtZoom).
   useEffect(() => {
     if (!pdfDoc) return;
-    let cancelled = false;
     setSelectedHighlightId(null);
     setPendingSelection(null);
 
     (async () => {
       const page = await pdfDoc.getPage(pageNumber);
-      if (cancelled) return;
       pageRef.current = page;
-
-      const containerWidth = containerRef.current?.clientWidth ?? 350;
-      const baseViewport = page.getViewport({ scale: 1 });
-      const scale = containerWidth / baseViewport.width;
-      const viewport = page.getViewport({ scale });
-      viewportRef.current = viewport;
-
-      const canvas = canvasRef.current;
-      const textLayerEl = textLayerRef.current;
-      if (!canvas || !textLayerEl) return;
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = `${viewport.width}px`;
-      canvas.style.height = `${viewport.height}px`;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      renderTaskRef.current?.cancel();
-      const renderTask = page.render({ canvas, canvasContext: ctx, viewport } as any);
-      renderTaskRef.current = renderTask;
-      await renderTask.promise;
-      if (cancelled) return;
-
-      textLayerEl.innerHTML = '';
-      textLayerEl.style.width = `${viewport.width}px`;
-      textLayerEl.style.height = `${viewport.height}px`;
-      textLayerEl.style.setProperty('--total-scale-factor', String(scale));
-
-      const textContent = await page.getTextContent();
-      if (cancelled) return;
-      const textLayer = new TextLayer({
-        textContentSource: textContent,
-        container: textLayerEl,
-        viewport,
-      });
-      await textLayer.render();
-
-      if (highlightLayerRef.current) {
-        highlightLayerRef.current.style.width = `${viewport.width}px`;
-        highlightLayerRef.current.style.height = `${viewport.height}px`;
-      }
-      if (drawingCanvasRef.current) {
-        drawingCanvasRef.current.width = viewport.width;
-        drawingCanvasRef.current.height = viewport.height;
-        drawingCanvasRef.current.style.width = `${viewport.width}px`;
-        drawingCanvasRef.current.style.height = `${viewport.height}px`;
-      }
-      if (cancelled) return;
-      // Триггерит ре-рендер, чтобы JSX (который читает viewportRef.current
-      // напрямую) точно перечитал уже готовый viewport — см. комментарий у
-      // объявления viewportVersion выше. Без этого пометки, загруженные
-      // ДО завершения этого эффекта, остаются невидимыми до случайного
-      // следующего ре-рендера по другой причине.
-      setViewportVersion((v) => v + 1);
+      await renderPageAtZoom(1, true);
     })().catch((err) => {
       // Полный stack trace в консоли — err.message на минифицированном
       // коде сам по себе малополезен (см. промахнувшуюся первую гипотезу
       // про Promise.withResolvers в комментарии у полифиллов; реальной
       // причиной оказался for-await-of на ReadableStream в getTextContent).
       console.error('[PdfViewerModal] render page failed:', err);
-      if (!cancelled) setError(err instanceof Error ? err.message : 'Не удалось отрисовать страницу');
+      setError(err instanceof Error ? err.message : 'Не удалось отрисовать страницу');
     });
-
-    return () => { cancelled = true; };
   }, [pdfDoc, pageNumber]);
+
+  // Завершение pinch-жеста/клика по +/− — debounce (не мгновенно на каждое
+  // изменение zoom state, хотя сейчас zoom меняется только по окончании
+  // жеста/по клику, не непрерывно; debounce здесь на случай будущих
+  // источников изменения zoom и просто как защита от двойного клика).
+  const isFirstZoomRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstZoomRenderRef.current) {
+      isFirstZoomRenderRef.current = false;
+      return;
+    }
+    if (!pageRef.current) return;
+    const timer = setTimeout(() => {
+      renderPageAtZoom(zoom, false).catch((err) => {
+        console.error('[PdfViewerModal] zoom render failed:', err);
+      });
+    }, 120);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom]);
 
   // Существующие выделения для текущей страницы — перезагружаются при
   // смене страницы, не всей БД разом (PROJECTS_PLAN.md §8.2 п.4).
@@ -283,6 +361,57 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 4;
+  const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+
+  const distanceBetweenTouches = (touches: React.TouchList): number => {
+    const [a, b] = [touches[0], touches[1]];
+    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+  };
+
+  // Pinch-жест — два пальца на странице. Во время движения масштабируем
+  // ДЕШЁВЫМ CSS transform на обёртке (не перерендериваем canvas на каждый
+  // touchmove — на телефоне это заметно тормозит и жест выглядит рваным),
+  // финальный чёткий растровый рендер в новом разрешении происходит уже
+  // после отпускания пальцев (handlePinchEnd → setZoom → debounced эффект
+  // выше).
+  const handlePinchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 2) return;
+    isPinchingRef.current = true;
+    pinchStartDistRef.current = distanceBetweenTouches(e.touches);
+    pinchStartZoomRef.current = zoomRef.current;
+  };
+
+  const handlePinchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isPinchingRef.current || e.touches.length !== 2) return;
+    e.preventDefault();
+    const dist = distanceBetweenTouches(e.touches);
+    if (pinchStartDistRef.current === 0) return;
+    const nextZoom = clampZoom(pinchStartZoomRef.current * (dist / pinchStartDistRef.current));
+    zoomRef.current = nextZoom;
+    if (pageWrapRef.current) {
+      // Визуальный CSS-масштаб относительно уже отрендеренного zoom —
+      // делим на тот множитель, что уже "запечён" в canvas сейчас
+      // (последний завершённый renderPageAtZoom), иначе масштаб
+      // накапливался бы неправильно между последовательными жестами.
+      pageWrapRef.current.style.transform = `scale(${nextZoom / pinchStartZoomRef.current})`;
+      pageWrapRef.current.style.transformOrigin = 'center center';
+    }
+  };
+
+  const handlePinchEnd = () => {
+    if (!isPinchingRef.current) return;
+    isPinchingRef.current = false;
+    setZoom(zoomRef.current);
+  };
+
+  const zoomStep = (direction: 1 | -1) => {
+    const next = clampZoom(zoomRef.current + direction * 0.5);
+    zoomRef.current = next;
+    setZoom(next);
+  };
 
   const handlePickColor = async (color: string) => {
     if (!pendingSelection) return;
@@ -520,7 +649,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
           {isLoading && <p className="loading-message">Загрузка файла...</p>}
           {error && <p className="pdf-viewer-error">{error}</p>}
           {!isLoading && !error && (
-            <div className="pdf-viewer-page-wrap">
+            <div
+              ref={pageWrapRef}
+              className="pdf-viewer-page-wrap"
+              onTouchStart={handlePinchStart}
+              onTouchMove={handlePinchMove}
+              onTouchEnd={handlePinchEnd}
+            >
               <canvas ref={canvasRef} className="pdf-viewer-canvas" />
               <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
               <div ref={highlightLayerRef} className="pdf-viewer-highlight-layer">
@@ -595,25 +730,50 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
           )}
         </div>
 
-        {!isLoading && !error && numPages > 1 && (
+        {!isLoading && !error && (
           <div className="pdf-viewer-footer">
-            <button
-              type="button"
-              className="pdf-viewer-nav-btn"
-              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              disabled={pageNumber <= 1}
-            >
-              <ChevronLeft size={20} strokeWidth={1.5} />
-            </button>
-            <p className="pdf-viewer-page-indicator">{pageNumber} из {numPages}</p>
-            <button
-              type="button"
-              className="pdf-viewer-nav-btn"
-              onClick={() => setPageNumber((p) => Math.min(numPages, p + 1))}
-              disabled={pageNumber >= numPages}
-            >
-              <ChevronRight size={20} strokeWidth={1.5} />
-            </button>
+            <div className="pdf-viewer-zoom-controls">
+              <button
+                type="button"
+                className="pdf-viewer-zoom-btn"
+                onClick={() => zoomStep(-1)}
+                disabled={zoom <= MIN_ZOOM}
+                aria-label="Уменьшить"
+              >
+                −
+              </button>
+              <p className="pdf-viewer-zoom-indicator">{Math.round(zoom * 100)}%</p>
+              <button
+                type="button"
+                className="pdf-viewer-zoom-btn"
+                onClick={() => zoomStep(1)}
+                disabled={zoom >= MAX_ZOOM}
+                aria-label="Увеличить"
+              >
+                +
+              </button>
+            </div>
+            {numPages > 1 && (
+              <div className="pdf-viewer-page-nav">
+                <button
+                  type="button"
+                  className="pdf-viewer-nav-btn"
+                  onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+                  disabled={pageNumber <= 1}
+                >
+                  <ChevronLeft size={20} strokeWidth={1.5} />
+                </button>
+                <p className="pdf-viewer-page-indicator">{pageNumber} из {numPages}</p>
+                <button
+                  type="button"
+                  className="pdf-viewer-nav-btn"
+                  onClick={() => setPageNumber((p) => Math.min(numPages, p + 1))}
+                  disabled={pageNumber >= numPages}
+                >
+                  <ChevronRight size={20} strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
