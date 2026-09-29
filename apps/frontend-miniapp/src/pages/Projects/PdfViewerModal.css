@@ -60,6 +60,7 @@
 }
 
 .pdf-viewer-tool-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,9 +73,29 @@
   cursor: pointer;
 }
 
+/* Индикатор текущего цвета хайлайтера — маленькая полоска под иконкой
+   кнопки, видна без открытия палитры. */
+.pdf-viewer-tool-btn-color-dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
 .pdf-viewer-tool-btn--active {
   background: #f3f3f3;
   color: #1d1c1c;
+}
+
+/* Обёртка кнопки "Хайлайтер" — позиционирующий контекст для палитры
+   цвета, которая теперь открывается ПОД кнопкой инструмента (выбор цвета
+   до выделения), а не у места выделения на странице (там её обрезало
+   границей контейнера при выделении у края). */
+.pdf-viewer-tool-btn-wrap {
+  position: relative;
 }
 
 .pdf-viewer-body {
@@ -158,8 +179,9 @@
 }
 
 /* Прямоугольник хайлайтера, который ещё протягивается (до pointerUp) —
-   не финальный цвет (тот выбирается в палитре после отпускания), просто
-   визуальная обратная связь во время жеста, поэтому не кликабелен. */
+   уже в выбранном цвете (см. selectedHighlightColor), просто чуть
+   прозрачнее финального — визуальная обратная связь во время жеста,
+   поэтому не кликабелен. */
 .pdf-viewer-highlight-rect--in-progress {
   pointer-events: none;
   opacity: 0.3;
@@ -196,7 +218,17 @@
   box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
   padding: 8px;
   z-index: 10;
-  transform: translate(-50%, 8px);
+}
+
+/* Палитра под кнопкой "Хайлайтер" в тулбаре — позиционируется от
+   .pdf-viewer-tool-btn-wrap (position:relative), не от места выделения на
+   странице, поэтому никогда не обрезается краем PDF-контейнера. Левый
+   край прижат к кнопке (не по центру), т.к. кнопка ближе к левому краю
+   шапки — раскрытие вправо остаётся в пределах видимой области. */
+.pdf-viewer-color-popup--toolbar {
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
 }
 
 .pdf-viewer-color-swatch {
@@ -206,6 +238,10 @@
   border: 1px solid #e5e5e5;
   cursor: pointer;
   padding: 0;
+}
+
+.pdf-viewer-color-swatch--active {
+  border: 2px solid #1d1c1c;
 }
 
 .pdf-viewer-highlight-actions {

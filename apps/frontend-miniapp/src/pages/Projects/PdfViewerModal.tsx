@@ -64,17 +64,27 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<ProjectDocumentHighlight[]>([]);
-  const [pendingSelection, setPendingSelection] = useState<{ rects: HighlightRect[]; anchorX: number; anchorY: number } | null>(null);
   const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null);
   // Прямоугольник хайлайтера, который сейчас рисуется протягиванием
-  // (локальные координаты канваса рисования, не PDF) — по pointerUp
-  // конвертируется в PDF-координаты и становится pendingSelection.
+  // (локальные координаты канваса рисования, не PDF) — по pointerUp сразу
+  // сохраняется уже выбранным цветом (см. selectedHighlightColor), без
+  // промежуточной палитры у места выделения (та обрезалась краем
+  // контейнера при выделении у границы страницы — прямая жалоба
+  // пользователя, плюс сам порядок "сначала выдели, потом выбери цвет"
+  // был нелогичным).
   const [inProgressHighlightRect, setInProgressHighlightRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  // Цвет, которым рисует хайлайтер прямо сейчас — выбирается ДО
+  // выделения (палитра в тулбаре под кнопкой инструмента), не после.
+  const [selectedHighlightColor, setSelectedHighlightColor] = useState(HIGHLIGHT_COLORS[0]);
+  // Палитра цвета хайлайтера — открывается кликом по уже активной кнопке
+  // "Хайлайтер" (сам инструмент включается первым кликом), закрывается
+  // выбором цвета или повторным кликом по кнопке.
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
   // Режим тулбара: "Стрелка" (дефолт — панорамирование увеличенной
   // страницы протягиванием), "Хайлайтер" (протягивание рисует
-  // прямоугольник выделения в ЛЮБОМ месте страницы, не только по тексту →
-  // затем палитра цвета), "Перо" (рисование тонкой чёрной линии) и
+  // прямоугольник выделения в ЛЮБОМ месте страницы, не только по тексту,
+  // сразу выбранным цветом), "Перо" (рисование тонкой чёрной линии) и
   // "Ластик" (тап/протягивание по штриху/выделению удаляет его целиком).
   const [toolMode, setToolMode] = useState<ToolMode>('pan');
   const [drawings, setDrawings] = useState<ProjectDocumentDrawing[]>([]);
@@ -118,6 +128,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
+  const highlightToolBtnWrapRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,18 +152,22 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     setPageNumber(1);
     setPdfDoc(null);
 
+    console.log('[PdfViewerModal] loading start', documentId);
     fetchProjectDocumentBlob(documentId)
-      .then((blob) => blob.arrayBuffer())
-      .then((buffer) => pdfjsLib.getDocument({ data: buffer }).promise)
+      .then((blob) => { console.log('[PdfViewerModal] blob fetched', blob.size); return blob.arrayBuffer(); })
+      .then((buffer) => { console.log('[PdfViewerModal] arrayBuffer ready', buffer.byteLength); return pdfjsLib.getDocument({ data: buffer }).promise; })
       .then((doc) => {
+        console.log('[PdfViewerModal] getDocument resolved', doc.numPages);
         if (cancelled) return;
         setPdfDoc(doc);
       })
       .catch((err) => {
+        console.error('[PdfViewerModal] loading failed', err);
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Не удалось открыть файл');
       })
       .finally(() => {
+        console.log('[PdfViewerModal] loading finally, cancelled=', cancelled);
         if (!cancelled) setIsLoading(false);
       });
 
@@ -263,7 +278,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   useEffect(() => {
     if (!pdfDoc) return;
     setSelectedHighlightId(null);
-    setPendingSelection(null);
+    setInProgressHighlightRect(null);
 
     (async () => {
       const page = await pdfDoc.getPage(pageNumber);
@@ -318,13 +333,27 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   }, [isOpen, documentId, pageNumber]);
 
   // Переключение инструмента сбрасывает незавершённые состояния других
-  // инструментов — иначе застрявший pendingSelection от "Хайлайтера" мог бы
-  // всплыть поверх холста в режиме "Пера".
+  // инструментов — иначе застрявший inProgressHighlightRect от
+  // "Хайлайтера" мог бы всплыть поверх холста в режиме "Пера".
   useEffect(() => {
-    setPendingSelection(null);
     setSelectedHighlightId(null);
     setInProgressHighlightRect(null);
+    if (toolMode !== 'highlight') setIsColorPickerOpen(false);
   }, [toolMode]);
+
+  // Закрытие палитры цвета кликом вне неё — тот же паттерн, что у
+  // DateInputField.tsx (outside-click через mousedown, не click: не
+  // конфликтует с onClick самой кнопки-триггера).
+  useEffect(() => {
+    if (!isColorPickerOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (highlightToolBtnWrapRef.current && !highlightToolBtnWrapRef.current.contains(e.target as Node)) {
+        setIsColorPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [isColorPickerOpen]);
 
   if (!isOpen) return null;
 
@@ -377,19 +406,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     const next = clampZoom(zoomRef.current + direction * 0.5);
     zoomRef.current = next;
     setZoom(next);
-  };
-
-  const handlePickColor = async (color: string) => {
-    if (!pendingSelection) return;
-    const { rects } = pendingSelection;
-    setPendingSelection(null);
-    window.getSelection()?.removeAllRanges();
-    try {
-      const created = await createDocumentHighlight(documentId, { pageNumber, rects, color });
-      setHighlights((prev) => [...prev, created]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить выделение');
-    }
   };
 
   const handleDeleteHighlight = async (id: string) => {
@@ -494,25 +510,24 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       const rect = inProgressHighlightRect;
       const viewport = viewportRef.current;
       highlightStartRef.current = null;
+      setInProgressHighlightRect(null);
       // Слишком маленький прямоугольник — случайный тап, не осмысленное
-      // протягивание, не открываем палитру цвета.
-      if (!viewport || rect.width < 4 || rect.height < 4) {
-        setInProgressHighlightRect(null);
-        return;
-      }
+      // протягивание, не сохраняем.
+      if (!viewport || rect.width < 4 || rect.height < 4) return;
       const [pdfX1, pdfY1] = viewport.convertToPdfPoint(rect.x, rect.y);
       const [pdfX2, pdfY2] = viewport.convertToPdfPoint(rect.x + rect.width, rect.y + rect.height);
-      setInProgressHighlightRect(null);
-      setPendingSelection({
-        rects: [{
-          x: Math.min(pdfX1, pdfX2),
-          y: Math.min(pdfY1, pdfY2),
-          width: Math.abs(pdfX2 - pdfX1),
-          height: Math.abs(pdfY2 - pdfY1),
-        }],
-        anchorX: rect.x + rect.width,
-        anchorY: rect.y + rect.height,
-      });
+      const rects: HighlightRect[] = [{
+        x: Math.min(pdfX1, pdfX2),
+        y: Math.min(pdfY1, pdfY2),
+        width: Math.abs(pdfX2 - pdfX1),
+        height: Math.abs(pdfY2 - pdfY1),
+      }];
+      try {
+        const created = await createDocumentHighlight(documentId, { pageNumber, rects, color: selectedHighlightColor });
+        setHighlights((prev) => [...prev, created]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Не удалось сохранить выделение');
+      }
     } else {
       setInProgressStroke(null);
       setInProgressHighlightRect(null);
@@ -661,15 +676,44 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
             >
               <MousePointer2 size={18} strokeWidth={1.5} />
             </button>
-            <button
-              type="button"
-              className={`pdf-viewer-tool-btn ${toolMode === 'highlight' ? 'pdf-viewer-tool-btn--active' : ''}`}
-              onClick={() => setToolMode('highlight')}
-              aria-label="Хайлайтер"
-              title="Хайлайтер"
-            >
-              <Highlighter size={18} strokeWidth={1.5} />
-            </button>
+            <div className="pdf-viewer-tool-btn-wrap" ref={highlightToolBtnWrapRef}>
+              <button
+                type="button"
+                className={`pdf-viewer-tool-btn ${toolMode === 'highlight' ? 'pdf-viewer-tool-btn--active' : ''}`}
+                onClick={() => {
+                  if (toolMode === 'highlight') {
+                    setIsColorPickerOpen((v) => !v);
+                  } else {
+                    setToolMode('highlight');
+                    setIsColorPickerOpen(true);
+                  }
+                }}
+                aria-label="Хайлайтер"
+                title="Хайлайтер"
+              >
+                <Highlighter size={18} strokeWidth={1.5} />
+                {/* Цветная полоска под иконкой — какой цвет выбран сейчас,
+                    видно не открывая палитру. */}
+                <span className="pdf-viewer-tool-btn-color-dot" style={{ background: selectedHighlightColor }} />
+              </button>
+              {isColorPickerOpen && (
+                <div className="pdf-viewer-color-popup pdf-viewer-color-popup--toolbar">
+                  {HIGHLIGHT_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`pdf-viewer-color-swatch ${color === selectedHighlightColor ? 'pdf-viewer-color-swatch--active' : ''}`}
+                      style={{ background: color }}
+                      onClick={() => {
+                        setSelectedHighlightColor(color);
+                        setIsColorPickerOpen(false);
+                      }}
+                      aria-label={`Выбрать цвет ${color}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               className={`pdf-viewer-tool-btn ${toolMode === 'pen' ? 'pdf-viewer-tool-btn--active' : ''}`}
@@ -757,27 +801,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                     top: inProgressHighlightRect.y,
                     width: inProgressHighlightRect.width,
                     height: inProgressHighlightRect.height,
-                    background: HIGHLIGHT_COLORS[0],
+                    background: selectedHighlightColor,
                   }}
                 />
-              )}
-
-              {pendingSelection && (
-                <div
-                  className="pdf-viewer-color-popup"
-                  style={{ left: pendingSelection.anchorX, top: pendingSelection.anchorY }}
-                >
-                  {HIGHLIGHT_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className="pdf-viewer-color-swatch"
-                      style={{ background: color }}
-                      onClick={() => handlePickColor(color)}
-                      aria-label={`Выделить цветом ${color}`}
-                    />
-                  ))}
-                </div>
               )}
 
               {selectedHighlightId && (
