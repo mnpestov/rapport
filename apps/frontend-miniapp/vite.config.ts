@@ -74,4 +74,13 @@ export default defineConfig({
   plugins: [react(), staticLegalPagesFallback()],
   server: { proxy: apiProxy },
   preview: { proxy: apiProxy },
+  // pdfWorkerEntry.ts (PdfViewerModal.tsx) — воркер, который сам
+  // динамически import()-ит pdf.worker.min.mjs (нужен именно динамический
+  // import, не статический, чтобы код полифилла Promise.withResolvers
+  // успел исполниться раньше — статический import был бы поднят выше
+  // полифилла спецификацией ES-модулей). Дефолтный формат воркер-чанков
+  // Vite — IIFE, который не поддерживает code-splitting/динамические
+  // импорты внутри воркера ("UMD and IIFE output formats are not
+  // supported for code-splitting builds"); 'es' снимает это ограничение.
+  worker: { format: 'es' },
 })

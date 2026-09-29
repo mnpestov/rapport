@@ -1,8 +1,10 @@
+// Первая строка (до pdfjs-dist!) — Promise.withResolvers() полифилл для
+// основного потока, см. комментарий в самом файле.
+import './promiseWithResolversPolyfill';
 import React, { useEffect, useRef, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Trash2, MousePointer2, Pen, Eraser } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 const { TextLayer } = pdfjsLib;
 import {
@@ -20,7 +22,19 @@ import {
 } from '../../api/projectsApi';
 import './PdfViewerModal.css';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+// Не workerSrc (строка URL — pdfjs сам делает `new Worker(url, {type:
+// "module"})` без полифилла внутри), а собственный Worker через workerPort:
+// pdfWorkerEntry.ts сначала ставит Promise.withResolvers() полифилл В
+// КОНТЕКСТЕ ВОРКЕРА (self), затем импортирует настоящий pdf.worker.min.mjs.
+// Нужен отдельно от promiseWithResolversPolyfill.ts ниже (тот патчит
+// только основной поток страницы) — Worker выполняется в изолированном
+// self, патчи основного потока туда не долетают. Воспроизведено на
+// реальном устройстве (Safari/WebKit без нативной поддержки метода):
+// canvas успевал отрисоваться, TextLayer тут же падал с "undefined is not
+// a function" — оба места используют Promise.withResolvers() (ES2024),
+// которого pdfjs-dist v6 нигде не полифиллит сам.
+const pdfWorker = new Worker(new URL('./pdfWorkerEntry.ts', import.meta.url), { type: 'module' });
+pdfjsLib.GlobalWorkerOptions.workerPort = pdfWorker;
 
 // Figma node-id=3039:31704/32158 (PROJECTS_PLAN.md §8.2) — 3-4 цвета
 // маркера, тот же принцип, что остальные цветовые акценты проекта
