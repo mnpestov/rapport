@@ -17,7 +17,7 @@ import { StashImageCarousel } from './StashImageCarousel';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
 import swatchPlaceholder from '../../assets/stash/swatchPlaceholder.svg';
-import projectPlaceholder from '../../components/TabBar/icons/project.svg';
+import projectPlaceholder from '../../components/TabBar/icons/project1.svg';
 import './StashSkeinDetails.css';
 
 export const StashSkeinDetails: React.FC = () => {
