@@ -1,11 +1,9 @@
-// Обёртка над pdf.worker.min.mjs — ставит полифилл Promise.withResolvers()
-// в ГЛОБАЛЬНОМ КОНТЕКСТЕ ВОРКЕРА (self), затем импортирует настоящий
-// воркер-код pdfjs-dist. Нужен отдельно от promiseWithResolversPolyfill.ts
-// (тот патчит основной поток страницы) — Worker выполняется в изолированном
-// self, не видит патчи основного потока. См. комментарий там же для
-// подробностей, почему полифилл вообще нужен (Safari/WebKit без
-// нативной поддержки Promise.withResolvers падает внутри самого воркера
-// pdfjs с "undefined is not a function").
+// Обёртка над pdf.worker.min.mjs — ставит те же полифиллы, что
+// promiseWithResolversPolyfill.ts, но В ГЛОБАЛЬНОМ КОНТЕКСТЕ ВОРКЕРА
+// (self), затем импортирует настоящий воркер-код pdfjs-dist. Нужен
+// отдельно от того файла (тот патчит только основной поток страницы) —
+// Worker выполняется в изолированном self, патчи основного потока туда не
+// долетают. Подробное обоснование обоих полифиллов — там же.
 if (typeof (self as any).Promise.withResolvers !== 'function') {
   (self as any).Promise.withResolvers = function withResolvers<T>() {
     let resolve!: (value: T | PromiseLike<T>) => void;
@@ -15,6 +13,21 @@ if (typeof (self as any).Promise.withResolvers !== 'function') {
       reject = rej;
     });
     return { promise, resolve, reject };
+  };
+}
+
+if (typeof ((self as any).ReadableStream.prototype)[Symbol.asyncIterator] !== 'function') {
+  (self as any).ReadableStream.prototype[Symbol.asyncIterator] = async function* asyncIterator(this: ReadableStream) {
+    const reader = this.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
   };
 }
 
