@@ -66,6 +66,7 @@ function PermissionsSection({
   const [premiumDetails, setPremiumDetails] = useState(user.permissions.includes("PREMIUM_DETAILS"));
   const [premiumYarns, setPremiumYarns] = useState(user.permissions.includes("PREMIUM_YARNS"));
   const [premiumYarnStash, setPremiumYarnStash] = useState(user.permissions.includes("PREMIUM_YARN_STASH"));
+  const [premiumProjects, setPremiumProjects] = useState(user.permissions.includes("PREMIUM_PROJECTS"));
   const [premiumExtra, setPremiumExtra] = useState(user.permissions.includes("PREMIUM_EXTRA"));
   const [webAccess, setWebAccess] = useState(user.permissions.includes("WEB_ACCESS"));
   const [priceAlert, setPriceAlert] = useState(user.permissions.includes("PRICE_ALERT"));
@@ -119,6 +120,7 @@ function PermissionsSection({
       await syncPermission(user.id, "PREMIUM_DETAILS", premiumDetails, user.permissions.includes("PREMIUM_DETAILS"));
       await syncPermission(user.id, "PREMIUM_YARNS", premiumYarns, user.permissions.includes("PREMIUM_YARNS"));
       await syncPermission(user.id, "PREMIUM_YARN_STASH", premiumYarnStash, user.permissions.includes("PREMIUM_YARN_STASH"));
+      await syncPermission(user.id, "PREMIUM_PROJECTS", premiumProjects, user.permissions.includes("PREMIUM_PROJECTS"));
       await syncPermission(user.id, "PREMIUM_EXTRA", premiumExtra, user.permissions.includes("PREMIUM_EXTRA"));
       // Снятие WEB_ACCESS на бэкенде заодно завершает браузерные сессии
       // пользователя — иначе он работал бы до истечения токена (до 30 дней).
@@ -138,6 +140,7 @@ function PermissionsSection({
     || premiumDetails !== user.permissions.includes("PREMIUM_DETAILS")
     || premiumYarns !== user.permissions.includes("PREMIUM_YARNS")
     || premiumYarnStash !== user.permissions.includes("PREMIUM_YARN_STASH")
+    || premiumProjects !== user.permissions.includes("PREMIUM_PROJECTS")
     || premiumExtra !== user.permissions.includes("PREMIUM_EXTRA")
     || webAccess !== user.permissions.includes("WEB_ACCESS")
     || priceAlert !== user.permissions.includes("PRICE_ALERT")
@@ -191,6 +194,18 @@ function PermissionsSection({
       <div className={styles.permRow}>
         <span className={styles.rowLabel}>Хранилище пряжи</span>
         <ToggleSwitch checked={premiumYarnStash} onChange={setPremiumYarnStash} />
+      </div>
+
+      {/* Вязальные проекты (PROJECTS_PLAN.md) — отдельный от хранилища
+          пряжи гейт (свой Permission.PREMIUM_PROJECTS), хотя внутри
+          раздела по-прежнему используется "Хранилище пряжи" выше для
+          снятия лимита проектов (§2.0 плана). ADMIN-only запуск, без
+          переходного бесплатного периода — тот же принцип, что и у
+          хранилища. */}
+      <div className={styles.permGroupTitle}>Вязальные проекты</div>
+      <div className={styles.permRow}>
+        <span className={styles.rowLabel}>Вязальные проекты</span>
+        <ToggleSwitch checked={premiumProjects} onChange={setPremiumProjects} />
       </div>
 
       <div className={styles.permGroupTitle}>Другие</div>

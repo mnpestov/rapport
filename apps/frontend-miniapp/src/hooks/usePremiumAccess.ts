@@ -32,9 +32,15 @@ export interface PremiumAccess {
   // про справочные артикулы в чужом описании, это — про личный инвентарь
   // пользователя). ADMIN-only запуск, без переходного бесплатного периода.
   yarnStash: boolean;
+  // Вязальные проекты (PROJECTS_PLAN.md) — отдельный гейт от yarnStash
+  // выше: свой Permission.PREMIUM_PROJECTS, управляется независимо из
+  // админки (см. PermissionsSection в admin/Users.tsx), хотя внутри
+  // раздела по-прежнему используется PREMIUM_YARN_STASH для снятия
+  // лимита проектов (§2.0 плана — два разных гейта не смешивать).
+  projects: boolean;
 }
 
-const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false, yarns: false, yarnStash: false };
+const NO_ACCESS: PremiumAccess = { isAdmin: false, core: false, extra: false, details: false, paywallUiEnabled: false, priceAlert: false, yarns: false, yarnStash: false, projects: false };
 
 const readAccess = (): PremiumAccess => {
   const raw = localStorage.getItem("user_data");
@@ -56,6 +62,7 @@ const readAccess = (): PremiumAccess => {
       priceAlert: permissions.includes("PRICE_ALERT"),
       yarns: isAdmin || permissions.includes("PREMIUM_YARNS"),
       yarnStash: isAdmin || permissions.includes("PREMIUM_YARN_STASH"),
+      projects: isAdmin || permissions.includes("PREMIUM_PROJECTS"),
     };
   } catch {
     return NO_ACCESS;

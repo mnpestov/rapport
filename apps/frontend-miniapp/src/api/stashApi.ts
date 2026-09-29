@@ -40,9 +40,18 @@ export interface StashUsage {
   patternId: string | null;
   patternTitleSnapshot: string | null;
   patternAuthorSnapshot: string | null;
+  // finishedPhotos приходит уже смёрженным с бэкенда (getSkein) — если
+  // это списание создано через фичу "Проекты" (projectId != null),
+  // сервер подставляет сюда Project.finishedPhotos, сама строка
+  // StashUsage их не хранит (PROJECTS_PLAN.md §1.5/§4.6).
   finishedPhotos: string[];
   note: string | null;
   createdAt: string;
+  // Заполнено, если списание создано через "Проекты" (не через обычный
+  // LogUsageWizard) — определяет переход по клику (на карточку проекта,
+  // не на паттерн) и то, что редактировать фото здесь нельзя (см.
+  // EditUsageModal.tsx).
+  projectId: string | null;
 }
 
 // Заявка владельца на дозаполнение метража/состава справочного артикула

@@ -74,6 +74,7 @@ model Pattern {
   yarnMentions PatternYarnMention[]
   priceAlerts  PriceAlert[]
   stashUsages  StashUsage[]
+  projectLinks ProjectPattern[]
 
   @@index([popularityScore, id])
 }
@@ -111,10 +112,13 @@ model ProductType {
 }
 
 model Instrument {
-  id       String    @id @default(uuid())
-  name     String    @unique
+  id       String              @id @default(uuid())
+  name     String              @unique
   patterns Pattern[]
   drafts   Draft[]
+  // Явная join-таблица (не implicit many-to-many, см. ProjectInstrument) —
+  // у каждой пары (проект, инструмент) есть свой размер в мм.
+  projects ProjectInstrument[]
 }
 
 model Tag {
@@ -144,7 +148,7 @@ model YarnRange {
 // (у половины исходных composition указано только базовое волокно без
 // подвида/тонкости/обработки/происхождения).
 model FiberType {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   baseFiber   String // "Шерсть", "Хлопок", "Альпака"…
   subtype     String? // "Меринос", "Бэби", "Сури"…
   grade       String? // "Экстрафайн", "Суперфайн"…
@@ -189,16 +193,16 @@ model YarnComposition {
 // в обе стороны кодом подбора; редкое исключение — symmetric: false,
 // связь действует только source -> target).
 model FiberSubstitute {
-  id         String               @id @default(uuid())
-  source     String // FiberType.baseFiber
-  target     String // FiberType.baseFiber
-  level      FiberSubstituteLevel // A/B/C — близость; X — явный запрет
+  id        String               @id @default(uuid())
+  source    String // FiberType.baseFiber
+  target    String // FiberType.baseFiber
+  level     FiberSubstituteLevel // A/B/C — близость; X — явный запрет
   // По какой причине допустима замена — используется критичным
   // ограничением "не допускать альтернативу без обязательного
   // функционального компонента" (functional с долей ≥15% в оригинале,
   // не найденного среди сопоставленных пар, блокирует всю альтернативу).
-  role       FiberSubstituteRole  @default(MATERIAL)
-  symmetric  Boolean              @default(true)
+  role      FiberSubstituteRole  @default(MATERIAL)
+  symmetric Boolean              @default(true)
 
   @@unique([source, target])
   @@index([source])
@@ -552,6 +556,16 @@ enum Permission {
   // периода (план §5.2) — совершенно новая фича без истории бесплатного
   // использования.
   PREMIUM_YARN_STASH
+  // Вязальные проекты пользователя (PROJECTS_PLAN.md) — отдельный гейт
+  // доступа к разделу /projects целиком (заменяет requireAdmin на роутере,
+  // тот же принцип запуска, что PREMIUM_YARN_STASH выше: ADMIN-only без
+  // переходного периода, включается индивидуально из админки). НЕ путать
+  // с PREMIUM_YARN_STASH, который внутри уже открытого раздела "Проекты"
+  // по-прежнему снимает лимит FREE_PROJECT_LIMIT (§2.0 плана) — это два
+  // разных гейта: один "видит ли раздел вообще", другой "есть ли лимит
+  // внутри него", специально разделены, чтобы в будущем можно было продавать
+  // доступ к проектам отдельно от премиума хранилища.
+  PREMIUM_PROJECTS
 }
 
 // Что именно произошло с баннером подписки. Append-only лог событий, из
@@ -704,6 +718,7 @@ model User {
   webSessions          WebSession[]
   stashSkeins          StashSkein[]
   yarnFieldSuggestions YarnFieldSuggestion[]
+  projects             Project[]
 }
 
 model UserFavorite {
@@ -1387,8 +1402,9 @@ model StashSkein {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  swatches StashSwatch[]
-  usages   StashUsage[]
+  swatches     StashSwatch[]
+  usages       StashUsage[]
+  projectLinks ProjectYarn[]
 
   @@index([userId])
   @@index([yarnId])
@@ -1467,11 +1483,288 @@ model StashUsage {
   // тот же upload-пайплайн, что у фото мотка/образца. Массив, а не одно
   // поле — макет показывает несколько фото с тем же "первое фото — обложка"
   // паттерном, что и StashSkein.images/StashSwatch.images.
+  //
+  // ВАЖНО (PROJECTS_PLAN.md §1.5/§4.6/§5.3): заполняется ТОЛЬКО путём
+  // старого LogUsageWizard в хранилище (projectId остаётся NULL). Для
+  // списаний, созданных через фичу "Проекты" (projectId != null), это
+  // поле ВСЕГДА пустой массив — фото готового изделия хранятся один раз
+  // на Project.finishedPhotos, не копируются сюда по числу привязанных
+  // мотков. GET /stash/skeins/:id обязан подставлять
+  // project.finishedPhotos вместо этого поля при чтении, если projectId
+  // заполнено (см. getSkein).
   finishedPhotos String[] @default([])
 
   note      String?
   createdAt DateTime @default(now())
 
+  // Заполнено, если списание создано ИЗ ФОРМЫ ПРОЕКТА (создание проекта
+  // сразу завершённым, или визард завершения, PROJECTS_PLAN.md §2.2/§2.3)
+  // — NULL для списаний через старый LogUsageWizard в хранилище.
+  // Определяет, куда ведёт клик в секции "Связано" карточки мотка: на
+  // Project целиком (если заполнено) или на Pattern напрямую через
+  // patternId (если не заполнено).
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  // true — списание создано МЕХАНИКОЙ "задним числом завершённого
+  // проекта" (PROJECTS_PLAN.md §0.3 п.2): totalWeightG мотка был
+  // искусственно увеличен на amountG одновременно с этим списанием,
+  // currentWeightG в моменте не изменился. Нужно для консистентной
+  // отмены при удалении проекта (§0.5/§2.5) — если пользователь просит
+  // "вернуть пряжу на остаток" для такого списания, нужно ОТКАТИТЬ ОБА
+  // действия (totalWeightG -= amountG И currentWeightG += amountG), а не
+  // только currentWeightG += amountG, как для обычного списания.
+  isBackdatedCompletion Boolean @default(false)
+
+  // Не более одного списания на пару (проект, моток) — гарантирует, что
+  // повторное прохождение шага 1 визарда после отката статуса (§0.3 п.3)
+  // физически не может создать вторую запись, только найти и обновить
+  // существующую. NULL в projectId не участвует в уникальности (обычные
+  // списания через LogUsageWizard могут повторяться на тот же моток).
+  @@unique([projectId, skeinId])
   @@index([skeinId])
   @@index([patternId])
+  @@index([projectId])
+}
+
+// ─── Вязальные проекты (PROJECTS_PLAN.md) ────────────────────────────────
+
+model Project {
+  id     String        @id @default(uuid())
+  userId String
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title  String
+  status ProjectStatus @default(IN_PROGRESS)
+
+  // Ручной ввод, когда паттерн не привязан (кнопка "Добавить вручную") —
+  // НЕ то же самое, что author name у привязанного Pattern (тот берётся
+  // из pattern.author.name на чтении, снимок не нужен — Pattern не
+  // удаляется молча, как и у остальных живых связей в проекте).
+  manualAuthor      String?
+  manualDescription String?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  instruments ProjectInstrument[]
+
+  note String?
+
+  // Фото изделия/этапа, добавленные ПРЯМО В ФОРМЕ проекта, до завершения
+  // (черновые фото процесса). Первое фото — обложка ДО завершения
+  // проекта, тот же паттерн, что у StashSkein.images/StashSwatch.images.
+  images String[] @default([])
+
+  // Фото ГОТОВОГО изделия (шаг 3 визарда завершения, ИЛИ форма создания,
+  // если проект сразу заводится завершённым) — единый список НА
+  // ПРОЕКТЕ, один экземпляр ссылок на файлы независимо от количества
+  // привязанных мотков пряжи (PROJECTS_PLAN.md §1.1/§5.3 — НЕ дублируется
+  // в StashUsage.finishedPhotos привязанных мотков). Карточка мотка в
+  // хранилище (блок "Связано") показывает эти фото ЧЕРЕЗ ССЫЛКУ на
+  // проект (usage.projectId → Project.finishedPhotos), не хранит копию.
+  // Первое фото — обложка ПОСЛЕ завершения (приоритет над images выше).
+  finishedPhotos String[] @default([])
+
+  // Фото для вдохновения/референса — НЕ то же самое, что images (готовое
+  // изделие/этап СВОЕЙ работы) и НЕ образец (ProjectSwatch.images,
+  // плотность). Первое фото — обложка блока, тот же паттерн
+  // перетаскивания порядка.
+  referencePhotos String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patterns  ProjectPattern[]
+  yarns     ProjectYarn[]
+  swatches  ProjectSwatch[]
+  usages    StashUsage[]
+  documents ProjectDocument[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum ProjectStatus {
+  // Проект задуман, но вязание ещё не начато — Figma node-id=1567:23115
+  // ("В планах"). Обрабатывается наравне с IN_PROGRESS/PAUSED везде в
+  // контроллерах (вся особая логика завязана конкретно на === COMPLETED,
+  // не на остальных значениях enum), никаких доп. инвариантов не несёт.
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  PAUSED
+}
+
+// Join-таблица инструментов проекта — в отличие от Pattern/Instrument
+// связи (простой чек-лист справочника), здесь у каждой пары
+// (проект, инструмент) есть свой размер: одна и та же вязальщица может
+// использовать спицы 2,75мм на одном проекте и 4мм на другом, поэтому
+// размер не может жить ни на Instrument (общий справочник), ни на
+// Project (инструментов может быть несколько). sizeMm — число с дробной
+// частью (2,25 и т.п.), не свободный текст, в отличие от
+// ProjectSwatch.needleSizeRaw (там указывается "как считает нужным
+// пользователь", здесь — конкретный параметр самого инструмента).
+model ProjectInstrument {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  instrumentId String
+  instrument   Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  sizeMm Decimal? @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, instrumentId])
+  @@index([instrumentId])
+}
+
+// Join-таблица паттернов проекта (many-to-many, 0..N).
+model ProjectPattern {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Nullable только из-за onDelete: SetNull (переживает удаление паттерна
+  // из каталога) — при СОЗДАНИИ строки всегда заполнено: "ручной"
+  // паттерн (кнопка "Добавить вручную" в форме) НЕ создаёт ProjectPattern
+  // вообще, а пишет напрямую в Project.manualAuthor/manualDescription.
+  patternId String?
+  pattern   Pattern? @relation(fields: [patternId], references: [id], onDelete: SetNull)
+
+  // Снимок — пишется ВСЕГДА при создании строки, переживает удаление
+  // паттерна из каталога (симметрично StashUsage.patternTitleSnapshot/
+  // patternAuthorSnapshot).
+  patternTitleSnapshot  String
+  patternAuthorSnapshot String
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, patternId])
+  @@index([patternId])
+}
+
+// Join-таблица мотков проекта — переживает удаление мотка из хранилища.
+model ProjectYarn {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Nullable из-за onDelete: SetNull — без него удаление мотка из
+  // хранилища (StashSwatch/StashUsage.skein уже сегодня onDelete:
+  // Cascade, см. deleteSkein) каскадно унесло бы саму строку ProjectYarn
+  // и видимость мотка в проекте. Решено: моток остаётся виден в проекте,
+  // теряется только живая связь с хранилищем.
+  skeinId String?
+  skein   StashSkein? @relation(fields: [skeinId], references: [id], onDelete: SetNull)
+
+  // Снимок — пишется ВСЕГДА при создании строки, переживает удаление
+  // мотка из хранилища (симметрично ProjectPattern.patternTitleSnapshot).
+  yarnNameSnapshot String
+  brandSnapshot    String?
+
+  // Снимок расхода (граммы) — пишется/обновляется СИНХРОННО с
+  // StashUsage.amountG в той же транзакции (и при первом списании, и при
+  // delta-guard редактировании после отката статуса). NULL, пока
+  // StashUsage для этой пары ещё не существует. Единственный источник
+  // правды для чтения — пока skeinId (и связанная StashUsage) жив, UI
+  // читает через JOIN на StashUsage.amountG; как только skeinId стал
+  // NULL — единственный оставшийся источник это это поле.
+  amountAtCompletionG Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, skeinId])
+  @@index([skeinId])
+}
+
+// Отдельная сущность образца для проекта — НЕ связана со StashSwatch
+// мотка (сознательное решение: образец проекта и образец мотка в
+// хранилище независимы, даже если структура полей совпадает).
+model ProjectSwatch {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  images                String[] @default([])
+  needleSizeRaw         String?
+  strandsCount          Int?
+  densityStitchesBefore Decimal? @db.Decimal(5, 2)
+  densityRowsBefore     Decimal? @db.Decimal(5, 2)
+  densityStitchesAfter  Decimal? @db.Decimal(5, 2)
+  densityRowsAfter      Decimal? @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// PDF-файл описания, прикреплённый к проекту — до 5 на проект, до 20 МБ
+// каждый. Хранится ВНЕ публичного /uploads (платный личный контент
+// пользователя), раздаётся только авторизованным эндпоинтом.
+model ProjectDocument {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Оригинальное имя файла — единственное, что видит пользователь в
+  // списке; хранимое имя на диске — отдельный сгенерированный uuid (не
+  // доверяем оригинальному имени в качестве пути).
+  originalFileName String
+  storedFileName   String @unique
+  fileSizeBytes    Int
+
+  createdAt DateTime @default(now())
+
+  highlights ProjectDocumentHighlight[]
+  drawings   ProjectDocumentDrawing[]
+
+  @@index([projectId])
+}
+
+// Выделение текста цветом внутри PDF — координаты через текстовый слой
+// pdf.js, НЕ пиксельные координаты канваса (переживает смену
+// масштаба/устройства с другим DPI).
+model ProjectDocumentHighlight {
+  id         String          @id @default(uuid())
+  documentId String
+  document   ProjectDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  pageNumber Int
+  // Прямоугольники в единицах PDF-страницы — один textLayer-диапазон
+  // может визуально ломаться на несколько прямоугольников (перенос
+  // строки), поэтому массив, не одно {x,y,w,h}.
+  rects      Json
+  // HEX или именованный цвет маркера — фиксированная палитра на фронте,
+  // сервер не валидирует конкретные значения, только формат.
+  color      String
+
+  createdAt DateTime @default(now())
+
+  @@index([documentId])
+}
+
+// Свободный штрих пера ("Перо" в тулбаре PdfViewerModal, тонкая чёрная
+// линия для заметок) — принципиально другой объект, чем
+// ProjectDocumentHighlight (тот — прямоугольники textLayer-диапазона под
+// цветной маркер, этот — произвольная рукописная линия, не привязанная к
+// тексту). Отдельная модель, а не общая с type-полем, потому что формы
+// данных (rects vs points) и способ создания (выделение текста vs
+// рисование по canvas) не пересекаются.
+model ProjectDocumentDrawing {
+  id         String          @id @default(uuid())
+  documentId String
+  document   ProjectDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  pageNumber Int
+  // Одна непрерывная линия (от pointerdown до pointerup) — массив точек
+  // {x,y} в единицах PDF-страницы, тем же способом конвертации через
+  // viewport.convertToPdfPoint, что и rects у ProjectDocumentHighlight —
+  // переживает смену масштаба/устройства с другим DPI.
+  points     Json
+
+  createdAt DateTime @default(now())
+
+  @@index([documentId])
 }

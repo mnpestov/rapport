@@ -20,6 +20,7 @@ const MAX_IMAGES = 5;
 interface SwatchDraft {
   key: string;
   needleSizeRaw: string;
+  strandsCount: string;
   stitchesBefore: string;
   rowsBefore: string;
   stitchesAfter: string;
@@ -31,6 +32,7 @@ function createEmptySwatchDraft(): SwatchDraft {
   return {
     key: `${Date.now()}-${Math.random()}`,
     needleSizeRaw: '',
+    strandsCount: '',
     stitchesBefore: '',
     rowsBefore: '',
     stitchesAfter: '',
@@ -48,9 +50,14 @@ interface AddYarnModalProps {
   // (createSkein), это обработчик именно этого случая, а не замена клиентской
   // проверки перед открытием формы (та уже сделана в Stash.tsx).
   onLimitReached: () => void;
+  // Предзаполняет поле названия текстом, который пользователь уже ввёл в
+  // поиске пряжи (например, в форме проекта — искал моток в хранилище,
+  // ничего не нашлось, нажал "Добавить пряжу") — не заставляет вводить то
+  // же самое название заново.
+  initialNameQuery?: string;
 }
 
-export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onCreated, onLimitReached }) => {
+export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onCreated, onLimitReached, initialNameQuery }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
 
   const [images, setImages] = useState<string[]>([]);
@@ -96,15 +103,20 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const swatchFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!isOpen) return;
     setImages([]);
-    setNameQuery('');
+    setNameQuery(initialNameQuery ?? '');
     setSuggestions([]);
     setSelectedYarn(null);
-    setShowSuggestions(false);
+    // Пришли сюда уже с текстом поиска (не нашли пряжу в хранилище,
+    // нажали "Добавить пряжу") — сразу открываем список подсказок и
+    // ставим фокус на поле, как будто пользователь только что кликнул в
+    // него сам, а не заставляем тыкать в поле заново, чтобы что-то увидеть.
+    setShowSuggestions(!!initialNameQuery);
     setBrand('');
     setMPer100g('');
     setComposition('');
@@ -115,7 +127,15 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     setSwatches([]);
     setIsSwatchSectionOpen(false);
     setError(null);
-  }, [isOpen]);
+    if (initialNameQuery) {
+      // Модалка ещё доигрывает анимацию появления (useSheetTransition) —
+      // .focus() на не полностью смонтированном/невидимом элементе иногда
+      // тихо не срабатывает в мобильных WebView, микрозадержка даёт DOM
+      // осесть перед фокусом.
+      const timer = setTimeout(() => nameInputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, initialNameQuery]);
 
   useEffect(() => {
     if (selectedYarn) return; // уже выбрали существующий артикул — не ищем заново
@@ -313,17 +333,9 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     setIsSubmitting(true);
     setError(null);
     try {
-      // Фото образцов дублируются в общую галерею мотка (не только в сам
-      // StashSwatch) — пользователь ожидает видеть их на карточке пряжи
-      // независимо от того, что фото пришло из блока "Образец", а не "Фото".
-      // Лимит MAX_STASH_IMAGES_PER_SKEIN (5) применяется к объединённому
-      // списку, лишние обрезаются здесь же, чтобы не улететь в 400 с бэкенда.
-      const swatchImages = swatches.flatMap((s) => s.images);
-      const combinedImages = [...new Set([...images, ...swatchImages])].slice(0, MAX_IMAGES);
-
       const skein = await createStashSkein({
         totalWeightG: Number(totalWeightG),
-        images: combinedImages,
+        images,
         colorName: colorName.trim() || undefined,
         dyelot: dyelot.trim() || undefined,
         note: note.trim() || undefined,
@@ -370,6 +382,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
           await createStashSwatch(skein.id, {
             images: swatch.images,
             needleSizeRaw: swatch.needleSizeRaw.trim() || undefined,
+            strandsCount: swatch.strandsCount ? Number(swatch.strandsCount) : undefined,
             densityStitchesBefore: swatch.stitchesBefore ? Number(swatch.stitchesBefore) : undefined,
             densityRowsBefore: swatch.rowsBefore ? Number(swatch.rowsBefore) : undefined,
             densityStitchesAfter: swatch.stitchesAfter ? Number(swatch.stitchesAfter) : undefined,
@@ -434,6 +447,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
               <label className="add-yarn-label">Название*</label>
               <div className="add-yarn-input-wrap">
                 <input
+                  ref={nameInputRef}
                   className="add-yarn-input"
                   value={nameQuery}
                   placeholder="Введите текст..."
@@ -556,6 +570,17 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                     value={swatch.needleSizeRaw}
                     placeholder="Введите текст..."
                     onChange={(e) => updateSwatch(swatch.key, { needleSizeRaw: e.target.value })}
+                  />
+                </div>
+
+                <div className="add-yarn-field">
+                  <label className="add-yarn-label">Количество нитей</label>
+                  <input
+                    className="add-yarn-input"
+                    value={swatch.strandsCount}
+                    placeholder="Введите число..."
+                    inputMode="numeric"
+                    onChange={(e) => updateSwatch(swatch.key, { strandsCount: e.target.value })}
                   />
                 </div>
 

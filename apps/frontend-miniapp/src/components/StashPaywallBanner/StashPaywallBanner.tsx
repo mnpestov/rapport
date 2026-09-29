@@ -9,7 +9,7 @@ import './StashPaywallBanner.css';
 // PREMIUM_YARN_STASH снимает лимит и открывает подбор описаний. Только
 // UI-заглушка — реальной оплаты нет, выдача PREMIUM_YARN_STASH остаётся
 // только через админку (по решению пользователя).
-export type StashPaywallReason = 'limit' | 'matches';
+export type StashPaywallReason = 'limit' | 'matches' | 'project-limit';
 
 interface StashPaywallBannerProps {
   isOpen: boolean;
@@ -26,6 +26,10 @@ const TEXT: Record<StashPaywallReason, { title: string; body: string }> = {
   matches: {
     title: 'Подбор описаний — платная функция',
     body: 'Откройте безлимитный доступ, чтобы видеть, что можно связать из своей пряжи',
+  },
+  'project-limit': {
+    title: '{limit} из {limit} бесплатных проектов уже добавлены.',
+    body: 'Откройте безлимитный доступ и продолжайте вести проекты без ограничений',
   },
 };
 

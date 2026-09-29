@@ -158,7 +158,12 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
         patternId: selectedPattern?.id,
         manualAuthorName: !selectedPattern ? manualAuthorName.trim() || undefined : undefined,
         manualDescriptionTitle: !selectedPattern ? manualDescriptionTitle.trim() || undefined : undefined,
-        finishedPhotos: photos,
+        // Для проектных списаний (usage.projectId != null) фото готового
+        // изделия хранятся на Project, не на самой строке — блок фото в
+        // этой форме скрыт (см. JSX ниже), запись finishedPhotos сюда
+        // была бы бессмысленной копией устаревшего значения (PROJECTS_
+        // PLAN.md §4.6).
+        ...(usage.projectId ? {} : { finishedPhotos: photos }),
       });
       onSaved();
     } catch (err) {
@@ -317,31 +322,36 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
             )}
           </div>
 
-          <div className="log-usage-field">
-            <label className="log-usage-label">Фото готового изделия</label>
-            <div className="log-usage-photos">
-              {photos.map((url) => (
-                <div key={url} className="log-usage-photo-thumb">
-                  <img src={url} alt="" />
-                  <button type="button" className="log-usage-photo-remove" onClick={() => removePhoto(url)}>×</button>
-                </div>
-              ))}
-              {photos.length < MAX_PHOTOS && (
-                <button type="button" className="log-usage-photo-add" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}>
-                  +
-                </button>
-              )}
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                style={{ display: 'none' }}
-                onChange={handlePhotoSelected}
-              />
+          {/* Для проектных списаний (usage.projectId != null) фото готового
+              изделия хранятся на карточке проекта, не здесь — редактировать
+              их можно только там (PROJECTS_PLAN.md §4.6). */}
+          {!usage.projectId && (
+            <div className="log-usage-field">
+              <label className="log-usage-label">Фото готового изделия</label>
+              <div className="log-usage-photos">
+                {photos.map((url) => (
+                  <div key={url} className="log-usage-photo-thumb">
+                    <img src={url} alt="" />
+                    <button type="button" className="log-usage-photo-remove" onClick={() => removePhoto(url)}>×</button>
+                  </div>
+                ))}
+                {photos.length < MAX_PHOTOS && (
+                  <button type="button" className="log-usage-photo-add" onClick={() => photoInputRef.current?.click()} disabled={isUploadingPhoto}>
+                    +
+                  </button>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handlePhotoSelected}
+                />
+              </div>
+              <p className="log-usage-photo-hint">Первое фото — обложка.</p>
             </div>
-            <p className="log-usage-photo-hint">Первое фото — обложка.</p>
-          </div>
+          )}
 
           {error && <p className="log-usage-error">{error}</p>}
         </div>

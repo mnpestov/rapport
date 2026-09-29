@@ -192,6 +192,12 @@
   cursor: pointer;
 }
 
+.log-usage-related {
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
 .log-usage-section-title {
   font-family: Mulish, sans-serif;
   font-weight: 700;
@@ -252,7 +258,7 @@
 }
 
 .log-usage-card-row--selected {
-  border-bottom-color: #83942C;
+  /* border-bottom-color: #83942C; */
 }
 
 .log-usage-card-row--locked {
@@ -401,7 +407,7 @@
 }
 
 .log-usage-next-btn {
-  background: #bec1f4;
+  background: #ABC6BA;
   color: #1d1c1c;
 }
 
@@ -411,6 +417,154 @@
 }
 
 .log-usage-close-btn {
+  background: #f3f3f3;
+  color: #1d1c1c;
+}
+
+/* Заголовок визарда завершения проекта (Figma node-id=1567:22683) — не
+   "Завершить проект «Название»", как у остальных шторок раздела, а
+   поздравление + подсказка + номер шага + название проекта отдельной
+   строкой. Специфичные классы, не переопределяют .log-usage-title/-step
+   (те общие с LogUsageWizard.tsx — списанием пряжи в хранилище). */
+.complete-wizard-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #001e00;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.complete-wizard-subtitle {
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  color: #1d1c1c;
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.complete-wizard-project-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #001e00;
+  margin: 4px 0 0;
+  text-align: center;
+}
+
+/* Экран успеха визарда завершения проекта (Figma node-id=1567:23008) — без
+   отдельного заголовка "Проект завершён": галочка, компактная карточка
+   описания (картинка + название/автор/описание/расход), plain-текстовый
+   блок первой пряжи с прогресс-баром остатка (переиспользует
+   .stash-progress-bar/-fill из StashSkeinDetails.css — тот же виджет, что
+   в карточке пряжи хранилища), кнопка "Закрыть" внутри тела, не в
+   отдельном footer. */
+.complete-success-body {
+  overflow-y: auto;
+  padding: 50px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.complete-success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 107px;
+  height: 107px;
+  border-radius: 50%;
+  border: 2px solid #abc6ba;
+}
+
+.complete-success-pattern-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.complete-success-pattern-card-image {
+  width: 80px;
+  height: 110px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: #f3f3f3;
+  overflow: hidden;
+}
+
+.complete-success-pattern-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.complete-success-pattern-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.complete-success-pattern-card-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #1d1c1c;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.complete-success-pattern-card-meta {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.complete-success-pattern-card-meta b {
+  color: #9b9a9a;
+  font-weight: 400;
+  margin-right: 4px;
+}
+
+.complete-success-yarn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.complete-success-yarn-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #001e00;
+  margin: 0;
+}
+
+.complete-success-yarn-row {
+  font-family: Mulish, sans-serif;
+  font-size: 17px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.complete-success-yarn-row b {
+  color: #9b9a9a;
+  margin-right: 4px;
+}
+
+.complete-success-close-btn {
+  width: 100%;
+  height: 50px;
+  border-radius: 2px;
+  font-size: 15px;
   background: #f3f3f3;
   color: #1d1c1c;
 }

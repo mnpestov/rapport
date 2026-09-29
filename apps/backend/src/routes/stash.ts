@@ -3,8 +3,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import { Permission } from "@prisma/client";
 import { requireAuth } from "../middlewares/auth";
-import { requireAdmin } from "../middlewares/requireAdmin";
+import { requirePermissionOrAdmin } from "../middlewares/requirePermission";
 import { loadOwnedSkein, loadOwnedSwatch, loadOwnedUsage } from "../middlewares/loadOwnedSkein";
 import { normalizeUploadedImage } from "../utils/imagePipeline";
 import {
@@ -28,17 +29,16 @@ import {
 
 const router = Router();
 
-// Личное хранилище пряжи (YARN_STASH_PLAN.md) — целевая модель: доступно
-// всем авторизованным пользователям бесплатно, с лимитом FREE_SKEIN_LIMIT
-// артикулов и без подбора описаний (getMatches). PREMIUM_YARN_STASH (или
-// ADMIN) снимает лимит и открывает подбор — гейтится точечно внутри
-// createSkein/getMatches/logUsage.
-//
-// На период тестирования (до включения оплаты подписки) доступ к разделу
-// целиком закрыт ролью ADMIN — requireAdmin ниже. Убрать эту строку, когда
-// тестирование закончится, точечные PREMIUM_YARN_STASH-гейты внутри
-// контроллеров уже готовы для фримиум-модели.
-router.use(requireAuth, requireAdmin);
+// Личное хранилище пряжи (YARN_STASH_PLAN.md) — доступ к разделу целиком
+// гейтится Permission.PREMIUM_YARN_STASH (выдаётся индивидуально из
+// админки, см. Users.tsx), ADMIN проходит всегда без выдачи разрешения
+// (requirePermissionOrAdmin) — тот же принцип, что и у /projects
+// (routes/projects.ts, Permission.PREMIUM_PROJECTS). Раньше здесь был
+// requireAdmin (ADMIN-only на период тестирования); внутри раздела
+// PREMIUM_YARN_STASH продолжает точечно сниматься лимит FREE_SKEIN_LIMIT/
+// открывать подбор описаний (createSkein/getMatches/logUsage) — тот же
+// флаг решает обе задачи одновременно, не два разных гейта.
+router.use(requireAuth, requirePermissionOrAdmin(Permission.PREMIUM_YARN_STASH));
 
 // ---------------------------------------------------------------------------
 // Загрузка фото — своя директория uploads/yarn-stash/, не смешивается с

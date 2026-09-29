@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Lock, Plus, SquarePen } from 'lucide-react';
-import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
+import { Lock, Plus } from 'lucide-react';
+import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, deleteStashSkein, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { Footer } from '../../components/Footer/Footer';
 import { SwipeToDelete } from '../../components/SwipeToDelete/SwipeToDelete';
 import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteConfirmModal';
+import { HeaderActionsMenu } from '../../components/HeaderActionsMenu/HeaderActionsMenu';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { AddSwatchModal } from './AddSwatchModal';
 import { EditSkeinModal } from './EditSkeinModal';
@@ -57,6 +58,8 @@ export const StashSkeinDetails: React.FC = () => {
   const [yarnFixComposition, setYarnFixComposition] = useState('');
   const [isSubmittingYarnFix, setIsSubmittingYarnFix] = useState(false);
   const [yarnFixError, setYarnFixError] = useState<string | null>(null);
+  const [isDeleteSkeinOpen, setIsDeleteSkeinOpen] = useState(false);
+  const [isDeletingSkein, setIsDeletingSkein] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -159,6 +162,18 @@ export const StashSkeinDetails: React.FC = () => {
     }
   };
 
+  const handleConfirmDeleteSkein = async () => {
+    if (!skein || isDeletingSkein) return;
+    setIsDeletingSkein(true);
+    try {
+      await deleteStashSkein(skein.id);
+      navigate('/stash');
+    } catch {
+      setError('Не удалось удалить пряжу. Попробуйте ещё раз.');
+      setIsDeletingSkein(false);
+    }
+  };
+
   const handleSubmitYarnFix = async () => {
     if (!skein || isSubmittingYarnFix) return;
     const mPer100gValue = yarnFixMPer100g.trim() ? Number(yarnFixMPer100g) : undefined;
@@ -211,9 +226,7 @@ export const StashSkeinDetails: React.FC = () => {
           <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
           Назад
         </button>
-        <button type="button" className="stash-details-edit-button" onClick={() => setIsEditOpen(true)} aria-label="Редактировать">
-          <SquarePen size={24} strokeWidth={1.5} stroke="#9B9A9A" />
-        </button>
+        <HeaderActionsMenu onEdit={() => setIsEditOpen(true)} onDelete={() => setIsDeleteSkeinOpen(true)} />
       </div>
 
       <div className="stash-details-image-wrapper">
@@ -380,7 +393,13 @@ export const StashSkeinDetails: React.FC = () => {
               isOpen={openSwipeUsageId === usage.id}
               onSwipeOpen={() => setOpenSwipeUsageId(usage.id)}
               onSwipeClose={() => setOpenSwipeUsageId((cur) => (cur === usage.id ? null : cur))}
-              onTap={() => { if (usage.patternId) navigate(`/pattern/${usage.patternId}`); }}
+              onTap={() => {
+                // Приоритет: если списание пришло из "Проектов" — переход
+                // на карточку проекта целиком, не на паттерн напрямую
+                // (PROJECTS_PLAN.md §4.6); иначе прежнее поведение.
+                if (usage.projectId) navigate(`/projects/${usage.projectId}`);
+                else if (usage.patternId) navigate(`/pattern/${usage.patternId}`);
+              }}
               onRequestDelete={() => setDeleteUsageTarget(usage)}
               onRequestEdit={() => { setEditUsageTarget(usage); setLastEditUsage(usage); }}
               cardClassName="stash-usage-card"
@@ -535,6 +554,15 @@ export const StashSkeinDetails: React.FC = () => {
         isDeleting={isDeletingSwatch}
         onCancel={() => setDeleteSwatchTarget(null)}
         onConfirm={handleConfirmDeleteSwatch}
+      />
+
+      <DeleteConfirmModal
+        isOpen={isDeleteSkeinOpen}
+        title="Удалить пряжу?"
+        text={`«${skein.yarnNameSnapshot}» будет удалена из хранилища без возможности восстановить.`}
+        isDeleting={isDeletingSkein}
+        onCancel={() => setIsDeleteSkeinOpen(false)}
+        onConfirm={handleConfirmDeleteSkein}
       />
 
       <StashPaywallBanner

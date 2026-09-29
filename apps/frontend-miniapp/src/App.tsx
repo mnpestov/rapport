@@ -5,6 +5,8 @@ import { PatternDetails } from './pages/PatternDetails/PatternDetails';
 import { Favorites } from './pages/Favorites/Favorites';
 import { Stash } from './pages/Stash/Stash';
 import { StashSkeinDetails } from './pages/StashSkeinDetails/StashSkeinDetails';
+import { Projects } from './pages/Projects/Projects';
+import { ProjectDetails } from './pages/Projects/ProjectDetails';
 import { TabBar } from './components/TabBar/TabBar';
 import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
@@ -54,12 +56,7 @@ function App() {
   // ранних return'ов: хук должен отработать на каждый рендер.
   useNavigationDepthTracker();
 
-  // Период тестирования хранилища пряжи: доступ только ADMIN, независимо от
-  // PREMIUM_YARN_STASH (фримиум-модель для всех — следующий этап, см. бэклог
-  // "оплата подписки на хранилище"). Убрать это условие и вернуться к
-  // access.yarnStash, когда тестирование закончится.
   const access = usePremiumAccess();
-  const isStashTestingAccess = access.isAdmin;
 
   const [appState, setAppState] = useState<AppState>("loading");
   const [channelInfo, setChannelInfo] = useState<ChannelInfo | null>(null);
@@ -521,13 +518,24 @@ function App() {
         <Route path="/" element={<Catalog />} />
         <Route path="/pattern/:id" element={<PatternDetails />} />
         <Route path="/favorites" element={<Favorites />} />
-        {/* Хранилище пряжи: в проде фримиум всем (лимит 10 артикулов + подбор
-            описаний под PREMIUM_YARN_STASH), но на период тестирования роут
-            и таб-бар видны только ADMIN — см. isStashTestingAccess выше. */}
-        {isStashTestingAccess && <Route path="/stash" element={<Stash />} />}
-        {isStashTestingAccess && <Route path="/stash/:id" element={<StashSkeinDetails />} />}
+        {/* Хранилище пряжи: отдельный гейт Permission.PREMIUM_YARN_STASH
+            (управляется индивидуально из админки, см. usePremiumAccess.ts)
+            — тот же принцип, что и у "Проектов" ниже. Раньше был
+            isStashTestingAccess (ADMIN-only на период тестирования). */}
+        {access.yarnStash && <Route path="/stash" element={<Stash />} />}
+        {access.yarnStash && <Route path="/stash/:id" element={<StashSkeinDetails />} />}
+        {/* «Проекты»: отдельный гейт Permission.PREMIUM_PROJECTS (не
+            завязан на доступ к хранилищу пряжи, см. usePremiumAccess.ts и
+            PROJECTS_PLAN.md) — управляется индивидуально из админки. */}
+        {access.projects && <Route path="/projects" element={<Projects />} />}
+        {access.projects && <Route path="/projects/:id" element={<ProjectDetails />} />}
       </Routes>
-      {isStashTestingAccess && <TabBar />}
+      {/* Таб-бар нужна, если открыт доступ хотя бы к одному из разделов,
+          которые она показывает (Пряжа ИЛИ Проекты) — иначе пользователь с
+          доступом только к одному из них не увидел бы способа попасть в
+          другой (пункты таб-бара сами не скрываются по отдельности, см.
+          TabBar.tsx). */}
+      {(access.yarnStash || access.projects) && <TabBar />}
       <PaywallModal
         isOpen={isPaywallOpen}
         variant={paywallVariant}

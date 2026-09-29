@@ -35,13 +35,15 @@ function markSearchLogged(query: string): void {
 export const Catalog: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  // TabBar (с пунктом «Избранное») сейчас виден только ADMIN — период
-  // тестирования хранилища пряжи (App.tsx, isStashTestingAccess). Пока это
-  // так, обычным пользователям нужна точечная кнопка избранного здесь же,
-  // как было до появления TabBar — иначе для них пропадает единственный
-  // вход в раздел. Убрать это условие вместе со снятием ADMIN-only гейта в
-  // App.tsx (тогда TabBar будет виден всем, и точечная кнопка не нужна).
-  const { isAdmin } = usePremiumAccess();
+  // TabBar (с пунктом «Избранное») сейчас виден только тем, у кого есть
+  // доступ к Хранилищу пряжи или Проектам (App.tsx — access.yarnStash ||
+  // access.projects, тот же список условий, что там). У них «Избранное» уже
+  // переехало в таб-бар — точечная кнопка рядом с поиском для них лишняя
+  // (дублирует вход в раздел). Для всех остальных (в том числе ADMIN без
+  // выданных этих permission, если такое бывает) кнопка остаётся, как было
+  // до появления TabBar — иначе для них пропадает единственный вход.
+  const { yarnStash, projects } = usePremiumAccess();
+  const hasTabBar = yarnStash || projects;
   // Set by PatternDetails' author link (navigate('/', { state: {...} })) —
   // a request to show ONLY this author's catalog, replacing whatever search/
   // filters were active before (see the initializers below, all of which
@@ -343,7 +345,7 @@ export const Catalog: React.FC = () => {
       <SearchFilterBar
         searchInput={searchInput}
         onSearchChange={setSearchInput}
-        showFavoritesButton={!isAdmin}
+        showFavoritesButton={!hasTabBar}
         onFavoritesClick={() => {
           sessionStorage.setItem('catalog_scroll', window.scrollY.toString());
           navigate('/favorites');

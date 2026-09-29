@@ -37,19 +37,34 @@ export const getPatterns = async (req: Request, res: Response) => {
     const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, core));
 
     if (search && typeof search === 'string') {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { author: { name: { contains: search, mode: 'insensitive' } } },
-        { categories: { some: { name: { contains: search, mode: 'insensitive' } } } },
-        { instruments: { some: { name: { contains: search, mode: 'insensitive' } } } },
-        { tags: { some: { name: { contains: search, mode: 'insensitive' } } } },
-        // Артикул пряжи — как сам фильтр по нему, только для PREMIUM_CORE
-        // (описания без прав всё равно не получают yarnIds для сопоставления
-        // на клиенте, так что искать по этому полю для них незачем).
-        ...(core
-          ? [{ yarns: { some: { status: 'ACTIVE', yarn: { name: { contains: search, mode: 'insensitive' as const } } } } }]
-          : []),
-      ];
+      // Каждое слово запроса ищется по ВСЕМ полям (OR), а слова между собой
+      // требуются ВСЕ разом (AND) — так "кардиган морозова" находит
+      // описание, где "кардиган" встречается в title, а "морозова" отдельно
+      // в author.name, а не только записи, где вся фраза целиком совпадает
+      // с одним полем (как было раньше — OR по полям для всей строки сразу
+      // не находил ничего, если слова принадлежат разным полям).
+      const words = search.trim().split(/\s+/).filter(Boolean);
+      const wordToOr = (word: string) => ({
+        OR: [
+          { title: { contains: word, mode: 'insensitive' as const } },
+          { author: { name: { contains: word, mode: 'insensitive' as const } } },
+          { categories: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
+          { instruments: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
+          { tags: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
+          // Артикул пряжи — как сам фильтр по нему, только для PREMIUM_CORE
+          // (описания без прав всё равно не получают yarnIds для
+          // сопоставления на клиенте, так что искать по этому полю для них
+          // незачем).
+          ...(core
+            ? [{ yarns: { some: { status: 'ACTIVE', yarn: { name: { contains: word, mode: 'insensitive' as const } } } } }]
+            : []),
+        ],
+      });
+      if (words.length > 1) {
+        where.AND = [...(where.AND ?? []), ...words.map(wordToOr)];
+      } else if (words.length === 1) {
+        where.OR = wordToOr(words[0]).OR;
+      }
     }
 
     if (isFree === 'true') {

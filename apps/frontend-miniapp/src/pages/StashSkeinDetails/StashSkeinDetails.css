@@ -133,16 +133,85 @@
   margin: 0;
 }
 
+/* Figma node-id=1234:7949 ("Карточка_пряжи") — эталон стиля пары
+   лейбл/значение, единый для карточек хранилища и проектов: лейбл 17px
+   bold #9b9a9a, значение 17px medium(500) #1d1c1c. */
 .stash-details-row {
   font-family: Mulish, sans-serif;
+  font-weight: 500;
   font-size: 17px;
   color: #1d1c1c;
   margin: 0;
 }
 
 .stash-details-row b {
+  font-weight: 700;
   color: #9b9a9a;
   margin-right: 4px;
+}
+
+/* Строка "Начало"/"Завершено" в карточке проекта (Figma node-id=1360:26986,
+   DatePicker) — лейбл НАД значением в каждой колонке (не слева от него),
+   колонки разнесены по краям, правая выровнена по правому краю. */
+.stash-details-dates-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.stash-details-date-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.stash-details-date-col--end {
+  align-items: flex-end;
+}
+
+.stash-details-date-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.1;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.stash-details-date-value {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.1;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+/* Строки "Описание:"/"Автор:" (Figma node-id=1468:26315, компонент
+   txt_карточка) — лейбл 12px bold, значение 16px regular, в одну строку. */
+.stash-details-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.stash-details-tag-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.1;
+  color: #1d1c1c;
+}
+
+.stash-details-tag-value {
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #1d1c1c;
 }
 
 .stash-details-remainder {
@@ -526,6 +595,9 @@
   font-size: 14px;
 }
 
+/* Фиксированная высота, как у .add-project-textarea в форме создания —
+   длинные заметки скроллятся внутри поля, а не растягивают всю карточку
+   (общий класс между хранилищем пряжи и карточкой проекта). */
 .stash-notes-text {
   font-family: Mulish, sans-serif;
   font-size: 14px;
@@ -535,6 +607,10 @@
   padding: 8px 20px;
   margin: 0;
   white-space: pre-wrap;
+  min-height: 80px;
+  max-height: 80px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .stash-matches-list {

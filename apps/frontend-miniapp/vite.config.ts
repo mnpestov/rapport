@@ -45,11 +45,24 @@ const apiProxy = {
   '/price-alerts': 'http://localhost:3000',
   '/channel': 'http://localhost:3000',
   '/analytics': 'http://localhost:3000',
+  // /diag — фронтовый диагностический лог (App.tsx::logFrontend). Не
+  // пересекается с React Router, простое правило без bypass достаточно —
+  // без него запрос улетал на сам Vite и получал 404 (найдено в HAR).
+  '/diag': 'http://localhost:3000',
   // /stash — хранилище пряжи (YARN_STASH_PLAN.md, T9). React Router уже
   // занимает этот путь (/stash, /stash/:id) — тот же bypass, что и у
   // /favorites, нужен по той же причине: прямая навигация/F5 должна отдать
   // SPA-шелл, а не улететь на бэкенд без Authorization.
   '/stash': {
+    target: 'http://localhost:3000',
+    bypass: (req: import('http').IncomingMessage) =>
+      req.headers['sec-fetch-mode'] === 'navigate' ? req.url : undefined,
+  },
+  // /projects — вязальные проекты (PROJECTS_PLAN.md, T2). Тот же bypass,
+  // что у /stash/favorites выше: React Router тоже занимает /projects и
+  // /projects/:id, прямая навигация/F5 должна отдать SPA-шелл, а не
+  // улететь на бэкенд без Authorization.
+  '/projects': {
     target: 'http://localhost:3000',
     bypass: (req: import('http').IncomingMessage) =>
       req.headers['sec-fetch-mode'] === 'navigate' ? req.url : undefined,

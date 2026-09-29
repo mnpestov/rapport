@@ -11,7 +11,7 @@
  * запросит обновление явным действием (в v1 такого действия ещё нет).
  */
 import { Request, Response } from "express";
-import { Prisma, YarnStatus, UserRole, Permission } from "@prisma/client";
+import { Prisma, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
 import { createAuthorYarn } from "./yarnsController";
@@ -26,6 +26,7 @@ import {
   MAX_STASH_IMAGES_PER_SWATCH,
   validateNewStashImageOrigins,
 } from "../utils/stashImages";
+import { hasUnlimitedStashAccess } from "../utils/stashAccess";
 
 const PAGE_SIZE = 20;
 
@@ -35,19 +36,6 @@ const PAGE_SIZE = 20;
 // записи, включая архивные (currentWeightG === 0) — списание мотка в ноль
 // не освобождает место в лимите.
 export const FREE_STASH_SKEIN_LIMIT = 10;
-
-// Роль читается из БД, никогда из req.user (JwtPayload не содержит role —
-// тот же класс бага, что уже задокументирован в loadOwnedSkein.ts).
-async function hasUnlimitedStashAccess(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      role: true,
-      permissions: { where: { permission: Permission.PREMIUM_YARN_STASH }, select: { id: true } },
-    },
-  });
-  return user?.role === UserRole.ADMIN || (user?.permissions.length ?? 0) > 0;
-}
 
 // ─── Мотки/партии (StashSkein) ──────────────────────────────────────────
 
@@ -294,6 +282,11 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
           },
           usages: {
             orderBy: { createdAt: "desc" },
+            // project.finishedPhotos — нужен для merge ниже (PROJECTS_PLAN.md
+            // §4.6): списание, пришедшее из "Проектов" (projectId != null),
+            // само по себе finishedPhotos не хранит — фото живут один раз на
+            // Project, не дублируются по числу привязанных мотков.
+            include: { project: { select: { finishedPhotos: true } } },
           },
         },
       }),
@@ -305,7 +298,17 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
         select: { id: true, mPer100g: true, composition: true },
       }),
     ]);
-    res.json({ ...skein, pendingYarnFieldSuggestion: pendingSuggestion });
+
+    // Merge: для проектных списаний реальный источник фото — Project, не
+    // сама строка StashUsage (см. комментарий у include.project выше и
+    // PROJECTS_PLAN.md §1.5/§4.6/§5.3). Фронт продолжает читать одно поле
+    // usage.finishedPhotos, ничего не меняя в компоненте.
+    const usages = skein?.usages.map(({ project, ...usage }) => ({
+      ...usage,
+      finishedPhotos: usage.projectId ? project?.finishedPhotos ?? [] : usage.finishedPhotos,
+    }));
+
+    res.json({ ...skein, usages, pendingYarnFieldSuggestion: pendingSuggestion });
   } catch (error) {
     console.error("[Stash] getSkein failed:", error);
     res.status(500).json({ error: "Internal server error" });

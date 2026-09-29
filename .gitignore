@@ -71,6 +71,9 @@ test-*.ts
 
 # Uploads
 apps/backend/uploads/
+# Приватные файлы (PDF-описания проектов) — вне express.static, не
+# публичный статик (PROJECTS_PLAN.md §8.1).
+apps/backend/private/
 .gstack/
 
 # Ignored AI and data artifacts

@@ -1,0 +1,874 @@
+/* Единый вид для всех кнопок "Добавить X с плюсом" в разделе Проекты —
+   тот же паттерн, что .add-yarn-category-chip в хранилище пряжи
+   (AddYarnModal.css). Раньше было 3 разных класса (add-project-category-
+   chip, projects-add-button, stash-add-button) с одинаковым визуальным
+   назначением — пользователь попросил свести к одному, чтобы кнопки
+   добавления не расходились по вёрстке при будущих правках. */
+.plus-add-button {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  border: 1px solid #e5e5e5;
+  background: none;
+  padding: 5px 20px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.plus-add-button-icon {
+  color: #9b9a9a;
+  flex-shrink: 0;
+}
+
+.add-project-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.add-project-panel {
+  background: #ffffff;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 1200px;
+  overflow-x: hidden;
+}
+
+.add-project-header {
+  /* padding: 18px 20px 10px; */
+  text-align: center;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 17px auto 6px;
+  letter-spacing: 0;
+}
+
+.add-project-title {
+  font-family: Mulish, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.add-project-body {
+  overflow-y: auto;
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-project-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-project-section-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #001e00;
+  margin: 0;
+}
+
+.add-project-photos {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.add-project-photo-thumb,
+.add-project-photo-add {
+  width: 60px;
+  height: 60px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.add-project-photo-thumb {
+  position: relative;
+  overflow: hidden;
+}
+
+.add-project-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.add-project-photo-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.add-project-photo-add {
+  border: 1px solid #e5e5e5;
+  background: none;
+  color: #9b9a9a;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.add-project-photo-add:disabled {
+  opacity: 0.5;
+}
+
+.add-project-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.add-project-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #001e00;
+}
+
+.add-project-field-hint {
+  font-family: Mulish, sans-serif;
+  font-size: 11px;
+  color: #9b9a9a;
+  margin: 0;
+}
+
+.add-project-input,
+.add-project-textarea {
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  border: 1.5px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 12px 16px;
+  color: #1d1c1c;
+  background: #ffffff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.add-project-input:focus,
+.add-project-textarea:focus {
+  outline: none;
+  border: 1.5px solid var(--purple, #BEC1F4);
+}
+
+.add-project-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.add-project-status-row,
+.add-project-chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.add-project-status-chip {
+  border: 1px solid #e5e5e5;
+  background: none;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.add-project-status-chip--selected {
+  background: #bec1f4;
+  border-color: #bec1f4;
+}
+
+.add-project-text-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.add-project-manual-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-project-cards-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Простая строка списка без картинки (статус-меню, "Остаток" в
+   ProjectDetails). */
+.add-project-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 8px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.add-project-card-row-image {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.add-project-card-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.add-project-card-row-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.add-project-card-row-meta {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #9b9a9a;
+  margin: 0;
+}
+
+/* Figma node-id=1348:11355 (Masterclass/YarnCardCompact) — карточка
+   результата поиска описания: картинка растянута на всю высоту карточки
+   (90px), не квадрат, текст ellipsis построчно вместо переноса на
+   переполнении. */
+/* min-height, не height — до 3 строк текста (название/автор/инструмент)
+   не всегда помещаются в 90px, тот же баг, что был у карточки пряжи
+   (.add-project-yarn-card): фиксированная высота + overflow:hidden
+   накладывали строки друг на друга. */
+.add-project-pattern-card {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  max-height: 72px;
+  overflow: hidden;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.add-project-pattern-card--static {
+  cursor: default;
+}
+
+.add-project-section-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-project-inner-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.add-project-pattern-card-image {
+  width: 80px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: #f3f3f3;
+  overflow: hidden;
+}
+
+.add-project-pattern-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.add-project-pattern-card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.add-project-pattern-card-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #1d1c1c;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-project-pattern-card-meta {
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #001e00;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-project-selected-pattern,
+.add-project-selected-yarn-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 10px 14px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+}
+
+.add-project-selected-yarns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-project-selected-yarn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-project-chip-remove {
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: #9b9a9a;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+}
+
+.add-project-error {
+  color: #c0392b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.add-project-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.add-project-close-btn,
+.add-project-save-btn {
+  width: 100%;
+  height: 50px;
+  border-radius: 2px;
+  font-size: 15px;
+}
+
+.add-project-close-btn {
+  background: #f3f3f3;
+  color: #1d1c1c;
+}
+
+.add-project-save-btn {
+  background: #ABC6BA;
+  color: #1d1c1c;
+}
+
+.add-project-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-project-empty-text {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #9b9a9a;
+  margin: 0;
+}
+
+/* Figma node-id=1468:16221 — строка "Статус" с dropdown-чипом справа, не
+   3 равных toggle-кнопки в ряд (в отличие от status-фильтров на
+   Projects.tsx, где нужен независимый multi-toggle для фильтрации). */
+.add-project-status-row-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 0 0;
+}
+
+/* То же выравнивание, но без горизонтального padding — на ProjectDetails.tsx
+   эта строка уже внутри .stash-details-info, чей отступ задаёт
+   .stash-details-container сам (padding: 0 16px), повторный 0 20px тут
+   сдвинул бы badge мимо остального контента карточки. */
+.stash-details-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.add-project-status-dropdown-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+/* Figma node-id=1517:19827 — общий Badge для триггера И для каждого пункта
+   выпадающего списка: один и тот же цветной chip с иконкой, не текстовая
+   строка. Переиспользуется и в ProjectDetails.tsx (тот же селектор
+   статуса на карточке проекта, не отдельная вёрстка). */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px 0 2px;
+  border: none;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+  margin: 4px 0 0;
+}
+
+/* Общая обёртка под иконку статуса (Repeat/Check/CirclePause) — тот же
+   принцип, что .projects-status-filter-icon-wrap в Projects.css:
+   фиксированный квадрат 24x24 с центрированием, сама иконка внутри
+   size=13. Место, зарезервированное под иконку, остаётся неизменным
+   независимо от размера glyph'а — используется в .status-badge
+   (AddProjectModal.tsx/ProjectDetails.tsx) и в .projects-grid-card-badge
+   (SwipeableProjectCard.tsx). */
+.projects-status-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.status-dropdown-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Figma node-id=1454:15652 — Начало/Завершено в одной строке, каждая дата
+   со своим календарём-иконкой справа от значения. */
+.add-project-dates-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.add-project-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.add-project-date-field--end {
+  align-items: flex-end;
+}
+
+.add-project-date-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #1d1c1c;
+}
+
+.add-project-date-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #1d1c1c;
+  position: relative;
+  cursor: pointer;
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.add-project-date-value--disabled {
+  cursor: default;
+  color: #9b9a9a;
+}
+
+/* "__.__.____" для незаполненной даты — тот же серый оттенок, что у
+   плейсхолдеров обычных текстовых полей (.add-project-input), не
+   основной текстовый цвет. */
+.add-project-date-placeholder {
+  color: #9b9a9a;
+}
+
+/* Нативный <input type="date"> остаётся кликабельным (нужен ради
+   системного date-picker UI по showPicker()/фокусу), но визуально не
+   виден — текст рисует .add-project-date-value сам (дд.мм.гггг или
+   __.__.____), браузер не рисует здесь ничего поверх. */
+.add-project-date-input-hidden {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Figma node-id=1454:15657 — чекбокс-список инструментов, не chip-ряд (в
+   отличие от status-фильтров списка проектов). */
+.add-project-checkbox-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.add-project-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 20px 8px;
+  border: none;
+  background: none;
+  font-family: Mulish, sans-serif;
+  font-size: 17px;
+  color: #1d1c1c;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+/* Строка "Спицы [чекбокс] ... Размер [инпут] мм" — чекбокс слева, размер
+   справа, появляется только когда инструмент отмечен. */
+.add-project-instrument-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.add-project-instrument-row .add-project-checkbox-row {
+  width: auto;
+  flex-shrink: 0;
+  padding-right: 0;
+}
+
+.add-project-instrument-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* padding: 0 20px 8px 0; */
+  white-space: nowrap;
+  font-family: Mulish, sans-serif;
+  color: #001e00;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+}
+
+.add-project-input-instrument-size {
+  max-height: 30px;
+}
+
+.add-project-instrument-size-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-project-instrument-size-input-wrap .add-project-input {
+  width: 72px;
+  text-align: right;
+  max-height: 30px;
+}
+
+.add-project-instrument-size-unit {
+  color: #1d1c1c;
+}
+
+/* Figma node-id=1454:15669/1360:26874 — карточка пряжи (YarnCardCompact),
+   и как привязанная (с полем расхода под ней при COMPLETED), и как строка
+   результата поиска (кликабельная кнопка). Картинка растянута на всю
+   высоту карточки (не квадрат) и центрирована по горизонтали внутри своей
+   колонки — object-fit:cover уже центрирует контент кадра по умолчанию,
+   явный object-position не нужен. Каждая строка текста — ellipsis, не
+   перенос: длинные бренд/состав должны обрезаться, а не разъезжаться
+   карточку по высоте. */
+.add-project-yarn-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+/* Высота карточки — по контенту, не фиксированная (была 90px и до 5 строк
+   текста — заголовок+крестик, бренд, состав, метраж, остаток —
+   накладывались друг на друга и обрезались). Картинка растягивается на
+   всю высоту через align-items:stretch, минимум — её собственная ширина
+   90px, чтобы не сплющивалась при коротком контенте. */
+.add-project-yarn-card,
+.add-project-yarn-search-card {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  max-height: 116px;
+  overflow: hidden;
+}
+
+.add-project-yarn-search-card {
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.add-project-yarn-card-image {
+  width: 90px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: #f3f3f3;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-project-yarn-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.add-project-yarn-card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.add-project-yarn-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.add-project-yarn-card-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #001e00;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-project-yarn-card-meta,
+.add-project-yarn-card-remainder {
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #001e00;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Figma node-id=1454:15675 — образец встроен прямо в форму создания
+   проекта (не отдельная модалка, в отличие от ProjectSwatchModal, которая
+   используется на карточке уже созданного проекта). */
+.add-project-swatch-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.add-project-swatch-draft-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #1d1c1c;
+}
+
+.add-project-swatch-remove {
+  border: none;
+  background: none;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #d8520f;
+  cursor: pointer;
+  padding: 0;
+}
+
+.add-project-density-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.add-project-density-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.add-project-density-sublabel {
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #001e00;
+  align-self: flex-end;
+}
+
+.add-project-density-x {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #001e00;
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* Figma node-id=1468:26121 — заглушка блока загрузки PDF-описания (Этап 6,
+   не реализован ни на бэкенде, ни на фронте) — кнопка отключена, только
+   верстка 1-в-1 с макетом. */
+.add-project-pdf-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid #e5e5e5;
+  background: none;
+  padding: 10px 20px;
+  border-radius: 2px;
+  font-family: Mulish, sans-serif;
+  font-size: 12px;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.add-project-pdf-upload-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Figma node-id=3039:31704/32158 — строка уже загруженного файла: ссылка
+   на имя (открывает PdfViewerModal) + крестик удаления справа. */
+.add-project-pdf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 20px;
+}
+
+.add-project-pdf-link {
+  border: none;
+  background: none;
+  color: #000000;
+  text-decoration: underline;
+  font-family: Mulish, sans-serif;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-project-pdf-remove {
+  border: none;
+  background: none;
+  color: #9b9a9a;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}

@@ -2,7 +2,7 @@
    и на Catalog/Favorites — var(--tab-bar-reserve) уже резервирует его
    реальную высоту (включая safe-area, см. index.css). */
 .stash-container {
-  padding: 0 16px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
+  padding: 0 20px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
   font-family: Mulish, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   min-height: 100vh;
@@ -34,7 +34,7 @@
 
 .stash-title {
   font-family: Mulish, sans-serif;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: #1d1c1c;
   text-align: center;
@@ -129,7 +129,7 @@
   border-radius: 2px;
   padding-left: 46px;
   font-family: Mulish, sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   color: #1d1c1c;
 }
 

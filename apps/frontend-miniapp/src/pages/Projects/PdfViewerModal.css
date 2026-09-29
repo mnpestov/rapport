@@ -1,0 +1,262 @@
+.pdf-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: #1d1c1c;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #ffffff;
+}
+
+.pdf-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.pdf-viewer-filename {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #1d1c1c;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-viewer-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: #1d1c1c;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0 0 0 12px;
+}
+
+/* Переключатель инструментов (Выделение/Перо/Ластик) — компактная группа
+   между именем файла и кнопкой закрытия, не отдельная строка тулбара. */
+.pdf-viewer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.pdf-viewer-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #9b9a9a;
+  cursor: pointer;
+}
+
+.pdf-viewer-tool-btn--active {
+  background: #f3f3f3;
+  color: #1d1c1c;
+}
+
+.pdf-viewer-body {
+  flex: 1;
+  overflow: auto;
+  background: #f3f3f3;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.pdf-viewer-error {
+  color: #c0392b;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  padding: 20px;
+}
+
+.pdf-viewer-page-wrap {
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.pdf-viewer-canvas {
+  display: block;
+}
+
+/* Минимальный набор правил pdf.js textLayer (pdfjs-dist/web/pdf_viewer.css
+   .textLayer, скопировано выборочно — не подключаем весь файл viewer'а,
+   он тянет find-bar/thumbnails/аннотации, не нужные для простого
+   просмотра с выделением). */
+.pdf-viewer-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  opacity: 1;
+}
+
+.pdf-viewer-text-layer span,
+.pdf-viewer-text-layer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.pdf-viewer-text-layer ::selection {
+  background: rgba(0, 0, 255, 0.25);
+}
+
+.pdf-viewer-highlight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pdf-viewer-highlight-rect {
+  position: absolute;
+  opacity: 0.4;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Отдельный canvas для штрихов пера, поверх highlight-слоя. По умолчанию
+   прозрачен для событий (режим "Выделение" работает как раньше, клики
+   проходят к textLayer/highlight-rect под ним); активируется только в
+   режимах "Перо"/"Ластик" (класс --active), где touch-action:none нужен,
+   чтобы палец не скроллил страницу вместо рисования. Курсор — crosshair
+   для пера, кружок-индикатор области стирания для ластика. */
+.pdf-viewer-drawing-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pdf-viewer-drawing-layer--active {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.pdf-viewer-drawing-layer--eraser {
+  cursor: cell;
+}
+
+.pdf-viewer-color-popup {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  z-index: 10;
+  transform: translate(-50%, 8px);
+}
+
+.pdf-viewer-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #e5e5e5;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pdf-viewer-highlight-actions {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
+  padding: 10px 14px;
+  z-index: 10;
+}
+
+.pdf-viewer-highlight-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: #d8520f;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pdf-viewer-text-link-btn {
+  border: none;
+  background: none;
+  color: #9b9a9a;
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pdf-viewer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.pdf-viewer-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.pdf-viewer-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pdf-viewer-page-indicator {
+  font-family: Mulish, sans-serif;
+  font-size: 13px;
+  color: #1d1c1c;
+  margin: 0;
+  min-width: 70px;
+  text-align: center;
+}

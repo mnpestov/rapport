@@ -1,0 +1,46 @@
+.backdated-notice-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.backdated-notice-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 340px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.backdated-notice-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.backdated-notice-text {
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.backdated-notice-btn {
+  width: 100%;
+  height: 46px;
+  border-radius: 2px;
+  background: #bec1f4;
+  color: #1d1c1c;
+  font-size: 15px;
+}
