@@ -76,10 +76,18 @@
   gap: 12px;
 }
 
+.add-details-info {
+  gap: 20px;
+}
+
+.add-details-date-col {
+  gap: 5px;
+}
+
 .add-project-section-title {
   font-family: Mulish, sans-serif;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 12px;
   color: #001e00;
   margin: 0;
 }
@@ -92,10 +100,15 @@
 
 .add-project-photo-thumb,
 .add-project-photo-add {
-  width: 90px;
-  height: 117px;
+  width: 60px;
+  height: 60px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+.add-project-photo-thumb-referencePhotos {
+  width: 90px;
+  height: 117px;
 }
 
 .add-project-photo-thumb {
@@ -475,7 +488,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 20px;
+  /* height: 20px; */
   padding: 0 8px 0 2px;
   border: none;
   border-radius: 2px;
@@ -500,7 +513,7 @@
   align-items: center;
   justify-content: center;
   width: 24px;
-  height: 24px;
+  height: 30px;
   flex-shrink: 0;
 }
 

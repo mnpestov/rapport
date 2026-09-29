@@ -194,7 +194,7 @@
 .stash-details-tag-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
   margin: 0;
 }
 
