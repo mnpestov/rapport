@@ -73,6 +73,14 @@ export const ProjectDetails: React.FC = () => {
 
   const [viewingDocument, setViewingDocument] = useState<ProjectDocument | null>(null);
 
+  // Быстрые заметки — textarea всегда доступна для редактирования (даже
+  // пустая, без отдельной кнопки "Добавить"), сохраняется автоматически
+  // через debounce, без кнопки "Сохранить". noteText — локальная копия,
+  // не project.note напрямую: иначе каждый keystroke пришлось бы гонять
+  // через setProject (весь объект проекта) ради одного поля.
+  const [noteText, setNoteText] = useState('');
+  const [noteProjectId, setNoteProjectId] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -88,6 +96,37 @@ export const ProjectDetails: React.FC = () => {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Синхронизация noteText из project.note — только при смене проекта
+  // (id), не при каждом обновлении project целиком: иначе автосохранение
+  // ниже (которое само вызывает setProject после успешного PATCH) сбивало
+  // бы курсор/незасинканные keystrokes пользователя.
+  useEffect(() => {
+    if (!project) return;
+    if (noteProjectId === project.id) return;
+    setNoteText(project.note ?? '');
+    setNoteProjectId(project.id);
+  }, [project, noteProjectId]);
+
+  // Автосохранение заметок — debounce, без кнопки "Сохранить". Пропускает
+  // самый первый рендер после синхронизации выше (noteText только что
+  // выставлен ИЗ project.note, сохранять в бэкенд нечего) и повторное
+  // сохранение уже совпадающего значения.
+  useEffect(() => {
+    if (!project || noteProjectId !== project.id) return;
+    if (noteText === (project.note ?? '')) return;
+    const timer = setTimeout(() => {
+      updateProject(project.id, { note: noteText.trim() === '' ? null : noteText })
+        .then((updated) => setProject(updated))
+        .catch(() => {
+          // Молча — следующая правка текста или уход со страницы и
+          // возврат обратно синхронизирует noteText из актуального
+          // project.note; настойчивый ретрай здесь избыточен для заметок.
+        });
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteText]);
 
   // Список запасов показывается сразу по фокусу на поле (не дожидаясь
   // ввода первых символов — пустой search отдаёт первую страницу всех
@@ -230,7 +269,7 @@ export const ProjectDetails: React.FC = () => {
         <h1 className="stash-details-name">{project.title}</h1>
 
         <div className="stash-details-status-row">
-          <p className="add-project-section-title">Статус</p>
+          <p className="pd-label">Статус</p>
           <div className="add-project-status-dropdown-wrap">
             {(() => {
               const Icon = STATUS_ICON[project.status]; return (
@@ -276,27 +315,27 @@ export const ProjectDetails: React.FC = () => {
 
         <div className="stash-details-dates-row">
           <div className="stash-details-date-col add-details-date-col">
-            <p className="stash-details-date-label">Начало</p>
-            <p className="stash-details-date-value">{new Date(project.startedAt).toLocaleDateString('ru-RU')}</p>
+            <p className="pd-label">Начало</p>
+            <p className="pd-value pd-value--bold">{new Date(project.startedAt).toLocaleDateString('ru-RU')}</p>
           </div>
           <div className="stash-details-date-col add-details-date-col stash-details-date-col--end">
-            <p className="stash-details-date-label">Завершено</p>
-            <p className="stash-details-date-value">{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ru-RU') : '__.__.____'}</p>
+            <p className="pd-label">Завершено</p>
+            <p className="pd-value pd-value--bold">{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ru-RU') : '__.__.____'}</p>
           </div>
         </div>
 
         <div className="stash-details-tag-group">
           {firstPattern && (
-            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Описание:</span> <span className="stash-details-tag-value">#{firstPattern.patternTitleSnapshot}</span></p>
+            <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">#{firstPattern.patternTitleSnapshot}</span></p>
           )}
           {!firstPattern && project.manualDescription && (
-            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Описание:</span> <span className="stash-details-tag-value">{project.manualDescription}</span></p>
+            <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">{project.manualDescription}</span></p>
           )}
           {firstPattern && (
-            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Автор:</span> <span className="stash-details-tag-value">{firstPattern.patternAuthorSnapshot}</span></p>
+            <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{firstPattern.patternAuthorSnapshot}</span></p>
           )}
           {!firstPattern && project.manualAuthor && (
-            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Автор:</span> <span className="stash-details-tag-value">{project.manualAuthor}</span></p>
+            <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{project.manualAuthor}</span></p>
           )}
         </div>
       </div>
@@ -322,17 +361,27 @@ export const ProjectDetails: React.FC = () => {
                 </div>
               )}
             </div>
-            {/* Типографика — та же, что у YarnCardCompact в форме
-                создания/редактирования (.add-project-yarn-card-*, сверено
-                с точным кодом Figma node-id=1470:27049) — единый стиль
-                карточки пряжи во всех местах, где она встречается. */}
+            {/* Заголовок карточки (add-project-yarn-card-title) — та же
+                типографика, что у YarnCardCompact в форме
+                создания/редактирования (Figma node-id=1470:27049). Строки
+                Бренд/Состав/Метраж/Расход/Остаток — общий pd-label-row,
+                единый для всех подписей-заголовков карточки проекта. */}
             <div className="stash-usage-body add-project-yarn-card-body">
               <p className="add-project-yarn-card-title">{y.yarnNameSnapshot}</p>
-              {y.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {y.brandSnapshot}</p>}
-              {y.amountAtCompletionG != null && (
-                <p className="add-project-yarn-card-meta"><b>Расход:</b> {y.amountAtCompletionG} г</p>
+              {y.brandSnapshot && <p className="pd-label-row"><b>Бренд:</b> {y.brandSnapshot}</p>}
+              {y.skein?.compositionSnapshot && (
+                <p className="pd-label-row"><b>Состав:</b> {y.skein.compositionSnapshot}</p>
               )}
-              {!y.skeinId && <p className="add-project-yarn-card-meta">Моток удалён из хранилища</p>}
+              {y.skein?.mPer100gSnapshot != null && (
+                <p className="pd-label-row"><b>Метраж:</b> {y.skein.mPer100gSnapshot} м/100г</p>
+              )}
+              {y.amountAtCompletionG != null && (
+                <p className="pd-label-row"><b>Расход:</b> {y.amountAtCompletionG} г</p>
+              )}
+              {y.skein && (
+                <p className="pd-label-row"><b>Остаток:</b> {y.skein.currentWeightG} г из {y.skein.totalWeightG} г</p>
+              )}
+              {!y.skeinId && <p className="pd-label-row">Моток удалён из хранилища</p>}
             </div>
           </SwipeToDelete>
         ))}
@@ -413,15 +462,15 @@ export const ProjectDetails: React.FC = () => {
               )}
             </div>
             <div className="stash-swatch-body">
-              {swatch.needleSizeRaw && <p className="stash-details-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
-              {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
+              {swatch.needleSizeRaw && <p className="pd-label-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
+              {swatch.strandsCount != null && <p className="pd-label-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
               {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
-                <p className="stash-details-row">
+                <p className="pd-label-row">
                   <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
                 </p>
               )}
               {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
-                <p className="stash-details-row">
+                <p className="pd-label-row">
                   <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
                 </p>
               )}
@@ -471,12 +520,16 @@ export const ProjectDetails: React.FC = () => {
         </div>
       )}
 
-      {project.note && (
-        <div className="stash-details-notes">
-          <p className="stash-details-section-title">Заметки</p>
-          <p className="stash-notes-text">{project.note}</p>
-        </div>
-      )}
+      <div className="stash-details-notes">
+        <p className="stash-details-section-title">Заметки</p>
+        <textarea
+          className="stash-notes-textarea"
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          placeholder="Быстрая заметка к проекту"
+          rows={3}
+        />
+      </div>
 
       <Footer />
 

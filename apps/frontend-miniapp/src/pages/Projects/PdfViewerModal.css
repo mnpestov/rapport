@@ -107,6 +107,13 @@
   touch-action: pan-y;
 }
 
+/* Инструмент "Стрелка" — drag мышью/пальцем панорамирует
+   .pdf-viewer-body (см. handlePanPointerMove); grab-курсор подсказывает,
+   что страницу можно потаскать, как в Figma/Acrobat. */
+.pdf-viewer-page-wrap--pan {
+  cursor: grab;
+}
+
 .pdf-viewer-canvas {
   display: block;
 }
@@ -148,6 +155,14 @@
   opacity: 0.4;
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* Прямоугольник хайлайтера, который ещё протягивается (до pointerUp) —
+   не финальный цвет (тот выбирается в палитре после отпускания), просто
+   визуальная обратная связь во время жеста, поэтому не кликабелен. */
+.pdf-viewer-highlight-rect--in-progress {
+  pointer-events: none;
+  opacity: 0.3;
 }
 
 /* Отдельный canvas для штрихов пера, поверх highlight-слоя. По умолчанию

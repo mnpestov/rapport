@@ -150,6 +150,57 @@
   margin-right: 4px;
 }
 
+/* ===== Единый стиль заголовков/значений карточки проекта =====
+   Один класс на ВСЕ подписи-заголовки карточки проекта (Статус, Начало,
+   Завершено, Описание, Автор, Бренд, Состав, Метраж, Остаток, Спицы,
+   Количество нитей, До ВТО, После ВТО) — pd-label — и один на значения
+   рядом с ними — pd-value (модификатор --bold для дат, где значение
+   жирное, базовый вариант — обычный вес для Описания/Автора и т.п.).
+   Оба присланы пользователем как эталон, остальные *-label/*-value/-meta
+   классы в этом файле — алиасы на них (см. ниже), не самостоятельные
+   определения, чтобы стиль менялся в одном месте. */
+.pd-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.1;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.pd-value {
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #1d1c1c;
+  margin: 0;
+}
+
+.pd-value--bold {
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Текст тайтлов в карточках пряжи/образца (Бренд, Состав, Метраж, Расход,
+   Остаток, Спицы, Количество нитей, До/После ВТО) — та же подпись-жирный
+   заголовок через <b> внутри строки, но однострочная с обрезкой (карточки
+   узкие, значение может быть длинным). */
+.pd-label-row {
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #001e00;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-label-row b {
+  font-weight: 700;
+  color: #1d1c1c;
+}
+
 /* Строка "Начало"/"Завершено" в карточке проекта (Figma node-id=1360:26986,
    DatePicker) — лейбл НАД значением в каждой колонке (не слева от него),
    колонки разнесены по краям, правая выровнена по правому краю. */
@@ -171,24 +222,6 @@
   align-items: flex-end;
 }
 
-.stash-details-date-label {
-  font-family: Mulish, sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1.1;
-  color: #1d1c1c;
-  margin: 0;
-}
-
-.stash-details-date-value {
-  font-family: Mulish, sans-serif;
-  font-weight: 700;
-  font-size: 16px;
-  line-height: 1.1;
-  color: #1d1c1c;
-  margin: 0;
-}
-
 /* Обёртка строк "Описание:"/"Автор:" — держит их вплотную друг к другу,
    без общего gap родителя .stash-details-info между строками. */
 .stash-details-tag-group {
@@ -204,22 +237,6 @@
   align-items: center;
   gap: 12px;
   margin: 0;
-}
-
-.stash-details-tag-label {
-  font-family: Mulish, sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1.1;
-  color: #1d1c1c;
-}
-
-.stash-details-tag-value {
-  font-family: Mulish, sans-serif;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 1.2;
-  color: #1d1c1c;
 }
 
 .stash-details-remainder {
@@ -497,7 +514,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  justify-content: center;
+  /* justify-content: center; */
   min-width: 0;
 }
 
@@ -619,6 +636,34 @@
   max-height: 80px;
   overflow-y: auto;
   box-sizing: border-box;
+}
+
+/* Быстрые заметки в карточке проекта — всегда редактируемое поле (даже
+   пустое), сохраняется автоматически по debounce (см. ProjectDetails.tsx),
+   без отдельной кнопки "Сохранить"/"Добавить". Визуально то же, что
+   .stash-notes-text выше, но интерактивный <textarea>, не <p>. */
+.stash-notes-textarea {
+  display: block;
+  width: 100%;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  padding: 8px 20px;
+  margin: 0;
+  min-height: 80px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.stash-notes-textarea:focus {
+  outline: none;
+  border-color: #9b9a9a;
+}
+
+.stash-notes-textarea::placeholder {
+  color: #9b9a9a;
 }
 
 .stash-matches-list {

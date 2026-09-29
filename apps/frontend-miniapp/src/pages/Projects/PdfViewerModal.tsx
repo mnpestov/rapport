@@ -2,7 +2,7 @@
 // основного потока, см. комментарий в самом файле.
 import './promiseWithResolversPolyfill';
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Trash2, MousePointer2, Pen, Eraser } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, MousePointer2, Highlighter, Pen, Eraser } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
@@ -49,7 +49,7 @@ const DRAWING_COLOR = '#1d1c1c';
 const DRAWING_WIDTH = 1.5;
 const ERASER_HIT_RADIUS = 10;
 
-type ToolMode = 'select' | 'pen' | 'eraser';
+type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
 interface PdfViewerModalProps {
   isOpen: boolean;
@@ -66,11 +66,17 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const [highlights, setHighlights] = useState<ProjectDocumentHighlight[]>([]);
   const [pendingSelection, setPendingSelection] = useState<{ rects: HighlightRect[]; anchorX: number; anchorY: number } | null>(null);
   const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null);
+  // Прямоугольник хайлайтера, который сейчас рисуется протягиванием
+  // (локальные координаты канваса рисования, не PDF) — по pointerUp
+  // конвертируется в PDF-координаты и становится pendingSelection.
+  const [inProgressHighlightRect, setInProgressHighlightRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
-  // Режим тулбара: "Выделение" (текущее поведение — выделение текста →
-  // палитра цвета), "Перо" (рисование тонкой чёрной линии) и "Ластик"
-  // (тап/протягивание по штриху удаляет его целиком).
-  const [toolMode, setToolMode] = useState<ToolMode>('select');
+  // Режим тулбара: "Стрелка" (дефолт — панорамирование увеличенной
+  // страницы протягиванием), "Хайлайтер" (протягивание рисует
+  // прямоугольник выделения в ЛЮБОМ месте страницы, не только по тексту →
+  // затем палитра цвета), "Перо" (рисование тонкой чёрной линии) и
+  // "Ластик" (тап/протягивание по штриху/выделению удаляет его целиком).
+  const [toolMode, setToolMode] = useState<ToolMode>('pan');
   const [drawings, setDrawings] = useState<ProjectDocumentDrawing[]>([]);
   const [inProgressStroke, setInProgressStroke] = useState<DrawingPoint[] | null>(null);
   // viewportRef ниже — ref, не state (event-хендлеры читают его вне
@@ -105,6 +111,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const pinchStartDistRef = useRef(0);
   const pinchStartZoomRef = useRef(1);
 
+  // Панорамирование инструментом "Стрелка" — протягивание одним
+  // пальцем/мышью скроллит .pdf-viewer-body (нативный overflow:auto
+  // контейнер), а не CSS transform: так поведение остаётся идентичным
+  // обычному скроллу и не конфликтует с pinch-zoom transform выше.
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
   const containerRef = useRef<HTMLDivElement>(null);
   const pageWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -116,8 +129,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const isDrawingRef = useRef(false);
   const erasedInGestureRef = useRef<Set<string>>(new Set());
-  const toolModeRef = useRef<ToolMode>('select');
-  toolModeRef.current = toolMode;
 
   // Загрузка бинарника документа — только при открытии/смене документа, не
   // при каждой смене страницы (страница рендерится из уже загруженного
@@ -307,58 +318,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   }, [isOpen, documentId, pageNumber]);
 
   // Переключение инструмента сбрасывает незавершённые состояния других
-  // инструментов — иначе застрявший pendingSelection от "Выделения" мог бы
+  // инструментов — иначе застрявший pendingSelection от "Хайлайтера" мог бы
   // всплыть поверх холста в режиме "Пера".
   useEffect(() => {
     setPendingSelection(null);
     setSelectedHighlightId(null);
-    window.getSelection()?.removeAllRanges();
+    setInProgressHighlightRect(null);
   }, [toolMode]);
-
-  // Слушает выделение текста в текстовом слое — при непустом Range
-  // конвертирует пиксельные прямоугольники (getClientRects) обратно в
-  // координаты PDF-страницы через обратную матрицу viewport.
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleSelectionChange = () => {
-      if (toolModeRef.current !== 'select') return;
-      const selection = window.getSelection();
-      const textLayerEl = textLayerRef.current;
-      const viewport = viewportRef.current;
-      if (!selection || selection.isCollapsed || !textLayerEl || !viewport || selection.rangeCount === 0) {
-        return;
-      }
-      const range = selection.getRangeAt(0);
-      if (!textLayerEl.contains(range.commonAncestorContainer)) return;
-
-      const clientRects = Array.from(range.getClientRects());
-      if (clientRects.length === 0) return;
-      const containerRect = textLayerEl.getBoundingClientRect();
-
-      const rects: HighlightRect[] = clientRects.map((r) => {
-        const localX = r.left - containerRect.left;
-        const localY = r.top - containerRect.top;
-        const [pdfX1, pdfY1] = viewport.convertToPdfPoint(localX, localY);
-        const [pdfX2, pdfY2] = viewport.convertToPdfPoint(localX + r.width, localY + r.height);
-        return {
-          x: Math.min(pdfX1, pdfX2),
-          y: Math.min(pdfY1, pdfY2),
-          width: Math.abs(pdfX2 - pdfX1),
-          height: Math.abs(pdfY2 - pdfY1),
-        };
-      });
-
-      const lastRect = clientRects[clientRects.length - 1];
-      setPendingSelection({
-        rects,
-        anchorX: lastRect.right - containerRect.left,
-        anchorY: lastRect.bottom - containerRect.top,
-      });
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -460,6 +426,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     return Math.hypot(p.x - projX, p.y - projY);
   };
 
+  // Точка старта протягивания хайлайтера — в локальных координатах канваса
+  // (не PDF, не state — читается синхронно в handleDrawingPointerMove на
+  // каждый pointermove, состояние per-gesture, не нужно триггерить рендер).
+  const highlightStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const handleDrawingPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -475,6 +446,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       isDrawingRef.current = true;
       erasedInGestureRef.current = new Set();
       eraseAtLocalPoint(local);
+    } else if (toolMode === 'highlight') {
+      isDrawingRef.current = true;
+      highlightStartRef.current = local;
+      setInProgressHighlightRect({ x: local.x, y: local.y, width: 0, height: 0 });
     }
   };
 
@@ -490,6 +465,15 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       setInProgressStroke((prev) => (prev ? [...prev, { x: pdfX, y: pdfY }] : [{ x: pdfX, y: pdfY }]));
     } else if (toolMode === 'eraser') {
       eraseAtLocalPoint(local);
+    } else if (toolMode === 'highlight') {
+      const start = highlightStartRef.current;
+      if (!start) return;
+      setInProgressHighlightRect({
+        x: Math.min(start.x, local.x),
+        y: Math.min(start.y, local.y),
+        width: Math.abs(local.x - start.x),
+        height: Math.abs(local.y - start.y),
+      });
     }
   };
 
@@ -506,9 +490,65 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Не удалось сохранить штрих');
       }
+    } else if (toolMode === 'highlight' && inProgressHighlightRect) {
+      const rect = inProgressHighlightRect;
+      const viewport = viewportRef.current;
+      highlightStartRef.current = null;
+      // Слишком маленький прямоугольник — случайный тап, не осмысленное
+      // протягивание, не открываем палитру цвета.
+      if (!viewport || rect.width < 4 || rect.height < 4) {
+        setInProgressHighlightRect(null);
+        return;
+      }
+      const [pdfX1, pdfY1] = viewport.convertToPdfPoint(rect.x, rect.y);
+      const [pdfX2, pdfY2] = viewport.convertToPdfPoint(rect.x + rect.width, rect.y + rect.height);
+      setInProgressHighlightRect(null);
+      setPendingSelection({
+        rects: [{
+          x: Math.min(pdfX1, pdfX2),
+          y: Math.min(pdfY1, pdfY2),
+          width: Math.abs(pdfX2 - pdfX1),
+          height: Math.abs(pdfY2 - pdfY1),
+        }],
+        anchorX: rect.x + rect.width,
+        anchorY: rect.y + rect.height,
+      });
     } else {
       setInProgressStroke(null);
+      setInProgressHighlightRect(null);
     }
+  };
+
+  // Панорамирование инструментом "Стрелка" — drag скроллит
+  // .pdf-viewer-body. Слушает на самом контейнере (не на drawing-канвасе,
+  // тот активен только для Пера/Ластика/Хайлайтера), поэтому работает
+  // везде на странице, включая пустые поля вокруг canvas.
+  const handlePanPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (toolMode !== 'pan') return;
+    const container = containerRef.current;
+    if (!container) return;
+    isPanningRef.current = true;
+    panStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePanPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPanningRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    container.scrollLeft = panStartRef.current.scrollLeft - dx;
+    container.scrollTop = panStartRef.current.scrollTop - dy;
+  };
+
+  const handlePanPointerUp = () => {
+    isPanningRef.current = false;
   };
 
   // Стирание — проверяет и штрихи пера, и цветные выделения текста (оба
@@ -614,12 +654,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
           <div className="pdf-viewer-toolbar">
             <button
               type="button"
-              className={`pdf-viewer-tool-btn ${toolMode === 'select' ? 'pdf-viewer-tool-btn--active' : ''}`}
-              onClick={() => setToolMode('select')}
-              aria-label="Выделение текста"
-              title="Выделение"
+              className={`pdf-viewer-tool-btn ${toolMode === 'pan' ? 'pdf-viewer-tool-btn--active' : ''}`}
+              onClick={() => setToolMode('pan')}
+              aria-label="Перемещение страницы"
+              title="Стрелка"
             >
               <MousePointer2 size={18} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              className={`pdf-viewer-tool-btn ${toolMode === 'highlight' ? 'pdf-viewer-tool-btn--active' : ''}`}
+              onClick={() => setToolMode('highlight')}
+              aria-label="Хайлайтер"
+              title="Хайлайтер"
+            >
+              <Highlighter size={18} strokeWidth={1.5} />
             </button>
             <button
               type="button"
@@ -651,10 +700,14 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
           {!isLoading && !error && (
             <div
               ref={pageWrapRef}
-              className="pdf-viewer-page-wrap"
+              className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''}`}
               onTouchStart={handlePinchStart}
               onTouchMove={handlePinchMove}
               onTouchEnd={handlePinchEnd}
+              onPointerDown={handlePanPointerDown}
+              onPointerMove={handlePanPointerMove}
+              onPointerUp={handlePanPointerUp}
+              onPointerLeave={handlePanPointerUp}
             >
               <canvas ref={canvasRef} className="pdf-viewer-canvas" />
               <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
@@ -684,18 +737,30 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               </div>
 
               {/* Отдельный canvas поверх highlight-слоя — активен (ловит
-                  pointer-события) только в режимах "Перо"/"Ластик", в
-                  режиме "Выделение" пропускает события насквозь к
-                  текстовому слою под собой (pointer-events:none в CSS по
-                  умолчанию, класс -active снимает его). */}
+                  pointer-события) в режимах "Хайлайтер"/"Перо"/"Ластик", в
+                  режиме "Стрелка" пропускает события насквозь (drag
+                  панорамирует страницу через pageWrapRef выше). */}
               <canvas
                 ref={drawingCanvasRef}
-                className={`pdf-viewer-drawing-layer ${toolMode !== 'select' ? 'pdf-viewer-drawing-layer--active' : ''} ${toolMode === 'eraser' ? 'pdf-viewer-drawing-layer--eraser' : ''}`}
+                className={`pdf-viewer-drawing-layer ${toolMode !== 'pan' ? 'pdf-viewer-drawing-layer--active' : ''} ${toolMode === 'eraser' ? 'pdf-viewer-drawing-layer--eraser' : ''}`}
                 onPointerDown={handleDrawingPointerDown}
                 onPointerMove={handleDrawingPointerMove}
                 onPointerUp={handleDrawingPointerUp}
                 onPointerLeave={handleDrawingPointerUp}
               />
+
+              {inProgressHighlightRect && (
+                <div
+                  className="pdf-viewer-highlight-rect pdf-viewer-highlight-rect--in-progress"
+                  style={{
+                    left: inProgressHighlightRect.x,
+                    top: inProgressHighlightRect.y,
+                    width: inProgressHighlightRect.width,
+                    height: inProgressHighlightRect.height,
+                    background: HIGHLIGHT_COLORS[0],
+                  }}
+                />
+              )}
 
               {pendingSelection && (
                 <div
