@@ -73,7 +73,8 @@
 .add-project-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* gap: 12px; */
+  margin-bottom: 20px;
 }
 
 .add-details-info {
@@ -87,7 +88,7 @@
 .add-project-section-title {
   font-family: Mulish, sans-serif;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   color: #001e00;
   margin: 0;
 }

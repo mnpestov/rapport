@@ -121,7 +121,7 @@
 .stash-details-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  /* gap: 8px; */
   margin-bottom: 20px;
 }
 
@@ -163,7 +163,7 @@
 .stash-details-date-col {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
   align-items: flex-start;
 }
 
@@ -174,7 +174,7 @@
 .stash-details-date-label {
   font-family: Mulish, sans-serif;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.1;
   color: #1d1c1c;
   margin: 0;
@@ -189,6 +189,14 @@
   margin: 0;
 }
 
+/* Обёртка строк "Описание:"/"Автор:" — держит их вплотную друг к другу,
+   без общего gap родителя .stash-details-info между строками. */
+.stash-details-tag-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 /* Строки "Описание:"/"Автор:" (Figma node-id=1468:26315, компонент
    txt_карточка) — лейбл 12px bold, значение 16px regular, в одну строку. */
 .stash-details-tag-row {
@@ -201,7 +209,7 @@
 .stash-details-tag-label {
   font-family: Mulish, sans-serif;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.1;
   color: #1d1c1c;
 }
@@ -247,7 +255,7 @@
 .stash-details-notes,
 .stash-details-usages,
 .stash-details-matches {
-  margin-bottom: 20px;
+  margin: 20px 0;
 }
 
 .stash-usage-card {

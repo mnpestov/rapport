@@ -285,18 +285,20 @@ export const ProjectDetails: React.FC = () => {
           </div>
         </div>
 
-        {firstPattern && (
-          <p className="stash-details-tag-row"><span className="stash-details-tag-label">Описание:</span> <span className="stash-details-tag-value">#{firstPattern.patternTitleSnapshot}</span></p>
-        )}
-        {!firstPattern && project.manualDescription && (
-          <p className="stash-details-tag-row"><span className="stash-details-tag-label">Описание:</span> <span className="stash-details-tag-value">{project.manualDescription}</span></p>
-        )}
-        {firstPattern && (
-          <p className="stash-details-tag-row"><span className="stash-details-tag-label">Автор:</span> <span className="stash-details-tag-value">{firstPattern.patternAuthorSnapshot}</span></p>
-        )}
-        {!firstPattern && project.manualAuthor && (
-          <p className="stash-details-tag-row"><span className="stash-details-tag-label">Автор:</span> <span className="stash-details-tag-value">{project.manualAuthor}</span></p>
-        )}
+        <div className="stash-details-tag-group">
+          {firstPattern && (
+            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Описание:</span> <span className="stash-details-tag-value">#{firstPattern.patternTitleSnapshot}</span></p>
+          )}
+          {!firstPattern && project.manualDescription && (
+            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Описание:</span> <span className="stash-details-tag-value">{project.manualDescription}</span></p>
+          )}
+          {firstPattern && (
+            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Автор:</span> <span className="stash-details-tag-value">{firstPattern.patternAuthorSnapshot}</span></p>
+          )}
+          {!firstPattern && project.manualAuthor && (
+            <p className="stash-details-tag-row"><span className="stash-details-tag-label">Автор:</span> <span className="stash-details-tag-value">{project.manualAuthor}</span></p>
+          )}
+        </div>
       </div>
 
       <div className="stash-details-usages">
