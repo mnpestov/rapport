@@ -199,6 +199,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       // следующего ре-рендера по другой причине.
       setViewportVersion((v) => v + 1);
     })().catch((err) => {
+      // Временная диагностика — минифицированное сообщение об ошибке само
+      // по себе бесполезно (мешает точные имена переменных), нужен полный
+      // stack trace в консоли, чтобы найти реальную строку/фичу, на которой
+      // падает движок. Убрать после того, как причина найдена.
+      console.error('[PdfViewerModal] render page failed:', err);
       if (!cancelled) setError(err instanceof Error ? err.message : 'Не удалось отрисовать страницу');
     });
 
