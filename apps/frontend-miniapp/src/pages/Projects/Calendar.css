@@ -1,0 +1,141 @@
+/* Кастомный dropdown-календарь (Figma node-id=1360:26408). Плавающая
+   панель — родитель (DateInputField) позиционирует её через position:
+   relative + .calendar-popover--anchor снаружи. */
+.calendar-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 8px 10px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  width: 224px;
+  cursor: default;
+}
+
+/* Поле "Завершено" стоит справа в паре (.add-project-dates-row) — если
+   открывать календарь от левого края поля, он вылезет за правый край
+   формы. Прижимаем к правому краю поля вместо левого. */
+.calendar-popover--end {
+  left: auto;
+  right: 0;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.calendar-title {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #1d1c1c;
+  margin: 0;
+  padding: 5px 12px;
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+}
+
+.calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.calendar-nav-btn:hover {
+  background: #f3f3f3;
+}
+
+.calendar-weekdays {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.calendar-weekday {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-family: Mulish, sans-serif;
+  font-size: 14px;
+  color: #1d1c1c;
+}
+
+.calendar-weekday--weekend {
+  color: #d8520f;
+}
+
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.calendar-week {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.calendar-day {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #1d1c1c;
+  cursor: pointer;
+  padding: 0;
+}
+
+.calendar-day:hover {
+  background: #f3f3f3;
+}
+
+.calendar-day--outside {
+  opacity: 0.6;
+}
+
+.calendar-day--weekend {
+  color: #d8520f;
+  font-weight: 700;
+}
+
+/* Выбранная дата — единственное выделяемое состояние в календаре (не
+   "сегодня" отдельно). Цвет тот же, что var(--brand-primary,#acc6ba) в
+   точном коде макета. */
+.calendar-day--selected {
+  background: #abc6ba;
+  color: #5a5959;
+  font-weight: 400;
+}
+
+.calendar-day--selected:hover {
+  background: #abc6ba;
+}
