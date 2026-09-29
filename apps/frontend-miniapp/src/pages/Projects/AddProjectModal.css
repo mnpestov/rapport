@@ -92,8 +92,8 @@
 
 .add-project-photo-thumb,
 .add-project-photo-add {
-  width: 60px;
-  height: 60px;
+  width: 90px;
+  height: 117px;
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -531,6 +531,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Точка отсчёта для .calendar-popover (position:absolute внутри) —
+     без этого popover позиционировался бы относительно ближайшего
+     предка с position!=static выше по дереву, обычно всей формы. */
+  position: relative;
 }
 
 .add-project-date-field--end {
@@ -568,21 +572,6 @@
   color: #9b9a9a;
 }
 
-/* Нативный <input type="date"> остаётся кликабельным (нужен ради
-   системного date-picker UI по showPicker()/фокусу), но визуально не
-   виден — текст рисует .add-project-date-value сам (дд.мм.гггг или
-   __.__.____), браузер не рисует здесь ничего поверх. */
-.add-project-date-input-hidden {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-}
 
 /* Figma node-id=1454:15657 — чекбокс-список инструментов, не chip-ряд (в
    отличие от status-фильтров списка проектов). */
