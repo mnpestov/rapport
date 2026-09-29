@@ -9,13 +9,11 @@ import {
   removeProjectYarn,
   deleteProjectSwatch,
   updateProject,
-  openProjectDocumentExternally,
   ProjectDetail as ProjectDetailType,
   ProjectDocument,
   ProjectSwatch,
   ProjectStatus,
 } from '../../api/projectsApi';
-import { getMode } from '../../api/authSession';
 import { fetchStashSkeins, StashSkein } from '../../api/stashApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { Footer } from '../../components/Footer/Footer';
@@ -126,17 +124,6 @@ export const ProjectDetails: React.FC = () => {
       </div>
     );
   }
-
-  // В Telegram — просто открыть файл (без canvas-редактора, см. комментарий
-  // у openProjectDocumentExternally), в обычном браузере — полноценный
-  // PdfViewerModal с выделением/пером.
-  const handleOpenDocument = (doc: ProjectDocument) => {
-    if (getMode() === 'telegram') {
-      openProjectDocumentExternally(doc.id, doc.originalFileName).catch(() => setError('Не удалось открыть файл.'));
-    } else {
-      setViewingDocument(doc);
-    }
-  };
 
   const handlePickStatus = async (status: ProjectStatus) => {
     setIsStatusMenuOpen(false);
@@ -444,7 +431,7 @@ export const ProjectDetails: React.FC = () => {
           <p className="stash-details-section-title">Описание, файл</p>
           {project.documents.map((doc) => (
             <div key={doc.id} className="add-project-pdf-row">
-              <button type="button" className="add-project-pdf-link" onClick={() => handleOpenDocument(doc)}>
+              <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
                 #{doc.originalFileName}
               </button>
             </div>

@@ -11,7 +11,6 @@ import {
   createProjectSwatch,
   uploadProjectDocument,
   deleteProjectDocument,
-  openProjectDocumentExternally,
   ProjectDetail,
   ProjectDocument,
   ProjectInstrumentInput,
@@ -19,7 +18,6 @@ import {
   ProjectLimitReachedError,
   YarnUsageInput,
 } from '../../api/projectsApi';
-import { getMode } from '../../api/authSession';
 import { fetchPatterns, fetchPatternById, fetchFilters, Pattern, FilterOption } from '../../api/patternsApi';
 import { fetchStashSkeins, uploadStashImage, StashSkein } from '../../api/stashApi';
 
@@ -481,17 +479,6 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
-    }
-  };
-
-  // В Telegram — просто открыть файл (без canvas-редактора, см. комментарий
-  // у openProjectDocumentExternally), в обычном браузере — полноценный
-  // PdfViewerModal с выделением/пером.
-  const handleOpenDocument = (doc: ProjectDocument) => {
-    if (getMode() === 'telegram') {
-      openProjectDocumentExternally(doc.id, doc.originalFileName).catch(() => setError('Не удалось открыть файл'));
-    } else {
-      setViewingDocument(doc);
     }
   };
 
@@ -1026,7 +1013,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
               <>
                 {documents.map((doc) => (
                   <div key={doc.id} className="add-project-pdf-row">
-                    <button type="button" className="add-project-pdf-link" onClick={() => handleOpenDocument(doc)}>
+                    <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
                       #{doc.originalFileName}
                     </button>
                     <button type="button" className="add-project-pdf-remove" onClick={() => handleDeleteDocument(doc.id)} aria-label="Удалить файл">
