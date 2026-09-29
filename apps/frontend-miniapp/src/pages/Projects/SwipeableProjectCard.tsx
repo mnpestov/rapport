@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProjectListItem } from '../../api/projectsApi';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON } from './projectStatus';
-import projectPlaceholder from '../../components/TabBar/icons/project.svg';
+import projectPlaceholder from '../../components/TabBar/icons/project1.svg';
 
 interface ProjectCardProps {
   item: ProjectListItem;
