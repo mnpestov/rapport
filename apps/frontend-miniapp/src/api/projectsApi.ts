@@ -36,6 +36,15 @@ export interface ProjectPattern {
   patternTitleSnapshot: string;
   patternAuthorSnapshot: string;
   createdAt: string;
+  // Живой каталожный паттерн (не снимок) — фото/инструмент для карточки
+  // "Описание" (Figma node-id=1476:27969). Null, если паттерн удалён из
+  // каталога (patternId стал null через onDelete: SetNull) — тогда
+  // карточка показывает только снимки title/author, без фото/инструмента.
+  pattern: {
+    imageUrl: string;
+    thumbnailUrl: string | null;
+    instruments: { name: string }[];
+  } | null;
 }
 
 export interface ProjectYarn {
@@ -125,6 +134,14 @@ function withProjectImageUrls(item: ProjectDetail): ProjectDetail {
     referencePhotos: item.referencePhotos.map(toAbsoluteUrl),
     yarns: item.yarns.map((y) => ({ ...y, skein: withSkeinImageUrls(y.skein) })),
     swatches: item.swatches.map((s) => ({ ...s, images: s.images.map(toAbsoluteUrl) })),
+    patterns: item.patterns.map((p) => ({
+      ...p,
+      pattern: p.pattern && {
+        ...p.pattern,
+        imageUrl: toAbsoluteUrl(p.pattern.imageUrl),
+        thumbnailUrl: p.pattern.thumbnailUrl ? toAbsoluteUrl(p.pattern.thumbnailUrl) : null,
+      },
+    })),
   };
 }
 

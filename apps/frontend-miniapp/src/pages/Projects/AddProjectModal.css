@@ -719,7 +719,7 @@
 .add-project-yarn-card-body {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: start;
   gap: 4px;
   padding: 4px 0;
   min-width: 0;

@@ -152,22 +152,18 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     setPageNumber(1);
     setPdfDoc(null);
 
-    console.log('[PdfViewerModal] loading start', documentId);
     fetchProjectDocumentBlob(documentId)
-      .then((blob) => { console.log('[PdfViewerModal] blob fetched', blob.size); return blob.arrayBuffer(); })
-      .then((buffer) => { console.log('[PdfViewerModal] arrayBuffer ready', buffer.byteLength); return pdfjsLib.getDocument({ data: buffer }).promise; })
+      .then((blob) => blob.arrayBuffer())
+      .then((buffer) => pdfjsLib.getDocument({ data: buffer }).promise)
       .then((doc) => {
-        console.log('[PdfViewerModal] getDocument resolved', doc.numPages);
         if (cancelled) return;
         setPdfDoc(doc);
       })
       .catch((err) => {
-        console.error('[PdfViewerModal] loading failed', err);
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Не удалось открыть файл');
       })
       .finally(() => {
-        console.log('[PdfViewerModal] loading finally, cancelled=', cancelled);
         if (!cancelled) setIsLoading(false);
       });
 

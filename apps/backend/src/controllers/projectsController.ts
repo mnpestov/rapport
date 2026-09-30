@@ -126,7 +126,23 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
 };
 
 const PROJECT_DETAIL_INCLUDE = {
-  patterns: true,
+  // pattern (не snapshot-поля) — только для карточки-превью "Описание"
+  // (Figma node-id=1476:27969): фото и инструменты живого каталожного
+  // паттерна, которых нет в снимках ProjectPattern.patternTitleSnapshot/
+  // patternAuthorSnapshot. Nullable — patternId может быть null (паттерн
+  // удалён из каталога, см. onDelete: SetNull на ProjectPattern.pattern),
+  // тогда фронт показывает карточку без фото/инструмента, только снимки.
+  patterns: {
+    include: {
+      pattern: {
+        select: {
+          imageUrl: true,
+          thumbnailUrl: true,
+          instruments: { select: { name: true } },
+        },
+      },
+    },
+  },
   yarns: { include: { skein: true } },
   swatches: { orderBy: { createdAt: "asc" as const } },
   instruments: { include: { instrument: true }, orderBy: { createdAt: "asc" as const } },
