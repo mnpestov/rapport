@@ -27,6 +27,7 @@ import { AddYarnModal } from '../Stash/AddYarnModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { StashImageCarousel } from '../StashSkeinDetails/StashImageCarousel';
 import { HeaderActionsMenu } from '../../components/HeaderActionsMenu/HeaderActionsMenu';
+import { CollapsibleSection } from './CollapsibleSection';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
 import swatchPlaceholder from '../../assets/stash/swatchPlaceholder.svg';
@@ -80,6 +81,39 @@ export const ProjectDetails: React.FC = () => {
   // через setProject (весь объект проекта) ради одного поля.
   const [noteText, setNoteText] = useState('');
   const [noteProjectId, setNoteProjectId] = useState<string | null>(null);
+
+  // Сворачиваемые блоки карточки (Figma node-id=1619:20364) — состояние
+  // "открыт/закрыт" на каждую секцию, персистентно в localStorage,
+  // отдельно на каждый проект (ключ включает id). По умолчанию (нет
+  // сохранённого значения или чтение не удалось — приватный режим и т.п.)
+  // все секции открыты, то же поведение, что было ДО сворачивания.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      const raw = localStorage.getItem(`project-sections-${id}`);
+      setOpenSections(raw ? JSON.parse(raw) : {});
+    } catch {
+      setOpenSections({});
+    }
+  }, [id]);
+
+  const isSectionOpen = (key: string) => openSections[key] !== false;
+
+  const toggleSection = (key: string) => {
+    if (!id) return;
+    setOpenSections((prev) => {
+      const next = { ...prev, [key]: !isSectionOpen(key) };
+      try {
+        localStorage.setItem(`project-sections-${id}`, JSON.stringify(next));
+      } catch {
+        // Приватный режим/квота — секция всё равно переключится в этом
+        // рендере, просто не переживёт перезагрузку страницы.
+      }
+      return next;
+    });
+  };
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -324,24 +358,50 @@ export const ProjectDetails: React.FC = () => {
           </div>
         </div>
 
-        <div className="stash-details-tag-group">
-          {firstPattern && (
-            <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">#{firstPattern.patternTitleSnapshot}</span></p>
+        {/* Вариативно (Figma node-id=1476:27969): паттерн выбран из
+            каталога → карточка узора (фото/название/автор/инструмент,
+            переживает даже удаление паттерна из каталога через снимки,
+            фото/инструмент — только пока патттерн жив, firstPattern.pattern
+            не null); паттерн заполнен вручную (кнопка "Добавить вручную")
+            → прежняя инлайн-разметка "Описание:"/"Автор:", без изменений.
+            Оба варианта — сворачиваемая секция (Figma node-id=1619:20364). */}
+        <CollapsibleSection title="Описание" isOpen={isSectionOpen('description')} onToggle={() => toggleSection('description')}>
+          {firstPattern ? (
+            <button
+              type="button"
+              className="stash-details-pattern-card"
+              onClick={() => { if (firstPattern.patternId) navigate(`/pattern/${firstPattern.patternId}`); }}
+              disabled={!firstPattern.patternId}
+            >
+              <div className="stash-details-pattern-card-image">
+                {firstPattern.pattern ? (
+                  <img src={firstPattern.pattern.thumbnailUrl ?? firstPattern.pattern.imageUrl} alt="" />
+                ) : (
+                  <div className="stash-details-pattern-card-image-placeholder" />
+                )}
+              </div>
+              <div className="stash-usage-body add-project-yarn-card-body">
+                <p className="add-project-yarn-card-title">#{firstPattern.patternTitleSnapshot}</p>
+                <p className="pd-label-row"><b>Автор:</b> {firstPattern.patternAuthorSnapshot}</p>
+                {firstPattern.pattern && firstPattern.pattern.instruments.length > 0 && (
+                  <p className="pd-label-row"><b>Инструмент:</b> {firstPattern.pattern.instruments.map((i) => i.name).join(', ')}</p>
+                )}
+              </div>
+            </button>
+          ) : (
+            <div className="stash-details-tag-group">
+              {project.manualDescription && (
+                <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">{project.manualDescription}</span></p>
+              )}
+              {project.manualAuthor && (
+                <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{project.manualAuthor}</span></p>
+              )}
+            </div>
           )}
-          {!firstPattern && project.manualDescription && (
-            <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">{project.manualDescription}</span></p>
-          )}
-          {firstPattern && (
-            <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{firstPattern.patternAuthorSnapshot}</span></p>
-          )}
-          {!firstPattern && project.manualAuthor && (
-            <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{project.manualAuthor}</span></p>
-          )}
-        </div>
+        </CollapsibleSection>
       </div>
 
-      <div className="stash-details-usages">
-        <p className="stash-details-section-title">Пряжа</p>
+      <CollapsibleSection title="Пряжа" isOpen={isSectionOpen('yarn')} onToggle={() => toggleSection('yarn')} className="stash-details-usages">
         {project.yarns.map((y) => (
           <SwipeToDelete
             key={y.id}
@@ -437,10 +497,9 @@ export const ProjectDetails: React.FC = () => {
             Привязать пряжу
           </button>
         )}
-      </div>
+      </CollapsibleSection>
 
-      <div className="stash-details-swatches">
-        <p className="stash-details-section-title">Образец</p>
+      <CollapsibleSection title="Образец" isOpen={isSectionOpen('swatch')} onToggle={() => toggleSection('swatch')} className="stash-details-swatches">
         {project.swatches.map((swatch) => (
           <SwipeToDelete
             key={swatch.id}
@@ -481,22 +540,20 @@ export const ProjectDetails: React.FC = () => {
           <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
           Добавить образец
         </button>
-      </div>
+      </CollapsibleSection>
 
       {project.instruments.length > 0 && (
-        <div className="stash-details-info">
-          <p className="stash-details-section-title">Инструмент</p>
+        <CollapsibleSection title="Инструмент" isOpen={isSectionOpen('instruments')} onToggle={() => toggleSection('instruments')} className="stash-details-info">
           <p className="stash-details-row">
             {project.instruments
               .map((i) => (i.sizeMm != null ? `${i.instrument.name} ${String(i.sizeMm).replace('.', ',')} мм` : i.instrument.name))
               .join(', ')}
           </p>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {project.documents.length > 0 && (
-        <div className="add-project-section">
-          <p className="stash-details-section-title">Описание, файл</p>
+      {(project.documents.length > 0 || project.referencePhotos.length > 0) && (
+        <CollapsibleSection title="Описание, файл" isOpen={isSectionOpen('documents')} onToggle={() => toggleSection('documents')} className="add-project-section">
           {project.documents.map((doc) => (
             <div key={doc.id} className="add-project-pdf-row">
               <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
@@ -504,24 +561,19 @@ export const ProjectDetails: React.FC = () => {
               </button>
             </div>
           ))}
-        </div>
+          {project.referencePhotos.length > 0 && (
+            <div className="add-project-photos">
+              {project.referencePhotos.map((url) => (
+                <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
+                  <img src={url} alt="" />
+                </div>
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
       )}
 
-      {project.referencePhotos.length > 0 && (
-        <div className="add-project-section">
-          <p className="stash-details-section-title">Референс</p>
-          <div className="add-project-photos">
-            {project.referencePhotos.map((url) => (
-              <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
-                <img src={url} alt="" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="stash-details-notes">
-        <p className="stash-details-section-title">Заметки</p>
+      <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
         <textarea
           className="stash-notes-textarea"
           value={noteText}
@@ -529,7 +581,7 @@ export const ProjectDetails: React.FC = () => {
           placeholder="Быстрая заметка к проекту"
           rows={3}
         />
-      </div>
+      </CollapsibleSection>
 
       <Footer />
 
