@@ -410,6 +410,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       await deleteDocumentHighlight(id);
       setHighlights((prev) => prev.filter((h) => h.id !== id));
     } catch (err) {
+      console.error('[PdfViewerModal] delete highlight failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось удалить выделение');
     }
   };
@@ -500,6 +501,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
         const created = await createDocumentDrawing(documentId, { pageNumber, points });
         setDrawings((prev) => [...prev, created]);
       } catch (err) {
+        console.error('[PdfViewerModal] save drawing failed:', err);
         setError(err instanceof Error ? err.message : 'Не удалось сохранить штрих');
       }
     } else if (toolMode === 'highlight' && inProgressHighlightRect) {
@@ -522,6 +524,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
         const created = await createDocumentHighlight(documentId, { pageNumber, rects, color: selectedHighlightColor });
         setHighlights((prev) => [...prev, created]);
       } catch (err) {
+        console.error('[PdfViewerModal] save highlight failed:', err);
         setError(err instanceof Error ? err.message : 'Не удалось сохранить выделение');
       }
     } else {

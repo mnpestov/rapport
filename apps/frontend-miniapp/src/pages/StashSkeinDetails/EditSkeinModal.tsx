@@ -130,6 +130,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
       const url = await uploadStashImage(file);
       setImages((prev) => [...prev, url]);
     } catch (err) {
+      console.error('[EditSkeinModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -170,6 +171,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
       const url = await uploadStashImage(file);
       updateSwatchEntry(key, { images: [...swatch.images, url] });
     } catch (err) {
+      console.error('[EditSkeinModal] swatch image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото образца');
     } finally {
       setUploadingSwatchKey(null);
@@ -210,9 +212,10 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
       if (suggestedMPer100g !== undefined || suggestedComposition !== undefined) {
         try {
           await suggestYarnFields(skein.id, { mPer100g: suggestedMPer100g, composition: suggestedComposition });
-        } catch {
+        } catch (err) {
           // Остальные поля уже сохранены — не блокируем закрытие формы
           // из-за необязательной заявки на дозаполнение.
+          console.error('[EditSkeinModal] suggestYarnFields failed:', err);
         }
       }
 
@@ -239,14 +242,16 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             if (!hasData) continue;
             await createStashSwatch(skein.id, payload);
           }
-        } catch {
+        } catch (err) {
           // Остальные поля/образцы уже сохранены или пробуют сохраниться
           // независимо — один упавший образец не должен блокировать форму.
+          console.error('[EditSkeinModal] swatch save failed:', err);
         }
       }
 
       onSaved();
     } catch (err) {
+      console.error('[EditSkeinModal] handleSave failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось сохранить изменения');
     } finally {
       setIsSubmitting(false);

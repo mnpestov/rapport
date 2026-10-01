@@ -63,7 +63,8 @@ export const Projects: React.FC = () => {
       setTotal(data.total);
       setPage(data.page);
       setError(null);
-    } catch {
+    } catch (err) {
+      console.error('[Projects] loadPage failed:', err);
       setError('Не удалось загрузить проекты. Попробуйте ещё раз.');
     } finally {
       setLoading(false);

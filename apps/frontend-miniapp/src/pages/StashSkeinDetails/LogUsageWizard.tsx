@@ -90,7 +90,11 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
     setMatchesLoading(true);
     fetchStashMatches(skein.id)
       .then((res) => { setMatches(res.items); setIsMatchesLocked(res.isLocked); })
-      .catch(() => { setMatches([]); setIsMatchesLocked(false); })
+      .catch((err) => {
+        console.error('[LogUsageWizard] fetchStashMatches failed:', err);
+        setMatches([]);
+        setIsMatchesLocked(false);
+      })
       .finally(() => setMatchesLoading(false));
   }, [step, isOpen, skein.id]);
 
@@ -105,7 +109,8 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
       try {
         const res = await fetchPatterns({ search: searchQuery.trim(), limit: 10 });
         setSearchResults(res.data);
-      } catch {
+      } catch (err) {
+        console.error('[LogUsageWizard] pattern search failed:', err);
         setSearchResults([]);
       } finally {
         setIsSearching(false);
@@ -160,6 +165,7 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
         setPhotos((prev) => [...prev, url]);
       }
     } catch (err) {
+      console.error('[LogUsageWizard] photo upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploadingPhoto(false);
@@ -187,6 +193,7 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
       });
       onLogged();
     } catch (err) {
+      console.error('[LogUsageWizard] handleSubmit failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось списать пряжу');
     } finally {
       setIsSubmitting(false);

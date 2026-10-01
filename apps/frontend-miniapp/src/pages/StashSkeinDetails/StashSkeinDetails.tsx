@@ -68,13 +68,17 @@ export const StashSkeinDetails: React.FC = () => {
     try {
       const [skeinData, matchesResult] = await Promise.all([
         fetchStashSkeinById(id),
-        fetchStashMatches(id).catch(() => ({ items: [], isLocked: false, hasMore: false })),
+        fetchStashMatches(id).catch((err) => {
+          console.error('[StashSkeinDetails] fetchStashMatches failed:', err);
+          return { items: [], isLocked: false, hasMore: false };
+        }),
       ]);
       setSkein(skeinData);
       setMatches(matchesResult.items);
       setMatchesLocked(matchesResult.isLocked);
       setMatchesHasMore(matchesResult.hasMore);
-    } catch {
+    } catch (err) {
+      console.error('[StashSkeinDetails] load failed:', err);
       setError('Не удалось загрузить карточку пряжи.');
     } finally {
       setLoading(false);
@@ -93,9 +97,11 @@ export const StashSkeinDetails: React.FC = () => {
       const result = await fetchStashMatches(id, matches.length);
       setMatches((prev) => [...prev, ...result.items]);
       setMatchesHasMore(result.hasMore);
-    } catch {
-      // Тихо — это доп. страница, не критично для уже открытой карточки;
-      // observer попробует снова, если карточка всё ещё видна.
+    } catch (err) {
+      // Тихо для пользователя — это доп. страница, не критично для уже
+      // открытой карточки; observer попробует снова, если карточка всё
+      // ещё видна. Лог оставляем, чтобы видеть повторяющиеся сбои.
+      console.error('[StashSkeinDetails] loadMoreMatches failed:', err);
     } finally {
       setIsLoadingMoreMatches(false);
     }
@@ -137,7 +143,8 @@ export const StashSkeinDetails: React.FC = () => {
       });
       setDeleteUsageTarget(null);
       setOpenSwipeUsageId(null);
-    } catch {
+    } catch (err) {
+      console.error('[StashSkeinDetails] handleConfirmDeleteUsage failed:', err);
       setError('Не удалось отменить списание. Попробуйте ещё раз.');
     } finally {
       setIsDeletingUsage(false);
@@ -155,7 +162,8 @@ export const StashSkeinDetails: React.FC = () => {
       });
       setDeleteSwatchTarget(null);
       setOpenSwipeSwatchId(null);
-    } catch {
+    } catch (err) {
+      console.error('[StashSkeinDetails] handleConfirmDeleteSwatch failed:', err);
       setError('Не удалось удалить образец. Попробуйте ещё раз.');
     } finally {
       setIsDeletingSwatch(false);
@@ -168,7 +176,8 @@ export const StashSkeinDetails: React.FC = () => {
     try {
       await deleteStashSkein(skein.id);
       navigate('/stash');
-    } catch {
+    } catch (err) {
+      console.error('[StashSkeinDetails] handleConfirmDeleteSkein failed:', err);
       setError('Не удалось удалить пряжу. Попробуйте ещё раз.');
       setIsDeletingSkein(false);
     }
@@ -193,6 +202,7 @@ export const StashSkeinDetails: React.FC = () => {
       setIsYarnFixFormOpen(false);
       await load();
     } catch (err) {
+      console.error('[StashSkeinDetails] handleSubmitYarnFix failed:', err);
       setYarnFixError(err instanceof Error ? err.message : 'Не удалось отправить заявку');
     } finally {
       setIsSubmittingYarnFix(false);

@@ -300,7 +300,8 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       try {
         const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10 });
         setPatternResults(res.data);
-      } catch {
+      } catch (err) {
+        console.error('[AddProjectModal] pattern search failed:', err);
         setPatternResults([]);
       } finally {
         setIsSearchingPattern(false);
@@ -325,7 +326,8 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       try {
         const res = await fetchStashSkeins({ search: yarnQuery.trim() || undefined });
         setYarnResults(res.items);
-      } catch {
+      } catch (err) {
+        console.error('[AddProjectModal] yarn search failed:', err);
         setYarnResults([]);
       } finally {
         setIsSearchingYarn(false);
@@ -420,6 +422,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       const url = await uploadStashImage(file);
       updateSwatch(key, { images: [...swatch.images, url] });
     } catch (err) {
+      console.error('[AddProjectModal] swatch image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото образца');
     } finally {
       setUploadingSwatchKey(null);
@@ -444,6 +447,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         setReferencePhotos((prev) => [...prev, url]);
       }
     } catch (err) {
+      console.error('[AddProjectModal] reference photo upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -467,6 +471,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       const created = await uploadProjectDocument(documentProjectId, file);
       setDocuments((prev) => [...prev, created]);
     } catch (err) {
+      console.error('[AddProjectModal] document upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
     } finally {
       setIsUploadingDocument(false);
@@ -478,6 +483,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       await deleteProjectDocument(id);
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } catch (err) {
+      console.error('[AddProjectModal] delete document failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
     }
   };
@@ -494,6 +500,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         setFinishedPhotos((prev) => [...prev, url]);
       }
     } catch (err) {
+      console.error('[AddProjectModal] finished photo upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -638,6 +645,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         onLimitReached?.();
         return;
       }
+      console.error('[AddProjectModal] handleSave failed:', err);
       setError(err instanceof Error ? err.message : isEditMode ? 'Не удалось сохранить проект' : 'Не удалось создать проект');
     } finally {
       setIsSubmitting(false);

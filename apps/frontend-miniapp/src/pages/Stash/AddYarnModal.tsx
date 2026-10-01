@@ -165,7 +165,8 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
           setHasMoreFromRavelry(more);
           setYarnSuggestPage(1);
         }
-      } catch {
+      } catch (err) {
+        console.error('[AddYarnModal] yarn suggest search failed:', err);
         if (!cancelled) {
           setSuggestions([]);
           setHasMoreFromRavelry(false);
@@ -199,7 +200,10 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
         setHasMoreFromRavelry(more);
         setYarnSuggestPage(nextPage);
       })
-      .catch(() => setHasMoreFromRavelry(false))
+      .catch((err) => {
+        console.error('[AddYarnModal] load more yarn suggestions failed:', err);
+        setHasMoreFromRavelry(false);
+      })
       .finally(() => setIsLoadingMoreYarn(false));
   };
 
@@ -250,6 +254,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
         const imported = await importRavelryYarn(item.ravelryId);
         applySuggestion(imported);
       } catch (err) {
+        console.error('[AddYarnModal] importRavelryYarn failed:', err);
         setError(err instanceof Error ? err.message : 'Не удалось загрузить данные пряжи');
       } finally {
         setIsImportingYarn(false);
@@ -277,6 +282,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
       const url = await uploadStashImage(file);
       setImages((prev) => [...prev, url]);
     } catch (err) {
+      console.error('[AddYarnModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -309,6 +315,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
       const url = await uploadStashImage(file);
       updateSwatch(key, { images: [...swatch.images, url] });
     } catch (err) {
+      console.error('[AddYarnModal] swatch image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото образца');
     } finally {
       setUploadingSwatchKey(null);
@@ -366,9 +373,10 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             await suggestYarnFields(skein.id, { mPer100g: suggestedMPer100g, composition: suggestedComposition });
             if (suggestedMPer100g !== undefined) skein.mPer100gSnapshot = suggestedMPer100g;
             if (suggestedComposition !== undefined) skein.compositionSnapshot = suggestedComposition;
-          } catch {
+          } catch (err) {
             // Моток уже создан — не блокируем создание из-за необязательной
             // заявки на дозаполнение (тот же принцип, что у образцов ниже).
+            console.error('[AddYarnModal] suggestYarnFields failed:', err);
           }
         }
       }
@@ -388,11 +396,12 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             densityStitchesAfter: swatch.stitchesAfter ? Number(swatch.stitchesAfter) : undefined,
             densityRowsAfter: swatch.rowsAfter ? Number(swatch.rowsAfter) : undefined,
           });
-        } catch {
+        } catch (err) {
           // Моток уже создан и сохранён — образец можно добавить позже со
           // страницы карточки, поэтому ошибка здесь не блокирует закрытие
           // формы и не откатывает уже успешное создание мотка. Остальные
           // образцы в цикле всё равно пробуют сохраниться.
+          console.error('[AddYarnModal] createStashSwatch failed:', err);
         }
       }
 
@@ -402,6 +411,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
         onLimitReached();
         return;
       }
+      console.error('[AddYarnModal] handleSave failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось добавить пряжу');
     } finally {
       setIsSubmitting(false);

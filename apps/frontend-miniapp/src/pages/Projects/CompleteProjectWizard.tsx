@@ -164,7 +164,8 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
       try {
         const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10 });
         setPatternResults(res.data);
-      } catch {
+      } catch (err) {
+        console.error('[CompleteProjectWizard] pattern search failed:', err);
         setPatternResults([]);
       } finally {
         setIsSearchingPattern(false);
@@ -184,7 +185,8 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
       try {
         const res = await fetchStashSkeins({ search: yarnQuery.trim() || undefined });
         setYarnResults(res.items);
-      } catch {
+      } catch (err) {
+        console.error('[CompleteProjectWizard] yarn search failed:', err);
         setYarnResults([]);
       } finally {
         setIsSearchingYarn(false);
@@ -221,6 +223,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
         amountG: '',
       }]);
     } catch (err) {
+      console.error('[CompleteProjectWizard] handlePickYarn failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось привязать пряжу');
     } finally {
       setIsAttachingYarn(false);
@@ -269,6 +272,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
         setFinishedPhotos((prev) => [...prev, url]);
       }
     } catch (err) {
+      console.error('[CompleteProjectWizard] photo upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploadingPhoto(false);
@@ -328,6 +332,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
       setCompletedProject(updated);
       setShowSuccess(true);
     } catch (err) {
+      console.error('[CompleteProjectWizard] handleSubmit failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось завершить проект');
     } finally {
       setIsSubmitting(false);

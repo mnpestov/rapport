@@ -120,7 +120,7 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
       totalProjectCount,
     });
   } catch (error) {
-    console.error("[Projects] listProjects failed:", error);
+    console.error(`[Projects] listProjects failed userId=${userId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -166,7 +166,7 @@ export const getProject = async (req: Request, res: Response): Promise<void> => 
     });
     res.json(project);
   } catch (error) {
-    console.error("[Projects] getProject failed:", error);
+    console.error(`[Projects] getProject failed projectId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -442,22 +442,28 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
           where: { projectId_skeinId: { projectId: created.id, skeinId: u.skeinId } },
           data: { amountAtCompletionG: amountG },
         });
+
+        console.log(
+          `[Projects] createProject backdatedYarn userId=${userId} projectId=${created.id} skeinId=${u.skeinId} amountG=${amountG}`
+        );
       }
 
       return created;
     });
 
+    console.log(`[Projects] createProject ok userId=${userId} projectId=${project.id} status=${status}`);
     const full = await prisma.project.findUnique({ where: { id: project.id }, include: PROJECT_DETAIL_INCLUDE });
     res.status(201).json(full);
   } catch (error) {
     if (error instanceof InsufficientStashError) {
+      console.warn(`[Projects] createProject insufficient userId=${userId} currentWeightG=${error.currentWeightG}`);
       res.status(400).json({
         error: `Недостаточно пряжи: осталось ${error.currentWeightG} г`,
         currentWeightG: error.currentWeightG,
       });
       return;
     }
-    console.error("[Projects] createProject failed:", error);
+    console.error(`[Projects] createProject failed userId=${userId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -470,6 +476,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
  */
 export const updateProject = async (req: Request, res: Response): Promise<void> => {
   const project = req.project!;
+  const userId = req.user!.userId;
   const body = req.body ?? {};
 
   if (typeof body.status === "string" && body.status === ProjectStatus.COMPLETED && project.status !== ProjectStatus.COMPLETED) {
@@ -577,9 +584,10 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
     // documents и т.д.), а не голый Project — иначе AddProjectModal получает
     // объект без ожидаемых полей и падает молча (модалка не закрывается).
     const full = await prisma.project.findUnique({ where: { id: project.id }, include: PROJECT_DETAIL_INCLUDE });
+    console.log(`[Projects] updateProject ok userId=${userId} projectId=${project.id} fields=${Object.keys(data).join(',')}`);
     res.json(full);
   } catch (error) {
-    console.error("[Projects] updateProject failed:", error);
+    console.error(`[Projects] updateProject failed userId=${userId} projectId=${project.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -593,6 +601,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
  */
 export const completeProject = async (req: Request, res: Response): Promise<void> => {
   const project = req.project!;
+  const userId = req.user!.userId;
   const body = req.body ?? {};
 
   const yarnUsagesInput: { skeinId: string; amountG?: number }[] = Array.isArray(body.yarnUsages)
@@ -719,6 +728,9 @@ export const completeProject = async (req: Request, res: Response): Promise<void
               where: { projectId_skeinId: { projectId: project.id, skeinId: u.skeinId } },
               data: { amountAtCompletionG: null },
             });
+            console.log(
+              `[Projects] completeProject yarnReverted userId=${userId} projectId=${project.id} skeinId=${u.skeinId} returnedG=${existing.amountG}`
+            );
           }
           continue;
         }
@@ -749,6 +761,9 @@ export const completeProject = async (req: Request, res: Response): Promise<void
                 : {}),
             },
           });
+          console.log(
+            `[Projects] completeProject yarnAdjusted userId=${userId} projectId=${project.id} skeinId=${u.skeinId} oldAmountG=${existing.amountG} newAmountG=${newAmount}`
+          );
         } else {
           const affected = await tx.$executeRaw`
             UPDATE "StashSkein"
@@ -770,6 +785,9 @@ export const completeProject = async (req: Request, res: Response): Promise<void
               patternAuthorSnapshot: firstPatternSnapshot?.authorName ?? project.manualAuthor,
             },
           });
+          console.log(
+            `[Projects] completeProject yarnCommitted userId=${userId} projectId=${project.id} skeinId=${u.skeinId} amountG=${newAmount}`
+          );
         }
 
         await tx.projectYarn.update({
@@ -784,16 +802,20 @@ export const completeProject = async (req: Request, res: Response): Promise<void
       });
     });
 
+    console.log(`[Projects] completeProject ok userId=${userId} projectId=${project.id}`);
     const full = await prisma.project.findUnique({ where: { id: project.id }, include: PROJECT_DETAIL_INCLUDE });
     res.json(full);
   } catch (error) {
     if (error instanceof InsufficientStashError) {
+      console.warn(
+        `[Projects] completeProject insufficient userId=${userId} projectId=${project.id} currentWeightG=${error.currentWeightG}`
+      );
       res.status(400).json({
         error: error.currentWeightG >= 0 ? `Недостаточно пряжи: осталось ${error.currentWeightG} г` : "Эта отмена уже была применена",
       });
       return;
     }
-    console.error("[Projects] completeProject failed:", error);
+    console.error(`[Projects] completeProject failed userId=${userId} projectId=${project.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -803,6 +825,7 @@ export const completeProject = async (req: Request, res: Response): Promise<void
 /** DELETE /projects/:id — удаление, с явным выбором судьбы связанных списаний. */
 export const deleteProject = async (req: Request, res: Response): Promise<void> => {
   const project = req.project!;
+  const userId = req.user!.userId;
   const body = req.body ?? {};
   const returnYarnToStash = Boolean(body.returnYarnToStash);
 
@@ -820,17 +843,37 @@ export const deleteProject = async (req: Request, res: Response): Promise<void> 
             // currentWeightG += amountG здесь было бы вторым таким же
             // багом, что уже нашли и исправили в createProject (найдено
             // вручную при тестировании этого же прохода реализации).
-            await tx.$executeRaw`
+            const affected = await tx.$executeRaw`
               UPDATE "StashSkein"
               SET "totalWeightG" = "totalWeightG" - ${usage.amountG}, "updatedAt" = now()
               WHERE id = ${usage.skeinId}
             `;
+            if (affected === 0) {
+              // Моток уже удалён из хранилища (skeinId живёт на StashUsage
+              // без FK-каскада) — не баг, но стоит видеть при разборе
+              // "почему totalWeightG не вернулся" из тестовой группы.
+              console.warn(
+                `[Projects] deleteProject backdatedRevert skeinMissing userId=${userId} projectId=${project.id} skeinId=${usage.skeinId}`
+              );
+            }
           } else {
-            await tx.$executeRaw`
+            const affected = await tx.$executeRaw`
               UPDATE "StashSkein"
               SET "currentWeightG" = "currentWeightG" + ${usage.amountG}, "updatedAt" = now()
               WHERE id = ${usage.skeinId} AND "currentWeightG" + ${usage.amountG} <= "totalWeightG"
             `;
+            if (affected === 0) {
+              // Guard не прошёл (currentWeightG+amountG > totalWeightG,
+              // либо моток удалён) — возврат веса молча не применился, а
+              // StashUsage ниже всё равно удаляется. Не бросаем ошибку
+              // (сохранён прежний, уже рабочий для пользователей, порядок
+              // поведения — удаление проекта не должно блокироваться из-за
+              // этого), но это разошедшийся currentWeightG, обязательно
+              // смотреть при жалобе "остаток не совпадает".
+              console.warn(
+                `[Projects] deleteProject yarnReturn guardFailed userId=${userId} projectId=${project.id} skeinId=${usage.skeinId} amountG=${usage.amountG}`
+              );
+            }
           }
         }
         await tx.stashUsage.deleteMany({ where: { projectId: project.id } });
@@ -843,9 +886,10 @@ export const deleteProject = async (req: Request, res: Response): Promise<void> 
       // (§5.5).
       await tx.project.delete({ where: { id: project.id } });
     });
+    console.log(`[Projects] deleteProject ok userId=${userId} projectId=${project.id} returnYarnToStash=${returnYarnToStash}`);
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] deleteProject failed:", error);
+    console.error(`[Projects] deleteProject failed userId=${userId} projectId=${project.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -882,7 +926,7 @@ export const addProjectPattern = async (req: Request, res: Response): Promise<vo
       res.status(409).json({ error: "Паттерн уже привязан к проекту" });
       return;
     }
-    console.error("[Projects] addProjectPattern failed:", error);
+    console.error(`[Projects] addProjectPattern failed projectId=${project.id} patternId=${patternId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -894,7 +938,7 @@ export const removeProjectPattern = async (req: Request, res: Response): Promise
     await prisma.projectPattern.deleteMany({ where: { projectId: project.id, patternId } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] removeProjectPattern failed:", error);
+    console.error(`[Projects] removeProjectPattern failed projectId=${project.id} patternId=${patternId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -930,7 +974,7 @@ export const addProjectYarn = async (req: Request, res: Response): Promise<void>
       res.status(409).json({ error: "Моток уже привязан к проекту" });
       return;
     }
-    console.error("[Projects] addProjectYarn failed:", error);
+    console.error(`[Projects] addProjectYarn failed userId=${userId} projectId=${project.id} skeinId=${skeinId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -942,7 +986,7 @@ export const removeProjectYarn = async (req: Request, res: Response): Promise<vo
     await prisma.projectYarn.deleteMany({ where: { projectId: project.id, skeinId } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] removeProjectYarn failed:", error);
+    console.error(`[Projects] removeProjectYarn failed projectId=${project.id} skeinId=${skeinId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -966,7 +1010,7 @@ export const addProjectInstrument = async (req: Request, res: Response): Promise
     });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] addProjectInstrument failed:", error);
+    console.error(`[Projects] addProjectInstrument failed projectId=${project.id} instrumentId=${instrumentId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -978,7 +1022,7 @@ export const removeProjectInstrument = async (req: Request, res: Response): Prom
     await prisma.projectInstrument.deleteMany({ where: { projectId: project.id, instrumentId } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] removeProjectInstrument failed:", error);
+    console.error(`[Projects] removeProjectInstrument failed projectId=${project.id} instrumentId=${instrumentId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1018,7 +1062,7 @@ export const createProjectSwatch = async (req: Request, res: Response): Promise<
     });
     res.status(201).json(swatch);
   } catch (error) {
-    console.error("[Projects] createProjectSwatch failed:", error);
+    console.error(`[Projects] createProjectSwatch failed projectId=${project.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1062,7 +1106,7 @@ export const updateProjectSwatch = async (req: Request, res: Response): Promise<
     const updated = await prisma.projectSwatch.update({ where: { id }, data });
     res.json(updated);
   } catch (error) {
-    console.error("[Projects] updateProjectSwatch failed:", error);
+    console.error(`[Projects] updateProjectSwatch failed swatchId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1073,7 +1117,7 @@ export const deleteProjectSwatch = async (req: Request, res: Response): Promise<
     await prisma.projectSwatch.delete({ where: { id } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] deleteProjectSwatch failed:", error);
+    console.error(`[Projects] deleteProjectSwatch failed swatchId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1132,7 +1176,7 @@ export const uploadProjectDocument = async (req: Request, res: Response): Promis
     res.status(201).json(document);
   } catch (error) {
     cleanup();
-    console.error("[Projects] uploadProjectDocument failed:", error);
+    console.error(`[Projects] uploadProjectDocument failed projectId=${project.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1151,7 +1195,7 @@ export const getProjectDocumentFile = async (req: Request, res: Response): Promi
   res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(document.originalFileName)}"`);
   res.sendFile(filePath, (error) => {
     if (error) {
-      console.error("[Projects] getProjectDocumentFile failed:", error);
+      console.error(`[Projects] getProjectDocumentFile failed documentId=${document.id}:`, error);
       if (!res.headersSent) res.status(404).json({ error: "File not found" });
     }
   });
@@ -1168,7 +1212,7 @@ export const deleteProjectDocument = async (req: Request, res: Response): Promis
     await prisma.projectDocument.delete({ where: { id } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] deleteProjectDocument failed:", error);
+    console.error(`[Projects] deleteProjectDocument failed documentId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1206,7 +1250,7 @@ export const listDocumentHighlights = async (req: Request, res: Response): Promi
     });
     res.json(highlights);
   } catch (error) {
-    console.error("[Projects] listDocumentHighlights failed:", error);
+    console.error(`[Projects] listDocumentHighlights failed documentId=${documentId} page=${pageNumber}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1240,7 +1284,7 @@ export const createDocumentHighlight = async (req: Request, res: Response): Prom
     });
     res.status(201).json(highlight);
   } catch (error) {
-    console.error("[Projects] createDocumentHighlight failed:", error);
+    console.error(`[Projects] createDocumentHighlight failed documentId=${documentId} page=${pageNumber}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1272,7 +1316,7 @@ export const deleteDocumentHighlight = async (req: Request, res: Response): Prom
     await prisma.projectDocumentHighlight.delete({ where: { id } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] deleteDocumentHighlight failed:", error);
+    console.error(`[Projects] deleteDocumentHighlight failed highlightId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1312,7 +1356,7 @@ export const listDocumentDrawings = async (req: Request, res: Response): Promise
     });
     res.json(drawings);
   } catch (error) {
-    console.error("[Projects] listDocumentDrawings failed:", error);
+    console.error(`[Projects] listDocumentDrawings failed documentId=${documentId} page=${pageNumber}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1338,7 +1382,7 @@ export const createDocumentDrawing = async (req: Request, res: Response): Promis
     });
     res.status(201).json(drawing);
   } catch (error) {
-    console.error("[Projects] createDocumentDrawing failed:", error);
+    console.error(`[Projects] createDocumentDrawing failed documentId=${documentId} page=${pageNumber}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1367,7 +1411,7 @@ export const deleteDocumentDrawing = async (req: Request, res: Response): Promis
     await prisma.projectDocumentDrawing.delete({ where: { id } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Projects] deleteDocumentDrawing failed:", error);
+    console.error(`[Projects] deleteDocumentDrawing failed drawingId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

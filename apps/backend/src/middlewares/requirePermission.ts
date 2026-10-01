@@ -20,12 +20,17 @@ export const requirePermission = (permission: Permission) =>
         where: { userId_permission: { userId, permission } },
       });
       if (!entry) {
+        // warn, не error — ожидаемый отказ (пользователь без фичи
+        // попытался её открыть), не баг. При тестовой группе это прямой
+        // ответ на "почему у меня не открывается" без воспроизведения
+        // вручную — userId + permission + путь запроса.
+        console.warn(`[requirePermission] denied userId=${userId} permission=${permission} path=${req.originalUrl}`);
         res.status(403).json({ error: "Forbidden" });
         return;
       }
       next();
     } catch (error) {
-      console.error("[requirePermission] Failed:", error);
+      console.error(`[requirePermission] failed userId=${userId} permission=${permission}:`, error);
       res.status(500).json({ error: "Internal server error" });
     }
   };
@@ -57,10 +62,11 @@ export const requirePermissionOrAdmin = (permission: Permission) =>
       if (user.role === UserRole.ADMIN || user.permissions.length > 0) {
         next();
       } else {
+        console.warn(`[requirePermissionOrAdmin] denied userId=${userId} permission=${permission} role=${user.role} path=${req.originalUrl}`);
         res.status(403).json({ error: "Forbidden" });
       }
     } catch (error) {
-      console.error("[requirePermissionOrAdmin] Failed:", error);
+      console.error(`[requirePermissionOrAdmin] failed userId=${userId} permission=${permission}:`, error);
       res.status(500).json({ error: "Internal server error" });
     }
   };

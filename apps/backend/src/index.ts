@@ -126,10 +126,22 @@ app.use(express.static(path.join(__dirname, "../public"), STATIC_CACHE_OPTIONS))
 // apps/backend/src/routes/admin.ts).
 app.use("/uploads", express.static(path.join(__dirname, "../uploads"), STATIC_CACHE_OPTIONS));
 
-// Глобальное логирование входящих запросов
+// Глобальное логирование запросов — одна строка НА ЗАВЕРШЕНИЕ (res.on
+// "finish"), не на вход: раньше логировался только факт "запрос пришёл",
+// без статуса/длительности, поэтому сопоставить конкретный запрос с его
+// результатом (упал ли он, с каким кодом) можно было только вручную по
+// таймстампу рядом с error-логами ниже по стеку. Нужно для тестовой
+// группы (PROJECTS_PLAN.md/STASH) — живой access-log в `pm2 logs`,
+// grep'аемый по uid/статусу без привязки к конкретному контроллеру.
 app.use((req, res, next) => {
+  const start = Date.now();
   const uid = req.user?.telegramId ?? "anon";
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} uid=${uid}`);
+  res.on("finish", () => {
+    const durationMs = Date.now() - start;
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} uid=${uid} status=${res.statusCode} durationMs=${durationMs}`
+    );
+  });
   next();
 });
 

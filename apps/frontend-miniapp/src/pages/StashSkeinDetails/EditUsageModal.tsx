@@ -89,7 +89,11 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
     setMatchesLoading(true);
     fetchStashMatches(skein.id)
       .then((res) => { setMatches(res.items); setIsMatchesLocked(res.isLocked); })
-      .catch(() => { setMatches([]); setIsMatchesLocked(false); })
+      .catch((err) => {
+        console.error('[EditUsageModal] fetchStashMatches failed:', err);
+        setMatches([]);
+        setIsMatchesLocked(false);
+      })
       .finally(() => setMatchesLoading(false));
   }, [isOpen, skein.id]);
 
@@ -104,7 +108,8 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
       try {
         const res = await fetchPatterns({ search: searchQuery.trim(), limit: 10 });
         setSearchResults(res.data);
-      } catch {
+      } catch (err) {
+        console.error('[EditUsageModal] pattern search failed:', err);
         setSearchResults([]);
       } finally {
         setIsSearching(false);
@@ -139,6 +144,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
         setPhotos((prev) => [...prev, url]);
       }
     } catch (err) {
+      console.error('[EditUsageModal] photo upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploadingPhoto(false);
@@ -167,6 +173,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
       });
       onSaved();
     } catch (err) {
+      console.error('[EditUsageModal] handleSubmit failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось сохранить изменения');
     } finally {
       setIsSubmitting(false);

@@ -122,7 +122,7 @@ export const listSkeins = async (req: Request, res: Response): Promise<void> => 
       totalSkeinCount,
     });
   } catch (error) {
-    console.error("[Stash] listSkeins failed:", error);
+    console.error(`[Stash] listSkeins failed userId=${userId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -254,9 +254,10 @@ export const createSkein = async (req: Request, res: Response): Promise<void> =>
       },
       select: SKEIN_SELECT,
     });
+    console.log(`[Stash] createSkein ok userId=${userId} skeinId=${skein.id} totalWeightG=${totalWeightG}`);
     res.status(201).json(skein);
   } catch (error) {
-    console.error("[Stash] createSkein failed:", error);
+    console.error(`[Stash] createSkein failed userId=${userId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -310,7 +311,7 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
 
     res.json({ ...skein, usages, pendingYarnFieldSuggestion: pendingSuggestion });
   } catch (error) {
-    console.error("[Stash] getSkein failed:", error);
+    console.error(`[Stash] getSkein failed skeinId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -318,6 +319,7 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
 /** PATCH /stash/skeins/:id — редактировать (цвет, партия, вес, фото, заметка). */
 export const updateSkein = async (req: Request, res: Response): Promise<void> => {
   const id = req.skein!.id;
+  const userId = req.user!.userId;
   const body = req.body ?? {};
 
   const data: Prisma.StashSkeinUpdateInput = {};
@@ -356,9 +358,15 @@ export const updateSkein = async (req: Request, res: Response): Promise<void> =>
       data,
       select: SKEIN_SELECT,
     });
+    // totalWeightG отдельно — меняет инвариант currentWeightG =
+    // totalWeightG - Σusages, самая вероятная причина будущего "остаток не
+    // сходится" при разборе жалобы тестовой группы.
+    if ("totalWeightG" in data) {
+      console.log(`[Stash] updateSkein totalWeightG changed userId=${userId} skeinId=${id} newTotalWeightG=${data.totalWeightG}`);
+    }
     res.json(updated);
   } catch (error) {
-    console.error("[Stash] updateSkein failed:", error);
+    console.error(`[Stash] updateSkein failed userId=${userId} skeinId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -366,6 +374,7 @@ export const updateSkein = async (req: Request, res: Response): Promise<void> =>
 /** DELETE /stash/skeins/:id — удалить свою запись. */
 export const deleteSkein = async (req: Request, res: Response): Promise<void> => {
   const id = req.skein!.id;
+  const userId = req.user!.userId;
   try {
     // stashSkeinId у YarnFieldSuggestion — не настоящая Prisma-связь (нет FK,
     // намеренно: "заявка переживает удаление скейна", см. комментарий у
@@ -382,9 +391,10 @@ export const deleteSkein = async (req: Request, res: Response): Promise<void> =>
       // onDelete: Cascade на StashSwatch/StashUsage.skein — удаляет их вместе.
       prisma.stashSkein.delete({ where: { id } }),
     ]);
+    console.log(`[Stash] deleteSkein ok userId=${userId} skeinId=${id}`);
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Stash] deleteSkein failed:", error);
+    console.error(`[Stash] deleteSkein failed userId=${userId} skeinId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -427,7 +437,7 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
     });
     res.status(201).json(swatch);
   } catch (error) {
-    console.error("[Stash] createSwatch failed:", error);
+    console.error(`[Stash] createSwatch failed skeinId=${skeinId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -472,7 +482,7 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
     const updated = await prisma.stashSwatch.update({ where: { id }, data });
     res.json(updated);
   } catch (error) {
-    console.error("[Stash] updateSwatch failed:", error);
+    console.error(`[Stash] updateSwatch failed swatchId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -484,7 +494,7 @@ export const deleteSwatch = async (req: Request, res: Response): Promise<void> =
     await prisma.stashSwatch.delete({ where: { id } });
     res.json({ ok: true });
   } catch (error) {
-    console.error("[Stash] deleteSwatch failed:", error);
+    console.error(`[Stash] deleteSwatch failed swatchId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -541,6 +551,7 @@ export const logUsage = async (req: Request, res: Response): Promise<void> => {
     }
   }
 
+  const logStart = Date.now();
   try {
     let patternSnapshot: { title: string; authorName: string } | null = null;
     if (patternId) {
@@ -595,16 +606,28 @@ export const logUsage = async (req: Request, res: Response): Promise<void> => {
       });
     });
 
+    // Аудит успешного списания — не debug-шум, это единственный след в
+    // логах того, что реально произошло с весом конкретного мотка; при
+    // жалобе тестовой группы "остаток не совпадает" это первое, что грепать.
+    console.log(
+      `[Stash] logUsage ok userId=${userId} skeinId=${skeinId} usageId=${usage.id} amountG=${amountG} durationMs=${Date.now() - logStart}`
+    );
     res.status(201).json(usage);
   } catch (error) {
     if (error instanceof InsufficientStashError) {
+      // warn, не error — штатный исход (пользователь запросил больше, чем
+      // осталось), не баг; частота таких отказов сама по себе диагностична
+      // при тестировании (массовые — возможно рассинхрон currentWeightG).
+      console.warn(
+        `[Stash] logUsage insufficient userId=${userId} skeinId=${skeinId} requestedG=${amountG} currentWeightG=${error.currentWeightG}`
+      );
       res.status(400).json({
         error: `Недостаточно пряжи: осталось ${error.currentWeightG} г`,
         currentWeightG: error.currentWeightG,
       });
       return;
     }
-    console.error("[Stash] logUsage failed:", error);
+    console.error(`[Stash] logUsage failed userId=${userId} skeinId=${skeinId} amountG=${amountG}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -676,7 +699,7 @@ export const updateUsage = async (req: Request, res: Response): Promise<void> =>
     const updated = await prisma.stashUsage.update({ where: { id: usage.id }, data });
     res.json(updated);
   } catch (error) {
-    console.error("[Stash] updateUsage failed:", error);
+    console.error(`[Stash] updateUsage failed usageId=${usage.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -698,6 +721,7 @@ export const undoUsage = async (req: Request, res: Response): Promise<void> => {
   const usage = req.usage!;
   const skeinId = usage.skeinId;
   const amountG = usage.amountG;
+  const userId = req.user!.userId;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -711,6 +735,7 @@ export const undoUsage = async (req: Request, res: Response): Promise<void> => {
       }
       await tx.stashUsage.delete({ where: { id: usage.id } });
     });
+    console.log(`[Stash] undoUsage ok userId=${userId} skeinId=${skeinId} usageId=${usage.id} amountG=${amountG}`);
     res.json({ ok: true });
   } catch (error) {
     if (error instanceof UndoWouldExceedTotalError) {
@@ -718,10 +743,11 @@ export const undoUsage = async (req: Request, res: Response): Promise<void> => {
       // повторная отмена той же usage, а deleteMany выше уже убрал бы
       // строку) — но встречный guard остаётся на случай гонки двух
       // параллельных запросов на отмену одного usageId.
+      console.warn(`[Stash] undoUsage wouldExceedTotal userId=${userId} skeinId=${skeinId} usageId=${usage.id} amountG=${amountG}`);
       res.status(409).json({ error: "Эта отмена уже была применена" });
       return;
     }
-    console.error("[Stash] undoUsage failed:", error);
+    console.error(`[Stash] undoUsage failed userId=${userId} skeinId=${skeinId} usageId=${usage.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -985,7 +1011,7 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
 
     res.json({ items, isLocked, hasMore });
   } catch (error) {
-    console.error("[Stash] getMatches failed:", error);
+    console.error(`[Stash] getMatches failed userId=${userId} skeinId=${skein.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1147,7 +1173,7 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     // Ravelry недоступен/ошибся — не роняем автокомплит, пользователь
     // просто не получит фолбэк-данные в этот раз.
-    console.error("[Stash] Ravelry fallback failed:", error);
+    console.error(`[Stash] Ravelry fallback failed q=${q} page=${page}:`, error);
   }
 
   res.json({ items: itemsWithSource, hasMoreFromRavelry });
@@ -1176,7 +1202,7 @@ export const importRavelryYarnHandler = async (req: Request, res: Response): Pro
     }
     res.status(201).json(yarn);
   } catch (error) {
-    console.error("[Stash] importRavelryYarn failed:", error);
+    console.error(`[Stash] importRavelryYarn failed ravelryId=${ravelryId}:`, error);
     res.status(502).json({ error: "Не удалось импортировать пряжу из Ravelry" });
   }
 };
@@ -1281,7 +1307,7 @@ export const suggestYarnFields = async (req: Request, res: Response): Promise<vo
     ]);
     res.status(201).json(suggestion);
   } catch (error) {
-    console.error("[Stash] suggestYarnFields failed:", error);
+    console.error(`[Stash] suggestYarnFields failed userId=${userId} skeinId=${skein.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

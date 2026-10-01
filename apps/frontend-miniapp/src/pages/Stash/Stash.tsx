@@ -60,7 +60,8 @@ export const Stash: React.FC = () => {
       setTotalSkeinCount(data.totalSkeinCount);
       setPage(data.page);
       setError(null);
-    } catch (e) {
+    } catch (err) {
+      console.error('[Stash] loadPage failed:', err);
       setError('Не удалось загрузить хранилище пряжи. Попробуйте ещё раз.');
     } finally {
       setLoading(false);
@@ -98,7 +99,8 @@ export const Stash: React.FC = () => {
       setTotalSkeinCount((prev) => Math.max(0, prev - 1));
       setDeleteTarget(null);
       setOpenSwipeId(null);
-    } catch {
+    } catch (err) {
+      console.error('[Stash] handleConfirmDelete failed:', err);
       setError('Не удалось удалить пряжу. Попробуйте ещё раз.');
     } finally {
       setIsDeleting(false);

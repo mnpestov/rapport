@@ -60,6 +60,7 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
       const url = await uploadStashImage(file);
       setImages((prev) => [...prev, url]);
     } catch (err) {
+      console.error('[ProjectSwatchModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -87,6 +88,7 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
         : await createProjectSwatch(projectId, payload);
       onSaved(saved);
     } catch (err) {
+      console.error('[ProjectSwatchModal] handleSave failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось сохранить образец');
     } finally {
       setIsSubmitting(false);

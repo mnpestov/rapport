@@ -52,6 +52,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
       const url = await uploadStashImage(file);
       setImages((prev) => [...prev, url]);
     } catch (err) {
+      console.error('[AddSwatchModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -77,6 +78,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
 
       onCreated();
     } catch (err) {
+      console.error('[AddSwatchModal] handleSave failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось добавить образец');
     } finally {
       setIsSubmitting(false);

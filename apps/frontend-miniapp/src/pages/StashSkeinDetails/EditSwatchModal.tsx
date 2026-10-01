@@ -57,6 +57,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
       const url = await uploadStashImage(file);
       setImages((prev) => [...prev, url]);
     } catch (err) {
+      console.error('[EditSwatchModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
     } finally {
       setIsUploading(false);
@@ -81,6 +82,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
       });
       onSaved();
     } catch (err) {
+      console.error('[EditSwatchModal] handleSave failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось сохранить изменения');
     } finally {
       setIsSubmitting(false);

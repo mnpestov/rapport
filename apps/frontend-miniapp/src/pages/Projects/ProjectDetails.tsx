@@ -122,7 +122,8 @@ export const ProjectDetails: React.FC = () => {
     try {
       const data = await fetchProjectById(id);
       setProject(data);
-    } catch {
+    } catch (err) {
+      console.error('[ProjectDetails] load failed:', err);
       setError('Не удалось загрузить проект.');
     } finally {
       setLoading(false);
@@ -152,10 +153,13 @@ export const ProjectDetails: React.FC = () => {
     const timer = setTimeout(() => {
       updateProject(project.id, { note: noteText.trim() === '' ? null : noteText })
         .then((updated) => setProject(updated))
-        .catch(() => {
-          // Молча — следующая правка текста или уход со страницы и
-          // возврат обратно синхронизирует noteText из актуального
-          // project.note; настойчивый ретрай здесь избыточен для заметок.
+        .catch((err) => {
+          // Пользователю молча — следующая правка текста или уход со
+          // страницы и возврат обратно синхронизирует noteText из
+          // актуального project.note; настойчивый ретрай здесь избыточен
+          // для заметок. Лог оставляем — при повторяющихся сбоях PATCH
+          // нужно это видеть, не дожидаясь жалобы "заметка не сохранилась".
+          console.error('[ProjectDetails] note autosave failed:', err);
         });
     }, 800);
     return () => clearTimeout(timer);
@@ -175,7 +179,10 @@ export const ProjectDetails: React.FC = () => {
     const timer = setTimeout(() => {
       fetchStashSkeins({ search: yarnQuery.trim() || undefined })
         .then((res) => setYarnResults(res.items))
-        .catch(() => setYarnResults([]))
+        .catch((err) => {
+          console.error('[ProjectDetails] yarn search failed:', err);
+          setYarnResults([]);
+        })
         .finally(() => setIsSearchingYarn(false));
     }, 300);
     return () => clearTimeout(timer);
@@ -212,7 +219,8 @@ export const ProjectDetails: React.FC = () => {
     try {
       const updated = await updateProject(project.id, { status });
       setProject(updated);
-    } catch {
+    } catch (err) {
+      console.error('[ProjectDetails] handlePickStatus failed:', err);
       setError('Не удалось изменить статус проекта.');
     }
   };
@@ -225,7 +233,8 @@ export const ProjectDetails: React.FC = () => {
     try {
       await addProjectYarn(project.id, skein.id);
       await load();
-    } catch {
+    } catch (err) {
+      console.error('[ProjectDetails] handlePickYarn failed:', err);
       setError('Не удалось привязать пряжу.');
     }
   };
@@ -242,7 +251,8 @@ export const ProjectDetails: React.FC = () => {
     try {
       await removeProjectYarn(project.id, skeinId);
       await load();
-    } catch {
+    } catch (err) {
+      console.error('[ProjectDetails] handleRemoveYarn failed:', err);
       setError('Не удалось отвязать пряжу.');
     }
   };
@@ -255,7 +265,8 @@ export const ProjectDetails: React.FC = () => {
       setProject((prev) => prev && { ...prev, swatches: prev.swatches.filter((s) => s.id !== deleteSwatchTarget.id) });
       setDeleteSwatchTarget(null);
       setOpenSwipeSwatchId(null);
-    } catch {
+    } catch (err) {
+      console.error('[ProjectDetails] handleConfirmDeleteSwatch failed:', err);
       setError('Не удалось удалить образец.');
     } finally {
       setIsDeletingSwatch(false);
@@ -268,7 +279,8 @@ export const ProjectDetails: React.FC = () => {
     try {
       await deleteProject(project.id, returnYarnToStash);
       navigate('/projects');
-    } catch {
+    } catch (err) {
+      console.error('[ProjectDetails] handleConfirmDeleteProject failed:', err);
       setError('Не удалось удалить проект.');
       setIsDeletingProject(false);
     }
