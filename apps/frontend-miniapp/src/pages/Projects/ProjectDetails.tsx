@@ -393,7 +393,7 @@ export const ProjectDetails: React.FC = () => {
                 )}
               </div>
               <div className="stash-usage-body add-project-yarn-card-body">
-                <p className="add-project-yarn-card-title">#{firstPattern.patternTitleSnapshot}</p>
+                <p className="add-project-yarn-card-title">{firstPattern.patternTitleSnapshot}</p>
                 <p className="pd-label-row"><b>Автор:</b> {firstPattern.patternAuthorSnapshot}</p>
                 {firstPattern.pattern && firstPattern.pattern.instruments.length > 0 && (
                   <p className="pd-label-row"><b>Инструмент:</b> {firstPattern.pattern.instruments.map((i) => i.name).join(', ')}</p>
