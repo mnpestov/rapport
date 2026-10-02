@@ -31,7 +31,9 @@ interface EditSkeinModalProps {
 interface SwatchEntry {
   key: string;
   id: string | null;
+  instrumentType: 'hook' | 'needle' | null;
   needleSizeRaw: string;
+  strandsCount: string;
   stitchesBefore: string;
   rowsBefore: string;
   stitchesAfter: string;
@@ -44,7 +46,9 @@ function swatchToEntry(s: StashSwatch): SwatchEntry {
   return {
     key: s.id,
     id: s.id,
+    instrumentType: s.instrumentType ?? null,
     needleSizeRaw: s.needleSizeRaw || '',
+    strandsCount: s.strandsCount != null ? String(s.strandsCount) : '',
     stitchesBefore: s.densityStitchesBefore || '',
     rowsBefore: s.densityRowsBefore || '',
     stitchesAfter: s.densityStitchesAfter || '',
@@ -58,7 +62,9 @@ function createEmptySwatchEntry(): SwatchEntry {
   return {
     key: `${Date.now()}-${Math.random()}`,
     id: null,
+    instrumentType: null,
     needleSizeRaw: '',
+    strandsCount: '',
     stitchesBefore: '',
     rowsBefore: '',
     stitchesAfter: '',
@@ -245,6 +251,8 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
           const payload = {
             images: swatch.images,
             needleSizeRaw: swatch.needleSizeRaw.trim() || undefined,
+            instrumentType: swatch.instrumentType ?? undefined,
+            strandsCount: swatch.strandsCount ? Number(swatch.strandsCount) : undefined,
             densityStitchesBefore: swatch.stitchesBefore ? Number(swatch.stitchesBefore) : undefined,
             densityRowsBefore: swatch.rowsBefore ? Number(swatch.rowsBefore) : undefined,
             densityStitchesAfter: swatch.stitchesAfter ? Number(swatch.stitchesAfter) : undefined,
@@ -254,7 +262,8 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             await updateStashSwatch(swatch.id, payload);
           } else {
             const hasData =
-              swatch.needleSizeRaw.trim() || swatch.stitchesBefore || swatch.rowsBefore ||
+              swatch.instrumentType || swatch.needleSizeRaw.trim() || swatch.strandsCount ||
+              swatch.stitchesBefore || swatch.rowsBefore ||
               swatch.stitchesAfter || swatch.rowsAfter || swatch.images.length > 0;
             if (!hasData) continue;
             await createStashSwatch(skein.id, payload);
@@ -399,12 +408,46 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                 {!swatch.markedForDeletion && (
                   <>
                     <div className="add-yarn-field">
-                      <label className="add-yarn-label">Размер инструмента</label>
+                      <label className="add-yarn-label">Инструмент</label>
+                      <div className="add-yarn-instrument-type-row">
+                        <button
+                          type="button"
+                          className={`add-yarn-instrument-chip${swatch.instrumentType === 'needle' ? ' add-yarn-instrument-chip--active' : ''}`}
+                          onClick={() => updateSwatchEntry(swatch.key, { instrumentType: swatch.instrumentType === 'needle' ? null : 'needle' })}
+                        >
+                          Спицы
+                        </button>
+                        <button
+                          type="button"
+                          className={`add-yarn-instrument-chip${swatch.instrumentType === 'hook' ? ' add-yarn-instrument-chip--active' : ''}`}
+                          onClick={() => updateSwatchEntry(swatch.key, { instrumentType: swatch.instrumentType === 'hook' ? null : 'hook' })}
+                        >
+                          Крючок
+                        </button>
+                      </div>
+                    </div>
+
+                    {swatch.instrumentType && (
+                      <div className="add-yarn-field">
+                        <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+                        <input
+                          className="add-yarn-input"
+                          value={swatch.needleSizeRaw}
+                          placeholder="Например: 3.5"
+                          inputMode="decimal"
+                          onChange={(e) => updateSwatchEntry(swatch.key, { needleSizeRaw: e.target.value })}
+                        />
+                      </div>
+                    )}
+
+                    <div className="add-yarn-field">
+                      <label className="add-yarn-label">Количество нитей</label>
                       <input
                         className="add-yarn-input"
-                        value={swatch.needleSizeRaw}
-                        placeholder="Введите текст..."
-                        onChange={(e) => updateSwatchEntry(swatch.key, { needleSizeRaw: e.target.value })}
+                        value={swatch.strandsCount}
+                        placeholder="Введите число..."
+                        inputMode="numeric"
+                        onChange={(e) => updateSwatchEntry(swatch.key, { strandsCount: e.target.value })}
                       />
                     </div>
 

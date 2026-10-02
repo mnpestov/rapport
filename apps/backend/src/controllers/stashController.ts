@@ -453,6 +453,7 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
         skeinId,
         images,
         needleSizeRaw: body.needleSizeRaw ? String(body.needleSizeRaw) : null,
+        instrumentType: body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null,
         strandsCount: toInt(body.strandsCount),
         densityStitchesBefore: toDecimal(body.densityStitchesBefore),
         densityRowsBefore: toDecimal(body.densityRowsBefore),
@@ -492,6 +493,7 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
     data.images = images;
   }
   if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
+  if ("instrumentType" in body) data.instrumentType = body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null;
   const sc = toInt(body.strandsCount);
   if (sc !== undefined) data.strandsCount = sc;
   const dsb = toDecimal(body.densityStitchesBefore);

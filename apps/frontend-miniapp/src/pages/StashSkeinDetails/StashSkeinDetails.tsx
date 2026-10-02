@@ -366,7 +366,19 @@ export const StashSkeinDetails: React.FC = () => {
               )}
             </div>
             <div className="stash-swatch-body">
-              {swatch.needleSizeRaw && <p className="stash-details-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
+              {swatch.needleSizeRaw && (
+                <p className="stash-details-row">
+                  <b>
+                    {swatch.instrumentType === 'hook' ? 'Крючок:' : swatch.instrumentType === 'needle' ? 'Спицы:' : 'Инструмент:'}
+                  </b>
+                  {' '}{swatch.needleSizeRaw}
+                </p>
+              )}
+              {!swatch.needleSizeRaw && swatch.instrumentType && (
+                <p className="stash-details-row">
+                  <b>{swatch.instrumentType === 'hook' ? 'Крючок' : 'Спицы'}</b>
+                </p>
+              )}
               {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
               {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
                 <p className="stash-details-row">

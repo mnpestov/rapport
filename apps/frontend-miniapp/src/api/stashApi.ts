@@ -23,6 +23,8 @@ export interface StashSwatch {
   skeinId: string;
   images: string[];
   needleSizeRaw: string | null;
+  // 'hook' = крючок, 'needle' = спицы, null = не указан.
+  instrumentType: 'hook' | 'needle' | null;
   strandsCount: number | null;
   densityStitchesBefore: string | null;
   densityRowsBefore: string | null;
@@ -326,6 +328,7 @@ export const deleteStashSkein = async (id: string): Promise<void> => {
 export interface CreateStashSwatchPayload {
   images?: string[];
   needleSizeRaw?: string;
+  instrumentType?: 'hook' | 'needle';
   strandsCount?: number;
   densityStitchesBefore?: number;
   densityRowsBefore?: number;

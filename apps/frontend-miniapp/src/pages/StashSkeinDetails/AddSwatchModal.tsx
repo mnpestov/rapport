@@ -6,6 +6,8 @@ import '../Stash/AddYarnModal.css';
 
 const MAX_IMAGES = 5;
 
+type InstrumentType = 'hook' | 'needle' | null;
+
 interface AddSwatchModalProps {
   isOpen: boolean;
   skeinId: string;
@@ -16,6 +18,7 @@ interface AddSwatchModalProps {
 export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId, onClose, onCreated }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
 
+  const [instrumentType, setInstrumentType] = useState<InstrumentType>(null);
   const [needleSizeRaw, setNeedleSizeRaw] = useState('');
   const [strandsCount, setStrandsCount] = useState('');
   const [stitchesBefore, setStitchesBefore] = useState('');
@@ -31,6 +34,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
 
   useEffect(() => {
     if (!isOpen) return;
+    setInstrumentType(null);
     setNeedleSizeRaw('');
     setStrandsCount('');
     setStitchesBefore('');
@@ -74,6 +78,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
       await createStashSwatch(skeinId, {
         images,
         needleSizeRaw: needleSizeRaw.trim() || undefined,
+        instrumentType: instrumentType ?? undefined,
         strandsCount: strandsCount ? Number(strandsCount) : undefined,
         densityStitchesBefore: stitchesBefore ? Number(stitchesBefore) : undefined,
         densityRowsBefore: rowsBefore ? Number(rowsBefore) : undefined,
@@ -99,9 +104,37 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
 
         <div className="add-yarn-body">
           <div className="add-yarn-field">
-            <label className="add-yarn-label">Размер инструмента</label>
-            <input className="add-yarn-input" value={needleSizeRaw} placeholder="Введите текст..." onChange={(e) => setNeedleSizeRaw(e.target.value)} />
+            <label className="add-yarn-label">Инструмент</label>
+            <div className="add-yarn-instrument-type-row">
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'needle' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => setInstrumentType(instrumentType === 'needle' ? null : 'needle')}
+              >
+                Спицы
+              </button>
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'hook' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => setInstrumentType(instrumentType === 'hook' ? null : 'hook')}
+              >
+                Крючок
+              </button>
+            </div>
           </div>
+
+          {instrumentType && (
+            <div className="add-yarn-field">
+              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+              <input
+                className="add-yarn-input"
+                value={needleSizeRaw}
+                placeholder="Например: 3.5"
+                inputMode="decimal"
+                onChange={(e) => setNeedleSizeRaw(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="add-yarn-field">
             <label className="add-yarn-label">Количество нитей</label>
