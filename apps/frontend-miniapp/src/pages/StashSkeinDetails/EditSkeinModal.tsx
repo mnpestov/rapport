@@ -294,7 +294,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             <p className="add-yarn-section-title">Пряжа</p>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Название</label>
+              <label className="add-yarn-label">Артикул</label>
               <input className="add-yarn-input" value={skein.yarnNameSnapshot} disabled />
             </div>
 

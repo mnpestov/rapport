@@ -461,7 +461,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             <p className="add-yarn-section-title">Пряжа</p>
 
             <div className="add-yarn-field add-yarn-field--autocomplete" ref={autocompleteFieldRef}>
-              <label className="add-yarn-label">Название *</label>
+              <label className="add-yarn-label">Артикул *</label>
               <div className="add-yarn-input-wrap">
                 <input
                   ref={nameInputRef}
