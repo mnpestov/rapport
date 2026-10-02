@@ -30,6 +30,7 @@ export interface StashSwatch {
   densityRowsBefore: string | null;
   densityStitchesAfter: string | null;
   densityRowsAfter: string | null;
+  note: string | null;
   createdAt: string;
 }
 
@@ -334,6 +335,7 @@ export interface CreateStashSwatchPayload {
   densityRowsBefore?: number;
   densityStitchesAfter?: number;
   densityRowsAfter?: number;
+  note?: string;
 }
 
 export const createStashSwatch = async (skeinId: string, payload: CreateStashSwatchPayload): Promise<StashSwatch> => {

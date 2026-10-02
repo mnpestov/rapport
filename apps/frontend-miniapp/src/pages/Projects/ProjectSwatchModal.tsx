@@ -8,6 +8,8 @@ import '../Stash/AddYarnModal.css';
 
 const MAX_IMAGES = 5;
 
+type InstrumentType = 'hook' | 'needle' | null;
+
 interface ProjectSwatchModalProps {
   isOpen: boolean;
   projectId: string;
@@ -23,12 +25,14 @@ interface ProjectSwatchModalProps {
 export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, projectId, swatch, onClose, onSaved }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
 
+  const [instrumentType, setInstrumentType] = useState<InstrumentType>(null);
   const [needleSizeRaw, setNeedleSizeRaw] = useState('');
   const [strandsCount, setStrandsCount] = useState('');
   const [stitchesBefore, setStitchesBefore] = useState('');
   const [rowsBefore, setRowsBefore] = useState('');
   const [stitchesAfter, setStitchesAfter] = useState('');
   const [rowsAfter, setRowsAfter] = useState('');
+  const [note, setNote] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,12 +43,14 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
 
   useEffect(() => {
     if (!isOpen) return;
+    setInstrumentType(swatch?.instrumentType ?? null);
     setNeedleSizeRaw(swatch?.needleSizeRaw || '');
     setStrandsCount(swatch?.strandsCount != null ? String(swatch.strandsCount) : '');
     setStitchesBefore(swatch?.densityStitchesBefore || '');
     setRowsBefore(swatch?.densityRowsBefore || '');
     setStitchesAfter(swatch?.densityStitchesAfter || '');
     setRowsAfter(swatch?.densityRowsAfter || '');
+    setNote(swatch?.note || '');
     setImages((swatch?.images ?? []).map((url) => (url.startsWith(API_URL) ? url.slice(API_URL.length) : url)));
     setError(null);
   }, [isOpen, swatch]);
@@ -82,11 +88,13 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
       const payload = {
         images,
         needleSizeRaw: needleSizeRaw.trim() || undefined,
+        instrumentType: instrumentType ?? undefined,
         strandsCount: strandsCount ? Number(strandsCount) : undefined,
         densityStitchesBefore: stitchesBefore ? Number(stitchesBefore) : undefined,
         densityRowsBefore: rowsBefore ? Number(rowsBefore) : undefined,
         densityStitchesAfter: stitchesAfter ? Number(stitchesAfter) : undefined,
         densityRowsAfter: rowsAfter ? Number(rowsAfter) : undefined,
+        note: note.trim() || undefined,
       };
       const saved = isEditing
         ? await updateProjectSwatch(swatch!.id, payload)
@@ -109,9 +117,41 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
 
         <div className="add-yarn-body">
           <div className="add-yarn-field">
-            <label className="add-yarn-label">Размер спицы</label>
-            <input className="add-yarn-input" value={needleSizeRaw} placeholder="Введите текст..." onChange={(e) => setNeedleSizeRaw(e.target.value)} />
+            <label className="add-yarn-label">Инструмент</label>
+            <div className="add-yarn-instrument-type-row">
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'needle' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => setInstrumentType(instrumentType === 'needle' ? null : 'needle')}
+              >
+                Спицы
+              </button>
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'hook' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => setInstrumentType(instrumentType === 'hook' ? null : 'hook')}
+              >
+                Крючок
+              </button>
+            </div>
           </div>
+
+          {/* instrumentType || needleSizeRaw — образцы, созданные до
+              появления выбора инструмента, могут уже хранить непустой
+              needleSizeRaw при instrumentType=null; гейтинг только на
+              instrumentType скрыл бы это старое значение от редактирования. */}
+          {(instrumentType || needleSizeRaw.trim()) && (
+            <div className="add-yarn-field">
+              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
+              <input
+                className="add-yarn-input"
+                value={needleSizeRaw}
+                placeholder="Например: 3.5"
+                inputMode="decimal"
+                onChange={(e) => setNeedleSizeRaw(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="add-yarn-field">
             <label className="add-yarn-label">Количество нитей</label>
@@ -146,6 +186,16 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
                 <span className="add-yarn-density-sublabel">Ряды</span>
               </div>
             </div>
+          </div>
+
+          <div className="add-yarn-field">
+            <label className="add-yarn-label">Заметка</label>
+            <textarea
+              className="add-yarn-textarea"
+              value={note}
+              placeholder="Любые наблюдения об образце..."
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
           <div className="add-yarn-section">

@@ -988,9 +988,9 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                       </button>
                     </div>
                   </div>
-                  {swatch.instrumentType && (
+                  {(swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
                     <div className="add-project-field">
-                      <label className="add-project-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+                      <label className="add-project-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
                       <input
                         className="add-project-input"
                         value={swatch.needleSizeRaw}

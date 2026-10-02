@@ -390,6 +390,7 @@ export const StashSkeinDetails: React.FC = () => {
                   <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
                 </p>
               )}
+              {swatch.note && <p className="stash-details-row stash-swatch-note">{swatch.note}</p>}
             </div>
           </SwipeToDelete>
         ))}

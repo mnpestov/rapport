@@ -38,6 +38,7 @@ interface SwatchEntry {
   rowsBefore: string;
   stitchesAfter: string;
   rowsAfter: string;
+  note: string;
   images: string[];
   markedForDeletion: boolean;
 }
@@ -53,6 +54,7 @@ function swatchToEntry(s: StashSwatch): SwatchEntry {
     rowsBefore: s.densityRowsBefore || '',
     stitchesAfter: s.densityStitchesAfter || '',
     rowsAfter: s.densityRowsAfter || '',
+    note: s.note || '',
     images: s.images.map((url) => (url.startsWith(API_URL) ? url.slice(API_URL.length) : url)),
     markedForDeletion: false,
   };
@@ -69,6 +71,7 @@ function createEmptySwatchEntry(): SwatchEntry {
     rowsBefore: '',
     stitchesAfter: '',
     rowsAfter: '',
+    note: '',
     images: [],
     markedForDeletion: false,
   };
@@ -257,6 +260,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             densityRowsBefore: swatch.rowsBefore ? Number(swatch.rowsBefore) : undefined,
             densityStitchesAfter: swatch.stitchesAfter ? Number(swatch.stitchesAfter) : undefined,
             densityRowsAfter: swatch.rowsAfter ? Number(swatch.rowsAfter) : undefined,
+            note: swatch.note.trim() || undefined,
           };
           if (swatch.id) {
             await updateStashSwatch(swatch.id, payload);
@@ -264,7 +268,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             const hasData =
               swatch.instrumentType || swatch.needleSizeRaw.trim() || swatch.strandsCount ||
               swatch.stitchesBefore || swatch.rowsBefore ||
-              swatch.stitchesAfter || swatch.rowsAfter || swatch.images.length > 0;
+              swatch.stitchesAfter || swatch.rowsAfter || swatch.note.trim() || swatch.images.length > 0;
             if (!hasData) continue;
             await createStashSwatch(skein.id, payload);
           }
@@ -427,9 +431,14 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                       </div>
                     </div>
 
-                    {swatch.instrumentType && (
+                    {/* instrumentType || needleSizeRaw — образцы, созданные
+                        до появления выбора инструмента, могут уже хранить
+                        непустой needleSizeRaw при instrumentType=null;
+                        гейтинг только на instrumentType скрыл бы это
+                        старое значение от редактирования. */}
+                    {(swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
                       <div className="add-yarn-field">
-                        <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+                        <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
                         <input
                           className="add-yarn-input"
                           value={swatch.needleSizeRaw}
@@ -479,6 +488,16 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                           <span className="add-yarn-density-sublabel">Ряды</span>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="add-yarn-field">
+                      <label className="add-yarn-label">Заметка</label>
+                      <textarea
+                        className="add-yarn-textarea"
+                        value={swatch.note}
+                        placeholder="Любые наблюдения об образце..."
+                        onChange={(e) => updateSwatchEntry(swatch.key, { note: e.target.value })}
+                      />
                     </div>
 
                     <div className="add-yarn-field">

@@ -63,11 +63,15 @@ export interface ProjectSwatch {
   projectId: string;
   images: string[];
   needleSizeRaw: string | null;
+  // 'hook' = крючок, 'needle' = спицы, null = не указан (симметрично
+  // StashSwatch.instrumentType).
+  instrumentType: 'hook' | 'needle' | null;
   strandsCount: number | null;
   densityStitchesBefore: string | null;
   densityRowsBefore: string | null;
   densityStitchesAfter: string | null;
   densityRowsAfter: string | null;
+  note: string | null;
   createdAt: string;
 }
 
@@ -210,11 +214,13 @@ export interface CreateProjectPayload {
   swatches?: {
     images?: string[];
     needleSizeRaw?: string;
+    instrumentType?: 'hook' | 'needle';
     strandsCount?: number;
     densityStitchesBefore?: number;
     densityRowsBefore?: number;
     densityStitchesAfter?: number;
     densityRowsAfter?: number;
+    note?: string;
   }[];
 }
 
@@ -350,11 +356,13 @@ export const removeProjectInstrument = async (projectId: string, instrumentId: s
 export interface CreateProjectSwatchPayload {
   images?: string[];
   needleSizeRaw?: string;
+  instrumentType?: 'hook' | 'needle';
   strandsCount?: number;
   densityStitchesBefore?: number;
   densityRowsBefore?: number;
   densityStitchesAfter?: number;
   densityRowsAfter?: number;
+  note?: string;
 }
 
 export const createProjectSwatch = async (projectId: string, payload: CreateProjectSwatchPayload): Promise<ProjectSwatch> => {

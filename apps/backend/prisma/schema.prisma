@@ -1433,6 +1433,9 @@ model StashSwatch {
   // Плотность ПОСЛЕ ВТО.
   densityStitchesAfter  Decimal? @db.Decimal(5, 2)
   densityRowsAfter      Decimal? @db.Decimal(5, 2)
+  // Свободный текст — наблюдения вязальщицы об образце (не привязан ни к
+  // одному числовому полю), тот же принцип, что Project.note/StashSkein.note.
+  note                  String?
 
   createdAt DateTime @default(now())
 
@@ -1692,11 +1695,17 @@ model ProjectSwatch {
 
   images                String[] @default([])
   needleSizeRaw         String?
+  // Тип инструмента: 'hook' (крючок) или 'needle' (спицы) — тот же формат,
+  // что StashSwatch.instrumentType (образцы хранилища и проекта независимы,
+  // но поле специально называется одинаково для единообразия API/фронта).
+  instrumentType        String?
   strandsCount          Int?
   densityStitchesBefore Decimal? @db.Decimal(5, 2)
   densityRowsBefore     Decimal? @db.Decimal(5, 2)
   densityStitchesAfter  Decimal? @db.Decimal(5, 2)
   densityRowsAfter      Decimal? @db.Decimal(5, 2)
+  // Свободный текст — тот же принцип, что StashSwatch.note.
+  note                  String?
 
   createdAt DateTime @default(now())
 

@@ -294,11 +294,13 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
   interface SwatchInput {
     images?: unknown;
     needleSizeRaw?: unknown;
+    instrumentType?: unknown;
     strandsCount?: unknown;
     densityStitchesBefore?: unknown;
     densityRowsBefore?: unknown;
     densityStitchesAfter?: unknown;
     densityRowsAfter?: unknown;
+    note?: unknown;
   }
   const swatchesInput: SwatchInput[] = Array.isArray(body.swatches) ? body.swatches : [];
 
@@ -378,11 +380,13 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
                 create: swatchesInput.map((s) => ({
                   images: Array.isArray(s.images) ? s.images.map(String) : [],
                   needleSizeRaw: s.needleSizeRaw ? String(s.needleSizeRaw) : null,
+                  instrumentType: s.instrumentType === 'hook' || s.instrumentType === 'needle' ? s.instrumentType : null,
                   strandsCount: toInt(s.strandsCount),
                   densityStitchesBefore: toDecimal(s.densityStitchesBefore),
                   densityRowsBefore: toDecimal(s.densityRowsBefore),
                   densityStitchesAfter: toDecimal(s.densityStitchesAfter),
                   densityRowsAfter: toDecimal(s.densityRowsAfter),
+                  note: s.note ? String(s.note) : null,
                 })),
               }
             : undefined,
@@ -1053,11 +1057,13 @@ export const createProjectSwatch = async (req: Request, res: Response): Promise<
         projectId: project.id,
         images,
         needleSizeRaw: body.needleSizeRaw ? String(body.needleSizeRaw) : null,
+        instrumentType: body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null,
         strandsCount: toInt(body.strandsCount),
         densityStitchesBefore: toDecimal(body.densityStitchesBefore),
         densityRowsBefore: toDecimal(body.densityRowsBefore),
         densityStitchesAfter: toDecimal(body.densityStitchesAfter),
         densityRowsAfter: toDecimal(body.densityRowsAfter),
+        note: body.note ? String(body.note) : null,
       },
     });
     res.status(201).json(swatch);
@@ -1091,6 +1097,7 @@ export const updateProjectSwatch = async (req: Request, res: Response): Promise<
     data.images = images;
   }
   if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
+  if ("instrumentType" in body) data.instrumentType = body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null;
   const sc = toInt(body.strandsCount);
   if (sc !== undefined) data.strandsCount = sc;
   const dsb = toDecimal(body.densityStitchesBefore);
@@ -1101,6 +1108,7 @@ export const updateProjectSwatch = async (req: Request, res: Response): Promise<
   if (dsa !== undefined) data.densityStitchesAfter = dsa;
   const dra = toDecimal(body.densityRowsAfter);
   if (dra !== undefined) data.densityRowsAfter = dra;
+  if ("note" in body) data.note = body.note ? String(body.note) : null;
 
   try {
     const updated = await prisma.projectSwatch.update({ where: { id }, data });

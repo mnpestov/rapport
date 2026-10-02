@@ -875,3 +875,33 @@
   padding: 0;
   flex-shrink: 0;
 }
+
+/* Выбор типа инструмента (крючок / спицы) для образца проекта — те же
+   стили, что .add-yarn-instrument-chip в хранилище пряжи (AddYarnModal.css),
+   отдельная копия, т.к. этот файл не импортирует AddYarnModal.css. */
+.add-project-instrument-type-row {
+  display: flex;
+  gap: 10px;
+}
+
+.add-project-instrument-chip {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 2px;
+  border: 1.5px solid #e0e0e0;
+  background: #ffffff00;
+  font-family: Mulish, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: center;
+}
+
+.add-project-instrument-chip--active {
+  border-color: #bec1f4;
+  background: #ecedf9;
+  color: #1d1c1c;
+  font-weight: 700;
+}

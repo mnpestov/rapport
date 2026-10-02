@@ -30,6 +30,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
   const [rowsBefore, setRowsBefore] = useState('');
   const [stitchesAfter, setStitchesAfter] = useState('');
   const [rowsAfter, setRowsAfter] = useState('');
+  const [note, setNote] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,6 +47,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
     setRowsBefore(swatch.densityRowsBefore || '');
     setStitchesAfter(swatch.densityStitchesAfter || '');
     setRowsAfter(swatch.densityRowsAfter || '');
+    setNote(swatch.note || '');
     setImages(swatch.images.map((url) => (url.startsWith(API_URL) ? url.slice(API_URL.length) : url)));
     setError(null);
   }, [isOpen, swatch]);
@@ -89,6 +91,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
         densityRowsBefore: rowsBefore ? Number(rowsBefore) : undefined,
         densityStitchesAfter: stitchesAfter ? Number(stitchesAfter) : undefined,
         densityRowsAfter: rowsAfter ? Number(rowsAfter) : undefined,
+        note: note.trim() || undefined,
       });
       onSaved();
     } catch (err) {
@@ -127,9 +130,16 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
             </div>
           </div>
 
-          {instrumentType && (
+          {/* instrumentType || needleSizeRaw — не только instrumentType:
+              образцы, созданные до появления выбора инструмента, имеют
+              instrumentType=null, но могут уже хранить непустой
+              needleSizeRaw (старый свободный текст размера). Если
+              гейтить только на instrumentType, это старое значение стало
+              бы невидимым/недоступным для правки в форме, хотя данные на
+              сервере целы и продолжают отображаться в карточке. */}
+          {(instrumentType || needleSizeRaw.trim()) && (
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
               <input
                 className="add-yarn-input"
                 value={needleSizeRaw}
@@ -173,6 +183,16 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
                 <span className="add-yarn-density-sublabel">Ряды</span>
               </div>
             </div>
+          </div>
+
+          <div className="add-yarn-field">
+            <label className="add-yarn-label">Заметка</label>
+            <textarea
+              className="add-yarn-textarea"
+              value={note}
+              placeholder="Любые наблюдения об образце..."
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
           <div className="add-yarn-section">

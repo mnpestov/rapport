@@ -459,6 +459,7 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
         densityRowsBefore: toDecimal(body.densityRowsBefore),
         densityStitchesAfter: toDecimal(body.densityStitchesAfter),
         densityRowsAfter: toDecimal(body.densityRowsAfter),
+        note: body.note ? String(body.note) : null,
       },
     });
     res.status(201).json(swatch);
@@ -504,6 +505,7 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
   if (dsa !== undefined) data.densityStitchesAfter = dsa;
   const dra = toDecimal(body.densityRowsAfter);
   if (dra !== undefined) data.densityRowsAfter = dra;
+  if ("note" in body) data.note = body.note ? String(body.note) : null;
 
   try {
     const updated = await prisma.stashSwatch.update({ where: { id }, data });

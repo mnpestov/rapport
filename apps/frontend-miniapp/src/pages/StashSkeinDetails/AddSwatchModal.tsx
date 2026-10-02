@@ -25,6 +25,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
   const [rowsBefore, setRowsBefore] = useState('');
   const [stitchesAfter, setStitchesAfter] = useState('');
   const [rowsAfter, setRowsAfter] = useState('');
+  const [note, setNote] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +42,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
     setRowsBefore('');
     setStitchesAfter('');
     setRowsAfter('');
+    setNote('');
     setImages([]);
     setError(null);
   }, [isOpen]);
@@ -84,6 +86,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
         densityRowsBefore: rowsBefore ? Number(rowsBefore) : undefined,
         densityStitchesAfter: stitchesAfter ? Number(stitchesAfter) : undefined,
         densityRowsAfter: rowsAfter ? Number(rowsAfter) : undefined,
+        note: note.trim() || undefined,
       });
 
       onCreated();
@@ -123,9 +126,9 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
             </div>
           </div>
 
-          {instrumentType && (
+          {(instrumentType || needleSizeRaw.trim()) && (
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
               <input
                 className="add-yarn-input"
                 value={needleSizeRaw}
@@ -169,6 +172,16 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
                 <span className="add-yarn-density-sublabel">Ряды</span>
               </div>
             </div>
+          </div>
+
+          <div className="add-yarn-field">
+            <label className="add-yarn-label">Заметка</label>
+            <textarea
+              className="add-yarn-textarea"
+              value={note}
+              placeholder="Любые наблюдения об образце..."
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
           <div className="add-yarn-section">

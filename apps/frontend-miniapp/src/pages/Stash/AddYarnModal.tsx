@@ -26,6 +26,7 @@ interface SwatchDraft {
   rowsBefore: string;
   stitchesAfter: string;
   rowsAfter: string;
+  note: string;
   images: string[];
 }
 
@@ -39,6 +40,7 @@ function createEmptySwatchDraft(): SwatchDraft {
     rowsBefore: '',
     stitchesAfter: '',
     rowsAfter: '',
+    note: '',
     images: [],
   };
 }
@@ -406,7 +408,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
       for (const swatch of swatches) {
         const hasData =
           swatch.instrumentType || swatch.needleSizeRaw.trim() || swatch.stitchesBefore || swatch.rowsBefore ||
-          swatch.strandsCount || swatch.stitchesAfter || swatch.rowsAfter || swatch.images.length > 0;
+          swatch.strandsCount || swatch.stitchesAfter || swatch.rowsAfter || swatch.note.trim() || swatch.images.length > 0;
         if (!hasData) continue;
         try {
           await createStashSwatch(skein.id, {
@@ -418,6 +420,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             densityRowsBefore: swatch.rowsBefore ? Number(swatch.rowsBefore) : undefined,
             densityStitchesAfter: swatch.stitchesAfter ? Number(swatch.stitchesAfter) : undefined,
             densityRowsAfter: swatch.rowsAfter ? Number(swatch.rowsAfter) : undefined,
+            note: swatch.note.trim() || undefined,
           });
         } catch (err) {
           // Моток уже создан и сохранён — образец можно добавить позже со
@@ -615,9 +618,9 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                   </div>
                 </div>
 
-                {swatch.instrumentType && (
+                {(swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
                   <div className="add-yarn-field">
-                    <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+                    <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
                     <input
                       className="add-yarn-input"
                       value={swatch.needleSizeRaw}
@@ -667,6 +670,16 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                       <span className="add-yarn-density-sublabel">Ряды</span>
                     </div>
                   </div>
+                </div>
+
+                <div className="add-yarn-field">
+                  <label className="add-yarn-label">Заметка</label>
+                  <textarea
+                    className="add-yarn-textarea"
+                    value={swatch.note}
+                    placeholder="Любые наблюдения об образце..."
+                    onChange={(e) => updateSwatch(swatch.key, { note: e.target.value })}
+                  />
                 </div>
 
                 <div className="add-yarn-field">
