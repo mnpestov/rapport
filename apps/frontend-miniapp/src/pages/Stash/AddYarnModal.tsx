@@ -273,14 +273,18 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   const handleAddPhotoClick = () => fileInputRef.current?.click();
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
-    if (images.length >= MAX_IMAGES) return;
+    if (files.length === 0) return;
+    const remainingSlots = MAX_IMAGES - images.length;
+    if (remainingSlots <= 0) return;
+    const toUpload = files.slice(0, remainingSlots);
     setIsUploading(true);
     try {
-      const url = await uploadStashImage(file);
-      setImages((prev) => [...prev, url]);
+      for (const file of toUpload) {
+        const url = await uploadStashImage(file);
+        setImages((prev) => [...prev, url]);
+      }
     } catch (err) {
       console.error('[AddYarnModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
@@ -306,21 +310,30 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   };
 
   const handleSwatchFileSelected = (key: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
+    if (files.length === 0) return;
     setUploadingSwatchKey(key);
     try {
-      const url = await uploadStashImage(file);
-      // Читаем актуальный образец через setSwatches, а не через swatches.find()
-      // из замыкания — иначе stale closure при 3+ образцах находит не тот
-      // объект (или вовсе undefined, если образец был удалён после создания
-      // обработчика), и ограничение MAX_IMAGES не работает корректно.
-      setSwatches((prev) => {
-        const swatch = prev.find((s) => s.key === key);
-        if (!swatch || swatch.images.length >= MAX_IMAGES) return prev;
-        return prev.map((s) => s.key === key ? { ...s, images: [...s.images, url] } : s);
-      });
+      for (const file of files) {
+        // Читаем актуальный образец через setSwatches, а не через swatches.find()
+        // из замыкания — иначе stale closure при 3+ образцах находит не тот
+        // объект (или вовсе undefined, если образец был удалён после создания
+        // обработчика), и ограничение MAX_IMAGES не работает корректно.
+        let limitReached = false;
+        setSwatches((prev) => {
+          const swatch = prev.find((s) => s.key === key);
+          if (!swatch || swatch.images.length >= MAX_IMAGES) { limitReached = true; return prev; }
+          return prev;
+        });
+        if (limitReached) break;
+        const url = await uploadStashImage(file);
+        setSwatches((prev) => {
+          const swatch = prev.find((s) => s.key === key);
+          if (!swatch || swatch.images.length >= MAX_IMAGES) return prev;
+          return prev.map((s) => s.key === key ? { ...s, images: [...s.images, url] } : s);
+        });
+      }
     } catch (err) {
       console.error('[AddYarnModal] swatch image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото образца');
@@ -451,6 +464,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 style={{ display: 'none' }}
                 onChange={handleFileSelected}
               />
@@ -652,6 +666,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                       ref={(el) => { swatchFileInputRefs.current[swatch.key] = el; }}
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
+                      multiple
                       style={{ display: 'none' }}
                       onChange={handleSwatchFileSelected(swatch.key)}
                     />

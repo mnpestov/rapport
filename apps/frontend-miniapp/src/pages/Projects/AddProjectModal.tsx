@@ -413,14 +413,26 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   };
 
   const handleSwatchFileSelected = (key: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    const swatch = swatches.find((s) => s.key === key);
-    if (!file || !swatch || swatch.images.length >= MAX_IMAGES) return;
+    if (files.length === 0) return;
     setUploadingSwatchKey(key);
     try {
-      const url = await uploadStashImage(file);
-      updateSwatch(key, { images: [...swatch.images, url] });
+      for (const file of files) {
+        let limitReached = false;
+        setSwatches((prev) => {
+          const swatch = prev.find((s) => s.key === key);
+          if (!swatch || swatch.images.length >= MAX_IMAGES) { limitReached = true; return prev; }
+          return prev;
+        });
+        if (limitReached) break;
+        const url = await uploadStashImage(file);
+        setSwatches((prev) => {
+          const swatch = prev.find((s) => s.key === key);
+          if (!swatch || swatch.images.length >= MAX_IMAGES) return prev;
+          return prev.map((s) => s.key === key ? { ...s, images: [...s.images, url] } : s);
+        });
+      }
     } catch (err) {
       console.error('[AddProjectModal] swatch image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото образца');
@@ -1000,6 +1012,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                         ref={(el) => { swatchFileInputRefs.current[swatch.key] = el; }}
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
+                        multiple
                         style={{ display: 'none' }}
                         onChange={handleSwatchFileSelected(swatch.key)}
                       />

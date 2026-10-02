@@ -44,13 +44,18 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
   if (!isMounted) return null;
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file || images.length >= MAX_IMAGES) return;
+    if (files.length === 0) return;
+    const remainingSlots = MAX_IMAGES - images.length;
+    if (remainingSlots <= 0) return;
+    const toUpload = files.slice(0, remainingSlots);
     setIsUploading(true);
     try {
-      const url = await uploadStashImage(file);
-      setImages((prev) => [...prev, url]);
+      for (const file of toUpload) {
+        const url = await uploadStashImage(file);
+        setImages((prev) => [...prev, url]);
+      }
     } catch (err) {
       console.error('[AddSwatchModal] image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото');
@@ -147,7 +152,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
                   +
                 </button>
               )}
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleFileSelected} />
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleFileSelected} />
             </div>
           </div>
 
