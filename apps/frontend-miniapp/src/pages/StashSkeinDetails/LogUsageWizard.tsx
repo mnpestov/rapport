@@ -338,7 +338,6 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
                   </>
                 ) : (
                   <>
-                    {isRelatedLoading && <p className="loading-message">Загрузка...</p>}
                     {!isRelatedLoading && isShowingSearch && relatedCards.length === 0 && !isManualEntryOpen && (
                       <>
                         <p className="log-usage-empty-text">Ничего не найдено</p>
@@ -348,7 +347,7 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
                         </button>
                       </>
                     )}
-                    {!isRelatedLoading && relatedCards.length > 0 && (
+                    {relatedCards.length > 0 && (
                       <div className="log-usage-cards-vertical">
                         {relatedCards.map((p) => (
                           <button

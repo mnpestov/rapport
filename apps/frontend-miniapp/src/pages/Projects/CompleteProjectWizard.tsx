@@ -450,8 +450,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                   onBlur={() => setIsYarnFieldFocused(false)}
                 />
               </div>
-              {isSearchingYarn && <p className="loading-message">Загрузка...</p>}
-              {!isSearchingYarn && yarnResults.length > 0 && (
+              {yarnResults.length > 0 && (
                 <div className="log-usage-cards-vertical">
                   {yarnResults.map((s) => (
                     <button
@@ -548,11 +547,10 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                     />
                   </div>
                   <div className="log-usage-related">
-                    {isSearchingPattern && <p className="loading-message">Загрузка...</p>}
                     {!isSearchingPattern && patternQuery.trim().length >= 2 && patternResults.length === 0 && (
                       <p className="log-usage-empty-text">Ничего не найдено</p>
                     )}
-                    {!isSearchingPattern && patternResults.length > 0 && (
+                    {patternResults.length > 0 && (
                       <>
                         <p className="log-usage-section-title">Результаты поиска</p>
                         <div className="log-usage-cards-vertical">
@@ -570,9 +568,12 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                     )}
                     {/* Показывается только вместе с результатами поиска (в
                         конце списка) или когда поиск дал 0 результатов — не
-                        сразу при пустом поле и не во время самого поиска
-                        (тот же принцип, что в AddProjectModal.tsx). */}
-                    {!isSearchingPattern && patternQuery.trim().length >= 2 && (
+                        сразу при пустом поле (тот же принцип, что в
+                        AddProjectModal.tsx). Не гейтится isSearchingPattern —
+                        условие зависит только от длины query, не от
+                        свежести результатов, а это убирало бы и
+                        возвращало кнопку на каждый debounce, дёргая форму. */}
+                    {patternQuery.trim().length >= 2 && (
                       <button type="button" className="plus-add-button" onClick={() => setIsManualEntryOpen((v) => !v)}>
                         <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
                         Добавить вручную

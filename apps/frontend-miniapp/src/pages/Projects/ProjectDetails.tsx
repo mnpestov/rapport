@@ -469,8 +469,7 @@ export const ProjectDetails: React.FC = () => {
               onBlur={() => setIsYarnFieldFocused(false)}
               autoFocus
             />
-            {isSearchingYarn && <p className="loading-message">Загрузка...</p>}
-            {!isSearchingYarn && yarnResults.length > 0 && (
+            {yarnResults.length > 0 && (
               <div className="add-project-cards-vertical">
                 {yarnResults.map((s) => (
                   <button
@@ -533,7 +532,15 @@ export const ProjectDetails: React.FC = () => {
               )}
             </div>
             <div className="stash-swatch-body">
-              {swatch.needleSizeRaw && <p className="pd-label-row"><b>Спицы:</b> {swatch.needleSizeRaw}</p>}
+              {swatch.needleSizeRaw && (
+                <p className="pd-label-row">
+                  <b>{swatch.instrumentType === 'hook' ? 'Крючок:' : swatch.instrumentType === 'needle' ? 'Спицы:' : 'Инструмент:'}</b>
+                  {' '}{swatch.needleSizeRaw}
+                </p>
+              )}
+              {!swatch.needleSizeRaw && swatch.instrumentType && (
+                <p className="pd-label-row"><b>{swatch.instrumentType === 'hook' ? 'Крючок' : 'Спицы'}</b></p>
+              )}
               {swatch.strandsCount != null && <p className="pd-label-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
               {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
                 <p className="pd-label-row">
@@ -545,6 +552,7 @@ export const ProjectDetails: React.FC = () => {
                   <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
                 </p>
               )}
+              {swatch.note && <p className="pd-label-row stash-swatch-note">{swatch.note}</p>}
             </div>
           </SwipeToDelete>
         ))}

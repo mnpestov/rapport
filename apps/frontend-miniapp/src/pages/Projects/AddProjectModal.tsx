@@ -51,24 +51,28 @@ interface SelectedYarn {
 
 interface SwatchDraft {
   key: string;
+  instrumentType: 'hook' | 'needle' | null;
   needleSizeRaw: string;
   strandsCount: string;
   stitchesBefore: string;
   rowsBefore: string;
   stitchesAfter: string;
   rowsAfter: string;
+  note: string;
   images: string[];
 }
 
 function createEmptySwatchDraft(): SwatchDraft {
   return {
     key: `${Date.now()}-${Math.random()}`,
+    instrumentType: null,
     needleSizeRaw: '',
     strandsCount: '',
     stitchesBefore: '',
     rowsBefore: '',
     stitchesAfter: '',
     rowsAfter: '',
+    note: '',
     images: [],
   };
 }
@@ -583,15 +587,17 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         amountG: isCompleted ? Number(y.amountG) : undefined,
       }));
       const swatchPayloads = swatches
-        .filter((s) => s.needleSizeRaw.trim() || s.strandsCount || s.stitchesBefore || s.rowsBefore || s.stitchesAfter || s.rowsAfter || s.images.length > 0)
+        .filter((s) => s.instrumentType || s.needleSizeRaw.trim() || s.strandsCount || s.stitchesBefore || s.rowsBefore || s.stitchesAfter || s.rowsAfter || s.note.trim() || s.images.length > 0)
         .map((s) => ({
           images: s.images,
           needleSizeRaw: s.needleSizeRaw.trim() || undefined,
+          instrumentType: s.instrumentType ?? undefined,
           strandsCount: s.strandsCount ? Number(s.strandsCount) : undefined,
           densityStitchesBefore: s.stitchesBefore ? Number(s.stitchesBefore) : undefined,
           densityRowsBefore: s.rowsBefore ? Number(s.rowsBefore) : undefined,
           densityStitchesAfter: s.stitchesAfter ? Number(s.stitchesAfter) : undefined,
           densityRowsAfter: s.rowsAfter ? Number(s.rowsAfter) : undefined,
+          note: s.note.trim() || undefined,
         }));
 
       if (draftProjectId) {
@@ -715,11 +721,10 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
               </div>
             ) : (
               <div className="add-project-section-inner">
-                {isSearchingPattern && <p className="loading-message">Загрузка...</p>}
                 {!isSearchingPattern && patternQuery.trim().length >= 2 && patternResults.length === 0 && (
                   <p className="add-project-empty-text">Ничего не найдено</p>
                 )}
-                {!isSearchingPattern && patternResults.length > 0 && (
+                {patternResults.length > 0 && (
                   <>
                     <p className="add-project-inner-label">Выбрать из каталога</p>
                     <div className="add-project-cards-vertical">
@@ -742,8 +747,10 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                 )}
                 {/* Показывается только вместе с результатами поиска (в
                     конце списка) или когда поиск дал 0 результатов — не
-                    сразу при пустом поле и не во время самого поиска. */}
-                {!isSearchingPattern && patternQuery.trim().length >= 2 && (
+                    сразу при пустом поле. Не гейтится isSearchingPattern —
+                    условие зависит только от длины query, иначе кнопка
+                    пропадала/появлялась на каждый debounce, дёргая форму. */}
+                {patternQuery.trim().length >= 2 && (
                   <button type="button" className="plus-add-button" onClick={() => setIsManualEntryOpen((v) => !v)}>
                     <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
                     Добавить вручную
@@ -908,8 +915,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                   onBlur={() => setIsYarnFieldFocused(false)}
                 />
               </div>
-              {isSearchingYarn && <p className="loading-message">Загрузка...</p>}
-              {!isSearchingYarn && yarnResults.length > 0 && (
+              {yarnResults.length > 0 && (
                 <div className="add-project-cards-vertical">
                   {yarnResults.map((s) => (
                     <button
@@ -964,9 +970,36 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                     </div>
                   )}
                   <div className="add-project-field">
-                    <label className="add-project-label">Размер инструмента</label>
-                    <input className="add-project-input" value={swatch.needleSizeRaw} placeholder="Введите текст..." onChange={(e) => updateSwatch(swatch.key, { needleSizeRaw: e.target.value })} />
+                    <label className="add-project-label">Инструмент</label>
+                    <div className="add-project-instrument-type-row">
+                      <button
+                        type="button"
+                        className={`add-project-instrument-chip${swatch.instrumentType === 'needle' ? ' add-project-instrument-chip--active' : ''}`}
+                        onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'needle' ? null : 'needle' })}
+                      >
+                        Спицы
+                      </button>
+                      <button
+                        type="button"
+                        className={`add-project-instrument-chip${swatch.instrumentType === 'hook' ? ' add-project-instrument-chip--active' : ''}`}
+                        onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'hook' ? null : 'hook' })}
+                      >
+                        Крючок
+                      </button>
+                    </div>
                   </div>
+                  {swatch.instrumentType && (
+                    <div className="add-project-field">
+                      <label className="add-project-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : 'крючка'}</label>
+                      <input
+                        className="add-project-input"
+                        value={swatch.needleSizeRaw}
+                        placeholder="Например: 3.5"
+                        inputMode="decimal"
+                        onChange={(e) => updateSwatch(swatch.key, { needleSizeRaw: e.target.value })}
+                      />
+                    </div>
+                  )}
                   <div className="add-project-field">
                     <label className="add-project-label">Количество нитей</label>
                     <input className="add-project-input" value={swatch.strandsCount} placeholder="Введите число..." inputMode="numeric" onChange={(e) => updateSwatch(swatch.key, { strandsCount: e.target.value })} />
@@ -998,6 +1031,15 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                         <span className="add-project-density-sublabel">Ряды</span>
                       </div>
                     </div>
+                  </div>
+                  <div className="add-project-field">
+                    <label className="add-project-label">Заметка</label>
+                    <textarea
+                      className="add-project-textarea"
+                      value={swatch.note}
+                      placeholder="Любые наблюдения об образце..."
+                      onChange={(e) => updateSwatch(swatch.key, { note: e.target.value })}
+                    />
                   </div>
                   <div className="add-project-field">
                     <label className="add-project-label">Фото образца</label>
