@@ -304,7 +304,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             </div>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Метраж</label>
+              <label className="add-yarn-label">Метраж (м/100г)</label>
               <input
                 className="add-yarn-input"
                 value={mPer100g}
@@ -381,7 +381,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                 {!swatch.markedForDeletion && (
                   <>
                     <div className="add-yarn-field">
-                      <label className="add-yarn-label">Размер спицы</label>
+                      <label className="add-yarn-label">Размер инструмента</label>
                       <input
                         className="add-yarn-input"
                         value={swatch.needleSizeRaw}

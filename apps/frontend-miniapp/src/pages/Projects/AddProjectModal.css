@@ -37,7 +37,7 @@
   background: #ffffff;
   width: 100%;
   height: 100vh;
-  height: 100dvh;
+  height: var(--tg-vh, 100dvh);
   display: flex;
   flex-direction: column;
   margin: 0 auto;
@@ -73,7 +73,7 @@
 .add-project-section {
   display: flex;
   flex-direction: column;
-  /* gap: 12px; */
+  gap: 12px;
   margin-bottom: 20px;
 }
 

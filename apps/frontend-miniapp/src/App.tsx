@@ -43,6 +43,7 @@ function logFrontend(event: string, extra?: Record<string, unknown>) {
 
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 import { useNavigationDepthTracker } from './hooks/useNavigationDepth';
+import { useTgViewportHeight } from './hooks/useTgViewportHeight';
 
 const MAINTENANCE_MODE = false;
 
@@ -55,6 +56,10 @@ function App() {
   // карточке описания решает, есть ли куда возвращаться. Вызов до любых
   // ранних return'ов: хук должен отработать на каждый рендер.
   useNavigationDepthTracker();
+  // Синхронизирует видимую высоту Telegram WebApp viewport в CSS-переменную
+  // --tg-vh — используется модальными панелями вместо 100dvh, чтобы кнопки
+  // footer не прыгали над клавиатурой (см. useTgViewportHeight.ts).
+  useTgViewportHeight();
 
   const access = usePremiumAccess();
 

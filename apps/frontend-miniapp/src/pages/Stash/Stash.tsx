@@ -26,6 +26,10 @@ export const Stash: React.FC = () => {
   const [totalWeight, setTotalWeight] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  // isInitialLoading: true только пока хранилище ещё ни разу не загружалось
+  // (список пуст и ответ ещё не пришёл). При повторных запросах (поиск,
+  // архив) остаётся false — старый список виден, интерфейс не скачет.
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -64,12 +68,17 @@ export const Stash: React.FC = () => {
       console.error('[Stash] loadPage failed:', err);
       setError('Не удалось загрузить хранилище пряжи. Попробуйте ещё раз.');
     } finally {
+      setIsInitialLoading(false);
       setLoading(false);
       setIsFetchingMore(false);
     }
   }, []);
 
   useEffect(() => {
+    // setLoading нужен только для guard'а инфинити-скролла (строка выше:
+    // if (!hasMore || loading) return). НЕ показываем «Загрузка...» при
+    // каждом поиске — для этого isInitialLoading, который не поднимается
+    // повторно и не вызывает скачок интерфейса.
     setLoading(true);
     loadPage(1, debouncedSearch, showArchived);
   }, [loadPage, debouncedSearch, showArchived]);
@@ -113,7 +122,7 @@ export const Stash: React.FC = () => {
         <h1 className="stash-title">Пряжа</h1>
       </div>
 
-      {!loading && (
+      {!isInitialLoading && (
         <div className="stash-summary-row">
           <div className="stash-total-weight">
             <img src={yarnIcon} alt="" className="stash-total-weight-icon" />
@@ -132,8 +141,8 @@ export const Stash: React.FC = () => {
         </div>
       )}
 
-      {loading && <p className="loading-message">Загрузка хранилища...</p>}
-      {error && !loading && <p className="stash-error">{error}</p>}
+      {isInitialLoading && <p className="loading-message">Загрузка хранилища...</p>}
+      {error && !isInitialLoading && <p className="stash-error">{error}</p>}
 
       <div className="stash-search-row">
         <div className="stash-search-input-wrapper">
@@ -148,7 +157,7 @@ export const Stash: React.FC = () => {
         </div>
       </div>
 
-      {!loading && !error && (
+      {!isInitialLoading && !error && (
         <>
           <p className="stash-count">Всего артикулов: {total}</p>
           {!showArchived && (
@@ -168,7 +177,7 @@ export const Stash: React.FC = () => {
         </>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {!isInitialLoading && !error && items.length === 0 && (
         <p className="stash-empty-state">
           {showArchived ? (
             <>В архиве пока пусто.<br />Сюда попадёт пряжа с нулевым остатком.</>

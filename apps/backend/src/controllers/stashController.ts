@@ -339,10 +339,9 @@ export const updateSkein = async (req: Request, res: Response): Promise<void> =>
     }
     data.images = images;
   }
-  // totalWeightG — редактируемое поле само по себе (например, опечатка при
-  // вводе), но currentWeightG НЕ трогается здесь: та меняется только вместе
-  // со StashUsage атомарно (см. logUsage/undoUsage), никогда прямым PATCH —
-  // иначе инвариант currentWeightG = totalWeightG - Σusages расходится.
+  // totalWeightG — редактируемое поле (например, опечатка при вводе).
+  // При изменении totalWeightG инвариант currentWeightG = totalWeightG - Σusages
+  // должен сохраняться: пересчитываем currentWeightG атомарно в транзакции.
   if ("totalWeightG" in body) {
     const totalWeightG = Number(body.totalWeightG);
     if (!Number.isFinite(totalWeightG) || totalWeightG <= 0) {
@@ -353,19 +352,45 @@ export const updateSkein = async (req: Request, res: Response): Promise<void> =>
   }
 
   try {
-    const updated = await prisma.stashSkein.update({
-      where: { id },
-      data,
-      select: SKEIN_SELECT,
-    });
-    // totalWeightG отдельно — меняет инвариант currentWeightG =
-    // totalWeightG - Σusages, самая вероятная причина будущего "остаток не
-    // сходится" при разборе жалобы тестовой группы.
-    if ("totalWeightG" in data) {
-      console.log(`[Stash] updateSkein totalWeightG changed userId=${userId} skeinId=${id} newTotalWeightG=${data.totalWeightG}`);
+    type UpdatedSkein = Prisma.StashSkeinGetPayload<{ select: typeof SKEIN_SELECT }>;
+    let updated: UpdatedSkein;
+
+    if ("totalWeightG" in data && typeof data.totalWeightG === "number") {
+      // Атомарно: агрегируем Σusages и обновляем оба поля вместе, чтобы
+      // инвариант currentWeightG = totalWeightG - Σusages не расходился.
+      updated = await prisma.$transaction(async (tx) => {
+        const agg = await tx.stashUsage.aggregate({
+          where: { skeinId: id },
+          _sum: { amountG: true },
+        });
+        const totalUsed = agg._sum.amountG ?? 0;
+        const newTotal = data.totalWeightG as number;
+        if (newTotal < totalUsed) {
+          throw Object.assign(new Error("BELOW_USAGE"), { totalUsed });
+        }
+        const newCurrent = newTotal - totalUsed;
+        return tx.stashSkein.update({
+          where: { id },
+          data: { ...data, currentWeightG: newCurrent },
+          select: SKEIN_SELECT,
+        });
+      });
+      console.log(`[Stash] updateSkein totalWeightG changed userId=${userId} skeinId=${id} newTotalWeightG=${data.totalWeightG} newCurrentWeightG=${updated.currentWeightG}`);
+    } else {
+      updated = await prisma.stashSkein.update({
+        where: { id },
+        data,
+        select: SKEIN_SELECT,
+      });
     }
+
     res.json(updated);
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "BELOW_USAGE") {
+      const totalUsed = (error as Error & { totalUsed: number }).totalUsed;
+      res.status(400).json({ error: `Общий вес не может быть меньше уже списанного количества (${totalUsed} г)` });
+      return;
+    }
     console.error(`[Stash] updateSkein failed userId=${userId} skeinId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }

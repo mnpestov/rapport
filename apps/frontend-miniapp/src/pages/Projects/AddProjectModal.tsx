@@ -664,7 +664,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
             <p className="add-project-section-title">О проекте</p>
 
             <div className="add-project-field">
-              <label className="add-project-label">Название</label>
+              <label className="add-project-label">Название *</label>
               <input className="add-project-input" value={title} placeholder="Введите текст..." onChange={(e) => setTitle(e.target.value)} />
             </div>
 

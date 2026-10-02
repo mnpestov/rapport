@@ -349,11 +349,11 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
         ...(selectedYarn
           ? { yarnId: selectedYarn.id }
           : {
-              newYarnName: nameQuery.trim(),
-              newYarnBrand: brand.trim() || undefined,
-              newYarnMPer100g: mPer100g ? Number(mPer100g) : undefined,
-              newYarnComposition: composition.trim() || undefined,
-            }),
+            newYarnName: nameQuery.trim(),
+            newYarnBrand: brand.trim() || undefined,
+            newYarnMPer100g: mPer100g ? Number(mPer100g) : undefined,
+            newYarnComposition: composition.trim() || undefined,
+          }),
       });
 
       // Артикул уже существовал (selectedYarn), но пользователь дозаполнил
@@ -454,7 +454,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             <p className="add-yarn-section-title">Пряжа</p>
 
             <div className="add-yarn-field add-yarn-field--autocomplete" ref={autocompleteFieldRef}>
-              <label className="add-yarn-label">Название*</label>
+              <label className="add-yarn-label">Название *</label>
               <div className="add-yarn-input-wrap">
                 <input
                   ref={nameInputRef}
@@ -494,7 +494,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             </div>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Бренд{!selectedYarn && '*'}</label>
+              <label className="add-yarn-label">Бренд{!selectedYarn && ' *'}</label>
               <input
                 className="add-yarn-input"
                 value={brand}
@@ -505,7 +505,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             </div>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Метраж{!selectedYarn && '*'}</label>
+              <label className="add-yarn-label">Метраж{!selectedYarn && ' (м/100г) *'}</label>
               <input
                 className="add-yarn-input"
                 value={mPer100g}
@@ -522,7 +522,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             </div>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Состав{!selectedYarn && '*'}</label>
+              <label className="add-yarn-label">Состав{!selectedYarn && ' *'}</label>
               <input
                 className="add-yarn-input"
                 value={composition}
@@ -548,7 +548,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             </div>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Остаток*</label>
+              <label className="add-yarn-label">Остаток (г) *</label>
               <input
                 className="add-yarn-input"
                 value={totalWeightG}
@@ -574,7 +574,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 )}
 
                 <div className="add-yarn-field">
-                  <label className="add-yarn-label">Размер спицы</label>
+                  <label className="add-yarn-label">Размер инструмента</label>
                   <input
                     className="add-yarn-input"
                     value={swatch.needleSizeRaw}

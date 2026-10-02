@@ -98,7 +98,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
 
         <div className="add-yarn-body">
           <div className="add-yarn-field">
-            <label className="add-yarn-label">Размер спицы</label>
+            <label className="add-yarn-label">Размер инструмента</label>
             <input className="add-yarn-input" value={needleSizeRaw} placeholder="Введите текст..." onChange={(e) => setNeedleSizeRaw(e.target.value)} />
           </div>
 
