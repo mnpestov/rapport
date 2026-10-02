@@ -239,6 +239,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     setIsAddYarnOpen(false);
     setIsYarnLimitPaywallOpen(false);
     setSwatches([]);
+    setIsUploading(false);
     setError(null);
 
     fetchFilters().then((res) => setInstrumentOptions(res.instruments)).catch(() => setInstrumentOptions([]));
@@ -450,6 +451,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const handleReferencePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
+    if (files.length === 0) return;
     const remainingSlots = MAX_IMAGES - referencePhotos.length;
     if (remainingSlots <= 0) return;
     setIsUploading(true);
@@ -503,6 +505,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const handleFinishedPhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
+    if (files.length === 0) return;
     const remainingSlots = MAX_IMAGES - finishedPhotos.length;
     if (remainingSlots <= 0) return;
     setIsUploading(true);
