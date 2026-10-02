@@ -308,12 +308,19 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   const handleSwatchFileSelected = (key: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    const swatch = swatches.find((s) => s.key === key);
-    if (!file || !swatch || swatch.images.length >= MAX_IMAGES) return;
+    if (!file) return;
     setUploadingSwatchKey(key);
     try {
       const url = await uploadStashImage(file);
-      updateSwatch(key, { images: [...swatch.images, url] });
+      // Читаем актуальный образец через setSwatches, а не через swatches.find()
+      // из замыкания — иначе stale closure при 3+ образцах находит не тот
+      // объект (или вовсе undefined, если образец был удалён после создания
+      // обработчика), и ограничение MAX_IMAGES не работает корректно.
+      setSwatches((prev) => {
+        const swatch = prev.find((s) => s.key === key);
+        if (!swatch || swatch.images.length >= MAX_IMAGES) return prev;
+        return prev.map((s) => s.key === key ? { ...s, images: [...s.images, url] } : s);
+      });
     } catch (err) {
       console.error('[AddYarnModal] swatch image upload failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить фото образца');
@@ -564,14 +571,12 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
 
             {isSwatchSectionOpen && swatches.map((swatch, index) => (
               <div key={swatch.key} className="add-yarn-swatch-draft">
-                {swatches.length > 1 && (
-                  <div className="add-yarn-swatch-draft-header">
-                    <span className="add-yarn-swatch-draft-title">Образец {index + 1}</span>
-                    <button type="button" className="add-yarn-swatch-remove" onClick={() => removeSwatch(swatch.key)}>
-                      Удалить
-                    </button>
-                  </div>
-                )}
+                <div className="add-yarn-swatch-draft-header">
+                  <span className="add-yarn-swatch-draft-title">Образец {index + 1}</span>
+                  <button type="button" className="add-yarn-swatch-remove" onClick={() => removeSwatch(swatch.key)}>
+                    Удалить
+                  </button>
+                </div>
 
                 <div className="add-yarn-field">
                   <label className="add-yarn-label">Размер инструмента</label>
