@@ -233,7 +233,7 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
               </div>
 
               <div className="log-usage-field">
-                <label className="log-usage-label">Укажите количество, которое хотите списать:</label>
+                <label className="log-usage-label">Укажите количество, которое хотите списать: *</label>
                 <input
                   className="log-usage-input"
                   value={amountG}
@@ -245,7 +245,7 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
               </div>
 
               <div className="log-usage-field">
-                <label className="log-usage-label">Основной размер спиц</label>
+                <label className="log-usage-label">Основной размер инструмента</label>
                 <input
                   className="log-usage-input"
                   value={needleSizeRaw}
@@ -300,6 +300,10 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
                   )}
                 </div>
               </div>
+
+              {selectedPattern && !isShowingSearch && (
+                <p className="log-usage-empty-text">Выбрано: {selectedPattern.title}</p>
+              )}
 
               <div className="log-usage-related">
                 <p className="log-usage-section-title">Что можно связать из этой пряжи</p>

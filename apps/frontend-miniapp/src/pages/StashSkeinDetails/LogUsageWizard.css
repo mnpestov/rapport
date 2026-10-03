@@ -258,7 +258,7 @@
 }
 
 .log-usage-card-row--selected {
-  /* border-bottom-color: #83942C; */
+  border-bottom-color: #83942C;
 }
 
 .log-usage-card-row--locked {
