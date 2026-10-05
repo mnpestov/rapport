@@ -205,7 +205,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
           </div>
 
           <div className="log-usage-field">
-            <label className="log-usage-label">Основной размер спиц</label>
+            <label className="log-usage-label">Основной размер инструмента</label>
             <input
               className="log-usage-input"
               value={needleSizeRaw}
