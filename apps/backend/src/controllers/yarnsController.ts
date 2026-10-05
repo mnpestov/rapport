@@ -11,6 +11,7 @@ import { Prisma, YarnLinkSource, YarnLinkStatus, YarnMatchRule, YarnStatus } fro
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
 import { parseCompositionLine, canonFiberNameFor } from "../utils/fiberComposition";
+import { composeYarnName } from "../utils/yarnNaming";
 
 const PAGE_SIZE = 50;
 
@@ -250,11 +251,18 @@ export async function suggestYarns(req: Request, res: Response) {
 }
 
 function yarnFields(body: Record<string, unknown>) {
-  const name = String(body.name || "").trim();
+  const brand = body.brand ? String(body.brand).trim() : null;
+  const line = body.line ? String(body.line).trim() : null;
+  // name собирается из brand+line на сервере (единое правило для всех
+  // путей создания, см. yarnNaming.ts), а не просто берётся из body.name —
+  // так админская форма перестаёт быть единственным местом, которое держит
+  // это соответствие; body.name используется только запасным вариантом,
+  // когда ни brand, ни line не заданы (например, родовая карточка).
+  const name = composeYarnName(brand, line, body.name ? String(body.name) : null);
   return {
     name,
-    brand: body.brand ? String(body.brand).trim() : null,
-    line: body.line ? String(body.line).trim() : null,
+    brand,
+    line,
     isGeneric: Boolean(body.isGeneric),
     mPer100g: body.mPer100g == null || body.mPer100g === "" ? null : Number(body.mPer100g),
     composition: body.composition ? String(body.composition) : null,

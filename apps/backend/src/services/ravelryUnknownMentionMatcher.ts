@@ -20,6 +20,7 @@
 import { Prisma, YarnMatchRule, YarnMentionStatus, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
+import { composeYarnName } from "../utils/yarnNaming";
 import { searchRavelryYarns, getRavelryYarnDetail, toMPer100g, formatComposition } from "./ravelryClient";
 
 // Ravelry не публикует официальную квоту для Personal read-only ключей —
@@ -60,14 +61,19 @@ async function createOrReuseYarn(ravelryId: number): Promise<{ id: string; creat
   if (existing) return { id: existing.id, created: false };
 
   const detail = await getRavelryYarnDetail(ravelryId);
-  const name = detail.yarn_company ? `${detail.yarn_company.name} ${detail.name}` : detail.name;
+  // brand и line приходят из Ravelry уже раздельно — см. комментарий у
+  // того же паттерна в ravelryYarnFallback.ts/importRavelryYarn.
+  const brand = detail.yarn_company?.name ?? null;
+  const line = detail.name;
+  const name = composeYarnName(brand, line, detail.name);
   const normalizedKey = normalizeYarnKey(name);
 
   try {
     const created = await prisma.yarn.create({
       data: {
         name,
-        brand: detail.yarn_company?.name ?? null,
+        brand,
+        line,
         normalizedKey,
         dedupKey: yarnDedupKey(name),
         mPer100g: toMPer100g(detail.yardage, detail.grams),

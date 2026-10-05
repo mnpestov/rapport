@@ -14,6 +14,7 @@ import { Request, Response } from "express";
 import { Prisma, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
+import { composeYarnName, stripBrandPrefix } from "../utils/yarnNaming";
 import { createAuthorYarn } from "./yarnsController";
 import { scoreComposition, loadSubstituteIndex } from "../utils/compositionMatch";
 import {
@@ -196,10 +197,26 @@ export const createSkein = async (req: Request, res: Response): Promise<void> =>
         return;
       }
     } else {
+      const isGeneric = Boolean(body.newYarnIsGeneric);
+      const brand = body.newYarnBrand ? String(body.newYarnBrand).trim() : null;
+      if (!isGeneric && !brand) {
+        res.status(400).json({ error: "Укажите бренд или отметьте карточку родовой" });
+        return;
+      }
+      // Форма хранилища — единственный путь создания, где line не приходит
+      // отдельным полем (пользователь вводит один свободный текст
+      // "Артикул"). Отделяем бренд, если он вписан туда же целым словом в
+      // начале, и ВСЕГДА пересобираем name из brand+line (единое правило,
+      // см. yarnNaming.ts) — так название гарантированно содержит бренд,
+      // даже если пользователь сам его в это поле не продублировал, и
+      // line заполняется для формы редактирования в админке.
+      const line = stripBrandPrefix(newYarnName, brand);
+      const name = composeYarnName(brand, line, newYarnName);
+      const normalizedKey = normalizeYarnKey(name);
+
       // Тот же путь создания, что и авторская заявка (createAuthorYarn),
       // включая проверку дублей по normalizedKey (409) — только
       // createdVia: STASH_USER, чтобы очередь модерации видела источник.
-      const normalizedKey = normalizeYarnKey(newYarnName);
       const existing = await prisma.yarn.findUnique({
         where: { normalizedKey },
         select: { id: true, name: true },
@@ -211,16 +228,11 @@ export const createSkein = async (req: Request, res: Response): Promise<void> =>
         });
         return;
       }
-      const isGeneric = Boolean(body.newYarnIsGeneric);
-      const brand = body.newYarnBrand ? String(body.newYarnBrand).trim() : null;
-      if (!isGeneric && !brand) {
-        res.status(400).json({ error: "Укажите бренд или отметьте карточку родовой" });
-        return;
-      }
       const created = await prisma.yarn.create({
         data: {
-          name: newYarnName,
+          name,
           brand,
+          line,
           isGeneric,
           mPer100g:
             body.newYarnMPer100g == null || body.newYarnMPer100g === ""
@@ -228,7 +240,7 @@ export const createSkein = async (req: Request, res: Response): Promise<void> =>
               : Number(body.newYarnMPer100g),
           composition: body.newYarnComposition ? String(body.newYarnComposition) : null,
           normalizedKey,
-          dedupKey: yarnDedupKey(newYarnName),
+          dedupKey: yarnDedupKey(name),
           status: YarnStatus.PENDING,
           createdVia: "STASH_USER",
         },

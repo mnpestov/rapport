@@ -25,6 +25,7 @@
 import { Prisma, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
+import { composeYarnName } from "../utils/yarnNaming";
 import {
   searchRavelryYarns,
   getRavelryYarnDetail,
@@ -125,14 +126,21 @@ export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallb
   if (existing) return existing;
 
   const detail = await getRavelryYarnDetail(ravelryId);
-  const name = detail.yarn_company ? `${detail.yarn_company.name} ${detail.name}` : detail.name;
+  // brand и line приходят из Ravelry уже раздельно (yarn_company.name и
+  // собственно название пряжи) — в отличие от ручного ввода в хранилище,
+  // здесь splitting не нужен, просто раньше line никуда не сохранялся и
+  // оседал только внутри склеенного name (см. yarnNaming.ts).
+  const brand = detail.yarn_company?.name ?? null;
+  const line = detail.name;
+  const name = composeYarnName(brand, line, detail.name);
   const normalizedKey = normalizeYarnKey(name);
 
   try {
     return await prisma.yarn.create({
       data: {
         name,
-        brand: detail.yarn_company?.name ?? null,
+        brand,
+        line,
         normalizedKey,
         dedupKey: yarnDedupKey(name),
         mPer100g: toMPer100g(detail.yardage, detail.grams),
