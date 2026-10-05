@@ -103,6 +103,16 @@ export const Projects: React.FC = () => {
     setStatusFilter((prev) => (prev === status ? null : status));
   };
 
+  // Активный чип — всегда первым в ряду (остальные сохраняют взаимный
+  // порядок STATUS_ORDER следом за ним). Без активного фильтра — обычный
+  // порядок STATUS_ORDER без изменений.
+  const orderedStatusFilters = statusFilter
+    ? [
+        STATUS_FILTERS.find((f) => f.value === statusFilter)!,
+        ...STATUS_FILTERS.filter((f) => f.value !== statusFilter),
+      ]
+    : STATUS_FILTERS;
+
   return (
     <div className="stash-container">
       <div className="stash-header">
@@ -136,7 +146,7 @@ export const Projects: React.FC = () => {
           </div>
 
           <div className="projects-status-filter-row">
-            {STATUS_FILTERS.map((f) => {
+            {orderedStatusFilters.map((f) => {
               const isActive = statusFilter === f.value;
               const Icon = f.icon;
               return (
