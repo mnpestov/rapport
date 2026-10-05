@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { Button, IconButton } from "../../components/Button/Button";
 import { Modal } from "../../components/Modal/Modal";
 import { YarnItem, YarnUpdatePayload, FiberTypeItem } from "../../api/yarns";
-import { getYarnBrands, getYarnLines, getFiberTypes, createFiberType } from "../../api/yarns";
+import { getYarnBrands, getYarnLines, getFiberTypes, createFiberType, parseYarnComposition } from "../../api/yarns";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Yarns.module.css";
 
@@ -20,6 +20,10 @@ interface CompositionRow {
   key: string; // React key, стабилен независимо от того, выбрано ли уже волокно
   fiberType: FiberTypeItem | null;
   percentage: string; // строкой по той же причине, что mPer100g в основной форме
+  // Заполняется автопарсингом (см. handleAutoParseComposition) для строки,
+  // которую словарь не смог сопоставить волокну — показываем админу сырой
+  // текст рядом с пустым полем вместо лишённой контекста пустой строки.
+  unparsedRawName?: string;
 }
 
 let compositionRowSeq = 0;
@@ -69,8 +73,35 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
     })),
   );
 
+  const [isParsingComposition, setIsParsingComposition] = useState(false);
+
   const set = (k: keyof typeof form, v: string | boolean) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  // Автопарсинг сырого текста состава в черновик строк (вариант B) — ничего
+  // не сохраняет сам по себе, только заполняет compositionRows как если бы
+  // админ выбрал волокна руками. До нажатия "Сохранить" в самой форме это
+  // просто черновик в памяти, ничего не уходит в справочник.
+  const handleAutoParseComposition = async () => {
+    const text = form.composition.trim();
+    if (!text || isParsingComposition) return;
+    setIsParsingComposition(true);
+    try {
+      const { rows } = await parseYarnComposition(text);
+      setCompositionRows(
+        rows.map((r) => ({
+          key: `parsed-${++compositionRowSeq}`,
+          fiberType: r.fiberType,
+          percentage: r.percentage != null ? String(r.percentage) : "",
+          unparsedRawName: r.fiberType == null ? r.rawName : undefined,
+        })),
+      );
+    } catch (err) {
+      console.error("[YarnEditModal] parseYarnComposition failed:", err);
+    } finally {
+      setIsParsingComposition(false);
+    }
+  };
 
   // Числовые поля живут в форме строками — иначе поле нельзя очистить, не
   // проходя через NaN. Пустая строка → null: «метраж неизвестен» ≠ «метраж 0».
@@ -197,6 +228,16 @@ export function YarnEditModal({ yarn, initialName, onClose, onSave }: Props) {
           {yarn?.composition && (
             <p className={styles.compositionRawHint}>Как ввёл пользователь: «{yarn.composition}»</p>
           )}
+          {form.composition.trim() !== "" && (
+            <div style={{ margin: "4px 0 8px" }}>
+              <Button variant="secondary" onClick={handleAutoParseComposition} disabled={isParsingComposition}>
+                {isParsingComposition ? "Разбираем…" : "Разобрать автоматически"}
+              </Button>
+              <span className={styles.hint} style={{ display: "block", marginTop: 4 }}>
+                Подставит волокна и доли по тексту состава. Незнакомые формулировки останутся пустыми строками — выберите волокно вручную. Ничего не сохраняется, пока вы не нажмёте «Сохранить».
+              </span>
+            </div>
+          )}
           <CompositionEditor rows={compositionRows} onChange={setCompositionRows} />
         </div>
       </div>
@@ -246,27 +287,34 @@ function CompositionEditor({ rows, onChange }: CompositionEditorProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {rows.map((row) => (
-        <div key={row.key} className={styles.compositionRow}>
-          <div className={styles.compositionRowField}>
-            <FiberAutocompleteField
-              value={row.fiberType}
-              onChange={(fiberType) => updateRow(row.key, { fiberType })}
+        <div key={row.key}>
+          <div className={styles.compositionRow}>
+            <div className={styles.compositionRowField}>
+              <FiberAutocompleteField
+                value={row.fiberType}
+                onChange={(fiberType) => updateRow(row.key, { fiberType, unparsedRawName: undefined })}
+              />
+            </div>
+            <input
+              className={`${styles.fieldInput} ${styles.compositionPercentInput}`}
+              value={row.percentage}
+              placeholder="%"
+              inputMode="numeric"
+              onChange={(e) => updateRow(row.key, { percentage: e.target.value })}
             />
+            <IconButton
+              className={styles.compositionRemoveBtn}
+              title="Убрать волокно"
+              onClick={() => removeRow(row.key)}
+            >
+              <X size={16} />
+            </IconButton>
           </div>
-          <input
-            className={`${styles.fieldInput} ${styles.compositionPercentInput}`}
-            value={row.percentage}
-            placeholder="%"
-            inputMode="numeric"
-            onChange={(e) => updateRow(row.key, { percentage: e.target.value })}
-          />
-          <IconButton
-            className={styles.compositionRemoveBtn}
-            title="Убрать волокно"
-            onClick={() => removeRow(row.key)}
-          >
-            <X size={16} />
-          </IconButton>
+          {row.unparsedRawName && (
+            <span className={styles.hint}>
+              Автоматика не распознала «{row.unparsedRawName}» — выберите волокно вручную.
+            </span>
+          )}
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

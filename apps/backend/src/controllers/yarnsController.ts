@@ -10,6 +10,7 @@ import { Request, Response } from "express";
 import { Prisma, YarnLinkSource, YarnLinkStatus, YarnMatchRule, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
+import { parseCompositionLine, canonFiberNameFor } from "../utils/fiberComposition";
 
 const PAGE_SIZE = 50;
 
@@ -170,6 +171,44 @@ export async function createFiberType(req: Request, res: Response) {
     select: FIBER_TYPE_SELECT,
   });
   res.status(201).json(created);
+}
+
+/**
+ * Разбор сырого текста состава (как его ввёл пользователь/скрапер) в
+ * черновик строк для CompositionEditor в админке (вариант B плана по
+ * автопарсингу состава — см. fiberComposition.ts). НИЧЕГО не пишет в БД:
+ * только возвращает, что удалось распознать, админ сам нажимает "Сохранить"
+ * в форме — та же причина, что у ручного ввода: YarnComposition это общий
+ * справочник, автоматика не должна писать в него без присмотра.
+ *
+ * Нераспознанные куски (словарь fiberTypeDictionary.json их не покрывает)
+ * возвращаются с fiberType: null — админ либо выберет волокно вручную в уже
+ * подставленной строке, либо уберёт её. Учёт таких случаев в словарь —
+ * отдельная задача (см. бэклог), здесь не логируется.
+ */
+export async function parseYarnComposition(req: Request, res: Response) {
+  const text = typeof req.body?.text === "string" ? req.body.text : "";
+  const components = parseCompositionLine(text);
+  if (components.length === 0) {
+    res.json({ rows: [] });
+    return;
+  }
+
+  const canonNames = [...new Set(
+    components.map((c) => canonFiberNameFor(c.rawName)).filter((n): n is string => n != null),
+  )];
+  const fiberTypes = canonNames.length > 0
+    ? await prisma.fiberType.findMany({ where: { displayName: { in: canonNames } }, select: FIBER_TYPE_SELECT })
+    : [];
+  const fiberTypeByName = new Map(fiberTypes.map((f) => [f.displayName, f]));
+
+  const rows = components.map(({ rawName, percentage }) => {
+    const canon = canonFiberNameFor(rawName);
+    const fiberType = canon ? fiberTypeByName.get(canon) ?? null : null;
+    return { rawName, percentage, fiberType };
+  });
+
+  res.json({ rows });
 }
 
 /**

@@ -10,6 +10,12 @@
  * не покрывает, остаётся нераспознанным и требует ручного дозаполнения
  * админом — это осознанно, автодогадки здесь не должно быть.
  */
+// Статический import, а не fs.readFileSync по __dirname — с resolveJsonModule
+// (включён в tsconfig.base.json) tsc сам копирует этот JSON в dist при сборке,
+// так что файл остаётся на месте и в скомпилированном бэкенде. fs.readFileSync
+// с относительным путём здесь сработал бы только пока код гоняют через tsx
+// (src), как одноразовые скрипты в src/scripts, — но не после `tsc`+`node dist`.
+import fiberTypeDictionary from "../data/fiberTypeDictionary.json";
 
 export interface ParsedFiberComponent {
   /** Доля в процентах, либо null, если в тексте она не указана. */
@@ -80,4 +86,19 @@ export function parseCompositionLine(line: string): ParsedFiberComponent[] {
     results.push({ percentage, rawName });
   });
   return results;
+}
+
+// ─── Словарь "сырое название -> канон" ─────────────────────────────────────
+// Тот же файл, которым пользуется одноразовый backfillYarnComposition.ts —
+// здесь он читается ещё и для живого разбора (см. parseYarnComposition в
+// yarnsController.ts, черновик состава в админке, вариант B).
+const rawToCanon = (fiberTypeDictionary as { rawToCanon: Record<string, string> }).rawToCanon;
+
+/**
+ * Каноническое название волокна (FiberType.displayName) для сырого текста,
+ * как он стоял в composition — или null, если словарь его не покрывает.
+ * Точное совпадение после trim+lowercase, без эвристик (см. докстринг выше).
+ */
+export function canonFiberNameFor(rawName: string): string | null {
+  return rawToCanon[rawName.trim().toLowerCase()] ?? null;
 }

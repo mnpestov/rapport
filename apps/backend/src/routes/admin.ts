@@ -114,6 +114,7 @@ import {
   rejectYarnFieldSuggestion,
   listFiberTypes,
   createFiberType,
+  parseYarnComposition,
 } from "../controllers/yarnsController";
 import { getYarnStats } from "../controllers/yarnStatsController";
 
@@ -254,6 +255,7 @@ router.patch("/yarn-field-suggestions/:id/approve", approveYarnFieldSuggestion);
 router.patch("/yarn-field-suggestions/:id/reject", rejectYarnFieldSuggestion);
 router.get("/fiber-types", listFiberTypes);
 router.post("/fiber-types", createFiberType);
+router.post("/yarns/parse-composition", parseYarnComposition);
 router.get("/patterns/:id/yarns", getPatternYarns);
 router.put("/patterns/:id/yarns", setPatternYarns);
 router.post("/yarn-mentions/:id/resolve", resolveMention);

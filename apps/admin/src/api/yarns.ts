@@ -150,6 +150,26 @@ export const createFiberType = async (data: {
     }),
   );
 
+// Черновой разбор сырого текста состава на строки для CompositionEditor —
+// ничего не сохраняет, только подсказывает (вариант B: автоматика
+// подставляет, админ проверяет и сам жмёт "Сохранить"). fiberType: null
+// у компонента — словарь не распознал название, строка остаётся для
+// ручного выбора волокна.
+export interface ParsedCompositionRow {
+  rawName: string;
+  percentage: number | null;
+  fiberType: FiberTypeItem | null;
+}
+
+export const parseYarnComposition = async (text: string): Promise<{ rows: ParsedCompositionRow[] }> =>
+  json(
+    await fetchWithAuth(`${API_URL}/admin/yarns/parse-composition`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }),
+  );
+
 export const createYarn = async (data: YarnUpdatePayload): Promise<YarnItem> =>
   json(
     await fetchWithAuth(`${API_URL}/admin/yarns`, {
