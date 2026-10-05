@@ -26,16 +26,7 @@
 
 .add-project-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  /* bottom: 0 заменён на --vv-bottom-inset — на iOS при открытии
-     клавиатуры position:fixed-элементы "уезжают" вместе с автоскроллом
-     страницы к сфокусированному инпуту (баг WebKit), footer с кнопками
-     подскакивает и зависает над клавиатурой вместо прилегания к ней. Эта
-     переменная (useVisualViewportInset.ts) точно отражает высоту,
-     перекрытую клавиатурой, независимо от этого бага. */
-  bottom: var(--vv-bottom-inset, 0px);
+  inset: 0;
   background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
   display: flex;
@@ -46,7 +37,7 @@
   background: #ffffff;
   width: 100%;
   height: 100vh;
-  height: var(--tg-vh, 100dvh);
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   margin: 0 auto;

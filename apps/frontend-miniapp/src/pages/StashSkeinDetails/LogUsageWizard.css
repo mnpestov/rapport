@@ -1,12 +1,6 @@
 .log-usage-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  /* bottom: 0 заменён на --vv-bottom-inset — см. комментарий у
-     .add-project-overlay (AddProjectModal.css): на iOS position:fixed
-     "уезжает" при открытии клавиатуры, footer подскакивает над ней. */
-  bottom: var(--vv-bottom-inset, 0px);
+  inset: 0;
   background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
   display: flex;
