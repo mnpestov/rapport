@@ -65,6 +65,21 @@
   color: #1D1C1C;
 }
 
+/* Поле логина для автозаполнения в формах смены/сброса пароля — само поле
+   на этих экранах не нужно (логин уже известен из предыдущего шага), но
+   Safari/Chrome не предложат сохранить пароль с правильным логином, если в
+   форме нет ни одного поля autocomplete="username". display:none браузеры
+   для этой цели игнорируют, поэтому прячем визуально через позиционирование,
+   а не через display/visibility. */
+.weblogin-hidden-username {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* === Поля === */
 .weblogin-field {
   margin-bottom: 16px;

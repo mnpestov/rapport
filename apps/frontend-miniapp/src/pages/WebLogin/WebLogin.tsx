@@ -215,6 +215,15 @@ export const WebLogin: React.FC<Props> = ({ onAuthenticated }) => {
             Пароль из бота временный — придумайте постоянный, от 10 символов.
           </p>
           <form onSubmit={handleChangePassword}>
+            <input
+              type="text"
+              className="weblogin-hidden-username"
+              value={screen.login}
+              readOnly
+              autoComplete="username"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
             <PasswordField label="Временный пароль" value={currentPassword} onChange={setCurrentPassword} disabled={busy} autoComplete="current-password" />
             <PasswordField label="Новый пароль" value={newPassword} onChange={setNewPassword} disabled={busy} autoComplete="new-password" autoFocus />
             <PasswordField label="Повторите новый пароль" value={confirmPassword} onChange={setConfirmPassword} disabled={busy} autoComplete="new-password" />
@@ -236,6 +245,15 @@ export const WebLogin: React.FC<Props> = ({ onAuthenticated }) => {
           <h1 className="weblogin-title">Сброс пароля</h1>
           <p className="weblogin-sub">Введите код из Telegram и новый пароль.</p>
           <form onSubmit={handleReset}>
+            <input
+              type="text"
+              className="weblogin-hidden-username"
+              value={screen.login}
+              readOnly
+              autoComplete="username"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
             <div className="weblogin-field">
               <label className="weblogin-label">Код из Telegram</label>
               <input
