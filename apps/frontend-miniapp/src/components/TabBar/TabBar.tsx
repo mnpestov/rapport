@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import catalogActive from './icons/catalog-active.svg';
 import catalogInactive from './icons/catalog-inactive.svg';
@@ -51,7 +52,7 @@ export const TabBar: React.FC = () => {
 
   if (!visible) return null;
 
-  return (
+  return createPortal(
     <nav className="tab-bar" role="navigation" aria-label="Основная навигация">
       <div className="tab-bar-inner">
         {TABS.map((tab) => {
@@ -77,6 +78,7 @@ export const TabBar: React.FC = () => {
           );
         })}
       </div>
-    </nav>
+    </nav>,
+    document.body,
   );
 };

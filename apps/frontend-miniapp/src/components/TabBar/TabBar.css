@@ -6,7 +6,13 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* bottom: 0 заменён на --vv-bottom-inset (useVisualViewportInset.ts) —
+     тот же баг WebKit на iOS, что у модальных оверлеев (см.
+     AddProjectModal.css): при фокусе на инпуте ЛЮБОЙ открытой поверх
+     модалки position:fixed-элемент на странице "уезжает" вместе с
+     автоскроллом, включая этот таб-бар, даже когда сам он ни при чём —
+     подскакивает над клавиатурой вместе с футером модалки. */
+  bottom: var(--vv-bottom-inset, 0px);
   z-index: 100;
   background: #f3f3f3;
   padding: 10px 20px calc(40px + env(safe-area-inset-bottom));

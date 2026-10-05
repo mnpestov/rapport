@@ -44,6 +44,7 @@ function logFrontend(event: string, extra?: Record<string, unknown>) {
 import { fetchChannelInfo, ChannelInfo } from './api/channelApi';
 import { useNavigationDepthTracker } from './hooks/useNavigationDepth';
 import { useTgViewportHeight } from './hooks/useTgViewportHeight';
+import { useVisualViewportInset } from './hooks/useVisualViewportInset';
 
 const MAINTENANCE_MODE = false;
 
@@ -60,6 +61,11 @@ function App() {
   // --tg-vh — используется модальными панелями вместо 100dvh, чтобы кнопки
   // footer не прыгали над клавиатурой (см. useTgViewportHeight.ts).
   useTgViewportHeight();
+  // --vv-bottom-inset — реальный зазор под клавиатурой (visualViewport API),
+  // используется оверлеями модалок и таб-баром, чтобы footer/кнопки не
+  // "подскакивали" над клавиатурой на iOS (см. useVisualViewportInset.ts —
+  // useTgViewportHeight эту проблему не закрывает, там другая причина).
+  useVisualViewportInset();
 
   const access = usePremiumAccess();
 
