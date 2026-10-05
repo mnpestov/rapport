@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // Разбивает произвольный текст заметки на фрагменты, находит URL
 // (http:// и https://) и рендерит их как кликабельные ссылки.
@@ -100,6 +100,22 @@ export const StashSkeinDetails: React.FC = () => {
   const [isDeleteSkeinOpen, setIsDeleteSkeinOpen] = useState(false);
   const [isDeletingSkein, setIsDeletingSkein] = useState(false);
 
+  // Горизонтальный скролл блока "Что можно связать из этой пряжи" — ref на
+  // сам скроллящийся контейнер (не отдельные карточки), нужен и для
+  // сохранения scrollLeft перед переходом в описание (см. onClick карточки
+  // ниже), и для восстановления после возврата (см. useLayoutEffect ниже).
+  const matchesListRef = useRef<HTMLDivElement>(null);
+  // Восстанавливаем скролл только из ПЕРВОГО вызова load() за жизнь
+  // компонента (монтирование страницы) — иначе повторные load() после
+  // редактирования образца/списания приняли бы старый sessionStorage-ключ
+  // за новую команду восстановления и задёргали бы скролл.
+  const matchesRestoreAttemptedRef = useRef(false);
+  // Значение, которое нужно применить к scrollLeft, когда matches
+  // (догруженные до нужного количества) наконец попадут в DOM — сам set
+  // происходит в useLayoutEffect по matches, а не здесь, потому что здесь
+  // ещё нет актуального matchesListRef.current.scrollWidth.
+  const pendingMatchesScrollRef = useRef<number | null>(null);
+
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -113,9 +129,34 @@ export const StashSkeinDetails: React.FC = () => {
         }),
       ]);
       setSkein(skeinData);
-      setMatches(matchesResult.items);
+
+      let items = matchesResult.items;
+      let hasMore = matchesResult.hasMore;
+
+      if (!matchesRestoreAttemptedRef.current) {
+        matchesRestoreAttemptedRef.current = true;
+        const savedRaw = sessionStorage.getItem(`stash_matches_scroll_${id}`);
+        if (savedRaw) {
+          try {
+            const saved: { count: number; scrollLeft: number } = JSON.parse(savedRaw);
+            // Догружаем те же страницы, что были подгружены до перехода в
+            // описание, одним заходом здесь — иначе scrollLeft пришлось бы
+            // выставлять раньше, чем в контейнере есть что скроллить.
+            while (items.length < saved.count && hasMore) {
+              const more = await fetchStashMatches(id, items.length);
+              items = [...items, ...more.items];
+              hasMore = more.hasMore;
+            }
+            pendingMatchesScrollRef.current = saved.scrollLeft;
+          } catch {
+            sessionStorage.removeItem(`stash_matches_scroll_${id}`);
+          }
+        }
+      }
+
+      setMatches(items);
       setMatchesLocked(matchesResult.isLocked);
-      setMatchesHasMore(matchesResult.hasMore);
+      setMatchesHasMore(hasMore);
     } catch (err) {
       console.error('[StashSkeinDetails] load failed:', err);
       setError('Не удалось загрузить карточку пряжи.');
@@ -123,6 +164,18 @@ export const StashSkeinDetails: React.FC = () => {
       setLoading(false);
     }
   }, [id]);
+
+  // Применяем отложенный scrollLeft, как только восстановленные карточки
+  // закоммитились в DOM — useLayoutEffect, а не useEffect, чтобы не было
+  // видимого кадра со скроллом от нуля.
+  useLayoutEffect(() => {
+    if (pendingMatchesScrollRef.current == null) return;
+    const container = matchesListRef.current;
+    if (!container) return;
+    container.scrollLeft = pendingMatchesScrollRef.current;
+    pendingMatchesScrollRef.current = null;
+    if (id) sessionStorage.removeItem(`stash_matches_scroll_${id}`);
+  }, [matches, id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -510,14 +563,26 @@ export const StashSkeinDetails: React.FC = () => {
       {matches.length > 0 && (
         <div className="stash-details-matches">
           <p className="stash-details-section-title">Что можно связать из этой пряжи</p>
-          <div className="stash-matches-list">
+          <div className="stash-matches-list" ref={matchesListRef}>
             {matches.map((m, i) => (
               <button
                 key={m.id}
                 ref={i === matches.length - 1 ? lastMatchElementRef : undefined}
                 type="button"
                 className={`stash-match-card${matchesLocked ? ' stash-match-card--locked' : ''}`}
-                onClick={() => (matchesLocked ? setIsMatchesPaywallOpen(true) : navigate(`/pattern/${m.id}`))}
+                onClick={() => {
+                  if (matchesLocked) { setIsMatchesPaywallOpen(true); return; }
+                  // Сохраняем позицию ПЕРЕД переходом — после возврата
+                  // страница монтируется заново (см. load() выше), восстановить
+                  // scrollLeft можно только по тому, что успели записать здесь.
+                  if (id && matchesListRef.current) {
+                    sessionStorage.setItem(
+                      `stash_matches_scroll_${id}`,
+                      JSON.stringify({ count: matches.length, scrollLeft: matchesListRef.current.scrollLeft }),
+                    );
+                  }
+                  navigate(`/pattern/${m.id}`);
+                }}
               >
                 {matchesLocked ? (
                   <div className="stash-match-image-frame">
