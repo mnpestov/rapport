@@ -536,14 +536,16 @@ export async function approveYarnFieldSuggestion(req: Request, res: Response) {
     return res.status(409).json({ error: "Заявка уже рассмотрена" });
   }
 
-  // Только заполняем то, что предложено (и только если поле ВСЁ ЕЩЁ пусто —
-  // с момента подачи заявки его мог заполнить кто-то другой), никогда не
-  // перетираем существующее значение справочника.
+  // Заявка — и на дозаполнение пустого поля, и на исправление уже
+  // заполненного (suggestYarnFields в stashController.ts принимает оба
+  // случая). Approve — это ручное решение модератора в админке, поэтому
+  // записываем предложенное значение безусловно, в том числе поверх уже
+  // существующего в справочнике.
   const data: Prisma.YarnUpdateInput = {};
   const yarn = await prisma.yarn.findUnique({ where: { id: suggestion.yarnId }, select: { mPer100g: true, composition: true } });
   if (!yarn) return res.status(404).json({ error: "Артикул не найден" });
-  if (suggestion.mPer100g != null && yarn.mPer100g == null) data.mPer100g = suggestion.mPer100g;
-  if (suggestion.composition != null && yarn.composition == null) data.composition = suggestion.composition;
+  if (suggestion.mPer100g != null) data.mPer100g = suggestion.mPer100g;
+  if (suggestion.composition != null) data.composition = suggestion.composition;
 
   await prisma.$transaction([
     prisma.yarn.update({ where: { id: suggestion.yarnId }, data }),

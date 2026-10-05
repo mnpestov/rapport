@@ -1263,8 +1263,10 @@ export const createStashYarn = (req: Request, res: Response) =>
  * карточка расходятся сознательно, а не по багу.
  *
  * Ограничения:
- * - Ничего не предлагаем поверх уже заполненного значения — иначе рядовой
- *   пользователь мог бы тихо "исправить" верно указанный админом метраж.
+ * - Предлагать можно и дозаполнение пустого поля, и исправление уже
+ *   заполненного — тихо подменить ничего нельзя: исправление уходит в
+ *   YarnFieldSuggestion и применяется к Yarn только после ручного approve
+ *   в админке (см. approveYarnFieldSuggestion в yarnsController.ts).
  * - Одна PENDING-заявка на артикул одновременно (проверено в getSkein для
  *   фронта, здесь — авторитетная проверка на запись).
  */
@@ -1299,13 +1301,14 @@ export const suggestYarnFields = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Не принимаем предложение по полю, которое уже заполнено — форма на
-    // фронте и так скрывает такие поля, это защита на случай гонки (кто-то
-    // другой дозаполнил тот же артикул между открытием формы и сабмитом).
-    const finalMPer100g = yarn.mPer100g == null ? mPer100g : null;
-    const finalComposition = yarn.composition == null ? composition : null;
+    // Принимаем и дозаполнение пустого поля, и исправление уже заполненного
+    // — лишь бы предложенное значение отличалось от текущего в справочнике
+    // (иначе предлагать нечего). Расхождение само по себе не значит, что
+    // предложение верное — решение остаётся за модератором в админке.
+    const finalMPer100g = mPer100g !== null && mPer100g !== yarn.mPer100g ? mPer100g : null;
+    const finalComposition = composition !== null && composition !== yarn.composition ? composition : null;
     if (finalMPer100g === null && finalComposition === null) {
-      res.status(409).json({ error: "Эти поля уже заполнены в справочнике" });
+      res.status(409).json({ error: "Эти значения совпадают со справочником — предлагать нечего" });
       return;
     }
 

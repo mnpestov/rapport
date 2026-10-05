@@ -380,18 +380,21 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
           }),
       });
 
-      // Артикул уже существовал (selectedYarn), но пользователь дозаполнил
-      // пустое поле метража/состава — createSkein снапшотит Yarn as-is и
-      // это значение из формы никуда не сохраняет (см. AddYarnModal disabled
-      // логику выше), поэтому шлём отдельной заявкой на модерацию, тем же
-      // путём, что и кнопка "Дозаполнить" на карточке пряжи. Бэкенд пишет
-      // значение в snapshot этого же мотка сразу (видно владельцу
-      // немедленно, справочник обновится только после одобрения) —
-      // отражаем это в локальном объекте перед onCreated, иначе карточка в
-      // списке хранилища показала бы "нет данных" до следующей перезагрузки.
+      // Артикул уже существовал (selectedYarn), но пользователь ввёл
+      // метраж/состав, отличающийся от справочника (дозаполнение пустого
+      // поля или исправление уже заполненного) — createSkein снапшотит Yarn
+      // as-is и это значение из формы никуда не сохраняет, поэтому шлём
+      // отдельной заявкой на модерацию, тем же путём, что и кнопка
+      // "Дозаполнить" на карточке пряжи. Бэкенд пишет значение в snapshot
+      // этого же мотка сразу (видно владельцу немедленно, справочник
+      // обновится только после одобрения) — отражаем это в локальном
+      // объекте перед onCreated, иначе карточка в списке хранилища показала
+      // бы старое значение до следующей перезагрузки.
       if (selectedYarn) {
-        const suggestedMPer100g = selectedYarn.mPer100g == null && mPer100g.trim() ? Number(mPer100g) : undefined;
-        const suggestedComposition = !selectedYarn.composition && composition.trim() ? composition.trim() : undefined;
+        const typedMPer100g = mPer100g.trim() ? Number(mPer100g) : null;
+        const typedComposition = composition.trim() || null;
+        const suggestedMPer100g = typedMPer100g !== null && typedMPer100g !== selectedYarn.mPer100g ? typedMPer100g : undefined;
+        const suggestedComposition = typedComposition !== null && typedComposition !== (selectedYarn.composition || null) ? typedComposition : undefined;
         if (suggestedMPer100g !== undefined || suggestedComposition !== undefined) {
           try {
             await suggestYarnFields(skein.id, { mPer100g: suggestedMPer100g, composition: suggestedComposition });
@@ -539,11 +542,15 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 placeholder="Введите текст..."
                 inputMode="numeric"
                 onChange={(e) => setMPer100g(e.target.value)}
-                disabled={!!selectedYarn && selectedYarn.mPer100g != null}
               />
               {selectedYarn && selectedYarn.mPer100g == null && (
                 <p className="add-yarn-field-hint">
                   В справочнике это поле не заполнено — укажите значение, оно уйдёт на проверку модератору.
+                </p>
+              )}
+              {selectedYarn && selectedYarn.mPer100g != null && (
+                <p className="add-yarn-field-hint">
+                  Если это значение отличается от справочника ({selectedYarn.mPer100g} м/100г), исправление уйдёт на проверку модератору.
                 </p>
               )}
             </div>
@@ -555,11 +562,15 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 value={composition}
                 placeholder="Введите текст..."
                 onChange={(e) => setComposition(e.target.value)}
-                disabled={!!selectedYarn && !!selectedYarn.composition}
               />
               {selectedYarn && !selectedYarn.composition && (
                 <p className="add-yarn-field-hint">
                   В справочнике это поле не заполнено — укажите значение, оно уйдёт на проверку модератору.
+                </p>
+              )}
+              {selectedYarn && selectedYarn.composition && (
+                <p className="add-yarn-field-hint">
+                  Если это значение отличается от справочника ({selectedYarn.composition}), исправление уйдёт на проверку модератору.
                 </p>
               )}
             </div>

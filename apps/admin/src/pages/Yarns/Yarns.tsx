@@ -249,7 +249,7 @@ export function Yarns() {
         tabs={[
           { value: "catalog", label: "Справочник" },
           { value: "pending", label: "На проверке", count: pendingItems.length || undefined },
-          { value: "field-suggestions", label: "Заявки на дозаполнение", count: fieldSuggestions.length || undefined },
+          { value: "field-suggestions", label: "Заявки на метраж/состав", count: fieldSuggestions.length || undefined },
         ]}
         activeTab={tab}
         onTabChange={(v) => setTab(v as TabValue)}
@@ -423,8 +423,16 @@ export function Yarns() {
               </span>
               <span className={s.mPer100g == null ? styles.missing : undefined}>
                 {s.mPer100g != null ? `${s.mPer100g} м/100 г` : "—"}
+                {s.yarn.mPer100g != null && s.yarn.mPer100g !== s.mPer100g && (
+                  <span className={styles.current}>сейчас: {s.yarn.mPer100g} м/100 г</span>
+                )}
               </span>
-              <span className={styles.clip} title={s.composition || ""}>{s.composition || "—"}</span>
+              <span className={styles.clip} title={s.composition || ""}>
+                {s.composition || "—"}
+                {s.yarn.composition && s.yarn.composition !== s.composition && (
+                  <span className={styles.current}>сейчас: {s.yarn.composition}</span>
+                )}
+              </span>
               <span className={styles.clip}>
                 {s.suggestedBy.username ? `@${s.suggestedBy.username}` : `${s.suggestedBy.firstName} ${s.suggestedBy.lastName || ""}`.trim()}
               </span>
@@ -443,7 +451,7 @@ export function Yarns() {
             </div>
           ))}
           {!fieldSuggestionsLoading && fieldSuggestions.length === 0 && (
-            <div className={styles.empty}>Нет заявок на дозаполнение</div>
+            <div className={styles.empty}>Нет заявок на метраж/состав</div>
           )}
         </div>
       )}

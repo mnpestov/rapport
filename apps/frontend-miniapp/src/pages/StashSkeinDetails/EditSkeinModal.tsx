@@ -84,9 +84,10 @@ function createEmptySwatchEntry(): SwatchEntry {
 // осознанные, не пропуски:
 // - Название/Бренд всегда read-only — артикул (yarnId) мотка неизменен,
 //   смена артикула означала бы фактически другую пряжу, не правку записи.
-// - Метраж/Состав редактируемы, только если снапшот ещё пуст — та же
-//   логика дозаполнения, что при создании (см. AddYarnModal), при
-//   заполнении уходит заявка на модерацию тем же suggestYarnFields.
+// - Метраж/Состав всегда редактируемы — та же логика, что при создании (см.
+//   AddYarnModal): если введённое значение отличается от текущего снапшота,
+//   уходит заявка на модерацию тем же suggestYarnFields (дозаполнение
+//   пустого поля или исправление уже заполненного — решение за модератором).
 // - Образцы — уже существующие (skein.swatches) редактируются на месте
 //   (PATCH) или помечаются на удаление (реальный DELETE — только по
 //   Сохранить, не сразу по клику, чтобы можно было передумать до сабмита),
@@ -230,11 +231,14 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
         totalWeightG: weightValue,
       });
 
-      // Та же логика дозаполнения, что в AddYarnModal — метраж/состав
-      // редактируемы, только пока снапшот пуст, отправляются отдельной
+      // Та же логика, что в AddYarnModal — метраж/состав всегда редактируемы;
+      // если введённое значение отличается от текущего снапшота (дозаполнение
+      // пустого или исправление уже заполненного), отправляется отдельной
       // заявкой на модерацию (бэкенд обновляет snapshot этого мотка сразу).
-      const suggestedMPer100g = skein.mPer100gSnapshot == null && mPer100g.trim() ? Number(mPer100g) : undefined;
-      const suggestedComposition = !skein.compositionSnapshot && composition.trim() ? composition.trim() : undefined;
+      const typedMPer100g = mPer100g.trim() ? Number(mPer100g) : null;
+      const typedComposition = composition.trim() || null;
+      const suggestedMPer100g = typedMPer100g !== null && typedMPer100g !== skein.mPer100gSnapshot ? typedMPer100g : undefined;
+      const suggestedComposition = typedComposition !== null && typedComposition !== (skein.compositionSnapshot || null) ? typedComposition : undefined;
       if (suggestedMPer100g !== undefined || suggestedComposition !== undefined) {
         try {
           await suggestYarnFields(skein.id, { mPer100g: suggestedMPer100g, composition: suggestedComposition });
@@ -342,11 +346,15 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                 placeholder="Введите текст..."
                 inputMode="numeric"
                 onChange={(e) => setMPer100g(e.target.value)}
-                disabled={skein.mPer100gSnapshot != null}
               />
               {skein.mPer100gSnapshot == null && (
                 <p className="add-yarn-field-hint">
                   В справочнике это поле не заполнено — укажите значение, оно уйдёт на проверку модератору.
+                </p>
+              )}
+              {skein.mPer100gSnapshot != null && (
+                <p className="add-yarn-field-hint">
+                  Если это значение отличается от справочника ({skein.mPer100gSnapshot} м/100г), исправление уйдёт на проверку модератору.
                 </p>
               )}
             </div>
@@ -358,11 +366,15 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                 value={composition}
                 placeholder="Введите текст..."
                 onChange={(e) => setComposition(e.target.value)}
-                disabled={!!skein.compositionSnapshot}
               />
               {!skein.compositionSnapshot && (
                 <p className="add-yarn-field-hint">
                   В справочнике это поле не заполнено — укажите значение, оно уйдёт на проверку модератору.
+                </p>
+              )}
+              {skein.compositionSnapshot && (
+                <p className="add-yarn-field-hint">
+                  Если это значение отличается от справочника ({skein.compositionSnapshot}), исправление уйдёт на проверку модератору.
                 </p>
               )}
             </div>
