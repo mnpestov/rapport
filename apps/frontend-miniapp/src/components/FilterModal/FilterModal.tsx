@@ -101,7 +101,13 @@ export const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApp
   // Держит шторку в дереве на время выезда вниз и даёт класс для
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
   // мгновенно, до анимации закрытия.
-  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
+  // lockScroll: true — оверлей этой шторки не завязан на --vv-bottom-inset
+  // (в отличие от форм хранилища/проектов), поэтому при фокусе на любом
+  // инпуте внутри (цена, поиск по автору) iOS автоскроллил СТРАНИЦУ к
+  // инпуту, утаскивая fixed-оверлей за собой. Блокировка скролла body на
+  // время шторки убирает повод для этого автоскролла (см.
+  // utils/bodyScrollLock.ts).
+  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen, { lockScroll: true });
   // Density/yarn-thickness sections require PREMIUM_CORE, price requires
   // PREMIUM_EXTRA — renderSection always renders its header regardless of
   // whether options is empty, so gating has to happen at the call site, not

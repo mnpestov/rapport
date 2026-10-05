@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lockBodyScroll, unlockBodyScroll } from "../utils/bodyScrollLock";
 
 // Длительность анимации ЗАКРЫТИЯ шторки — именно она определяет, когда
 // безопасно размонтировать содержимое (при открытии размонтирования нет,
@@ -21,7 +22,19 @@ export interface SheetTransition {
   sheetRef: React.RefObject<HTMLDivElement>;
 }
 
-export function useSheetTransition(isOpen: boolean): SheetTransition {
+export interface UseSheetTransitionOptions {
+  // Блокировать скролл body, пока шторка смонтирована (открыта + идёт
+  // анимация закрытия) — см. utils/bodyScrollLock.ts. По умолчанию
+  // выключено: большинство шторок (формы с полями ввода) уже используют
+  // другой механизм (--vv-bottom-inset на оверлее, см.
+  // useVisualViewportInset.ts), и включать оба сразу без необходимости не
+  // стоит. Нужен шторкам, у которых оверлей НЕ привязан к
+  // --vv-bottom-inset (FilterModal, SortModal, ReportErrorModal).
+  lockScroll?: boolean;
+}
+
+export function useSheetTransition(isOpen: boolean, options?: UseSheetTransitionOptions): SheetTransition {
+  const lockScroll = options?.lockScroll ?? false;
   const [isMounted, setIsMounted] = useState(isOpen);
   // ВСЕГДА false на старте, даже если шторка монтируется уже открытой.
   // Раньше здесь стояло useState(isOpen), и в этом случае первый же кадр
@@ -59,6 +72,15 @@ export function useSheetTransition(isOpen: boolean): SheetTransition {
     void sheetRef.current?.offsetHeight;
     setIsVisible(true);
   }, [isMounted, isOpen, isVisible]);
+
+  // Блокировка висит весь период isMounted (не только isOpen) — тот же
+  // период, что и у анимации закрытия, иначе скролл разблокировался бы до
+  // того, как шторка реально исчезла с экрана.
+  useEffect(() => {
+    if (!lockScroll || !isMounted) return;
+    lockBodyScroll();
+    return () => unlockBodyScroll();
+  }, [lockScroll, isMounted]);
 
   return { isMounted, isVisible, sheetRef };
 }

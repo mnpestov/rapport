@@ -20,7 +20,10 @@ export const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ isOpen, onCl
   // Держит шторку в дереве на время выезда вниз и даёт класс для
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
   // мгновенно, до анимации закрытия.
-  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
+  // lockScroll: true — та же причина, что у FilterModal.tsx: здесь тоже
+  // есть текстовые поля внутри шторки, оверлей не завязан на
+  // --vv-bottom-inset.
+  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen, { lockScroll: true });
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [message, setMessage] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);

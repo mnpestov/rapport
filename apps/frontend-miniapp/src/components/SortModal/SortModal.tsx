@@ -78,7 +78,10 @@ const SortSheet: React.FC<SortViewProps> = ({ isOpen, onClose, value, onApply, o
   // Держит шторку в дереве на время выезда вниз и даёт класс для
   // открытого состояния — сам по себе `isOpen` размонтировал бы её
   // мгновенно, до анимации закрытия.
-  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
+  // lockScroll: true — та же причина, что у FilterModal.tsx (общий оверлей
+  // без --vv-bottom-inset); здесь своих инпутов нет, но блокировка фона
+  // на время любой открытой bottom-шторки — и так ожидаемое поведение.
+  const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen, { lockScroll: true });
   const [selected, setSelected] = useState<SortOption>(value);
 
   useEffect(() => {
