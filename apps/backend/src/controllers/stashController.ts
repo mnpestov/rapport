@@ -328,7 +328,7 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-/** PATCH /stash/skeins/:id — редактировать (цвет, партия, вес, фото, заметка). */
+/** PATCH /stash/skeins/:id — редактировать (артикул, бренд, цвет, партия, вес, фото, заметка). */
 export const updateSkein = async (req: Request, res: Response): Promise<void> => {
   const id = req.skein!.id;
   const userId = req.user!.userId;
@@ -338,6 +338,20 @@ export const updateSkein = async (req: Request, res: Response): Promise<void> =>
   if ("colorName" in body) data.colorName = body.colorName ? String(body.colorName) : null;
   if ("dyelot" in body) data.dyelot = body.dyelot ? String(body.dyelot) : null;
   if ("note" in body) data.note = body.note ? String(body.note) : null;
+  // Артикул/бренд этого конкретного мотка — в отличие от метража/состава
+  // (suggestYarnFields), правятся напрямую, без заявки на модерацию: это
+  // не попытка исправить общий справочник Yarn, а то, как пользователь сам
+  // называет и подписывает свой моток у себя в хранилище (решено явно,
+  // чат с пользователем, октябрь 2026). Yarn.name/brand не трогаются.
+  if ("yarnNameSnapshot" in body) {
+    const yarnNameSnapshot = String(body.yarnNameSnapshot || "").trim();
+    if (!yarnNameSnapshot) {
+      res.status(400).json({ error: "Артикул не может быть пустым" });
+      return;
+    }
+    data.yarnNameSnapshot = yarnNameSnapshot;
+  }
+  if ("brandSnapshot" in body) data.brandSnapshot = body.brandSnapshot ? String(body.brandSnapshot).trim() : null;
   if ("images" in body) {
     const images: string[] = Array.isArray(body.images) ? body.images.map(String) : [];
     if (images.length > MAX_STASH_IMAGES_PER_SKEIN) {

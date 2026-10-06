@@ -82,12 +82,15 @@ function createEmptySwatchEntry(): SwatchEntry {
 // визуально идентичную форму, предзаполненную текущими данными, включая
 // возможность править/добавлять/удалять образцы. Отличия от AddYarnModal
 // осознанные, не пропуски:
-// - Название/Бренд всегда read-only — артикул (yarnId) мотка неизменен,
-//   смена артикула означала бы фактически другую пряжу, не правку записи.
-// - Метраж/Состав всегда редактируемы — та же логика, что при создании (см.
-//   AddYarnModal): если введённое значение отличается от текущего снапшота,
-//   уходит заявка на модерацию тем же suggestYarnFields (дозаполнение
-//   пустого поля или исправление уже заполненного — решение за модератором).
+// - Артикул/Бренд — это yarnNameSnapshot/brandSnapshot этого конкретного
+//   мотка, не ссылка на справочный Yarn (yarnId не меняется и не может
+//   смениться через эту форму) — правятся напрямую через updateStashSkein,
+//   без заявки на модерацию: это не попытка исправить общий справочник, а
+//   то, как пользователь сам подписывает свой моток у себя в хранилище.
+// - Метраж/Состав всегда редактируемы — но, в отличие от Артикула/Бренда,
+//   если введённое значение отличается от текущего снапшота, параллельно
+//   уходит заявка на модерацию тем же suggestYarnFields (это сверка с
+//   общим справочником Yarn, а не просто личная подпись мотка).
 // - Образцы — уже существующие (skein.swatches) редактируются на месте
 //   (PATCH) или помечаются на удаление (реальный DELETE — только по
 //   Сохранить, не сразу по клику, чтобы можно было передумать до сабмита),
@@ -98,6 +101,8 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [yarnName, setYarnName] = useState('');
+  const [brand, setBrand] = useState('');
   const [mPer100g, setMPer100g] = useState('');
   const [composition, setComposition] = useState('');
   const [colorName, setColorName] = useState('');
@@ -117,6 +122,8 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
   useEffect(() => {
     if (!isOpen) return;
     setImages(skein.images.map((url) => (url.startsWith(API_URL) ? url.slice(API_URL.length) : url)));
+    setYarnName(skein.yarnNameSnapshot);
+    setBrand(skein.brandSnapshot || '');
     setMPer100g(skein.mPer100gSnapshot != null ? String(skein.mPer100gSnapshot) : '');
     setComposition(skein.compositionSnapshot || '');
     setColorName(skein.colorName || '');
@@ -211,7 +218,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
     updateSwatchEntry(key, { images: swatch.images.filter((u) => u !== url) });
   };
 
-  const isValid = totalWeightG.trim().length > 0 && Number(totalWeightG) > 0;
+  const isValid = yarnName.trim().length > 0 && totalWeightG.trim().length > 0 && Number(totalWeightG) > 0;
 
   const handleSave = async () => {
     if (!isValid || isSubmitting) return;
@@ -225,6 +232,12 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
     try {
       await updateStashSkein(skein.id, {
         images,
+        yarnNameSnapshot: yarnName.trim(),
+        // Пустая строка отправляется явно (не || undefined, как у
+        // colorName/dyelot ниже) — иначе снять уже указанный бренд через
+        // эту форму было бы нельзя: пустое значение молча не попало бы в
+        // тело запроса, и бэкенд не тронул бы поле.
+        brandSnapshot: brand.trim(),
         colorName: colorName.trim() || undefined,
         dyelot: dyelot.trim() || undefined,
         note: note.trim() || undefined,
@@ -329,13 +342,23 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             <p className="add-yarn-section-title">Пряжа</p>
 
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Артикул</label>
-              <input className="add-yarn-input" value={skein.yarnNameSnapshot} disabled />
+              <label className="add-yarn-label">Артикул *</label>
+              <input
+                className="add-yarn-input"
+                value={yarnName}
+                placeholder="Введите текст..."
+                onChange={(e) => setYarnName(e.target.value)}
+              />
             </div>
 
             <div className="add-yarn-field">
               <label className="add-yarn-label">Бренд</label>
-              <input className="add-yarn-input" value={skein.brandSnapshot || ''} placeholder="—" disabled />
+              <input
+                className="add-yarn-input"
+                value={brand}
+                placeholder="Введите текст..."
+                onChange={(e) => setBrand(e.target.value)}
+              />
             </div>
 
             <div className="add-yarn-field">

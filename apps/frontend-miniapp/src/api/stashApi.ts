@@ -183,6 +183,8 @@ export interface UpdateStashSkeinPayload {
   dyelot?: string;
   note?: string;
   totalWeightG?: number;
+  yarnNameSnapshot?: string;
+  brandSnapshot?: string;
 }
 
 export const updateStashSkein = async (id: string, payload: UpdateStashSkeinPayload): Promise<StashSkein> => {
