@@ -572,7 +572,7 @@ export const ProjectDetails: React.FC = () => {
         </CollapsibleSection>
       )}
 
-      {(project.documents.length > 0 || project.referencePhotos.length > 0) && (
+      {project.documents.length > 0 && (
         <CollapsibleSection title="Описание, файл" isOpen={isSectionOpen('documents')} onToggle={() => toggleSection('documents')} className="add-project-section">
           {project.documents.map((doc) => (
             <div key={doc.id} className="add-project-pdf-row">
@@ -581,15 +581,18 @@ export const ProjectDetails: React.FC = () => {
               </button>
             </div>
           ))}
-          {project.referencePhotos.length > 0 && (
-            <div className="add-project-photos">
-              {project.referencePhotos.map((url) => (
-                <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
-                  <img src={url} alt="" />
-                </div>
-              ))}
-            </div>
-          )}
+        </CollapsibleSection>
+      )}
+
+      {project.referencePhotos.length > 0 && (
+        <CollapsibleSection title="Референс" isOpen={isSectionOpen('references')} onToggle={() => toggleSection('references')} className="add-project-section">
+          <div className="add-project-photos">
+            {project.referencePhotos.map((url) => (
+              <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
+                <img src={url} alt="" />
+              </div>
+            ))}
+          </div>
         </CollapsibleSection>
       )}
 
