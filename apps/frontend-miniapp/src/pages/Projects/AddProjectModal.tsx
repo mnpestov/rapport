@@ -623,7 +623,12 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         draftSavedRef.current = true;
         const patchedDraft = await updateProject(draftProjectId, {
           title: title.trim(),
-          status: 'IN_PROGRESS',
+          // Реальный выбранный статус (PLANNED/IN_PROGRESS) — раньше здесь
+          // было жёстко 'IN_PROGRESS', из-за чего "В планах" молча
+          // сохранялось как "В процессе". Только для isCompleted временно
+          // остаёмся не-COMPLETED (PATCH на COMPLETED напрямую запрещён
+          // бэкендом), довершает переход completeProject ниже.
+          status: (isCompleted ? 'IN_PROGRESS' : status) as Exclude<ProjectStatus, 'COMPLETED'>,
           startedAt: startedAt || undefined,
           patternIds: selectedPattern ? [selectedPattern.id] : [],
           manualAuthor: !selectedPattern ? manualAuthor.trim() || null : null,
