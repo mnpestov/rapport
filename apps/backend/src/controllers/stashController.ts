@@ -1257,30 +1257,34 @@ export const createStashYarn = (req: Request, res: Response) =>
   createAuthorYarn(req, res, "STASH_USER");
 
 /**
- * POST /stash/skeins/:id/suggest-yarn-fix — заявка на дозаполнение пустых
- * полей (метраж/состав) справочного артикула, на который ссылается
- * req.skein.yarnId. Отдельная сущность YarnFieldSuggestion, а не новая
- * Yarn-строка со status: PENDING: это не новый артикул, а дельта-правка к
- * уже APPROVED-записи, попавшей в личное хранилище пользователя как есть
- * (см. комментарий над *Snapshot-полями StashSkein наверху файла).
+ * POST /stash/skeins/:id/suggest-yarn-fix — пользователь вводит метраж/
+ * состав для своего мотка (дозаполнение пустого поля справочника или
+ * исправление уже заполненного). Два НЕЗАВИСИМЫХ эффекта:
  *
- * Значение видно владельцу СРАЗУ (mPer100gSnapshot/compositionSnapshot
- * этого конкретного StashSkein обновляются в той же транзакции, что и
- * заявка) — параллельно уходит на модерацию для попадания в общий
- * справочник. Если админ отклонит YarnFieldSuggestion, Yarn.mPer100g/
- * composition НЕ трогаются (rejectYarnFieldSuggestion просто помечает
- * status: REJECTED), а снапшот у владельца, уже обновлённый здесь,
- * остаётся как есть — тот же принцип "снапшот как единственный источник
- * для отображения", что и у остальных *Snapshot-полей: справочник и личная
- * карточка расходятся сознательно, а не по багу.
+ * 1. StashSkein.mPer100gSnapshot/compositionSnapshot обновляются ВСЕГДА,
+ *    безусловно — это собственные данные пользователя о своём мотке, и
+ *    заявка на модерацию не должна иметь права вето на то, что человек
+ *    видит в своём хранилище. Раньше тут были 409 ("совпадает со
+ *    справочником" / "уже есть заявка на рассмотрении"), которые ПОЛНОСТЬЮ
+ *    блокировали сохранение снапшота — это была ошибка модели: решение
+ *    пользователя обсуждалось явно (чат, октябрь 2026).
+ * 2. YarnFieldSuggestion — отдельный, вторичный сигнал ТОЛЬКО для админа,
+ *    чтобы проверять актуальность общего справочника Yarn. Если по этому
+ *    артикулу уже висит нерассмотренная заявка — она устарела (у
+ *    пользователя уже новое значение), тихо помечается REJECTED и
+ *    заменяется свежей. Пользователю эта механика не показывается никак —
+ *    он просто видит, что его правка сохранилась.
  *
- * Ограничения:
- * - Предлагать можно и дозаполнение пустого поля, и исправление уже
- *   заполненного — тихо подменить ничего нельзя: исправление уходит в
- *   YarnFieldSuggestion и применяется к Yarn только после ручного approve
- *   в админке (см. approveYarnFieldSuggestion в yarnsController.ts).
- * - Одна PENDING-заявка на артикул одновременно (проверено в getSkein для
- *   фронта, здесь — авторитетная проверка на запись).
+ * Если введённое значение совпадает с тем, что уже в справочнике Yarn —
+ * предлагать админу нечего, заявка не создаётся, но снапшот всё равно
+ * обновляется (p.1 выше).
+ *
+ * Если админ отклонит/одобрит YarnFieldSuggestion, Yarn.mPer100g/
+ * composition трогаются только при approve (см. approveYarnFieldSuggestion
+ * в yarnsController.ts) — снапшот пользователя от этого не зависит, он уже
+ * обновлён здесь и остаётся как есть: справочник и личная карточка
+ * расходятся сознательно, а не по багу (тот же принцип, что у остальных
+ * *Snapshot-полей).
  */
 export const suggestYarnFields = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
@@ -1313,43 +1317,48 @@ export const suggestYarnFields = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Принимаем и дозаполнение пустого поля, и исправление уже заполненного
-    // — лишь бы предложенное значение отличалось от текущего в справочнике
-    // (иначе предлагать нечего). Расхождение само по себе не значит, что
-    // предложение верное — решение остаётся за модератором в админке.
-    const finalMPer100g = mPer100g !== null && mPer100g !== yarn.mPer100g ? mPer100g : null;
-    const finalComposition = composition !== null && composition !== yarn.composition ? composition : null;
-    if (finalMPer100g === null && finalComposition === null) {
-      res.status(409).json({ error: "Эти значения совпадают со справочником — предлагать нечего" });
-      return;
-    }
-
-    const existing = await prisma.yarnFieldSuggestion.findFirst({
-      where: { yarnId: skein.yarnId, status: "PENDING" },
-      select: { id: true },
-    });
-    if (existing) {
-      res.status(409).json({ error: "Заявка по этому артикулу уже на рассмотрении" });
-      return;
-    }
-
+    // Снапшот — безусловно то, что ввёл пользователь, независимо от
+    // справочника и от состояния модерации (см. докстринг, п.1).
     const skeinSnapshotUpdate: Prisma.StashSkeinUpdateInput = {};
-    if (finalMPer100g !== null) skeinSnapshotUpdate.mPer100gSnapshot = finalMPer100g;
-    if (finalComposition !== null) skeinSnapshotUpdate.compositionSnapshot = finalComposition;
+    if (mPer100g !== null) skeinSnapshotUpdate.mPer100gSnapshot = mPer100g;
+    if (composition !== null) skeinSnapshotUpdate.compositionSnapshot = composition;
 
-    const [suggestion] = await prisma.$transaction([
-      prisma.yarnFieldSuggestion.create({
-        data: {
-          yarnId: skein.yarnId,
-          suggestedById: userId,
-          stashSkeinId: skein.id,
-          mPer100g: finalMPer100g,
-          composition: finalComposition,
-        },
-      }),
+    // Заявка на модерацию — только если значение реально отличается от
+    // справочника (иначе администратору нечего проверять, справочник уже
+    // верен).
+    const suggestMPer100g = mPer100g !== null && mPer100g !== yarn.mPer100g ? mPer100g : null;
+    const suggestComposition = composition !== null && composition !== yarn.composition ? composition : null;
+
+    const ops: Prisma.PrismaPromise<unknown>[] = [
       prisma.stashSkein.update({ where: { id: skein.id }, data: skeinSnapshotUpdate }),
-    ]);
-    res.status(201).json(suggestion);
+    ];
+
+    if (suggestMPer100g !== null || suggestComposition !== null) {
+      // Нерассмотренная заявка по этому артикулу устарела — у пользователя
+      // (этого же или другого) уже новое мнение о правильном значении.
+      // Тихо закрываем старую и заводим свежую — админ в очереди видит
+      // только последнее предложение, без истории передумываний.
+      ops.push(
+        prisma.yarnFieldSuggestion.updateMany({
+          where: { yarnId: skein.yarnId, status: "PENDING" },
+          data: { status: "REJECTED" },
+        }),
+      );
+      ops.push(
+        prisma.yarnFieldSuggestion.create({
+          data: {
+            yarnId: skein.yarnId,
+            suggestedById: userId,
+            stashSkeinId: skein.id,
+            mPer100g: suggestMPer100g,
+            composition: suggestComposition,
+          },
+        }),
+      );
+    }
+
+    await prisma.$transaction(ops);
+    res.status(200).json({ ok: true });
   } catch (error) {
     console.error(`[Stash] suggestYarnFields failed userId=${userId} skeinId=${skein.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
