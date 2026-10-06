@@ -572,15 +572,32 @@ export const ProjectDetails: React.FC = () => {
         </CollapsibleSection>
       )}
 
-      {project.documents.length > 0 && (
+      {(project.documents.length > 0 || project.links.length > 0) && (
         <CollapsibleSection title="Описание, файл" isOpen={isSectionOpen('documents')} onToggle={() => toggleSection('documents')} className="add-project-section">
-          {project.documents.map((doc) => (
-            <div key={doc.id} className="add-project-pdf-row">
-              <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
-                #{doc.originalFileName}
-              </button>
-            </div>
-          ))}
+          {project.documents.length > 0 && (
+            <>
+              <p className="pd-label-row"><b>Файлы:</b></p>
+              {project.documents.map((doc) => (
+                <div key={doc.id} className="add-project-pdf-row">
+                  <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
+                    {doc.originalFileName}
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+          {project.links.length > 0 && (
+            <>
+              <p className="pd-label-row"><b>Ссылки:</b></p>
+              {project.links.map((link, index) => (
+                <div key={index} className="add-project-pdf-row">
+                  <a className="add-project-pdf-link" href={link} target="_blank" rel="noopener noreferrer">
+                    {link}
+                  </a>
+                </div>
+              ))}
+            </>
+          )}
         </CollapsibleSection>
       )}
 

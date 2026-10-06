@@ -357,6 +357,15 @@
   margin: 0;
 }
 
+/* Тот же паттерн, что .stash-swatch-body — плоский flex-столбец с
+   небольшим равномерным зазором между строками/заголовками групп внутри
+   (например "Файлы:"/"Ссылки:" в блоке "Описание, файл"). */
+.project-collapsible-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .project-collapsible-chevron {
   flex-shrink: 0;
   color: #1d1c1c;
