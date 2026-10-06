@@ -849,7 +849,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 20px;
+  /* padding: 10px 20px; */
 }
 
 .add-project-pdf-link {
@@ -865,6 +865,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Строка ссылки (видео-инструкция и т.п.) — тот же .add-project-pdf-row,
+   только вместо кнопки-ссылки обычное текстовое поле на всю ширину строки. */
+.add-project-link-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .add-project-pdf-remove {

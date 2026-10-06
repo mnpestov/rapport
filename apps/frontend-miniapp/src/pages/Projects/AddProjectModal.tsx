@@ -155,6 +155,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   // сохранит — handleSave обновляет (PATCH) тот же черновик вместо
   // создания второго проекта.
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [links, setLinks] = useState<string[]>([]);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<ProjectDocument | null>(null);
   const documentFileInputRef = useRef<HTMLInputElement>(null);
@@ -210,6 +211,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       setFinishedPhotos(project.finishedPhotos);
       setNote(project.note ?? '');
       setDocuments(project.documents);
+      setLinks(project.links);
     } else {
       setTitle('');
       setStatus('IN_PROGRESS');
@@ -227,6 +229,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       setFinishedPhotos([]);
       setNote('');
       setDocuments([]);
+      setLinks([]);
       // Тихий черновик пересоздаётся с нуля на каждое новое открытие формы
       // создания (см. отдельный эффект ниже) — сбрасываем следы предыдущего.
       draftSavedRef.current = false;
@@ -506,6 +509,11 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     }
   };
 
+  const addLinkRow = () => setLinks((prev) => [...prev, '']);
+  const updateLinkRow = (index: number, value: string) =>
+    setLinks((prev) => prev.map((l, i) => (i === index ? value : l)));
+  const removeLinkRow = (index: number) => setLinks((prev) => prev.filter((_, i) => i !== index));
+
   const handleFinishedPhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
@@ -564,6 +572,9 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     }
     setIsSubmitting(true);
     setError(null);
+    // Пустые строки (добавили поле кнопкой, но не заполнили или стёрли) не
+    // сохраняем — иначе в карточке проекта появлялась бы пустая строка-ссылка.
+    const cleanedLinks = links.map((l) => l.trim()).filter(Boolean);
     try {
       if (isEditMode && project) {
         const updated = await updateProject(project.id, {
@@ -576,6 +587,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           instruments: instrumentsPayload,
           note: note.trim() || null,
           referencePhotos,
+          links: cleanedLinks,
           finishedPhotos,
         });
         onUpdated?.(updated);
@@ -619,6 +631,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           instruments: instrumentsPayload,
           note: note.trim() || null,
           referencePhotos,
+          links: cleanedLinks,
           finishedPhotos,
         });
         for (const y of selectedYarns) {
@@ -651,6 +664,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         instruments: instrumentsPayload.length > 0 ? instrumentsPayload : undefined,
         note: note.trim() || undefined,
         referencePhotos,
+        links: cleanedLinks,
         // Фото изделия сохраняются при любом статусе, не только COMPLETED
         // — проект "В процессе"/"На паузе" тоже может иметь промежуточные
         // фото результата, форма не прячет этот блок за статусом.
@@ -1102,6 +1116,23 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                   style={{ display: 'none' }}
                   onChange={handleDocumentFileSelected}
                 />
+                {links.map((link, index) => (
+                  <div key={index} className="add-project-pdf-row">
+                    <input
+                      className="add-project-input add-project-link-input"
+                      value={link}
+                      placeholder="https://..."
+                      onChange={(e) => updateLinkRow(index, e.target.value)}
+                    />
+                    <button type="button" className="add-project-pdf-remove" onClick={() => removeLinkRow(index)} aria-label="Удалить ссылку">
+                      <Trash2 size={16} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="add-project-pdf-upload-btn" onClick={addLinkRow}>
+                  <Plus size={8} strokeWidth={1.5} />
+                  Добавить ссылку
+                </button>
               </>
             )}
           </div>

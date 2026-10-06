@@ -234,6 +234,14 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
     res.status(400).json({ error: `Не более ${MAX_STASH_IMAGES_PER_SKEIN} фото референса` });
     return;
   }
+  // Ссылки (видео-инструкции и т.п.) — тот же validateImagesField (просто
+  // "массив строк не длиннее лимита", несмотря на название), не URL-файлы
+  // и не проходят проверку происхождения ниже.
+  const links = validateImagesField(body.links, MAX_STASH_IMAGES_PER_SKEIN, "ссылка");
+  if (links === null) {
+    res.status(400).json({ error: `Не более ${MAX_STASH_IMAGES_PER_SKEIN} ссылок` });
+    return;
+  }
   for (const arr of [images, referencePhotos]) {
     const check = validateNewStashImageOrigins(arr);
     if (!check.ok) {
@@ -363,6 +371,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
           images,
           referencePhotos,
           finishedPhotos,
+          links,
           instruments: effectiveInstruments.length
             ? { create: effectiveInstruments.map((i) => ({ instrumentId: i.instrumentId, sizeMm: i.sizeMm })) }
             : undefined,
@@ -522,6 +531,14 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
       return;
     }
     data.referencePhotos = referencePhotos;
+  }
+  if ("links" in body) {
+    const links = validateImagesField(body.links, MAX_STASH_IMAGES_PER_SKEIN, "ссылка");
+    if (links === null) {
+      res.status(400).json({ error: `Не более ${MAX_STASH_IMAGES_PER_SKEIN} ссылок` });
+      return;
+    }
+    data.links = links;
   }
   if ("finishedPhotos" in body) {
     // Редактирование формы проекта (не визард завершения) — фото изделия

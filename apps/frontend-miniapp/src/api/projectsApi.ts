@@ -120,6 +120,7 @@ export interface ProjectDetail {
   images: string[];
   finishedPhotos: string[];
   referencePhotos: string[];
+  links: string[];
   createdAt: string;
   updatedAt: string;
   patterns: ProjectPattern[];
@@ -206,6 +207,7 @@ export interface CreateProjectPayload {
   note?: string;
   images?: string[];
   referencePhotos?: string[];
+  links?: string[];
   // status !== COMPLETED -> skeinIds; status === COMPLETED -> yarnUsages
   // (ОДНО поле, форма зависит от статуса — см. PROJECTS_PLAN.md §2.2).
   skeinIds?: string[];
@@ -252,6 +254,7 @@ export interface UpdateProjectPayload {
   note?: string | null;
   images?: string[];
   referencePhotos?: string[];
+  links?: string[];
   finishedPhotos?: string[];
 }
 
