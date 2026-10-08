@@ -688,12 +688,18 @@ export const logUsage = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
- * PATCH /stash/usage/:id — редактирование уже списанного проекта. Вес
- * (amountG) сознательно НЕ редактируется здесь — он завязан на
- * StashSkein.currentWeightG (см. logUsage/undoUsage), менять его
- * потребовало бы того же atomic-guard пересчёта остатка; если нужно
- * исправить количество, пользователь отменяет списание (undoUsage) и
- * списывает заново. Здесь — только описательные поля.
+ * PATCH /stash/usage/:id — редактирование уже списанного расхода, включая
+ * сам вес (amountG). Правка веса атомарно пересчитывает StashSkein — ДВА
+ * разных механизма в зависимости от usage.isBackdatedCompletion (та же
+ * развилка, что уже есть в createProject/deleteProject):
+ *  - обычное списание компенсируется через currentWeightG (остаток мотка);
+ *  - списание "задним числом" из завершения проекта — через totalWeightG
+ *    (currentWeightG там никогда не трогается, расход всегда отражался
+ *    ростом общего веса, а не уменьшением остатка).
+ * Guard — единый atomic UPDATE с встречным WHERE (тот же паттерн, что в
+ * logUsage/undoUsage), без отдельного чтения-затем-записи — иначе гонка
+ * двух правок одного мотка могла бы увести currentWeightG за границы
+ * [0, totalWeightG].
  */
 export const updateUsage = async (req: Request, res: Response): Promise<void> => {
   const usage = req.usage!;
@@ -704,6 +710,15 @@ export const updateUsage = async (req: Request, res: Response): Promise<void> =>
   if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
   if ("projectTitle" in body) data.projectTitle = body.projectTitle ? String(body.projectTitle) : null;
   if ("note" in body) data.note = body.note ? String(body.note) : null;
+
+  let newAmountG: number | null = null;
+  if ("amountG" in body) {
+    newAmountG = Number(body.amountG);
+    if (!Number.isFinite(newAmountG) || newAmountG <= 0) {
+      res.status(400).json({ error: "amountG must be a positive number" });
+      return;
+    }
+  }
 
   if ("finishedPhotos" in body) {
     const finishedPhotos: string[] = Array.isArray(body.finishedPhotos) ? body.finishedPhotos.map(String) : [];
@@ -751,9 +766,52 @@ export const updateUsage = async (req: Request, res: Response): Promise<void> =>
   }
 
   try {
-    const updated = await prisma.stashUsage.update({ where: { id: usage.id }, data });
+    let updated;
+    if (newAmountG !== null && newAmountG !== usage.amountG) {
+      const oldAmountG = usage.amountG;
+      const finalAmountG = newAmountG;
+      updated = await prisma.$transaction(async (tx) => {
+        if (usage.isBackdatedCompletion) {
+          const affected = await tx.$executeRaw`
+            UPDATE "StashSkein"
+            SET "totalWeightG" = "totalWeightG" - ${oldAmountG} + ${finalAmountG}, "updatedAt" = now()
+            WHERE id = ${usage.skeinId} AND "totalWeightG" - ${oldAmountG} + ${finalAmountG} >= "currentWeightG"
+          `;
+          if (affected === 0) throw new BackdatedAmountTooLowError();
+        } else {
+          const affected = await tx.$executeRaw`
+            UPDATE "StashSkein"
+            SET "currentWeightG" = "currentWeightG" + ${oldAmountG} - ${finalAmountG}, "updatedAt" = now()
+            WHERE id = ${usage.skeinId} AND "currentWeightG" + ${oldAmountG} >= ${finalAmountG}
+          `;
+          if (affected === 0) {
+            const current = await tx.stashSkein.findUnique({
+              where: { id: usage.skeinId },
+              select: { currentWeightG: true },
+            });
+            // Доступно для ЭТОГО списания — то, что уже свободно, плюс то,
+            // что высвободится при отмене старого количества.
+            throw new InsufficientStashError((current?.currentWeightG ?? 0) + oldAmountG);
+          }
+        }
+        return tx.stashUsage.update({ where: { id: usage.id }, data: { ...data, amountG: finalAmountG } });
+      });
+    } else {
+      updated = await prisma.stashUsage.update({ where: { id: usage.id }, data });
+    }
     res.json(updated);
   } catch (error) {
+    if (error instanceof InsufficientStashError) {
+      res.status(400).json({
+        error: `Недостаточно пряжи: доступно ${error.currentWeightG} г`,
+        currentWeightG: error.currentWeightG,
+      });
+      return;
+    }
+    if (error instanceof BackdatedAmountTooLowError) {
+      res.status(400).json({ error: "Нельзя уменьшить вес настолько — общий вес мотка станет меньше текущего остатка" });
+      return;
+    }
     console.error(`[Stash] updateUsage failed usageId=${usage.id}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -764,6 +822,11 @@ class InsufficientStashError extends Error {
     super("Insufficient stash");
   }
 }
+
+// updateUsage — правка amountG у backdated-списания (из завершения
+// проекта) уменьшила бы totalWeightG ниже currentWeightG, что нарушило бы
+// инвариант currentWeightG <= totalWeightG.
+class BackdatedAmountTooLowError extends Error {}
 
 /**
  * DELETE /stash/usage/:id — отменить ошибочное списание. Симметрично

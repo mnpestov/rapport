@@ -414,6 +414,7 @@ export const undoStashUsage = async (usageId: string): Promise<void> => {
 // amountG сознательно нет — вес списания не редактируется (см. комментарий
 // у updateUsage на бэкенде), только описательные поля.
 export interface UpdateStashUsagePayload {
+  amountG?: number;
   needleSizeRaw?: string;
   projectTitle?: string;
   patternId?: string;

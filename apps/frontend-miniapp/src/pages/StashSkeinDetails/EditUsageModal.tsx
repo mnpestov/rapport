@@ -34,15 +34,17 @@ interface EditUsageModalProps {
 
 // Та же вёрстка/CSS-классы, что у LogUsageWizard (шаги 2 и 3) — по тому же
 // принципу, что EditSkeinModal переиспользует классы AddYarnModal: кнопка
-// "Редактировать" должна открывать визуально идентичную форму. Отличия
-// осознанные, не пропуски:
-// - Нет шага 1 (вес/остаток) — amountG не редактируется (см. комментарий у
-//   updateUsage на бэкенде: влияет на currentWeightG мотка, для этого есть
-//   отдельный путь — отменить списание и списать заново).
-// - Один экран без степпера — оставшихся полей мало, разбивать незачем.
+// "Редактировать" должна открывать визуально идентичную форму. Отличие
+// осознанное, не пропуск:
+// - Один экран без степпера — полей мало, разбивать на шаги незачем. Вес
+//   (amountG) редактируется прямо здесь, одним полем — без чекбокса
+//   "списать полностью" из шага 1 LogUsageWizard, он тут не имеет смысла
+//   (это не новое списание из остатка, а правка уже существующей записи).
+//   Атомарный пересчёт StashSkein — на бэкенде (updateUsage).
 export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, usage, onClose, onSaved }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
 
+  const [amountG, setAmountG] = useState('');
   const [needleSizeRaw, setNeedleSizeRaw] = useState('');
   const [projectTitle, setProjectTitle] = useState('');
 
@@ -69,6 +71,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
 
   useEffect(() => {
     if (!isOpen) return;
+    setAmountG(String(usage.amountG));
     setNeedleSizeRaw(usage.needleSizeRaw || '');
     setProjectTitle(usage.projectTitle || '');
     setSearchQuery('');
@@ -153,12 +156,15 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
 
   const removePhoto = (url: string) => setPhotos((prev) => prev.filter((u) => u !== url));
 
+  const isAmountValid = amountG.trim() !== '' && Number(amountG) > 0;
+
   const handleSubmit = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !isAmountValid) return;
     setIsSubmitting(true);
     setError(null);
     try {
       await updateStashUsage(usage.id, {
+        amountG: Number(amountG),
         needleSizeRaw: needleSizeRaw.trim() || undefined,
         projectTitle: projectTitle.trim() || undefined,
         patternId: selectedPattern?.id,
@@ -194,6 +200,27 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
         </div>
 
         <div className="log-usage-body">
+          <div className="log-usage-remainder">
+            <p className="log-usage-remainder-row"><b>Остаток:</b> {skein.currentWeightG} г из {skein.totalWeightG} г</p>
+            <div className="stash-progress-bar">
+              <div
+                className="stash-progress-fill"
+                style={{ width: `${skein.totalWeightG > 0 ? (skein.currentWeightG / skein.totalWeightG) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="log-usage-field">
+            <label className="log-usage-label">Списано, г *</label>
+            <input
+              className="log-usage-input"
+              value={amountG}
+              placeholder="Вес в граммах"
+              inputMode="numeric"
+              onChange={(e) => setAmountG(e.target.value)}
+            />
+          </div>
+
           <div className="log-usage-field">
             <label className="log-usage-label">Название проекта</label>
             <input
@@ -363,7 +390,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
         </div>
 
         <div className="log-usage-footer">
-          <button type="button" className="btn log-usage-next-btn" onClick={handleSubmit} disabled={isSubmitting}>
+          <button type="button" className="btn log-usage-next-btn" onClick={handleSubmit} disabled={isSubmitting || !isAmountValid}>
             {isSubmitting ? 'Сохранение...' : 'Сохранить'}
           </button>
           <button type="button" className="btn log-usage-close-btn" onClick={onClose} disabled={isSubmitting}>
