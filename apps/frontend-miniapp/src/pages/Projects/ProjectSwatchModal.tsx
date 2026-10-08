@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { parseDecimalInput } from '../../utils/parseDecimal';
 import { createProjectSwatch, updateProjectSwatch, ProjectSwatch } from '../../api/projectsApi';
 import { uploadStashImage } from '../../api/stashApi';
 import { API_URL } from '../../api/config';
@@ -90,10 +91,10 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
         needleSizeRaw: needleSizeRaw.trim() || undefined,
         instrumentType: instrumentType ?? undefined,
         strandsCount: strandsCount ? Number(strandsCount) : undefined,
-        densityStitchesBefore: stitchesBefore ? Number(stitchesBefore) : undefined,
-        densityRowsBefore: rowsBefore ? Number(rowsBefore) : undefined,
-        densityStitchesAfter: stitchesAfter ? Number(stitchesAfter) : undefined,
-        densityRowsAfter: rowsAfter ? Number(rowsAfter) : undefined,
+        densityStitchesBefore: parseDecimalInput(stitchesBefore),
+        densityRowsBefore: parseDecimalInput(rowsBefore),
+        densityStitchesAfter: parseDecimalInput(stitchesAfter),
+        densityRowsAfter: parseDecimalInput(rowsAfter),
         note: note.trim() || undefined,
       };
       const saved = isEditing

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { parseDecimalInput } from '../../utils/parseDecimal';
 import {
   createStashSkein,
   createStashSwatch,
@@ -419,10 +420,10 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             needleSizeRaw: swatch.needleSizeRaw.trim() || undefined,
             instrumentType: swatch.instrumentType ?? undefined,
             strandsCount: swatch.strandsCount ? Number(swatch.strandsCount) : undefined,
-            densityStitchesBefore: swatch.stitchesBefore ? Number(swatch.stitchesBefore) : undefined,
-            densityRowsBefore: swatch.rowsBefore ? Number(swatch.rowsBefore) : undefined,
-            densityStitchesAfter: swatch.stitchesAfter ? Number(swatch.stitchesAfter) : undefined,
-            densityRowsAfter: swatch.rowsAfter ? Number(swatch.rowsAfter) : undefined,
+            densityStitchesBefore: parseDecimalInput(swatch.stitchesBefore),
+            densityRowsBefore: parseDecimalInput(swatch.rowsBefore),
+            densityStitchesAfter: parseDecimalInput(swatch.stitchesAfter),
+            densityRowsAfter: parseDecimalInput(swatch.rowsAfter),
             note: swatch.note.trim() || undefined,
           });
         } catch (err) {

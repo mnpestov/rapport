@@ -9,6 +9,7 @@ import { Request, Response } from "express";
 import { Prisma, ProjectStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
 import { hasUnlimitedStashAccess } from "../utils/stashAccess";
+import { parseDecimalInput } from "../utils/numberParsing";
 import {
   MAX_STASH_IMAGES_PER_SKEIN,
   MAX_STASH_IMAGES_PER_SWATCH,
@@ -312,8 +313,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
   }
   const swatchesInput: SwatchInput[] = Array.isArray(body.swatches) ? body.swatches : [];
 
-  const toDecimal = (v: unknown): number | null =>
-    v == null || v === "" ? null : Number(v);
+  const toDecimal = parseDecimalInput;
   const toInt = (v: unknown): number | null =>
     v == null || v === "" ? null : Math.trunc(Number(v));
 
@@ -1054,7 +1054,7 @@ export const createProjectSwatch = async (req: Request, res: Response): Promise<
   const project = req.project!;
   const body = req.body ?? {};
 
-  const toDecimal = (v: unknown): number | null => (v == null || v === "" ? null : Number(v));
+  const toDecimal = parseDecimalInput;
   const toInt = (v: unknown): number | null => (v == null || v === "" ? null : Math.trunc(Number(v)));
 
   const images: string[] = Array.isArray(body.images) ? body.images.map(String) : [];
@@ -1095,7 +1095,7 @@ export const updateProjectSwatch = async (req: Request, res: Response): Promise<
   const body = req.body ?? {};
 
   const toDecimal = (v: unknown): number | null | undefined =>
-    v === undefined ? undefined : v == null || v === "" ? null : Number(v);
+    v === undefined ? undefined : parseDecimalInput(v);
   const toInt = (v: unknown): number | null | undefined =>
     v === undefined ? undefined : v == null || v === "" ? null : Math.trunc(Number(v));
 

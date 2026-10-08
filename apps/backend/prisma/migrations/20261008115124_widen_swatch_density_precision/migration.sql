@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "ProjectSwatch" ALTER COLUMN "densityStitchesBefore" SET DATA TYPE DECIMAL(6,3),
+ALTER COLUMN "densityRowsBefore" SET DATA TYPE DECIMAL(6,3),
+ALTER COLUMN "densityStitchesAfter" SET DATA TYPE DECIMAL(6,3),
+ALTER COLUMN "densityRowsAfter" SET DATA TYPE DECIMAL(6,3);
+
+-- AlterTable
+ALTER TABLE "StashSwatch" ALTER COLUMN "densityStitchesBefore" SET DATA TYPE DECIMAL(6,3),
+ALTER COLUMN "densityRowsBefore" SET DATA TYPE DECIMAL(6,3),
+ALTER COLUMN "densityStitchesAfter" SET DATA TYPE DECIMAL(6,3),
+ALTER COLUMN "densityRowsAfter" SET DATA TYPE DECIMAL(6,3);

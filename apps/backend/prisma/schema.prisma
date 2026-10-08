@@ -1427,12 +1427,15 @@ model StashSwatch {
   // одну нить) — параметр вязания, тот же смысл, что и needleSizeRaw, не
   // результат измерения, поэтому целое число, не Decimal, как у плотности.
   strandsCount          Int?
-  // Плотность ДО ВТО — тот же формат чисел, что у Pattern.densityStitches/Rows.
-  densityStitchesBefore Decimal? @db.Decimal(5, 2)
-  densityRowsBefore     Decimal? @db.Decimal(5, 2)
+  // Плотность ДО ВТО — в отличие от Pattern.densityStitches/Rows (Decimal(5,2),
+  // заявленная автором плотность описания), здесь 3 знака после запятой —
+  // реальное измерение образца пользователем, точнее целого/половинного
+  // деления (октябрь 2026).
+  densityStitchesBefore Decimal? @db.Decimal(6, 3)
+  densityRowsBefore     Decimal? @db.Decimal(6, 3)
   // Плотность ПОСЛЕ ВТО.
-  densityStitchesAfter  Decimal? @db.Decimal(5, 2)
-  densityRowsAfter      Decimal? @db.Decimal(5, 2)
+  densityStitchesAfter  Decimal? @db.Decimal(6, 3)
+  densityRowsAfter      Decimal? @db.Decimal(6, 3)
   // Свободный текст — наблюдения вязальщицы об образце (не привязан ни к
   // одному числовому полю), тот же принцип, что Project.note/StashSkein.note.
   note                  String?
@@ -1706,10 +1709,11 @@ model ProjectSwatch {
   // но поле специально называется одинаково для единообразия API/фронта).
   instrumentType        String?
   strandsCount          Int?
-  densityStitchesBefore Decimal? @db.Decimal(5, 2)
-  densityRowsBefore     Decimal? @db.Decimal(5, 2)
-  densityStitchesAfter  Decimal? @db.Decimal(5, 2)
-  densityRowsAfter      Decimal? @db.Decimal(5, 2)
+  // 3 знака после запятой — см. тот же комментарий у StashSwatch.
+  densityStitchesBefore Decimal? @db.Decimal(6, 3)
+  densityRowsBefore     Decimal? @db.Decimal(6, 3)
+  densityStitchesAfter  Decimal? @db.Decimal(6, 3)
+  densityRowsAfter      Decimal? @db.Decimal(6, 3)
   // Свободный текст — тот же принцип, что StashSwatch.note.
   note                  String?
 

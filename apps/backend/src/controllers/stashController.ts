@@ -13,6 +13,7 @@
 import { Request, Response } from "express";
 import { Prisma, YarnStatus } from "@prisma/client";
 import { prisma } from "../prismaClient";
+import { parseDecimalInput } from "../utils/numberParsing";
 import { normalizeYarnKey, yarnDedupKey } from "../utils/yarnKeys";
 import { composeYarnName, stripBrandPrefix } from "../utils/yarnNaming";
 import { createAuthorYarn } from "./yarnsController";
@@ -457,8 +458,7 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
   const skeinId = req.skein!.id;
   const body = req.body ?? {};
 
-  const toDecimal = (v: unknown): number | null =>
-    v == null || v === "" ? null : Number(v);
+  const toDecimal = parseDecimalInput;
   const toInt = (v: unknown): number | null =>
     v == null || v === "" ? null : Math.trunc(Number(v));
 
@@ -501,7 +501,7 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
   const body = req.body ?? {};
 
   const toDecimal = (v: unknown): number | null | undefined =>
-    v === undefined ? undefined : v == null || v === "" ? null : Number(v);
+    v === undefined ? undefined : parseDecimalInput(v);
   const toInt = (v: unknown): number | null | undefined =>
     v === undefined ? undefined : v == null || v === "" ? null : Math.trunc(Number(v));
 

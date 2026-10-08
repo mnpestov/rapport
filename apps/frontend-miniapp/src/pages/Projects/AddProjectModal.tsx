@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Plus, ChevronDown, SquareCheck, Square, Trash2 } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { parseDecimalInput } from '../../utils/parseDecimal';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON, STATUS_ORDER } from './projectStatus';
 import {
   createProject,
@@ -605,10 +606,10 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           needleSizeRaw: s.needleSizeRaw.trim() || undefined,
           instrumentType: s.instrumentType ?? undefined,
           strandsCount: s.strandsCount ? Number(s.strandsCount) : undefined,
-          densityStitchesBefore: s.stitchesBefore ? Number(s.stitchesBefore) : undefined,
-          densityRowsBefore: s.rowsBefore ? Number(s.rowsBefore) : undefined,
-          densityStitchesAfter: s.stitchesAfter ? Number(s.stitchesAfter) : undefined,
-          densityRowsAfter: s.rowsAfter ? Number(s.rowsAfter) : undefined,
+          densityStitchesBefore: parseDecimalInput(s.stitchesBefore),
+          densityRowsBefore: parseDecimalInput(s.rowsBefore),
+          densityStitchesAfter: parseDecimalInput(s.stitchesAfter),
+          densityRowsAfter: parseDecimalInput(s.rowsAfter),
           note: s.note.trim() || undefined,
         }));
 
