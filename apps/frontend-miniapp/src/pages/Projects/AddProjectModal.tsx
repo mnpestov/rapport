@@ -582,6 +582,11 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           title: title.trim(),
           status: status as Exclude<ProjectStatus, 'COMPLETED'>,
           startedAt: startedAt || undefined,
+          // Этой веткой редактируется уже ЗАВЕРШЁННЫЙ проект (иначе выше
+          // сработал бы onRequestComplete — визард завершения). Дата
+          // завершения правится здесь же, в форме — раньше поле не
+          // входило в payload и правка молча терялась при сохранении.
+          completedAt: isCompleted ? (completedAt || undefined) : undefined,
           patternIds: selectedPattern ? [selectedPattern.id] : [],
           manualAuthor: !selectedPattern ? manualAuthor.trim() || null : null,
           manualDescription: !selectedPattern ? manualDescription.trim() || null : null,
