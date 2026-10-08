@@ -80,6 +80,10 @@ export interface FetchStashSkeinsResponse {
   // Остаток по ВСЕМУ хранилищу (не только текущей странице/фильтру) —
   // независимо от search/archived, стабильная сводка для шапки экрана.
   totalCurrentWeightG: number;
+  // "общий вес" и "израсходовано" в новой шапке (Figma node-id=1701:23395) —
+  // та же стабильная сводка, что и totalCurrentWeightG выше.
+  totalWeightG: number;
+  totalUsedWeightG: number;
   // Обновлённая модель платного доступа (Figma node-id=1358:21045/1358:21355):
   // хранилище бесплатно всем до freeLimit артикулов, PREMIUM_YARN_STASH
   // снимает лимит и открывает подбор описаний (matches).

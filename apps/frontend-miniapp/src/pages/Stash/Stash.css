@@ -41,45 +41,48 @@
   margin: 0;
 }
 
-/* Figma node-id=1416:13728 — вес пряжи и кнопка "Архив" в одной строке
-   (было: сплошная полоса на всю ширину экрана + отдельная строка вместе с
-   поиском). */
+/* Figma node-id=1701:23395 — сводка "общий вес"/"израсходовано" одним
+   серым контейнером на всю ширину, "Архив" переехал в строку поиска
+   (см. .stash-tab ниже). Левая ячейка сливается с фоном контейнера, правая
+   — белая карточка контрастом, по макету. */
 .stash-summary-row {
-  display: grid;
-  grid-template-columns: 6fr 2fr;
-  align-items: stretch;
-  gap: 10px;
-  margin: 7px 0;
-}
-
-.stash-total-weight {
   display: flex;
-  gap: 6px;
-  align-items: center;
-  background: rgba(190, 193, 244, 0.5);
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0;
+  background: #f3f3f3;
   border-radius: 2px;
-  padding: 6px 10px;
-  /* width: 256px; */
-  flex-shrink: 0;
+  padding: 20px;
+  margin: 1px 0;
 }
 
-.stash-total-weight-icon {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.stash-total-weight-text {
+.stash-summary-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   min-width: 0;
 }
 
-.stash-total-weight-label {
+.stash-summary-cell--total {
+  justify-content: center;
+  /* padding: 30px 0; */
+}
+
+.stash-summary-cell--used {
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 2px;
+  width: 132px;
+  padding: 10px;
+  flex-shrink: 0;
+  margin: auto 0;
+}
+
+.stash-summary-value {
   font-family: Mulish, sans-serif;
-  font-size: 12px;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
   color: #1d1c1c;
   margin: 0;
   white-space: nowrap;
@@ -87,10 +90,11 @@
   text-overflow: ellipsis;
 }
 
-.stash-total-weight-value {
+.stash-summary-label {
   font-family: Mulish, sans-serif;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 14px;
+  line-height: 1.1;
   color: #1d1c1c;
   margin: 0;
   white-space: nowrap;
@@ -142,14 +146,13 @@
   border: 1.5px solid var(--purple, #BEC1F4);
 }
 
-/* Figma node-id=1416:13728 — теперь стоит рядом с блоком веса пряжи, а не с
-   полем поиска: активное состояние (открыт архив) неотличимо от обычного в
-   новом макете (обе кнопки серые #9b9a9a) — только контент списка ниже
-   переключается. */
+/* Figma node-id=1701:23395 — снова стоит рядом с полем поиска (а не с
+   блоком веса, как было в предыдущей версии шапки) — по ширине под свой
+   текст, не растягивается. */
 .stash-tab {
-  flex: 1;
-  /* height: 48px; */
+  flex-shrink: 0;
   min-width: 34px;
+  height: 44px;
   padding: 0 15px;
   border-radius: 2px;
   border: none;

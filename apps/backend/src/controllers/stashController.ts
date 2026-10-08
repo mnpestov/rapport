@@ -100,25 +100,34 @@ export const listSkeins = async (req: Request, res: Response): Promise<void> => 
         take: PAGE_SIZE,
       }),
       prisma.stashSkein.count({ where }),
-      // Остаток по ВСЕМУ хранилищу (не только текущей странице и не
-      // ограниченный search/archived) — "Общий вес пряжи" в шапке экрана
-      // должен быть стабильной сводкой, а не значением, скачущим при вводе
-      // в поиск или переключении вкладки "Архив".
+      // Сводка по ВСЕМУ хранилищу (не только текущей странице и не
+      // ограниченная search/archived) — шапка экрана должна быть стабильной
+      // сводкой, а не значением, скачущим при вводе в поиск или переключении
+      // вкладки "Архив". currentWeightG: {gt: 0} раньше фильтровал архивные
+      // мотки — на сумму остатка это не влияет (они и так дают 0), фильтр
+      // убран, чтобы тем же запросом посчитать totalWeightG архивных тоже
+      // (их вес всё равно "был куплен" и должен входить в "общий вес").
       prisma.stashSkein.aggregate({
-        where: { userId, currentWeightG: { gt: 0 } },
-        _sum: { currentWeightG: true },
+        where: { userId },
+        _sum: { currentWeightG: true, totalWeightG: true },
       }),
       hasUnlimitedStashAccess(userId),
       // Счётчик для лимита — ВСЕ записи пользователя (не ограниченные
       // search/archived), тот же принцип, что и у totalCurrentWeightG выше.
       prisma.stashSkein.count({ where: { userId } }),
     ]);
+    const totalWeightSum = weightAgg._sum.totalWeightG ?? 0;
+    const totalCurrentWeightSum = weightAgg._sum.currentWeightG ?? 0;
     res.json({
       items,
       total,
       page,
       pageSize: PAGE_SIZE,
-      totalCurrentWeightG: weightAgg._sum.currentWeightG ?? 0,
+      totalCurrentWeightG: totalCurrentWeightSum,
+      // Новая шапка хранилища (Figma node-id=1701:23395) — "общий вес" и
+      // "израсходовано" рядом с остатком.
+      totalWeightG: totalWeightSum,
+      totalUsedWeightG: totalWeightSum - totalCurrentWeightSum,
       isUnlimited: unlimited,
       freeLimit: FREE_STASH_SKEIN_LIMIT,
       totalSkeinCount,

@@ -7,7 +7,6 @@ import { AddYarnModal } from './AddYarnModal';
 import { SwipeableStashCard } from './SwipeableStashCard';
 import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
-import yarnIcon from '../../assets/stash/yarn-icon-black.svg';
 import './Stash.css';
 
 function formatWeight(grams: number): string {
@@ -24,6 +23,7 @@ export const Stash: React.FC = () => {
   const [items, setItems] = useState<StashSkein[]>([]);
   const [total, setTotal] = useState(0);
   const [totalWeight, setTotalWeight] = useState(0);
+  const [totalUsedWeight, setTotalUsedWeight] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   // isInitialLoading: true только пока хранилище ещё ни разу не загружалось
@@ -58,7 +58,8 @@ export const Stash: React.FC = () => {
       const data = await fetchStashSkeins({ page: pageToLoad, search: search || undefined, archived });
       setItems((prev) => (pageToLoad === 1 ? data.items : [...prev, ...data.items]));
       setTotal(data.total);
-      setTotalWeight(data.totalCurrentWeightG);
+      setTotalWeight(data.totalWeightG);
+      setTotalUsedWeight(data.totalUsedWeightG);
       setIsUnlimited(data.isUnlimited);
       setFreeLimit(data.freeLimit);
       setTotalSkeinCount(data.totalSkeinCount);
@@ -124,20 +125,14 @@ export const Stash: React.FC = () => {
 
       {!isInitialLoading && (
         <div className="stash-summary-row">
-          <div className="stash-total-weight">
-            <img src={yarnIcon} alt="" className="stash-total-weight-icon" />
-            <div className="stash-total-weight-text">
-              <p className="stash-total-weight-label">Общий вес пряжи:</p>
-              <p className="stash-total-weight-value">{formatWeight(totalWeight)}</p>
-            </div>
+          <div className="stash-summary-cell stash-summary-cell--total">
+            <p className="stash-summary-value">{formatWeight(totalWeight)}</p>
+            <p className="stash-summary-label">общий вес</p>
           </div>
-          <button
-            type="button"
-            className={`stash-tab${showArchived ? ' stash-tab--active' : ''}`}
-            onClick={() => setShowArchived((v) => !v)}
-          >
-            Архив
-          </button>
+          <div className="stash-summary-cell stash-summary-cell--used">
+            <p className="stash-summary-value">{formatWeight(totalUsedWeight)}</p>
+            <p className="stash-summary-label">израсходовано</p>
+          </div>
         </div>
       )}
 
@@ -155,6 +150,13 @@ export const Stash: React.FC = () => {
             onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
+        <button
+          type="button"
+          className={`stash-tab${showArchived ? ' stash-tab--active' : ''}`}
+          onClick={() => setShowArchived((v) => !v)}
+        >
+          Архив
+        </button>
       </div>
 
       {!isInitialLoading && !error && (
