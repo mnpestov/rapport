@@ -153,16 +153,17 @@
   padding: 0 15px;
   border-radius: 2px;
   border: none;
-  background: #9b9a9a;
+  background: #E5E5E5;
   font-family: Mulish, sans-serif;
   font-size: 15px;
-  color: #ffffff;
+  color: #1D1C1C;
   cursor: pointer;
   letter-spacing: -0.85px;
 }
 
 .stash-tab--active {
-  background: #7a7979;
+  background: #1D1C1C;
+  color: #FFFFFF;
 }
 
 .stash-add-button {
