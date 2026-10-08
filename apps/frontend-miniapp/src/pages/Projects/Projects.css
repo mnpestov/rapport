@@ -1,33 +1,110 @@
-/* Figma node-id=1453:14048/1443:13724 — зелёная плашка счётчика проектов,
-   тот же формат, что "Общее кол-во"/"Кол-во пряжи" у блока хранилища, но
-   свой цвет фона (#ABC6BA, не лиловый .stash-total-weight) и своя иконка. */
-.projects-count-badge {
+/* Figma node-id=1700:22637 — шапка "Проекты": донат по статусам + легенда
+   слева, белая карточка "N в <год> году" справа. Заменяет прежнюю зелёную
+   плашку-счётчик. */
+.projects-summary-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #abc6ba;
+  align-items: stretch;
+  justify-content: space-between;
+  background: #f3f3f3;
   border-radius: 2px;
-  padding: 0px 16px;
-  min-height: 48px;
+  padding: 0 20px;
   margin: 3px 0;
 }
 
-.projects-count-badge-icon {
-  width: 25px;
-  /* height: 36px; */
-  flex-shrink: 0;
-  object-fit: contain;
+.projects-summary-donut-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 10px;
 }
 
-.projects-count-badge-text {
+.projects-donut {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* "Дыра" доната залита тем же цветом, что окружающий контейнер — читается
+   как кольцо, а не сплошной круг, без второго SVG/маски. */
+.projects-donut-hole {
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: #f3f3f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projects-donut-total {
   font-family: Mulish, sans-serif;
-  font-size: 12px;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
   color: #1d1c1c;
   margin: 0;
 }
 
-.projects-count-badge-text b {
+.projects-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.projects-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.projects-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.projects-legend-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
   font-size: 14px;
+  line-height: 1.1;
+  color: #1d1c1c;
+  white-space: nowrap;
+}
+
+.projects-year-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 2px;
+  padding: 10px;
+  flex-shrink: 0;
+  margin: auto 0;
+}
+
+.projects-year-value {
+  font-family: Mulish, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+  color: #1d1c1c;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.projects-year-label {
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.1;
+  color: #1d1c1c;
+  margin: 0;
+  white-space: nowrap;
 }
 
 /* Figma node-id=1443:13758 — три toggle-фильтра статуса, каждый независим
@@ -69,6 +146,14 @@
 
 .projects-status-filter-chip--active {
   border: none;
+}
+
+/* Чип "Все" — без иконки, поэтому симметричный паддинг (у остальных чипов
+   слева 4px под .projects-status-filter-icon-wrap). Активное состояние —
+   инлайн-стиль в JSX, тот же паттерн, что у чипов статуса, но без
+   привязки к цвету конкретного статуса. */
+.projects-status-filter-chip--all {
+  padding: 7px 12px;
 }
 
 /* Пользователь: сама иконка (Repeat/Check/CirclePause) должна быть 10px

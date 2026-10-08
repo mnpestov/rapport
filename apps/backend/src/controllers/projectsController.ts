@@ -95,8 +95,15 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
     ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
   };
 
+  // Текущий календарный год — для карточки "N в <год> году" в шапке
+  // (Figma node-id=1700:22637). Границы в UTC: даты в БД (completedAt)
+  // хранятся в UTC, тот же принцип, что и у остальных date-range фильтров
+  // в проекте — локальный часовой пояс пользователя здесь не учитывается.
+  const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+  const yearEnd = new Date(Date.UTC(new Date().getUTCFullYear() + 1, 0, 1));
+
   try {
-    const [items, total, totalProjectCount] = await Promise.all([
+    const [items, total, totalProjectCount, statusGroups, completedThisYear] = await Promise.all([
       prisma.project.findMany({
         where,
         select: PROJECT_LIST_SELECT,
@@ -106,7 +113,18 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
       }),
       prisma.project.count({ where }),
       prisma.project.count({ where: { userId } }),
+      // Разбивка по статусам для доната в шапке — та же "стабильная сводка
+      // по всему хранилищу", что totalProjectCount выше: не зависит от
+      // текущего фильтра/поиска, иначе диаграмма скакала бы при вводе в
+      // поиск.
+      prisma.project.groupBy({ by: ["status"], where: { userId }, _count: true }),
+      prisma.project.count({
+        where: { userId, status: ProjectStatus.COMPLETED, completedAt: { gte: yearStart, lt: yearEnd } },
+      }),
     ]);
+
+    const statusCounts: Record<string, number> = {};
+    for (const g of statusGroups) statusCounts[g.status] = g._count;
 
     res.json({
       items: items.map(({ instruments, ...p }) => ({
@@ -119,6 +137,8 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
       page,
       pageSize: PAGE_SIZE,
       totalProjectCount,
+      statusCounts,
+      completedThisYear,
     });
   } catch (error) {
     console.error(`[Projects] listProjects failed userId=${userId}:`, error);

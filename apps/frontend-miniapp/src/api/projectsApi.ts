@@ -162,6 +162,10 @@ export interface FetchProjectsResponse {
   page: number;
   pageSize: number;
   totalProjectCount: number;
+  // Сводка для шапки (донат + карточка года, Figma node-id=1700:22637) —
+  // не зависит от текущего фильтра/поиска, см. комментарий в listProjects.
+  statusCounts: Partial<Record<ProjectStatus, number>>;
+  completedThisYear: number;
 }
 
 export const fetchProjects = async (params: { page?: number; status?: ProjectStatus; q?: string } = {}): Promise<FetchProjectsResponse> => {

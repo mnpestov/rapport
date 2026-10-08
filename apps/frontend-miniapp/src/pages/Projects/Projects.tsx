@@ -7,7 +7,6 @@ import { AddProjectModal } from './AddProjectModal';
 import { SwipeableProjectCard } from './SwipeableProjectCard';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON, STATUS_ORDER } from './projectStatus';
-import counterIcon from './icons/projects-counter-icon.svg';
 import '../Stash/Stash.css';
 import './Projects.css';
 import './AddProjectModal.css';
@@ -30,6 +29,10 @@ export const Projects: React.FC = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<ProjectListItem[]>([]);
   const [total, setTotal] = useState(0);
+  // Сводка для шапки (донат + карточка года) — стабильная, не зависит от
+  // текущего фильтра/поиска, см. комментарий у statusCounts в projectsApi.ts.
+  const [statusCounts, setStatusCounts] = useState<Partial<Record<ProjectStatus, number>>>({});
+  const [completedThisYear, setCompletedThisYear] = useState(0);
   const [page, setPage] = useState(1);
   // loading — только самая первая загрузка страницы (весь UI ещё не
   // отрисован, нечего сохранять). Смена фильтра/поиска — это уже
@@ -61,6 +64,8 @@ export const Projects: React.FC = () => {
       const data = await fetchProjects({ page: pageToLoad, q: search || undefined, status: status ?? undefined });
       setItems((prev) => (pageToLoad === 1 ? data.items : [...prev, ...data.items]));
       setTotal(data.total);
+      setStatusCounts(data.statusCounts);
+      setCompletedThisYear(data.completedThisYear);
       setPage(data.page);
       setError(null);
     } catch (err) {
@@ -103,15 +108,21 @@ export const Projects: React.FC = () => {
     setStatusFilter((prev) => (prev === status ? null : status));
   };
 
-  // Активный чип — всегда первым в ряду (остальные сохраняют взаимный
-  // порядок STATUS_ORDER следом за ним). Без активного фильтра — обычный
-  // порядок STATUS_ORDER без изменений.
-  const orderedStatusFilters = statusFilter
-    ? [
-        STATUS_FILTERS.find((f) => f.value === statusFilter)!,
-        ...STATUS_FILTERS.filter((f) => f.value !== statusFilter),
-      ]
-    : STATUS_FILTERS;
+  // Донат в шапке (Figma node-id=1700:22637) — сегменты по реальным
+  // пропорциям statusCounts, не запечённые проценты из макета (там под
+  // конкретный мокап, 31 проект). conic-gradient строится один раз на
+  // рендер — дешёво, список статусов короткий (4).
+  const donutTotal = STATUS_ORDER.reduce((sum, s) => sum + (statusCounts[s] ?? 0), 0);
+  let donutAcc = 0;
+  const donutStops = donutTotal > 0
+    ? STATUS_ORDER.map((s) => {
+        const count = statusCounts[s] ?? 0;
+        const from = (donutAcc / donutTotal) * 360;
+        donutAcc += count;
+        const to = (donutAcc / donutTotal) * 360;
+        return `${STATUS_COLOR[s]} ${from}deg ${to}deg`;
+      }).join(', ')
+    : '#e5e5e5 0deg 360deg';
 
   return (
     <div className="stash-container">
@@ -125,11 +136,26 @@ export const Projects: React.FC = () => {
         <>
           {error && <p className="stash-error">{error}</p>}
 
-          <div className="projects-count-badge">
-            <img src={counterIcon} alt="" className="projects-count-badge-icon" />
-            <p className="projects-count-badge-text">
-              Всего проектов: <b>{total}</b>
-            </p>
+          <div className="projects-summary-row">
+            <div className="projects-summary-donut-block">
+              <div className="projects-donut" style={{ background: `conic-gradient(${donutStops})` }}>
+                <div className="projects-donut-hole">
+                  <p className="projects-donut-total">{donutTotal}</p>
+                </div>
+              </div>
+              <div className="projects-legend">
+                {STATUS_ORDER.map((s) => (
+                  <div key={s} className="projects-legend-item">
+                    <span className="projects-legend-dot" style={{ background: STATUS_COLOR[s] }} />
+                    <span className="projects-legend-label">{STATUS_LABEL[s]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="projects-year-card">
+              <p className="projects-year-value">{completedThisYear}</p>
+              <p className="projects-year-label">в {new Date().getFullYear()} году</p>
+            </div>
           </div>
 
           <div className="stash-search-row">
@@ -146,7 +172,15 @@ export const Projects: React.FC = () => {
           </div>
 
           <div className="projects-status-filter-row">
-            {orderedStatusFilters.map((f) => {
+            <button
+              type="button"
+              className={`projects-status-filter-chip projects-status-filter-chip--all${statusFilter === null ? ' projects-status-filter-chip--active' : ''}`}
+              style={statusFilter === null ? { background: '#1d1c1c', borderColor: '#1d1c1c', color: '#ffffff' } : undefined}
+              onClick={() => setStatusFilter(null)}
+            >
+              Все
+            </button>
+            {STATUS_FILTERS.map((f) => {
               const isActive = statusFilter === f.value;
               const Icon = f.icon;
               return (
