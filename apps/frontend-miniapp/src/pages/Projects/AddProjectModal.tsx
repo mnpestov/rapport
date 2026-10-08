@@ -720,6 +720,13 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
               />
             </div>
 
+            {!selectedPattern && (
+              <button type="button" className="plus-add-button" onClick={() => setIsManualEntryOpen((v) => !v)}>
+                <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+                Добавить описание вручную
+              </button>
+            )}
+
             {selectedPattern ? (
               <div className="add-project-section-inner">
                 <p className="add-project-inner-label">Выбрано из каталога</p>
@@ -764,17 +771,6 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                       ))}
                     </div>
                   </>
-                )}
-                {/* Показывается только вместе с результатами поиска (в
-                    конце списка) или когда поиск дал 0 результатов — не
-                    сразу при пустом поле. Не гейтится isSearchingPattern —
-                    условие зависит только от длины query, иначе кнопка
-                    пропадала/появлялась на каждый debounce, дёргая форму. */}
-                {patternQuery.trim().length >= 2 && (
-                  <button type="button" className="plus-add-button" onClick={() => setIsManualEntryOpen((v) => !v)}>
-                    <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-                    Добавить вручную
-                  </button>
                 )}
                 {isManualEntryOpen && (
                   <div className="add-project-manual-entry">
