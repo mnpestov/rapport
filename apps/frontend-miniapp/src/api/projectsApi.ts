@@ -27,6 +27,10 @@ export interface ProjectListItem {
   // ProjectInstrument.sizeMm, но по смыслу для подписи разницы нет.
   instrumentNames: string[];
   needleSizeRaw: string | null;
+  // Для десктопной кнопки удаления прямо из списка (Figma node-id=1637:21739)
+  // — тот же DeleteProjectConfirmModal, что и на карточке проекта, ему нужно
+  // знать, предлагать ли выбор "вернуть пряжу на остаток".
+  hasYarnUsages: boolean;
 }
 
 export interface ProjectPattern {
@@ -166,6 +170,11 @@ export interface FetchProjectsResponse {
   // не зависит от текущего фильтра/поиска, см. комментарий в listProjects.
   statusCounts: Partial<Record<ProjectStatus, number>>;
   completedThisYear: number;
+  // Десктопная сводка (Figma node-id=1637:21739) — средний срок, только по
+  // завершённым проектам (null, если завершённых ещё нет), и суммарный
+  // расход пряжи по всем усадкам, привязанным к проектам.
+  avgDurationDays: number | null;
+  totalYarnUsedG: number;
 }
 
 export const fetchProjects = async (params: { page?: number; status?: ProjectStatus; q?: string } = {}): Promise<FetchProjectsResponse> => {

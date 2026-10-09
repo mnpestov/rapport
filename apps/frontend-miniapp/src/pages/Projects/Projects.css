@@ -107,6 +107,15 @@
   white-space: nowrap;
 }
 
+/* Компонентный селектор (две точки специфичности, не голый
+   .projects-year-card--desktop-only) — тот же приём и то же обоснование,
+   что у .stash-summary-cell--desktop-only в Stash.css: иначе рискует
+   проиграть каскаду другому правилу с той же специфичностью, объявленному
+   позже где-то в бандле. */
+.projects-year-card.projects-year-card--desktop-only {
+  display: none;
+}
+
 /* Figma node-id=1443:13758 — три toggle-фильтра статуса, каждый независим
    (не радио-группа с общим "Все"): неактивный — белый с рамкой и цветным
    текстом/иконкой по статусу, активный — залит тем же цветом, текст белый,
@@ -278,4 +287,134 @@
 
 .projects-grid-card-meta b {
   font-weight: 700;
+}
+
+/* ───────────────────────── Десктоп (Figma node-id=1637:21739) ─────────────
+   Брейкпоинт 768px — тот же, что везде. .stash-container/.stash-header/
+   .stash-breadcrumb/.stash-desktop-top-row/.stash-add-chip/.stash-search-row
+   — общие классы из Stash.css, уже применяются здесь без дополнительных
+   правил (Projects.css их не переопределяет). */
+@media (min-width: 768px) {
+  .projects-year-card.projects-year-card--mobile-only {
+    display: none;
+  }
+
+  .projects-year-card.projects-year-card--desktop-only {
+    display: flex;
+  }
+
+  .projects-summary-row {
+    gap: 29px;
+    padding: 20px 70px;
+  }
+
+  .projects-summary-donut-block {
+    padding: 0;
+  }
+
+  /* Три статкарты в ряд — тот же белый фон/паддинг/радиус, что у
+     .stash-summary-cell на десктопе хранилища (Stash.css). */
+  .projects-year-card {
+    background: #ffffff;
+    border-radius: 2px;
+    padding: 30px;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .projects-year-value {
+    font-size: 30px;
+  }
+
+  .projects-year-label {
+    font-size: 16px;
+  }
+
+  /* Скоуп через .stash-container — та же причина, что у .stash-add-button
+     в Stash.css: .plus-add-button переиспользуется без своего media-запроса
+     в AddProjectModal.tsx/ProjectDetails.tsx/CompleteProjectWizard.tsx,
+     голый селектор рисковал бы проиграть каскаду в финальном бандле.
+     Дублируется чипом "Добавить проект" в .stash-desktop-top-row (Projects.tsx). */
+  .stash-container .plus-add-button,
+  .stash-container .projects-found-count {
+    display: none;
+  }
+
+  .projects-status-filter-row {
+    overflow-x: visible;
+  }
+
+  .projects-grid-desktop {
+    display: grid;
+    /* minmax(0, 1fr) — тот же баг, что уже чинили в .stash-grid-desktop:
+       голый 1fr не сжимается уже контента (white-space:nowrap в
+       .projects-grid-card-title), сетка держит фиксированную ширину и
+       толкает страницу в горизонтальный скролл вместо resize. */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 36px;
+    margin-top: 24px;
+  }
+
+  .projects-card-desktop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .projects-card-desktop-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    border: none;
+    background: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .projects-card-desktop-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 332 / 358;
+    border-radius: 4px;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  .projects-card-desktop-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .projects-card-desktop-delete {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+    cursor: pointer;
+  }
+
+  .projects-card-desktop-delete:hover {
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .projects-grid-card-title {
+    font-size: 20px;
+  }
+
+  .projects-grid-card-meta {
+    font-size: 16px;
+  }
 }

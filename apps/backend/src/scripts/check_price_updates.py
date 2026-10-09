@@ -108,6 +108,7 @@ from bs4 import BeautifulSoup
 from author_sync_lib.confirmed_authors import CONFIRMED_AUTHORS
 from author_sync_lib.hooks import extract_price_any_known_platform
 from author_sync_lib.handlers import SITE_HANDLERS, SUPPLEMENTAL_STORE_HANDLERS
+from author_sync_lib.nethouse_listing import NETHOUSE_LISTING_DOMAINS, scrape_nethouse_price_listing
 from author_sync_lib.utils import normalize_url, get_base_url, normalize_free_price, has_eiwi_forced_redirect
 
 HEADERS = {
@@ -309,7 +310,7 @@ def save_run_to_db(cursor, conn, started_at, finished_at, checked, changes, erro
     conn.commit()
 
 
-def check_prices(target_author_names=None):
+def check_prices(target_author_names=None, nethouse_only=False):
     started_at = datetime.now(timezone.utc)
     run_stamp = started_at.strftime("%Y-%m-%d_%H%M")
 
@@ -332,6 +333,15 @@ def check_prices(target_author_names=None):
         # автора в БД (админкой) роняло его в «не найден в БД» и цены
         # переставали проверяться. name берём из БД (актуальное), а не из
         # списка — он может отстать после переименования.
+        if nethouse_only:
+            # Режим локального запуска (--nethouse, см. run_price_check_local.sh):
+            # авторы выбираются по домену сайта, а не по имени — переименование
+            # в админке его не ломает.
+            cursor.execute(
+                'SELECT id, name, site FROM "Author" WHERE site ~* %s',
+                ('(' + '|'.join(re.escape(d) for d in NETHOUSE_LISTING_DOMAINS) + ')',)
+            )
+            authors_to_check = [row[1] for row in cursor.fetchall()]
         cursor.execute(
             'SELECT id, name, site FROM "Author" WHERE name = ANY(%s)',
             (authors_to_check,)
@@ -380,6 +390,17 @@ def check_prices(target_author_names=None):
                         if domain in site:
                             site_handler = handler
                             break
+                    if site_handler is None:
+                        # Nethouse: цены всего каталога берём со страниц
+                        # листинга (1-5 запросов на магазин вместо ~70). Не
+                        # нашедшиеся в листинге паттерны ниже идут обычным GET.
+                        for domain in NETHOUSE_LISTING_DOMAINS:
+                            if domain in site:
+                                site_handler = (
+                                    lambda _a, _b, _c, headers, d=domain:
+                                    (scrape_nethouse_price_listing(d, headers), None)
+                                )
+                                break
 
                 handler_items = None
                 if site_handler and patterns:
@@ -411,11 +432,23 @@ def check_prices(target_author_names=None):
                     try:
                         matched_via_handler = False
                         if handler_items is not None:
-                            target_base = get_base_url(normalize_url(url))
+                            # Сначала точное совпадение: get_base_url отрезает
+                            # суффикс "-1", из-за чего "shapka-fluffy" и
+                            # "shapka-fluffy-1" (разные товары с разной ценой,
+                            # живой пример — nadin-shop.com) считались одним, и
+                            # брался первый попавшийся. Прежнее мягкое
+                            # совпадение остаётся запасным путём.
+                            target_exact = normalize_url(url)
                             match = next(
-                                (it for it in handler_items if get_base_url(normalize_url(it['url'])) == target_base),
+                                (it for it in handler_items if normalize_url(it['url']) == target_exact),
                                 None
                             )
+                            if match is None:
+                                target_base = get_base_url(target_exact)
+                                match = next(
+                                    (it for it in handler_items if get_base_url(normalize_url(it['url'])) == target_base),
+                                    None
+                                )
                             if match is not None:
                                 new_price, new_old_price = match.get('price'), match.get('oldPrice')
                                 matched_via_handler = True
@@ -626,5 +659,10 @@ if __name__ == "__main__":
     # Каждый argv — отдельное имя автора (не через запятую — имена сами
     # могут содержать что угодно, argv уже разделены оболочкой/spawn'ом
     # корректно). Без аргументов — все CONFIRMED_AUTHORS, как раньше.
-    target_args = sys.argv[1:] if len(sys.argv) > 1 else None
-    check_prices(target_args)
+    # --nethouse: только авторы Nethouse-магазинов (NETHOUSE_LISTING_DOMAINS) —
+    # для запуска с другой машины, когда прод-IP заблокирован их хостингом.
+    args = sys.argv[1:]
+    if args == ['--nethouse']:
+        check_prices(nethouse_only=True)
+    else:
+        check_prices(args if args else None)

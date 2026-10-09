@@ -73,6 +73,11 @@ const PROJECT_LIST_SELECT = {
     orderBy: { createdAt: "asc" as const },
     take: 1,
   },
+  // Для десктопной быстрой кнопки удаления прямо из списка (Figma
+  // node-id=1637:21739) — DeleteProjectConfirmModal нужен hasYarnUsages,
+  // чтобы предложить выбор "вернуть пряжу на остаток", как и на карточке
+  // проекта (ProjectDetails.tsx). Счётчик, не сами записи — дешевле.
+  _count: { select: { usages: true } },
 } satisfies Prisma.ProjectSelect;
 
 function projectCover(project: { images: string[]; finishedPhotos: string[] }): string | null {
@@ -103,7 +108,7 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
   const yearEnd = new Date(Date.UTC(new Date().getUTCFullYear() + 1, 0, 1));
 
   try {
-    const [items, total, totalProjectCount, statusGroups, completedThisYear] = await Promise.all([
+    const [items, total, totalProjectCount, statusGroups, completedThisYear, completedDurations, yarnUsageAgg] = await Promise.all([
       prisma.project.findMany({
         where,
         select: PROJECT_LIST_SELECT,
@@ -121,17 +126,40 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
       prisma.project.count({
         where: { userId, status: ProjectStatus.COMPLETED, completedAt: { gte: yearStart, lt: yearEnd } },
       }),
+      // "Средний срок проекта" (десктопная сводка, Figma node-id=1637:21739)
+      // — только по ЗАВЕРШЁННЫМ проектам (решение пользователя), считается в
+      // JS ниже (Prisma не умеет усреднять разницу дат в aggregate).
+      prisma.project.findMany({
+        where: { userId, status: ProjectStatus.COMPLETED, completedAt: { not: null } },
+        select: { startedAt: true, completedAt: true },
+      }),
+      // "Пряжи связано" — сумма расхода по ВСЕМ усадкам, привязанным к
+      // проектам этого пользователя (project: { userId } исключает usages
+      // со старого LogUsageWizard, где projectId == null — по решению
+      // пользователя считаем только там, где расход указан через "Проекты").
+      prisma.stashUsage.aggregate({
+        where: { project: { userId } },
+        _sum: { amountG: true },
+      }),
     ]);
 
     const statusCounts: Record<string, number> = {};
     for (const g of statusGroups) statusCounts[g.status] = g._count;
 
+    const avgDurationDays = completedDurations.length > 0
+      ? Math.round(
+          completedDurations.reduce((sum, p) => sum + (p.completedAt!.getTime() - p.startedAt.getTime()), 0)
+          / completedDurations.length / 86_400_000,
+        )
+      : null;
+
     res.json({
-      items: items.map(({ instruments, ...p }) => ({
+      items: items.map(({ instruments, _count, ...p }) => ({
         ...p,
         coverUrl: projectCover(p),
         instrumentNames: instruments.map((i) => i.instrument.name),
         needleSizeRaw: instruments[0]?.sizeMm != null ? String(instruments[0].sizeMm) : null,
+        hasYarnUsages: _count.usages > 0,
       })),
       total,
       page,
@@ -139,6 +167,8 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
       totalProjectCount,
       statusCounts,
       completedThisYear,
+      avgDurationDays,
+      totalYarnUsedG: yarnUsageAgg._sum.amountG ?? 0,
     });
   } catch (error) {
     console.error(`[Projects] listProjects failed userId=${userId}:`, error);

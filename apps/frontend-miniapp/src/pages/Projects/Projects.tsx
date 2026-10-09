@@ -1,15 +1,34 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
-import { fetchProjects, ProjectListItem, ProjectStatus } from '../../api/projectsApi';
+import { fetchProjects, deleteProject, ProjectListItem, ProjectStatus } from '../../api/projectsApi';
 import { Footer } from '../../components/Footer/Footer';
 import { AddProjectModal } from './AddProjectModal';
 import { SwipeableProjectCard } from './SwipeableProjectCard';
+import { ProjectCardDesktop } from './ProjectCardDesktop';
+import { DeleteProjectConfirmModal } from './DeleteProjectConfirmModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON, STATUS_ORDER } from './projectStatus';
 import '../Stash/Stash.css';
 import './Projects.css';
 import './AddProjectModal.css';
+
+// Десктопная сводка (Figma node-id=1637:21739) — "≈N мес." и "≈N кг",
+// тот же формат, что formatWeight в Stash.tsx, но локально здесь, т.к.
+// общего места для подобных хелперов в проекте пока нет (как и там).
+function formatYarnWeight(grams: number): string {
+  if (grams >= 1000) {
+    const kg = Math.round(grams / 100) / 10;
+    return `≈${kg} кг`;
+  }
+  return `≈${grams} г`;
+}
+
+function formatDuration(days: number): string {
+  const months = Math.round(days / 30);
+  return months >= 1 ? `≈${months} мес.` : `≈${days} дн.`;
+}
 
 // Figma node-id=1443:13724/1360:22220 — toggle-фильтры по статусу (не
 // радио-группа с "Все"): каждый переключается независимо, пустое
@@ -33,6 +52,10 @@ export const Projects: React.FC = () => {
   // текущего фильтра/поиска, см. комментарий у statusCounts в projectsApi.ts.
   const [statusCounts, setStatusCounts] = useState<Partial<Record<ProjectStatus, number>>>({});
   const [completedThisYear, setCompletedThisYear] = useState(0);
+  // Десктопная сводка (Figma node-id=1637:21739) — та же "стабильная
+  // сводка" природа, что statusCounts/completedThisYear выше.
+  const [avgDurationDays, setAvgDurationDays] = useState<number | null>(null);
+  const [totalYarnUsedG, setTotalYarnUsedG] = useState(0);
   const [page, setPage] = useState(1);
   // loading — только самая первая загрузка страницы (весь UI ещё не
   // отрисован, нечего сохранять). Смена фильтра/поиска — это уже
@@ -50,6 +73,11 @@ export const Projects: React.FC = () => {
   // повторный клик по уже активному снимает фильтр целиком.
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | null>(null);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const isDesktop = useIsDesktop();
+  // Удаление прямо из списка — только на десктопе (Figma node-id=1637:21739),
+  // на мобиле удаление только с карточки проекта (ProjectDetails.tsx).
+  const [deleteTarget, setDeleteTarget] = useState<ProjectListItem | null>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   const hasMore = items.length < total;
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -66,6 +94,8 @@ export const Projects: React.FC = () => {
       setTotal(data.total);
       setStatusCounts(data.statusCounts);
       setCompletedThisYear(data.completedThisYear);
+      setAvgDurationDays(data.avgDurationDays);
+      setTotalYarnUsedG(data.totalYarnUsedG);
       setPage(data.page);
       setError(null);
     } catch (err) {
@@ -108,6 +138,22 @@ export const Projects: React.FC = () => {
     setStatusFilter((prev) => (prev === status ? null : status));
   };
 
+  const handleConfirmDeleteProject = async (returnYarnToStash: boolean) => {
+    if (!deleteTarget || isDeletingProject) return;
+    setIsDeletingProject(true);
+    try {
+      await deleteProject(deleteTarget.id, returnYarnToStash);
+      setItems((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('[Projects] handleConfirmDeleteProject failed:', err);
+      setError('Не удалось удалить проект.');
+    } finally {
+      setIsDeletingProject(false);
+    }
+  };
+
   // Донат в шапке (Figma node-id=1700:22637) — сегменты по реальным
   // пропорциям statusCounts, не запечённые проценты из макета (там под
   // конкретный мокап, 31 проект). conic-gradient строится один раз на
@@ -129,6 +175,16 @@ export const Projects: React.FC = () => {
       <div className="stash-header">
         <h1 className="stash-title">Проекты</h1>
       </div>
+
+      {!loading && (
+        <div className="stash-desktop-top-row">
+          <p className="stash-breadcrumb">Проекты</p>
+          <button type="button" className="stash-add-chip" onClick={() => setIsAddModalOpen(true)}>
+            <Plus size={20} strokeWidth={1.5} />
+            Добавить проект
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <p className="loading-message">Загрузка проектов...</p>
@@ -152,9 +208,26 @@ export const Projects: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="projects-year-card">
+            {/* Мобильная компактная карточка — скрыта на десктопе, там тот
+                же стат переезжает в один ряд с двумя новыми ниже (Figma
+                node-id=1637:21739), не дублируется. */}
+            <div className="projects-year-card projects-year-card--mobile-only">
               <p className="projects-year-value">{completedThisYear}</p>
               <p className="projects-year-label">в {new Date().getFullYear()} году</p>
+            </div>
+            {avgDurationDays != null && (
+              <div className="projects-year-card projects-year-card--desktop-only">
+                <p className="projects-year-value">{formatDuration(avgDurationDays)}</p>
+                <p className="projects-year-label">средний срок проекта</p>
+              </div>
+            )}
+            <div className="projects-year-card projects-year-card--desktop-only">
+              <p className="projects-year-value">{completedThisYear}</p>
+              <p className="projects-year-label">завершено в {new Date().getFullYear()} году</p>
+            </div>
+            <div className="projects-year-card projects-year-card--desktop-only">
+              <p className="projects-year-value">{formatYarnWeight(totalYarnUsedG)}</p>
+              <p className="projects-year-label">пряжи связано</p>
             </div>
           </div>
 
@@ -227,21 +300,43 @@ export const Projects: React.FC = () => {
 
       {items.length > 0 && (
         <>
-          <div className={`projects-grid${isRefetching ? ' projects-grid--refetching' : ''}`}>
-            {items.map((item) => (
-              <SwipeableProjectCard
-                key={item.id}
-                item={item}
-                onOpen={() => navigate(`/projects/${item.id}`)}
-              />
-            ))}
-          </div>
+          {isDesktop ? (
+            <div className={`projects-grid-desktop${isRefetching ? ' projects-grid--refetching' : ''}`}>
+              {items.map((item) => (
+                <ProjectCardDesktop
+                  key={item.id}
+                  item={item}
+                  onOpen={() => navigate(`/projects/${item.id}`)}
+                  onRequestDelete={() => setDeleteTarget(item)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className={`projects-grid${isRefetching ? ' projects-grid--refetching' : ''}`}>
+              {items.map((item) => (
+                <SwipeableProjectCard
+                  key={item.id}
+                  item={item}
+                  onOpen={() => navigate(`/projects/${item.id}`)}
+                />
+              ))}
+            </div>
+          )}
           {hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
           {isFetchingMore && <p className="loading-message">Загрузка...</p>}
         </>
       )}
 
       <Footer />
+
+      <DeleteProjectConfirmModal
+        isOpen={!!deleteTarget}
+        projectTitle={deleteTarget?.title ?? ''}
+        hasYarnUsages={deleteTarget?.hasYarnUsages ?? false}
+        isDeleting={isDeletingProject}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDeleteProject}
+      />
 
       <AddProjectModal
         isOpen={isAddModalOpen}
