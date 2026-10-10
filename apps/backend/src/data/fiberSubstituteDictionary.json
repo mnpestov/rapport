@@ -600,5 +600,47 @@
     "level": "X",
     "role": "material",
     "symmetric": true
+  },
+  {
+    "source": "Рафия",
+    "target": "Бумажное волокно",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Рафия",
+    "target": "Джут",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Рафия",
+    "target": "Хлопок",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Рафия",
+    "target": "Лён",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Рафия",
+    "target": "Вискоза",
+    "level": "X",
+    "role": "material",
+    "symmetric": true
+  },
+  {
+    "source": "Рафия",
+    "target": "Целлюлоза",
+    "level": "A",
+    "role": "material",
+    "symmetric": true
   }
 ]
