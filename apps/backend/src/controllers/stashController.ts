@@ -91,7 +91,7 @@ export const listSkeins = async (req: Request, res: Response): Promise<void> => 
   };
 
   try {
-    const [items, total, weightAgg, unlimited, totalSkeinCount] = await Promise.all([
+    const [items, total, weightAgg, unlimited, totalSkeinCount, lowStockCount] = await Promise.all([
       prisma.stashSkein.findMany({
         where,
         select: SKEIN_SELECT,
@@ -115,6 +115,11 @@ export const listSkeins = async (req: Request, res: Response): Promise<void> => 
       // Счётчик для лимита — ВСЕ записи пользователя (не ограниченные
       // search/archived), тот же принцип, что и у totalCurrentWeightG выше.
       prisma.stashSkein.count({ where: { userId } }),
+      // "N артикулов меньше 50 г" — десктопная сводка (Figma
+      // node-id=1651:21630). >0 исключает уже архивные (currentWeightG=0,
+      // те не "на исходе", а полностью использованы — для них есть
+      // отдельная вкладка "Архив").
+      prisma.stashSkein.count({ where: { userId, currentWeightG: { gt: 0, lt: 50 } } }),
     ]);
     const totalWeightSum = weightAgg._sum.totalWeightG ?? 0;
     const totalCurrentWeightSum = weightAgg._sum.currentWeightG ?? 0;
@@ -131,6 +136,7 @@ export const listSkeins = async (req: Request, res: Response): Promise<void> => 
       isUnlimited: unlimited,
       freeLimit: FREE_STASH_SKEIN_LIMIT,
       totalSkeinCount,
+      lowStockCount,
     });
   } catch (error) {
     console.error(`[Stash] listSkeins failed userId=${userId}:`, error);
@@ -488,7 +494,7 @@ export const createSwatch = async (req: Request, res: Response): Promise<void> =
         skeinId,
         images,
         needleSizeRaw: body.needleSizeRaw ? String(body.needleSizeRaw) : null,
-        instrumentType: body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null,
+        instrumentType: body.instrumentType === 'hook' || body.instrumentType === 'needle' || body.instrumentType === 'machine' ? body.instrumentType : null,
         strandsCount: toInt(body.strandsCount),
         densityStitchesBefore: toDecimal(body.densityStitchesBefore),
         densityRowsBefore: toDecimal(body.densityRowsBefore),
@@ -529,7 +535,7 @@ export const updateSwatch = async (req: Request, res: Response): Promise<void> =
     data.images = images;
   }
   if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
-  if ("instrumentType" in body) data.instrumentType = body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null;
+  if ("instrumentType" in body) data.instrumentType = body.instrumentType === 'hook' || body.instrumentType === 'needle' || body.instrumentType === 'machine' ? body.instrumentType : null;
   const sc = toInt(body.strandsCount);
   if (sc !== undefined) data.strandsCount = sc;
   const dsb = toDecimal(body.densityStitchesBefore);
@@ -692,6 +698,155 @@ export const logUsage = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     console.error(`[Stash] logUsage failed userId=${userId} skeinId=${skeinId} amountG=${amountG}:`, error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * POST /stash/skeins/:id/usage-for-project — списание, привязанное к
+ * проекту (LogUsageWizard, шаг "Проект" — заменяет собой шаг "Описание":
+ * автор/описание берутся из самого проекта, а не вводятся вручную).
+ *
+ * В отличие от logUsage (который всегда создаёт новую StashUsage), здесь
+ * действует @@unique([projectId, skeinId]) — повторный проход визарда на
+ * ту же пару (проект, моток) не может создать вторую запись. Семантика —
+ * ИНКРЕМЕНТАЛЬНАЯ ("спишите ещё N г", как и обычный logUsage), в отличие
+ * от completeProject/createProject (там amountG — абсолютный итог):
+ * если StashUsage для этой пары уже есть, новый вес ДОБАВЛЯЕТСЯ к уже
+ * списанному, а не заменяет его. isBackdatedCompletion всегда false —
+ * это всегда реальный декремент currentWeightG, независимо от статуса
+ * проекта (решено пользователем: привязка к уже завершённому проекту не
+ * включает механику "задним числом", см. PROJECTS_PLAN.md §0.3 п.2 —
+ * тот отдельный путь, только через форму создания проекта).
+ *
+ * Автоматически создаёт ProjectYarn, если этого мотка ещё нет в разделе
+ * "Пряжа" проекта (в отличие от completeProject, который требует
+ * предварительной привязки) — и синхронизирует amountAtCompletionG с
+ * итоговым amountG, тот же принцип, что в completeProject.
+ */
+export const logUsageForProject = async (req: Request, res: Response): Promise<void> => {
+  const skeinId = req.skein!.id;
+  const userId = req.user!.userId;
+  const body = req.body ?? {};
+
+  const deltaAmountG = Number(body.amountG);
+  if (!Number.isFinite(deltaAmountG) || deltaAmountG <= 0) {
+    res.status(400).json({ error: "amountG must be a positive number" });
+    return;
+  }
+  const projectId = typeof body.projectId === "string" ? body.projectId : "";
+  if (!projectId) {
+    res.status(400).json({ error: "projectId is required" });
+    return;
+  }
+  const needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
+
+  const logStart = Date.now();
+  try {
+    // owned-проверка проекта аналогична loadOwnedSkein для мотка —
+    // отдельного middleware для :projectId в теле запроса (не в params)
+    // нет, поэтому проверяем здесь явно, до транзакции.
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId },
+      select: {
+        id: true,
+        title: true,
+        manualAuthor: true,
+        manualDescription: true,
+        patterns: {
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { patternTitleSnapshot: true, patternAuthorSnapshot: true },
+        },
+      },
+    });
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+    const firstPattern = project.patterns[0];
+    const patternTitleSnapshot = firstPattern?.patternTitleSnapshot ?? project.manualDescription ?? null;
+    const patternAuthorSnapshot = firstPattern?.patternAuthorSnapshot ?? project.manualAuthor ?? null;
+
+    const skein = await prisma.stashSkein.findUnique({
+      where: { id: skeinId },
+      select: { yarnNameSnapshot: true, brandSnapshot: true },
+    });
+    if (!skein) {
+      res.status(404).json({ error: "Skein not found" });
+      return;
+    }
+
+    const usage = await prisma.$transaction(async (tx) => {
+      const existing = await tx.stashUsage.findUnique({
+        where: { projectId_skeinId: { projectId, skeinId } },
+      });
+
+      const affected = await tx.$executeRaw`
+        UPDATE "StashSkein"
+        SET "currentWeightG" = "currentWeightG" - ${deltaAmountG}, "updatedAt" = now()
+        WHERE id = ${skeinId} AND "currentWeightG" >= ${deltaAmountG}
+      `;
+      if (affected === 0) {
+        const current = await tx.stashSkein.findUnique({ where: { id: skeinId }, select: { currentWeightG: true } });
+        throw new InsufficientStashError(current?.currentWeightG ?? 0);
+      }
+
+      const result = existing
+        ? await tx.stashUsage.update({
+            where: { id: existing.id },
+            data: {
+              amountG: existing.amountG + deltaAmountG,
+              needleSizeRaw: needleSizeRaw ?? existing.needleSizeRaw,
+              projectTitle: project.title,
+              patternTitleSnapshot,
+              patternAuthorSnapshot,
+            },
+          })
+        : await tx.stashUsage.create({
+            data: {
+              skeinId,
+              amountG: deltaAmountG,
+              projectId,
+              isBackdatedCompletion: false,
+              needleSizeRaw,
+              projectTitle: project.title,
+              patternTitleSnapshot,
+              patternAuthorSnapshot,
+            },
+          });
+
+      await tx.projectYarn.upsert({
+        where: { projectId_skeinId: { projectId, skeinId } },
+        create: {
+          projectId,
+          skeinId,
+          yarnNameSnapshot: skein.yarnNameSnapshot,
+          brandSnapshot: skein.brandSnapshot,
+          amountAtCompletionG: result.amountG,
+        },
+        update: { amountAtCompletionG: result.amountG },
+      });
+
+      return result;
+    });
+
+    console.log(
+      `[Stash] logUsageForProject ok userId=${userId} skeinId=${skeinId} projectId=${projectId} usageId=${usage.id} deltaAmountG=${deltaAmountG} totalAmountG=${usage.amountG} durationMs=${Date.now() - logStart}`
+    );
+    res.status(201).json(usage);
+  } catch (error) {
+    if (error instanceof InsufficientStashError) {
+      console.warn(
+        `[Stash] logUsageForProject insufficient userId=${userId} skeinId=${skeinId} projectId=${projectId} requestedG=${deltaAmountG} currentWeightG=${error.currentWeightG}`
+      );
+      res.status(400).json({
+        error: `Недостаточно пряжи: осталось ${error.currentWeightG} г`,
+        currentWeightG: error.currentWeightG,
+      });
+      return;
+    }
+    console.error(`[Stash] logUsageForProject failed userId=${userId} skeinId=${skeinId} projectId=${projectId}:`, error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1038,19 +1193,20 @@ export const getMatches = async (req: Request, res: Response): Promise<void> => 
         for (const m of thicknessMatches) {
           // Состав — доп. фильтр ВНУТРИ критерия толщины (AND), не
           // отдельный независимый критерий: описание проходит только если
-          // толщина совпала И (состав неизвестен ИЛИ состав дал уровень A/B/C).
+          // толщина совпала И состав дал уровень A/B/C. Когда у мотка состав
+          // известен (substituteIndex != null), кандидат без разобранного
+          // состава тоже отсекается — мы не можем подтвердить совместимость.
           if (substituteIndex) {
             const candidateComposition = m.yarn.compositions.map((c) => ({
               baseFiber: c.fiberType.baseFiber,
               percentage: c.percentage,
             }));
-            if (candidateComposition.length > 0) {
-              const result = scoreComposition(originalComposition, candidateComposition, substituteIndex);
-              if (result.level === "X") continue;
-              const prevLevel = compositionLevelByPattern.get(m.patternId);
-              if (!prevLevel || COMPOSITION_LEVEL_RANK[result.level] < COMPOSITION_LEVEL_RANK[prevLevel]) {
-                compositionLevelByPattern.set(m.patternId, result.level);
-              }
+            if (candidateComposition.length === 0) continue;
+            const result = scoreComposition(originalComposition, candidateComposition, substituteIndex);
+            if (result.level === "X") continue;
+            const prevLevel = compositionLevelByPattern.get(m.patternId);
+            if (!prevLevel || COMPOSITION_LEVEL_RANK[result.level] < COMPOSITION_LEVEL_RANK[prevLevel]) {
+              compositionLevelByPattern.set(m.patternId, result.level);
             }
           }
           addMatch(m.patternId, "thickness");
