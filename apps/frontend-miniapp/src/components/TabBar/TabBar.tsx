@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import catalogActive from './icons/catalog-active.svg';
 import catalogInactive from './icons/catalog-inactive.svg';
 import yarnActive from './icons/yarn-active.svg';
@@ -38,7 +39,10 @@ export function shouldShowTabBar(pathname: string): boolean {
 export const TabBar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const visible = shouldShowTabBar(location.pathname);
+  const isDesktop = useIsDesktop();
+  // На десктопе навигация — TopNav.tsx (сквозная верхняя), нижний таб-бар
+  // не нужен и не должен резервировать отступ снизу (см. has-tab-bar ниже).
+  const visible = shouldShowTabBar(location.pathname) && !isDesktop;
 
   // Класс на <body>, не через сам компонент: страницы (Catalog/Favorites/
   // Stash) должны резервировать место под fixed-таб-бар в своём собственном

@@ -20,14 +20,25 @@ import './AddProjectModal.css';
 function formatYarnWeight(grams: number): string {
   if (grams >= 1000) {
     const kg = Math.round(grams / 100) / 10;
-    return `≈${kg} кг`;
+    return `≈ ${kg} кг`;
   }
-  return `≈${grams} г`;
+  return `≈ ${grams} г`;
 }
 
 function formatDuration(days: number): string {
   const months = Math.round(days / 30);
-  return months >= 1 ? `≈${months} мес.` : `≈${days} дн.`;
+  return months >= 1 ? `≈ ${months} мес.` : `≈ ${days} дн.`;
+}
+
+// Склонение "проект" под число доната (Figma node-id=1637:21739 показывает
+// только случай 31 → "проект", остальные числа требуют стандартного
+// русского правила множественного числа).
+function pluralizeProjects(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'проект';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'проекта';
+  return 'проектов';
 }
 
 // Figma node-id=1443:13724/1360:22220 — toggle-фильтры по статусу (не
@@ -162,201 +173,224 @@ export const Projects: React.FC = () => {
   let donutAcc = 0;
   const donutStops = donutTotal > 0
     ? STATUS_ORDER.map((s) => {
-        const count = statusCounts[s] ?? 0;
-        const from = (donutAcc / donutTotal) * 360;
-        donutAcc += count;
-        const to = (donutAcc / donutTotal) * 360;
-        return `${STATUS_COLOR[s]} ${from}deg ${to}deg`;
-      }).join(', ')
+      const count = statusCounts[s] ?? 0;
+      const from = (donutAcc / donutTotal) * 360;
+      donutAcc += count;
+      const to = (donutAcc / donutTotal) * 360;
+      return `${STATUS_COLOR[s]} ${from}deg ${to}deg`;
+    }).join(', ')
     : '#e5e5e5 0deg 360deg';
 
   return (
-    <div className="stash-container">
-      <div className="stash-header">
-        <h1 className="stash-title">Проекты</h1>
-      </div>
-
-      {!loading && (
-        <div className="stash-desktop-top-row">
-          <p className="stash-breadcrumb">Проекты</p>
-          <button type="button" className="stash-add-chip" onClick={() => setIsAddModalOpen(true)}>
-            <Plus size={20} strokeWidth={1.5} />
-            Добавить проект
-          </button>
+    <>
+      <div className="stash-container">
+        <div className="stash-header">
+          <h1 className="stash-title">Проекты</h1>
         </div>
-      )}
 
-      {loading ? (
-        <p className="loading-message">Загрузка проектов...</p>
-      ) : (
-        <>
-          {error && <p className="stash-error">{error}</p>}
+        {!loading && (
+          <div className="stash-desktop-top-row">
+            <p className="stash-breadcrumb">Проекты</p>
+            <button type="button" className="stash-add-chip" onClick={() => setIsAddModalOpen(true)}>
+              <Plus size={20} strokeWidth={1.5} />
+              Добавить проект
+            </button>
+          </div>
+        )}
 
-          <div className="projects-summary-row">
-            <div className="projects-summary-donut-block">
-              <div className="projects-donut" style={{ background: `conic-gradient(${donutStops})` }}>
-                <div className="projects-donut-hole">
-                  <p className="projects-donut-total">{donutTotal}</p>
+        {loading ? (
+          <p className="loading-message">Загрузка проектов...</p>
+        ) : (
+          <>
+            {error && <p className="stash-error">{error}</p>}
+
+            <div className="projects-summary-row">
+              <div className="projects-summary-donut-block">
+                <div className="projects-donut" style={{ background: `conic-gradient(${donutStops})` }}>
+                  <div className="projects-donut-hole">
+                    <p className="projects-donut-total">{donutTotal}</p>
+                    {/* Только десктоп (Figma node-id=1637:21739) — скрыт
+                      по умолчанию, см. .projects-donut-sublabel в Projects.css. */}
+                    <p className="projects-donut-sublabel">{pluralizeProjects(donutTotal)}</p>
+                  </div>
+                </div>
+                <div className="projects-legend">
+                  {STATUS_ORDER.map((s) => (
+                    <div key={s} className="projects-legend-item">
+                      <span className="projects-legend-dot" style={{ background: STATUS_COLOR[s] }} />
+                      <span className="projects-legend-label">{STATUS_LABEL[s]}</span>
+                      {/* Только десктоп — скрыт по умолчанию, см.
+                        .projects-legend-count в Projects.css. */}
+                      <span className="projects-legend-count">{statusCounts[s] ?? 0}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="projects-legend">
-                {STATUS_ORDER.map((s) => (
-                  <div key={s} className="projects-legend-item">
-                    <span className="projects-legend-dot" style={{ background: STATUS_COLOR[s] }} />
-                    <span className="projects-legend-label">{STATUS_LABEL[s]}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Мобильная компактная карточка — скрыта на десктопе, там тот
+              {/* Мобильная компактная карточка — скрыта на десктопе, там тот
                 же стат переезжает в один ряд с двумя новыми ниже (Figma
                 node-id=1637:21739), не дублируется. */}
-            <div className="projects-year-card projects-year-card--mobile-only">
-              <p className="projects-year-value">{completedThisYear}</p>
-              <p className="projects-year-label">в {new Date().getFullYear()} году</p>
-            </div>
-            {avgDurationDays != null && (
-              <div className="projects-year-card projects-year-card--desktop-only">
-                <p className="projects-year-value">{formatDuration(avgDurationDays)}</p>
-                <p className="projects-year-label">средний срок проекта</p>
+              <div className="projects-year-card projects-year-card--mobile-only">
+                <p className="projects-year-value">{completedThisYear}</p>
+                <p className="projects-year-label">в {new Date().getFullYear()} году</p>
               </div>
-            )}
-            <div className="projects-year-card projects-year-card--desktop-only">
-              <p className="projects-year-value">{completedThisYear}</p>
-              <p className="projects-year-label">завершено в {new Date().getFullYear()} году</p>
+              <div className='projects-summary-group'>
+                {avgDurationDays != null && (
+                  <div className="projects-year-card projects-year-card--desktop-only">
+                    <p className="projects-year-value">{formatDuration(avgDurationDays)}</p>
+                    <p className="projects-year-label">средний срок проекта</p>
+                  </div>
+                )}
+                <div className="projects-year-card projects-year-card--desktop-only">
+                  <p className="projects-year-value">{completedThisYear}</p>
+                  <p className="projects-year-label">завершено в {new Date().getFullYear()} году</p>
+                </div>
+                <div className="projects-year-card projects-year-card--desktop-only">
+                  <p className="projects-year-value">{formatYarnWeight(totalYarnUsedG)}</p>
+                  <p className="projects-year-label">пряжи связано</p>
+                </div>
+              </div>
             </div>
-            <div className="projects-year-card projects-year-card--desktop-only">
-              <p className="projects-year-value">{formatYarnWeight(totalYarnUsedG)}</p>
-              <p className="projects-year-label">пряжи связано</p>
-            </div>
-          </div>
 
-          <div className="stash-search-row">
-            <div className="stash-search-input-wrapper">
-              <Search size={14} strokeWidth={1.5} className="stash-search-icon" />
-              <input
-                type="text"
-                className="stash-search-input"
-                placeholder="Найти"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-              />
-            </div>
-          </div>
+            {/* На десктопе (Figma node-id=1637:21739) поиск и чипы статуса —
+              один ряд; на мобиле обёртка ничего не меняет (своих стилей
+              нет, см. .projects-search-filter-row в Projects.css). */}
+            <div className="projects-search-filter-row">
+              <div className="stash-search-row">
+                <div className="stash-search-input-wrapper">
+                  <Search size={14} strokeWidth={1.5} className="stash-search-icon" />
+                  <input
+                    type="text"
+                    className="stash-search-input"
+                    placeholder="Найти"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                  />
+                </div>
+              </div>
 
-          <div className="projects-status-filter-row">
-            <button
-              type="button"
-              className={`projects-status-filter-chip projects-status-filter-chip--all${statusFilter === null ? ' projects-status-filter-chip--active' : ''}`}
-              style={statusFilter === null ? { background: '#1d1c1c', borderColor: '#1d1c1c', color: '#ffffff' } : undefined}
-              onClick={() => setStatusFilter(null)}
-            >
-              Все
-            </button>
-            {STATUS_FILTERS.map((f) => {
-              const isActive = statusFilter === f.value;
-              const Icon = f.icon;
-              return (
+              <div className="projects-status-filter-row">
                 <button
-                  key={f.value}
                   type="button"
-                  className={`projects-status-filter-chip${isActive ? ' projects-status-filter-chip--active' : ''}`}
-                  style={isActive ? { background: f.color, borderColor: f.color, color: '#ffffff' } : undefined}
-                  onClick={() => handleToggleStatus(f.value)}
+                  className={`projects-status-filter-chip projects-status-filter-chip--all${statusFilter === null ? ' projects-status-filter-chip--active' : ''}`}
+                  style={statusFilter === null ? { background: '#1d1c1c', borderColor: '#1d1c1c', color: '#ffffff' } : undefined}
+                  onClick={() => setStatusFilter(null)}
                 >
-                  <span className="projects-status-filter-icon-wrap">
-                    <Icon size={13} strokeWidth={1.5} color={isActive ? '#ffffff' : f.color} />
-                  </span>
-                  <span>{f.label}</span>
-                  {isActive && <span className="projects-status-filter-count">{total}</span>}
+                  Все
                 </button>
-              );
-            })}
-          </div>
+                {STATUS_FILTERS.map((f) => {
+                  const isActive = statusFilter === f.value;
+                  const Icon = f.icon;
+                  return (
+                    <button
+                      key={f.value}
+                      type="button"
+                      className={`projects-status-filter-chip${isActive ? ' projects-status-filter-chip--active' : ''}`}
+                      style={isActive ? { background: f.color, borderColor: f.color, color: '#ffffff' } : undefined}
+                      onClick={() => handleToggleStatus(f.value)}
+                    >
+                      <span className="projects-status-filter-icon-wrap">
+                        <Icon size={13} strokeWidth={1.5} color={isActive ? '#ffffff' : f.color} />
+                      </span>
+                      <span>{f.label}</span>
+                      {isActive && <span className="projects-status-filter-count">{total}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-          {/* Место под строку всегда зарезервировано (visibility, не
+            {/* Место под строку всегда зарезервировано (visibility, не
               условный рендер) — иначе появление/исчезновение фильтра
               статуса двигало бы весь список карточек по вертикали. */}
-          <p className={`projects-found-count${statusFilter ? '' : ' projects-found-count--hidden'}`}>
-            найдено проектов: {total}
+            <p className={`projects-found-count${statusFilter ? '' : ' projects-found-count--hidden'}`}>
+              найдено проектов: {total}
+            </p>
+
+            {/* projects-mobile-add-button — модификатор специально для
+              десктопного display:none ниже (Projects.css). Голый
+              .stash-container .plus-add-button скрывал бы ЛЮБУЮ кнопку с
+              этим общим классом внутри .stash-container — а AddProjectModal
+              (его собственные "Добавить описание вручную"/"Добавить новую
+              пряжу"/"Добавить образец") рендерится как раз внутри этого же
+              контейнера, когда форма открыта с этой страницы. */}
+            <button type="button" className="plus-add-button projects-mobile-add-button" onClick={() => setIsAddModalOpen(true)}>
+              <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+              Добавить проект
+            </button>
+          </>
+        )}
+
+        {!loading && !error && items.length === 0 && (
+          <p className="stash-empty-state">
+            {debouncedSearch ? (
+              <>Ничего не найдено по запросу «{debouncedSearch}».</>
+            ) : (
+              <>Пока здесь пусто.<br />Создайте свой первый проект, чтобы начать!</>
+            )}
           </p>
+        )}
 
-          <button type="button" className="plus-add-button" onClick={() => setIsAddModalOpen(true)}>
-            <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-            Добавить проект
-          </button>
-        </>
-      )}
+        {items.length > 0 && (
+          <>
+            {isDesktop ? (
+              <div className={`projects-grid-desktop${isRefetching ? ' projects-grid--refetching' : ''}`}>
+                {items.map((item) => (
+                  <ProjectCardDesktop
+                    key={item.id}
+                    item={item}
+                    onOpen={() => navigate(`/projects/${item.id}`)}
+                    onRequestDelete={() => setDeleteTarget(item)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={`projects-grid${isRefetching ? ' projects-grid--refetching' : ''}`}>
+                {items.map((item) => (
+                  <SwipeableProjectCard
+                    key={item.id}
+                    item={item}
+                    onOpen={() => navigate(`/projects/${item.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+            {hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
+            {isFetchingMore && <p className="loading-message">Загрузка...</p>}
+          </>
+        )}
 
-      {!loading && !error && items.length === 0 && (
-        <p className="stash-empty-state">
-          {debouncedSearch ? (
-            <>Ничего не найдено по запросу «{debouncedSearch}».</>
-          ) : (
-            <>Пока здесь пусто.<br />Создайте свой первый проект, чтобы начать!</>
-          )}
-        </p>
-      )}
+        {/* <Footer /> */}
 
-      {items.length > 0 && (
-        <>
-          {isDesktop ? (
-            <div className={`projects-grid-desktop${isRefetching ? ' projects-grid--refetching' : ''}`}>
-              {items.map((item) => (
-                <ProjectCardDesktop
-                  key={item.id}
-                  item={item}
-                  onOpen={() => navigate(`/projects/${item.id}`)}
-                  onRequestDelete={() => setDeleteTarget(item)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className={`projects-grid${isRefetching ? ' projects-grid--refetching' : ''}`}>
-              {items.map((item) => (
-                <SwipeableProjectCard
-                  key={item.id}
-                  item={item}
-                  onOpen={() => navigate(`/projects/${item.id}`)}
-                />
-              ))}
-            </div>
-          )}
-          {hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
-          {isFetchingMore && <p className="loading-message">Загрузка...</p>}
-        </>
-      )}
+        <DeleteProjectConfirmModal
+          isOpen={!!deleteTarget}
+          projectTitle={deleteTarget?.title ?? ''}
+          hasYarnUsages={deleteTarget?.hasYarnUsages ?? false}
+          isDeleting={isDeletingProject}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDeleteProject}
+        />
 
+        <AddProjectModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onCreated={() => {
+            setIsAddModalOpen(false);
+            loadPage(1, debouncedSearch, statusFilter);
+          }}
+          onLimitReached={() => {
+            setIsAddModalOpen(false);
+            setIsPaywallOpen(true);
+          }}
+        />
+
+        <StashPaywallBanner
+          isOpen={isPaywallOpen}
+          reason="project-limit"
+          freeLimit={5}
+          onClose={() => setIsPaywallOpen(false)}
+        />
+      </div>
       <Footer />
-
-      <DeleteProjectConfirmModal
-        isOpen={!!deleteTarget}
-        projectTitle={deleteTarget?.title ?? ''}
-        hasYarnUsages={deleteTarget?.hasYarnUsages ?? false}
-        isDeleting={isDeletingProject}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={handleConfirmDeleteProject}
-      />
-
-      <AddProjectModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onCreated={() => {
-          setIsAddModalOpen(false);
-          loadPage(1, debouncedSearch, statusFilter);
-        }}
-        onLimitReached={() => {
-          setIsAddModalOpen(false);
-          setIsPaywallOpen(true);
-        }}
-      />
-
-      <StashPaywallBanner
-        isOpen={isPaywallOpen}
-        reason="project-limit"
-        freeLimit={5}
-        onClose={() => setIsPaywallOpen(false)}
-      />
-    </div>
+    </>
   );
 };

@@ -11,6 +11,7 @@
   line-height: 1.1;
   color: #1D1C1C;
   margin-top: 40px;
+  padding: 0 16px;
 }
 
 .footer-source {
@@ -94,4 +95,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: #9B9A9A;
+}
+
+/* Десктоп (Figma node-id=1651:21630, Footer) — серая полоса на всю ширину
+   с более крупным текстом, тот же брейкпоинт, что и везде (768px). Это
+   общий компонент, используется на всех страницах — правки затрагивают
+   десктоп целиком, не только "Пряжу". */
+@media (min-width: 768px) {
+  .app-footer {
+    background: #f3f3f3;
+    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(50 * (100vw - 100px) / 1340), 50px);
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    margin-top: auto;
+  }
+
+  .footer-link {
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    text-decoration: none;
+  }
 }

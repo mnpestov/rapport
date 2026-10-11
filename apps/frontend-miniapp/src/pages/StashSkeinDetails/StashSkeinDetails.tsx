@@ -39,20 +39,25 @@ function renderNoteWithLinks(text: string): React.ReactNode {
   return parts;
 }
 import { useNavigate, useParams } from 'react-router-dom';
-import { Lock, Plus } from 'lucide-react';
+import { Lock, Loader2, Plus, SquarePen, Trash2, Heart } from 'lucide-react';
 import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, deleteStashSkein, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
+import { fetchProjects, ProjectListItem } from '../../api/projectsApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
+import { useFavorites } from '../../context/FavoritesContext';
 import { Footer } from '../../components/Footer/Footer';
 import { SwipeToDelete } from '../../components/SwipeToDelete/SwipeToDelete';
 import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { HeaderActionsMenu } from '../../components/HeaderActionsMenu/HeaderActionsMenu';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
+import { CollapsibleSection } from '../Projects/CollapsibleSection';
 import { AddSwatchModal } from './AddSwatchModal';
 import { EditSkeinModal } from './EditSkeinModal';
 import { EditSwatchModal } from './EditSwatchModal';
 import { EditUsageModal } from './EditUsageModal';
 import { LogUsageWizard } from './LogUsageWizard';
 import { StashImageCarousel } from './StashImageCarousel';
+import { StashImageGalleryDesktop } from './StashImageGalleryDesktop';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
 import swatchPlaceholder from '../../assets/stash/swatchPlaceholder.svg';
@@ -62,6 +67,8 @@ import './StashSkeinDetails.css';
 export const StashSkeinDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   const [skein, setSkein] = useState<StashSkeinDetail | null>(null);
   const [matches, setMatches] = useState<StashMatchItem[]>([]);
@@ -70,6 +77,29 @@ export const StashSkeinDetails: React.FC = () => {
   const [isAddSwatchOpen, setIsAddSwatchOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLogUsageOpen, setIsLogUsageOpen] = useState(false);
+  // Список "Выбрать из моих проектов" (шаг 1 визарда) подгружается ЗАРАНЕЕ,
+  // до открытия шторки — иначе шторка сразу появлялась бы пустой и
+  // "прыгала" по высоте через мгновение, когда список внутри неё подгрузится
+  // (тот же список LogUsageWizard запросил бы сам при монтировании). Пока
+  // грузится — спиннер прямо на кнопке "Списать пряжу", шторка не
+  // открывается вообще.
+  const [isPreparingLogUsage, setIsPreparingLogUsage] = useState(false);
+  const [logUsageInitialProjects, setLogUsageInitialProjects] = useState<ProjectListItem[]>([]);
+
+  const handleOpenLogUsage = async () => {
+    if (isPreparingLogUsage) return;
+    setIsPreparingLogUsage(true);
+    try {
+      const res = await fetchProjects({});
+      setLogUsageInitialProjects(res.items);
+    } catch (err) {
+      console.error('[StashSkeinDetails] prefetch projects for usage wizard failed:', err);
+      setLogUsageInitialProjects([]);
+    } finally {
+      setIsPreparingLogUsage(false);
+      setIsLogUsageOpen(true);
+    }
+  };
   const [openSwipeUsageId, setOpenSwipeUsageId] = useState<string | null>(null);
   const [deleteUsageTarget, setDeleteUsageTarget] = useState<StashUsage | null>(null);
   const [isDeletingUsage, setIsDeletingUsage] = useState(false);
@@ -88,6 +118,38 @@ export const StashSkeinDetails: React.FC = () => {
   // Тот же паттерн, что lastEditUsage выше — EditSwatchModal должна
   // оставаться смонтированной во время анимации закрытия.
   const [lastEditSwatch, setLastEditSwatch] = useState<StashSwatch | null>(null);
+  // Сворачиваемые блоки — ТОЛЬКО десктоп (Figma node-id=1659:22930, шевроны
+  // у "Пряжа"/"Заметки"/"Образец"): на мобиле этих блоков сейчас нет вообще
+  // (всегда развёрнуты, без шеврона), трогать мобильную вёрстку нельзя,
+  // поэтому CollapsibleSection ниже рендерится только при isDesktop. Тот же
+  // паттерн персистентности, что в ProjectDetails.tsx (openSections/
+  // isSectionOpen/toggleSection, localStorage на id).
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      const raw = localStorage.getItem(`stash-skein-sections-${id}`);
+      setOpenSections(raw ? JSON.parse(raw) : {});
+    } catch {
+      setOpenSections({});
+    }
+  }, [id]);
+
+  const isSectionOpen = (key: string) => openSections[key] !== false;
+
+  const toggleSection = (key: string) => {
+    if (!id) return;
+    setOpenSections((prev) => {
+      const next = { ...prev, [key]: !isSectionOpen(key) };
+      try {
+        localStorage.setItem(`stash-skein-sections-${id}`, JSON.stringify(next));
+      } catch {
+        // Приватный режим/квота — секция всё равно переключится в этом рендере.
+      }
+      return next;
+    });
+  };
   const [matchesLocked, setMatchesLocked] = useState(false);
   const [matchesHasMore, setMatchesHasMore] = useState(false);
   const [isLoadingMoreMatches, setIsLoadingMoreMatches] = useState(false);
@@ -321,383 +383,548 @@ export const StashSkeinDetails: React.FC = () => {
     ? Math.round((skein.currentWeightG / skein.totalWeightG) * 100)
     : 0;
 
-  return (
-    <div className="stash-details-container">
-      <div className="stash-details-header">
-        <button className="back-button" onClick={handleBack}>
-          <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
-          Назад
-        </button>
-        <HeaderActionsMenu onEdit={() => setIsEditOpen(true)} onDelete={() => setIsDeleteSkeinOpen(true)} />
+  // Общий контент для обеих веток (мобиле/десктоп) ниже — тот же JSX, что
+  // раньше был инлайн, вынесен в переменные только чтобы не дублировать
+  // текст буквально в isDesktop-ветке. На мобильный рендер не влияет.
+  const yarnInfoRows = (
+    <>
+      {skein.brandSnapshot && <p className="stash-details-row"><b>Бренд:</b> {skein.brandSnapshot}</p>}
+      {skein.compositionSnapshot && <p className="stash-details-row"><b>Состав:</b> {skein.compositionSnapshot}</p>}
+      {skein.mPer100gSnapshot != null && <p className="stash-details-row"><b>Метраж:</b> {skein.mPer100gSnapshot} м/100г</p>}
+      {skein.colorName && <p className="stash-details-row"><b>Цвет:</b> {skein.colorName}</p>}
+      {skein.dyelot && <p className="stash-details-row"><b>Партия:</b> {skein.dyelot}</p>}
+    </>
+  );
+
+  const remainderBlock = (
+    <div className="stash-details-remainder">
+      <p className="stash-details-row"><b>Остаток:</b> {skein.currentWeightG} г из {skein.totalWeightG} г</p>
+      <div className="stash-progress-bar">
+        <div className="stash-progress-fill" style={{ width: `${remainderPercent}%` }} />
       </div>
-
-      <div className="stash-details-image-wrapper">
-        <div className="stash-details-image-container">
-          {skein.images.length > 0 ? (
-            <StashImageCarousel images={skein.images} alt={skein.yarnNameSnapshot} />
-          ) : (
-            <div className="stash-details-image stash-details-image-placeholder">
-              <img src={yarnPlaceholder} alt="" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="stash-details-info">
-        <h1 className="stash-details-name">{skein.yarnNameSnapshot}</h1>
-        {skein.brandSnapshot && <p className="stash-details-row"><b>Бренд:</b> {skein.brandSnapshot}</p>}
-        {skein.compositionSnapshot && <p className="stash-details-row"><b>Состав:</b> {skein.compositionSnapshot}</p>}
-        {skein.mPer100gSnapshot != null && <p className="stash-details-row"><b>Метраж:</b> {skein.mPer100gSnapshot} м/100г</p>}
-        {skein.colorName && <p className="stash-details-row"><b>Цвет:</b> {skein.colorName}</p>}
-        {skein.dyelot && <p className="stash-details-row"><b>Партия:</b> {skein.dyelot}</p>}
-
-        <div className="stash-details-remainder">
-          <p className="stash-details-row"><b>Остаток:</b> {skein.currentWeightG} г из {skein.totalWeightG} г</p>
-          <div className="stash-progress-bar">
-            <div className="stash-progress-fill" style={{ width: `${remainderPercent}%` }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Заявка на дозаполнение обновляет snapshot этого мотка сразу (см.
-          suggestYarnFields на бэкенде) — статус модерации в общий справочник
-          пользователю не показываем: он не влияет на то, что тот видит и
-          может делать дальше. Поле считается "пустым к дозаполнению" только
-          пока у него нет значения ВООБЩЕ (снапшот всё ещё null) — как только
-          заявка отправлена, снапшот заполняется и этот блок для него сам
-          перестаёт рендериться. */}
-      {(() => {
-        const needsMPer100g = skein.mPer100gSnapshot == null;
-        const needsComposition = skein.compositionSnapshot == null;
-        if (!needsMPer100g && !needsComposition) return null;
-
-        return (
-          <div className="stash-details-yarn-fix">
-            {
-              isYarnFixFormOpen ? (
-                <div className="stash-details-yarn-fix-form">
-                  <p className="stash-details-section-title">Дозаполнить данные пряжи</p>
-                  <p className="stash-details-yarn-fix-hint">
-                    В справочнике не хватает части данных об этом артикуле — если знаете точные значения, предложите их. Значение появится у вас сразу, в общий справочник попадёт после проверки модератором.
-                  </p>
-                  {needsMPer100g && (
-                    <div className="stash-details-yarn-fix-field">
-                      <label className="stash-details-yarn-fix-label">Метраж, м/100г</label>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        className="stash-details-yarn-fix-input"
-                        value={yarnFixMPer100g}
-                        onChange={(e) => setYarnFixMPer100g(e.target.value)}
-                        placeholder="Например, 240"
-                      />
-                    </div>
-                  )}
-                  {needsComposition && (
-                    <div className="stash-details-yarn-fix-field">
-                      <label className="stash-details-yarn-fix-label">Состав</label>
-                      <input
-                        type="text"
-                        className="stash-details-yarn-fix-input"
-                        value={yarnFixComposition}
-                        onChange={(e) => setYarnFixComposition(e.target.value)}
-                        placeholder="Например, 50% шерсть, 50% акрил"
-                      />
-                    </div>
-                  )}
-                  {yarnFixError && <p className="stash-details-yarn-fix-error">{yarnFixError}</p>}
-                  <div className="stash-details-yarn-fix-actions">
-                    <button
-                      type="button"
-                      className="btn stash-action-btn stash-action-btn--primary"
-                      onClick={handleSubmitYarnFix}
-                      disabled={isSubmittingYarnFix}
-                    >
-                      {isSubmittingYarnFix ? 'Отправка...' : 'Отправить на проверку'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn stash-action-btn stash-action-btn--secondary"
-                      onClick={() => { setIsYarnFixFormOpen(false); setYarnFixError(null); }}
-                      disabled={isSubmittingYarnFix}
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button type="button" className="stash-details-yarn-fix-button" onClick={() => setIsYarnFixFormOpen(true)}>
-                  Дозаполнить данные пряжи
-                </button>
-              )
-            }
-          </div>
-        );
-      })()}
-
-      <div className="stash-details-swatches">
-        <p className="stash-details-section-title">Образец</p>
-        {skein.swatches.map((swatch) => (
-          <SwipeToDelete
-            key={swatch.id}
-            isOpen={openSwipeSwatchId === swatch.id}
-            onSwipeOpen={() => setOpenSwipeSwatchId(swatch.id)}
-            onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
-            onTap={() => { }}
-            onRequestDelete={() => setDeleteSwatchTarget(swatch)}
-            onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
-            cardClassName="stash-swatch-block"
-          >
-            <div className="stash-swatch-image">
-              {swatch.images.length > 0 ? (
-                <StashImageCarousel images={swatch.images} alt="Образец" classPrefix="stash-swatch-image" />
-              ) : (
-                <div className="stash-swatch-image-placeholder">
-                  <img src={swatchPlaceholder} alt="" />
-                </div>
-              )}
-            </div>
-            <div className="stash-swatch-body">
-              {swatch.needleSizeRaw && (
-                <p className="stash-details-row">
-                  <b>
-                    {swatch.instrumentType === 'hook' ? 'Крючок:' : swatch.instrumentType === 'needle' ? 'Спицы:' : 'Инструмент:'}
-                  </b>
-                  {' '}{swatch.needleSizeRaw}
-                </p>
-              )}
-              {!swatch.needleSizeRaw && swatch.instrumentType && (
-                <p className="stash-details-row">
-                  <b>{swatch.instrumentType === 'hook' ? 'Крючок' : 'Спицы'}</b>
-                </p>
-              )}
-              {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
-              {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
-                <p className="stash-details-row">
-                  <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
-                </p>
-              )}
-              {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
-                <p className="stash-details-row">
-                  <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
-                </p>
-              )}
-              {swatch.note && <p className="stash-details-row stash-swatch-note">{swatch.note}</p>}
-            </div>
-          </SwipeToDelete>
-        ))}
-        <button type="button" className="stash-add-button" onClick={() => setIsAddSwatchOpen(true)}>
-          <Plus size={32} strokeWidth={1} className="stash-add-button-plus" />
-          Добавить образец
-        </button>
-      </div>
-
-      {skein.note && (
-        <div className="stash-details-notes">
-          <p className="stash-details-section-title">Заметки</p>
-          <p className="stash-notes-text">{renderNoteWithLinks(skein.note)}</p>
-        </div>
-      )}
-
-      {skein.usages.length > 0 && (
-        <div className="stash-details-usages">
-          <p className="stash-details-section-title">Связано</p>
-          {skein.usages.map((usage) => (
-            <SwipeToDelete
-              key={usage.id}
-              isOpen={openSwipeUsageId === usage.id}
-              onSwipeOpen={() => setOpenSwipeUsageId(usage.id)}
-              onSwipeClose={() => setOpenSwipeUsageId((cur) => (cur === usage.id ? null : cur))}
-              onTap={() => {
-                // Приоритет: если списание пришло из "Проектов" — переход
-                // на карточку проекта целиком, не на паттерн напрямую
-                // (PROJECTS_PLAN.md §4.6); иначе прежнее поведение.
-                if (usage.projectId) navigate(`/projects/${usage.projectId}`);
-                else if (usage.patternId) navigate(`/pattern/${usage.patternId}`);
-              }}
-              onRequestDelete={() => setDeleteUsageTarget(usage)}
-              onRequestEdit={() => { setEditUsageTarget(usage); setLastEditUsage(usage); }}
-              cardClassName="stash-usage-card"
-            >
-              <div className="stash-usage-image">
-                {usage.finishedPhotos.length > 0 ? (
-                  <StashImageCarousel images={usage.finishedPhotos} alt={usage.projectTitle || 'Готовое изделие'} classPrefix="stash-usage-image" />
-                ) : (
-                  <div className="stash-usage-image-placeholder">
-                    <img src={projectPlaceholder} alt="" />
-                  </div>
-                )}
-              </div>
-              <div className="stash-usage-body">
-                <p className="stash-usage-title">{usage.projectTitle || 'Без названия'}</p>
-                {usage.patternAuthorSnapshot && (
-                  <p className="stash-usage-row"><b>Автор:</b> {usage.patternAuthorSnapshot}</p>
-                )}
-                {usage.patternTitleSnapshot && (
-                  <p className="stash-usage-row">
-                    <b>Описание:</b>{' '}
-                    {usage.patternTitleSnapshot}
-                  </p>
-                )}
-                <p className="stash-usage-row"><b>Расход:</b> {usage.amountG} г</p>
-                {usage.needleSizeRaw && (
-                  <p className="stash-usage-row"><b>Спицы:</b> {usage.needleSizeRaw}</p>
-                )}
-              </div>
-            </SwipeToDelete>
-          ))}
-        </div>
-      )}
-
-      <div className="stash-details-actions">
-        <button
-          type="button"
-          className="btn stash-action-btn stash-action-btn--primary"
-          onClick={() => setIsLogUsageOpen(true)}
-          disabled={skein.currentWeightG <= 0}
-        >
-          Списать пряжу
-        </button>
-      </div>
-
-      {matches.length > 0 && (
-        <div className="stash-details-matches">
-          <p className="stash-details-section-title">Что можно связать из этой пряжи</p>
-          <div className="stash-matches-list" ref={matchesListRef}>
-            {matches.map((m, i) => (
-              <button
-                key={m.id}
-                ref={i === matches.length - 1 ? lastMatchElementRef : undefined}
-                type="button"
-                className={`stash-match-card${matchesLocked ? ' stash-match-card--locked' : ''}`}
-                onClick={() => {
-                  if (matchesLocked) { setIsMatchesPaywallOpen(true); return; }
-                  // Сохраняем позицию ПЕРЕД переходом — после возврата
-                  // страница монтируется заново (см. load() выше), восстановить
-                  // scrollLeft можно только по тому, что успели записать здесь.
-                  if (id && matchesListRef.current) {
-                    sessionStorage.setItem(
-                      `stash_matches_scroll_${id}`,
-                      JSON.stringify({ count: matches.length, scrollLeft: matchesListRef.current.scrollLeft }),
-                    );
-                  }
-                  navigate(`/pattern/${m.id}`);
-                }}
-              >
-                {matchesLocked ? (
-                  <div className="stash-match-image-frame">
-                    <img src={m.thumbnailUrl} alt="" loading="lazy" className="stash-match-image stash-match-image--locked" />
-                    <Lock size={16} strokeWidth={1.5} className="stash-match-lock-icon" />
-                  </div>
-                ) : (
-                  <>
-                    <img src={m.thumbnailUrl} alt="" loading="lazy" className="stash-match-image" />
-                    <p className="stash-match-title">{m.title}</p>
-                    <div className="stash-match-meta">
-                      <p className="stash-match-category">{m.category ?? '—'}</p>
-                      <p className="stash-match-instrument">{m.instruments[0] ?? '—'}</p>
-                    </div>
-                    {m.strandsCount != null && (
-                      <p className="stash-match-strands">При вязании в {m.strandsCount} сложений</p>
-                    )}
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <Footer />
-
-      <AddSwatchModal
-        isOpen={isAddSwatchOpen}
-        skeinId={skein.id}
-        onClose={() => setIsAddSwatchOpen(false)}
-        onCreated={() => {
-          setIsAddSwatchOpen(false);
-          load();
-        }}
-      />
-
-      {lastEditSwatch && (
-        <EditSwatchModal
-          isOpen={!!editSwatchTarget}
-          swatch={lastEditSwatch}
-          onClose={() => setEditSwatchTarget(null)}
-          onSaved={() => {
-            setEditSwatchTarget(null);
-            load();
-          }}
-        />
-      )}
-
-      <EditSkeinModal
-        isOpen={isEditOpen}
-        skein={skein}
-        onClose={() => setIsEditOpen(false)}
-        onSaved={() => {
-          setIsEditOpen(false);
-          load();
-        }}
-      />
-
-      <LogUsageWizard
-        isOpen={isLogUsageOpen}
-        skein={skein}
-        onClose={() => setIsLogUsageOpen(false)}
-        onLogged={() => {
-          setIsLogUsageOpen(false);
-          load();
-        }}
-      />
-
-      {lastEditUsage && (
-        <EditUsageModal
-          isOpen={!!editUsageTarget}
-          skein={skein}
-          usage={lastEditUsage}
-          onClose={() => setEditUsageTarget(null)}
-          onSaved={() => {
-            setEditUsageTarget(null);
-            load();
-          }}
-        />
-      )}
-
-      <DeleteConfirmModal
-        isOpen={!!deleteUsageTarget}
-        title="Отменить списание?"
-        text={`«${deleteUsageTarget?.projectTitle || 'Без названия'}» — списанные ${deleteUsageTarget?.amountG ?? 0} г вернутся в остаток пряжи.`}
-        isDeleting={isDeletingUsage}
-        onCancel={() => setDeleteUsageTarget(null)}
-        onConfirm={handleConfirmDeleteUsage}
-      />
-
-      <DeleteConfirmModal
-        isOpen={!!deleteSwatchTarget}
-        title="Удалить образец?"
-        text="Образец будет удалён без возможности восстановить."
-        isDeleting={isDeletingSwatch}
-        onCancel={() => setDeleteSwatchTarget(null)}
-        onConfirm={handleConfirmDeleteSwatch}
-      />
-
-      <DeleteConfirmModal
-        isOpen={isDeleteSkeinOpen}
-        title="Удалить пряжу?"
-        text={`«${skein.yarnNameSnapshot}» будет удалена из хранилища без возможности восстановить.`}
-        isDeleting={isDeletingSkein}
-        onCancel={() => setIsDeleteSkeinOpen(false)}
-        onConfirm={handleConfirmDeleteSkein}
-      />
-
-      <StashPaywallBanner
-        isOpen={isMatchesPaywallOpen}
-        reason="matches"
-        freeLimit={10}
-        onClose={() => setIsMatchesPaywallOpen(false)}
-      />
     </div>
+  );
+
+  // Заявка на дозаполнение обновляет snapshot этого мотка сразу (см.
+  // suggestYarnFields на бэкенде) — статус модерации в общий справочник
+  // пользователю не показываем: он не влияет на то, что тот видит и может
+  // делать дальше. Поле считается "пустым к дозаполнению" только пока у
+  // него нет значения ВООБЩЕ (снапшот всё ещё null) — как только заявка
+  // отправлена, снапшот заполняется и этот блок для него сам перестаёт
+  // рендериться.
+  const yarnFixBlock = (() => {
+    const needsMPer100g = skein.mPer100gSnapshot == null;
+    const needsComposition = skein.compositionSnapshot == null;
+    if (!needsMPer100g && !needsComposition) return null;
+
+    return (
+      <div className="stash-details-yarn-fix">
+        {
+          isYarnFixFormOpen ? (
+            <div className="stash-details-yarn-fix-form">
+              <p className="stash-details-section-title">Дозаполнить данные пряжи</p>
+              <p className="stash-details-yarn-fix-hint">
+                В справочнике не хватает части данных об этом артикуле — если знаете точные значения, предложите их. Значение появится у вас сразу, в общий справочник попадёт после проверки модератором.
+              </p>
+              {needsMPer100g && (
+                <div className="stash-details-yarn-fix-field">
+                  <label className="stash-details-yarn-fix-label">Метраж, м/100г</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="stash-details-yarn-fix-input"
+                    value={yarnFixMPer100g}
+                    onChange={(e) => setYarnFixMPer100g(e.target.value)}
+                    placeholder="Например, 240"
+                  />
+                </div>
+              )}
+              {needsComposition && (
+                <div className="stash-details-yarn-fix-field">
+                  <label className="stash-details-yarn-fix-label">Состав</label>
+                  <input
+                    type="text"
+                    className="stash-details-yarn-fix-input"
+                    value={yarnFixComposition}
+                    onChange={(e) => setYarnFixComposition(e.target.value)}
+                    placeholder="Например, 50% шерсть, 50% акрил"
+                  />
+                </div>
+              )}
+              {yarnFixError && <p className="stash-details-yarn-fix-error">{yarnFixError}</p>}
+              <div className="stash-details-yarn-fix-actions">
+                <button
+                  type="button"
+                  className="btn stash-action-btn stash-action-btn--primary"
+                  onClick={handleSubmitYarnFix}
+                  disabled={isSubmittingYarnFix}
+                >
+                  {isSubmittingYarnFix ? 'Отправка...' : 'Отправить на проверку'}
+                </button>
+                <button
+                  type="button"
+                  className="btn stash-action-btn stash-action-btn--secondary"
+                  onClick={() => { setIsYarnFixFormOpen(false); setYarnFixError(null); }}
+                  disabled={isSubmittingYarnFix}
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="stash-details-yarn-fix-button" onClick={() => setIsYarnFixFormOpen(true)}>
+              Дозаполнить данные пряжи
+            </button>
+          )
+        }
+      </div>
+    );
+  })();
+
+  // Контент карточки (фото+текстовые строки) — общий для свайп-варианта
+  // (мобиле) и варианта с кнопкой "..." (десктоп, см. ниже), различается
+  // только интерактивная обёртка вокруг него.
+  const renderSwatchContent = (swatch: StashSwatch) => (
+    <>
+      <div className="stash-swatch-image">
+        {swatch.images.length > 0 ? (
+          <StashImageCarousel images={swatch.images} alt="Образец" classPrefix="stash-swatch-image" />
+        ) : (
+          <div className="stash-swatch-image-placeholder">
+            <img src={swatchPlaceholder} alt="" />
+          </div>
+        )}
+      </div>
+      <div className="stash-swatch-body">
+        {swatch.needleSizeRaw && (
+          <p className="stash-details-row">
+            <b>
+              {swatch.instrumentType === 'hook' ? 'Крючок:' : swatch.instrumentType === 'needle' ? 'Спицы:' : swatch.instrumentType === 'machine' ? 'Вязальная машина:' : 'Инструмент:'}
+            </b>
+            {' '}{swatch.needleSizeRaw}
+          </p>
+        )}
+        {/* Было без ветки для 'machine' (и без явного default) — любой
+            инструмент, кроме 'hook', молча подписывался "Спицы". */}
+        {!swatch.needleSizeRaw && swatch.instrumentType && (
+          <p className="stash-details-row">
+            <b>{swatch.instrumentType === 'hook' ? 'Крючок' : swatch.instrumentType === 'machine' ? 'Вязальная машина' : 'Спицы'}</b>
+          </p>
+        )}
+        {swatch.strandsCount != null && <p className="stash-details-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
+        {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
+          <p className="stash-details-row">
+            <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
+          </p>
+        )}
+        {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
+          <p className="stash-details-row">
+            <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
+          </p>
+        )}
+        {swatch.note && <p className="stash-details-row stash-swatch-note">{swatch.note}</p>}
+      </div>
+    </>
+  );
+
+  const swatchesInner = (
+    <>
+      {skein.swatches.map((swatch) => (
+        <SwipeToDelete
+          key={swatch.id}
+          isOpen={openSwipeSwatchId === swatch.id}
+          onSwipeOpen={() => setOpenSwipeSwatchId(swatch.id)}
+          onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
+          onTap={() => { }}
+          onRequestDelete={() => setDeleteSwatchTarget(swatch)}
+          onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
+          cardClassName="stash-swatch-block"
+        >
+          {renderSwatchContent(swatch)}
+        </SwipeToDelete>
+      ))}
+      <button type="button" className="stash-add-button" onClick={() => setIsAddSwatchOpen(true)}>
+        <Plus size={32} strokeWidth={1} className="stash-add-button-plus" />
+        Добавить образец
+      </button>
+    </>
+  );
+
+  // Десктоп (без свайп-жеста — "..." открывает Редактировать/Удалить, тот
+  // же HeaderActionsMenu, что в шапке карточки).
+  const swatchesInnerDesktop = (
+    <>
+      {skein.swatches.map((swatch) => (
+        <div key={swatch.id} className="stash-swatch-block stash-swatch-block--desktop">
+          {renderSwatchContent(swatch)}
+          <HeaderActionsMenu
+            onEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
+            onDelete={() => setDeleteSwatchTarget(swatch)}
+          />
+        </div>
+      ))}
+      <button type="button" className="stash-add-button" onClick={() => setIsAddSwatchOpen(true)}>
+        <Plus size={32} strokeWidth={1} className="stash-add-button-plus" />
+        Добавить образец
+      </button>
+    </>
+  );
+
+  const notesInner = skein.note ? <p className="stash-notes-text">{renderNoteWithLinks(skein.note)}</p> : null;
+
+  const renderUsageContent = (usage: StashUsage) => (
+    <>
+      <div className="stash-usage-image">
+        {usage.finishedPhotos.length > 0 ? (
+          <StashImageCarousel images={usage.finishedPhotos} alt={usage.projectTitle || 'Готовое изделие'} classPrefix="stash-usage-image" />
+        ) : (
+          <div className="stash-usage-image-placeholder">
+            <img src={projectPlaceholder} alt="" />
+          </div>
+        )}
+      </div>
+      <div className="stash-usage-body">
+        <p className="stash-usage-title">{usage.projectTitle || 'Без названия'}</p>
+        {usage.patternAuthorSnapshot && (
+          <p className="stash-usage-row"><b>Автор:</b> {usage.patternAuthorSnapshot}</p>
+        )}
+        {usage.patternTitleSnapshot && (
+          <p className="stash-usage-row">
+            <b>Описание:</b>{' '}
+            {usage.patternTitleSnapshot}
+          </p>
+        )}
+        <p className="stash-usage-row"><b>Расход:</b> {usage.amountG} г</p>
+        {usage.needleSizeRaw && (
+          <p className="stash-usage-row"><b>Спицы:</b> {usage.needleSizeRaw}</p>
+        )}
+      </div>
+    </>
+  );
+
+  const handleUsageTap = (usage: StashUsage) => {
+    // Приоритет: если списание пришло из "Проектов" — переход на карточку
+    // проекта целиком, не на паттерн напрямую (PROJECTS_PLAN.md §4.6);
+    // иначе прежнее поведение.
+    if (usage.projectId) navigate(`/projects/${usage.projectId}`);
+    else if (usage.patternId) navigate(`/pattern/${usage.patternId}`);
+  };
+
+  const usagesBlock = skein.usages.length > 0 ? (
+    <div className="stash-details-usages">
+      <p className="stash-details-section-title">Связано</p>
+      {skein.usages.map((usage) => (
+        <SwipeToDelete
+          key={usage.id}
+          isOpen={openSwipeUsageId === usage.id}
+          onSwipeOpen={() => setOpenSwipeUsageId(usage.id)}
+          onSwipeClose={() => setOpenSwipeUsageId((cur) => (cur === usage.id ? null : cur))}
+          onTap={() => handleUsageTap(usage)}
+          onRequestDelete={() => setDeleteUsageTarget(usage)}
+          onRequestEdit={() => { setEditUsageTarget(usage); setLastEditUsage(usage); }}
+          cardClassName="stash-usage-card"
+        >
+          {renderUsageContent(usage)}
+        </SwipeToDelete>
+      ))}
+    </div>
+  ) : null;
+
+  // Десктоп — карточка кликабельна целиком (как и на мобиле, onTap), а
+  // Редактировать/Удалить уходят под "...": stopPropagation на обёртке
+  // меню, чтобы клик по нему не триггерил переход по карточке.
+  const usagesBlockDesktop = skein.usages.length > 0 ? (
+    <CollapsibleSection title="Связано" isOpen={isSectionOpen('usages')} onToggle={() => toggleSection('usages')} className="stash-details-usages">
+      {skein.usages.map((usage) => (
+        <div
+          key={usage.id}
+          className="stash-usage-card stash-usage-card--desktop"
+          onClick={() => handleUsageTap(usage)}
+        >
+          {renderUsageContent(usage)}
+          <div className="stash-usage-card-menu" onClick={(e) => e.stopPropagation()}>
+            <HeaderActionsMenu
+              onEdit={() => { setEditUsageTarget(usage); setLastEditUsage(usage); }}
+              onDelete={() => setDeleteUsageTarget(usage)}
+            />
+          </div>
+        </div>
+      ))}
+    </CollapsibleSection>
+  ) : null;
+
+  const actionsBlock = (
+    <div className="stash-details-actions">
+      <button
+        type="button"
+        className="btn stash-action-btn stash-action-btn--primary"
+        onClick={handleOpenLogUsage}
+        disabled={skein.currentWeightG <= 0 || isPreparingLogUsage}
+      >
+        {isPreparingLogUsage ? <Loader2 size={18} strokeWidth={2} className="stash-action-btn-spinner" /> : 'Списать пряжу'}
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="stash-details-container">
+        {isDesktop ? (
+          <>
+            <div className="stash-details-header">
+              <p className="stash-breadcrumb">Пряжа / {skein.yarnNameSnapshot}</p>
+              <div className="stash-details-desktop-actions">
+                <button type="button" className="stash-details-desktop-edit" onClick={() => setIsEditOpen(true)}>
+                  <SquarePen size={18} strokeWidth={1.5} />
+                  Редактировать
+                </button>
+                <button type="button" className="stash-details-desktop-delete" onClick={() => setIsDeleteSkeinOpen(true)} aria-label="Удалить">
+                  <Trash2 size={18} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+
+            <div className="stash-details-desktop-grid">
+              <div className="stash-details-desktop-gallery">
+                {skein.images.length > 0 ? (
+                  <StashImageGalleryDesktop images={skein.images} alt={skein.yarnNameSnapshot} />
+                ) : (
+                  <div className="stash-gallery-desktop-main stash-gallery-desktop-main--placeholder">
+                    <img src={yarnPlaceholder} alt="" />
+                  </div>
+                )}
+                {remainderBlock}
+                {actionsBlock}
+                {skein.note && (
+                  <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
+                    {notesInner}
+                  </CollapsibleSection>
+                )}
+              </div>
+
+              <div className="stash-details-desktop-info">
+                <h1 className="stash-details-name">{skein.yarnNameSnapshot}</h1>
+
+                <CollapsibleSection title="Пряжа" isOpen={isSectionOpen('yarn')} onToggle={() => toggleSection('yarn')} className="stash-details-info">
+                  <p className="stash-details-row"><b>Артикул:</b> {skein.yarnNameSnapshot}</p>
+                  {yarnInfoRows}
+                </CollapsibleSection>
+
+                {yarnFixBlock}
+                {usagesBlockDesktop}
+              </div>
+
+              <div className="stash-details-desktop-swatches">
+                <CollapsibleSection title="Образец" isOpen={isSectionOpen('swatch')} onToggle={() => toggleSection('swatch')} className="stash-details-swatches">
+                  {swatchesInnerDesktop}
+                </CollapsibleSection>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="stash-details-header">
+              <button className="back-button" onClick={handleBack}>
+                <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
+                Назад
+              </button>
+              <HeaderActionsMenu onEdit={() => setIsEditOpen(true)} onDelete={() => setIsDeleteSkeinOpen(true)} />
+            </div>
+
+            <div className="stash-details-image-wrapper">
+              <div className="stash-details-image-container">
+                {skein.images.length > 0 ? (
+                  <StashImageCarousel images={skein.images} alt={skein.yarnNameSnapshot} />
+                ) : (
+                  <div className="stash-details-image stash-details-image-placeholder">
+                    <img src={yarnPlaceholder} alt="" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="stash-details-info">
+              <h1 className="stash-details-name">{skein.yarnNameSnapshot}</h1>
+              {yarnInfoRows}
+              {remainderBlock}
+            </div>
+
+            {yarnFixBlock}
+
+            <div className="stash-details-swatches">
+              <p className="stash-details-section-title">Образец</p>
+              {swatchesInner}
+            </div>
+
+            {skein.note && (
+              <div className="stash-details-notes">
+                <p className="stash-details-section-title">Заметки</p>
+                {notesInner}
+              </div>
+            )}
+
+            {usagesBlock}
+
+            {actionsBlock}
+          </>
+        )}
+
+        {matches.length > 0 && (
+          <div className="stash-details-matches">
+            <p className="stash-details-section-title">Что можно связать из этой пряжи</p>
+            <div className="stash-matches-list" ref={matchesListRef}>
+              {matches.map((m, i) => (
+                <div key={m.id} className="stash-match-card-wrap">
+                  <button
+                    ref={i === matches.length - 1 ? lastMatchElementRef : undefined}
+                    type="button"
+                    className={`stash-match-card${matchesLocked ? ' stash-match-card--locked' : ''}`}
+                    onClick={() => {
+                      if (matchesLocked) { setIsMatchesPaywallOpen(true); return; }
+                      // Сохраняем позицию ПЕРЕД переходом — после возврата
+                      // страница монтируется заново (см. load() выше), восстановить
+                      // scrollLeft можно только по тому, что успели записать здесь.
+                      if (id && matchesListRef.current) {
+                        sessionStorage.setItem(
+                          `stash_matches_scroll_${id}`,
+                          JSON.stringify({ count: matches.length, scrollLeft: matchesListRef.current.scrollLeft }),
+                        );
+                      }
+                      navigate(`/pattern/${m.id}`);
+                    }}
+                  >
+                    {matchesLocked ? (
+                      <div className="stash-match-image-frame">
+                        <img src={m.thumbnailUrl} alt="" loading="lazy" className="stash-match-image stash-match-image--locked" />
+                        <Lock size={16} strokeWidth={1.5} className="stash-match-lock-icon" />
+                      </div>
+                    ) : (
+                      <>
+                        <img src={m.thumbnailUrl} alt="" loading="lazy" className="stash-match-image" />
+                        <p className="stash-match-title">{m.title}</p>
+                        <div className="stash-match-meta">
+                          <p className="stash-match-category">{m.category ?? '—'}</p>
+                          <p className="stash-match-instrument">{m.instruments[0] ?? '—'}</p>
+                        </div>
+                        {m.strandsCount != null && (
+                          <p className="stash-match-strands">При вязании в {m.strandsCount} сложений</p>
+                        )}
+                      </>
+                    )}
+                  </button>
+                  {/* Сердечко избранного — только десктоп (Figma node-id=1659:22930);
+                    на мобильной карточке подбора его никогда не было. Вынесено
+                    из .stash-match-card (это <button>) в соседнюю кнопку —
+                    вложенные <button> внутри <button> невалидны. */}
+                  {isDesktop && !matchesLocked && (
+                    <button
+                      type="button"
+                      className="stash-match-favorite"
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(m.id); }}
+                      aria-label={isFavorite(m.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                    >
+                      <Heart size={20} strokeWidth={1.5} fill={isFavorite(m.id) ? '#ffffff' : 'none'} color="#ffffff" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* <Footer /> */}
+
+        <AddSwatchModal
+          isOpen={isAddSwatchOpen}
+          skeinId={skein.id}
+          onClose={() => setIsAddSwatchOpen(false)}
+          onCreated={() => {
+            setIsAddSwatchOpen(false);
+            load();
+          }}
+        />
+
+        {lastEditSwatch && (
+          <EditSwatchModal
+            isOpen={!!editSwatchTarget}
+            swatch={lastEditSwatch}
+            onClose={() => setEditSwatchTarget(null)}
+            onSaved={() => {
+              setEditSwatchTarget(null);
+              load();
+            }}
+          />
+        )}
+
+        <EditSkeinModal
+          isOpen={isEditOpen}
+          skein={skein}
+          onClose={() => setIsEditOpen(false)}
+          onSaved={() => {
+            setIsEditOpen(false);
+            load();
+          }}
+        />
+
+        <LogUsageWizard
+          isOpen={isLogUsageOpen}
+          skein={skein}
+          initialProjects={logUsageInitialProjects}
+          onClose={() => setIsLogUsageOpen(false)}
+          onLogged={() => {
+            setIsLogUsageOpen(false);
+            load();
+          }}
+        />
+
+        {lastEditUsage && (
+          <EditUsageModal
+            isOpen={!!editUsageTarget}
+            skein={skein}
+            usage={lastEditUsage}
+            onClose={() => setEditUsageTarget(null)}
+            onSaved={() => {
+              setEditUsageTarget(null);
+              load();
+            }}
+          />
+        )}
+
+        <DeleteConfirmModal
+          isOpen={!!deleteUsageTarget}
+          title="Отменить списание?"
+          text={`«${deleteUsageTarget?.projectTitle || 'Без названия'}» — списанные ${deleteUsageTarget?.amountG ?? 0} г вернутся в остаток пряжи.`}
+          isDeleting={isDeletingUsage}
+          onCancel={() => setDeleteUsageTarget(null)}
+          onConfirm={handleConfirmDeleteUsage}
+        />
+
+        <DeleteConfirmModal
+          isOpen={!!deleteSwatchTarget}
+          title="Удалить образец?"
+          text="Образец будет удалён без возможности восстановить."
+          isDeleting={isDeletingSwatch}
+          onCancel={() => setDeleteSwatchTarget(null)}
+          onConfirm={handleConfirmDeleteSwatch}
+        />
+
+        <DeleteConfirmModal
+          isOpen={isDeleteSkeinOpen}
+          title="Удалить пряжу?"
+          text={`«${skein.yarnNameSnapshot}» будет удалена из хранилища без возможности восстановить.`}
+          isDeleting={isDeletingSkein}
+          onCancel={() => setIsDeleteSkeinOpen(false)}
+          onConfirm={handleConfirmDeleteSkein}
+        />
+
+        <StashPaywallBanner
+          isOpen={isMatchesPaywallOpen}
+          reason="matches"
+          freeLimit={10}
+          onClose={() => setIsMatchesPaywallOpen(false)}
+        />
+      </div>
+      <Footer />
+    </>
   );
 };

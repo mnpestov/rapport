@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Check, SquareCheck, Square } from 'lucide-react';
+import { Plus, Check, SquareCheck, Square, X } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { completeProject, addProjectYarn, ProjectDetail, ProjectInstrumentInput, YarnUsageInput } from '../../api/projectsApi';
 import { fetchPatterns, fetchFilters, Pattern, FilterOption } from '../../api/patternsApi';
 import { fetchStashSkeins, uploadStashImage, StashSkein } from '../../api/stashApi';
 import { AddYarnModal } from '../Stash/AddYarnModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 
+import projectPlaceholder from '../../components/TabBar/icons/project1.svg';
 import '../../styles/sheet.css';
 import '../StashSkeinDetails/LogUsageWizard.css';
 import '../StashSkeinDetails/StashSkeinDetails.css';
@@ -57,6 +59,7 @@ interface CompleteProjectWizardProps {
 // отдельно) — оба блока живут на одном экране одновременно.
 export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ isOpen, project, onClose, onCompleted }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
+  const isDesktop = useIsDesktop();
 
   // "Логические" шаги, видимые пользователю в этом прохождении визарда —
   // вычисляются один раз при открытии (см. useEffect ниже), не пересчитываются
@@ -412,11 +415,57 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
   return (
     <div ref={sheetRef} className={`log-usage-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="log-usage-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
+        {isDesktop && (
+          <>
+            <button type="button" className="log-usage-desktop-close" onClick={onClose} aria-label="Закрыть">
+              <X size={24} strokeWidth={1.5} />
+            </button>
+            <div className="log-usage-desktop-photo">
+              <div className="log-usage-desktop-photo-main">
+                <img src={project.finishedPhotos[0] ?? project.images[0] ?? projectPlaceholder} alt="" />
+              </div>
+              <div className="log-usage-desktop-card">
+                <p className="log-usage-desktop-card-title">{project.title}</p>
+                {(() => {
+                  const firstPattern = project.patterns[0];
+                  const authorName = firstPattern?.patternAuthorSnapshot ?? project.manualAuthor;
+                  const descriptionTitle = firstPattern?.patternTitleSnapshot ?? project.manualDescription;
+                  return (
+                    <>
+                      {authorName && <p className="log-usage-desktop-card-row"><b>Автор:</b> {authorName}</p>}
+                      {descriptionTitle && <p className="log-usage-desktop-card-row"><b>Описание:</b> {descriptionTitle}</p>}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="log-usage-header">
-          <h2 className="complete-wizard-title">Поздравляем с завершением проекта!</h2>
-          <p className="complete-wizard-subtitle">Заполните информацию о проекте</p>
-          <p className="log-usage-step">{stepTitle}</p>
-          <p className="complete-wizard-project-title">{project.title}</p>
+          {isDesktop ? (
+            <>
+              <div className="log-usage-desktop-title-row">
+                <h2 className="complete-wizard-title">Завершение проекта</h2>
+                <div className="log-usage-desktop-steps">
+                  <span className="log-usage-desktop-steps-label">{stepTitle}</span>
+                  <span className="log-usage-desktop-steps-bar">
+                    {activeSteps.map((_, i) => (
+                      <span key={i} className={`log-usage-desktop-steps-segment${i <= stepIndex ? ' log-usage-desktop-steps-segment--filled' : ''}`} />
+                    ))}
+                  </span>
+                </div>
+              </div>
+              <p className="complete-wizard-subtitle">Заполните информацию о проекте</p>
+            </>
+          ) : (
+            <>
+              <h2 className="complete-wizard-title">Поздравляем с завершением проекта!</h2>
+              <p className="complete-wizard-subtitle">Заполните информацию о проекте</p>
+              <p className="log-usage-step">{stepTitle}</p>
+              <p className="complete-wizard-project-title">{project.title}</p>
+            </>
+          )}
         </div>
 
         <div className="log-usage-body">

@@ -40,8 +40,11 @@ export const ProjectCardDesktop: React.FC<ProjectCardDesktopProps> = ({ item, on
           )}
         </div>
       </button>
-      <button type="button" className="projects-card-desktop-delete" onClick={onRequestDelete} aria-label="Удалить">
+      {/* <button type="button" className="projects-card-desktop-delete" onClick={onRequestDelete} aria-label="Удалить">
         <Trash2 size={16} strokeWidth={1.5} />
+      </button> */}
+      <button type="button" className="projects-card-desktop-delete" onClick={onRequestDelete} aria-label="Удалить">
+        <Trash2 strokeWidth={1.5} />
       </button>
     </div>
   );

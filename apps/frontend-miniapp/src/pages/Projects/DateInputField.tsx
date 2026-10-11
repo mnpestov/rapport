@@ -9,6 +9,11 @@ interface DateInputFieldProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   align?: 'start' | 'end';
+  // Десктопный блок "Сроки" карточки проекта (ProjectDetails.tsx) просит
+  // иконку покрупнее (16 вместо стандартных 13) — опционально, чтобы не
+  // менять вид везде, где компонент уже используется (форма создания/
+  // редактирования проекта).
+  iconSize?: number;
 }
 
 // Figma node-id=1360:23251/1454:15652 (поле) и 1360:26408 (сам календарь)
@@ -16,7 +21,7 @@ interface DateInputFieldProps {
 // раскрывается кастомный dropdown-календарь вместо системного
 // <input type="date"> picker'а (тот выглядит по-разному в каждом
 // браузере/ОС, макет требует единого вида).
-export const DateInputField: React.FC<DateInputFieldProps> = ({ label, value, onChange, disabled, align = 'start' }) => {
+export const DateInputField: React.FC<DateInputFieldProps> = ({ label, value, onChange, disabled, align = 'start', iconSize = 13 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +54,7 @@ export const DateInputField: React.FC<DateInputFieldProps> = ({ label, value, on
       >
         <span className={value ? '' : 'add-project-date-placeholder'}>{displayValue}</span>
         <span className="projects-status-icon-wrap">
-          <CalendarIcon size={13} strokeWidth={1.5} />
+          <CalendarIcon size={iconSize} strokeWidth={1.5} />
         </span>
       </div>
       {isOpen && !disabled && (

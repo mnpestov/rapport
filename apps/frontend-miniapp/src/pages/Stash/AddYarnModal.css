@@ -415,3 +415,247 @@
   color: #1d1c1c;
   font-weight: 700;
 }
+
+/* ───────────────────────── Десктоп (Figma node-id=1852:34888) ─────────────
+   Остаётся модалкой (тот же sheet-overlay/sheet-panel, тот же триггер из
+   Stash.tsx/ProjectDetails.tsx/CompleteProjectWizard.tsx), просто шире и с
+   3-колоночной раскладкой вместо одной колонки. Мобильные правила выше не
+   меняются — .add-yarn-photos (плоская сетка) и .add-yarn-gallery-desktop-*
+   не пересекаются, рендерятся по isDesktop в AddYarnModal.tsx. */
+@media (min-width: 768px) {
+
+  /* Во весь экран (Figma node-id=1852:34888 — целая страница, не плавающий
+     диалог) — оверлей/панель растянуты на весь вьюпорт, бэкдроп под ними не
+     виден. Внутренний контент (шапка/тело/футер) при этом остаётся
+     читаемым на сверхширокой раскладке за счёт собственных
+     max-width/margin:auto ниже — тот же приём, что у .stash-container. */
+  .add-yarn-overlay {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .add-yarn-panel {
+    position: relative;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    /* Панель сама стала скроллящимся контейнером (целая страница, не
+       шторка с фиксированной шапкой/подвалом) — TopNav внутри неё
+       (position:sticky) корректно прилипает к ЭТОМУ скроллу. Раньше
+       скроллился только .add-yarn-body, а header/footer были
+       flex-shrink:0 — тот паттерн остаётся для мобильной шторки
+       (см. базовые правила выше), здесь переопределяется. */
+    overflow-y: auto;
+  }
+
+  .add-yarn-header {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px) 0;
+    box-sizing: border-box;
+  }
+
+  .add-yarn-breadcrumb {
+    margin: 0;
+  }
+
+  /* Заголовок и кнопки больше не в хедере — переехали внутрь грида (начало
+     2-й и 3-й колонки), по той же схеме, что карточка проекта
+     (ProjectDetails.tsx: заголовок+статус в середине, даты в начале правой
+     колонки). В хедере остаётся только хлебная крошка. */
+  .add-yarn-title {
+    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  /* Кнопки — начало 3-й колонки (.add-yarn-section--swatches), не в
+     хедере: раньше top:24px/flex-ребёнок хедера считался от верха ВСЕЙ
+     панели или рядом с заголовком там же — пользователь попросил перенести
+     их в сам грид, под тем же принципом, что и у карточки проекта. */
+  .add-yarn-column-actions {
+    display: flex;
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    justify-content: end;
+  }
+
+  .add-yarn-column-actions .add-yarn-close-btn,
+  .add-yarn-column-actions .add-yarn-save-btn {
+    width: auto;
+    flex: 1;
+    height: min(calc(50 * (100vw - 100px) / 1340), 50px);
+    padding: 0 min(calc(24 * (100vw - 100px) / 1340), 24px);
+    /* height: min(calc(50 * (100vw - 100px) / 1340), 50px); */
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    max-width: min(calc(127 * (100vw - 100px) / 1340), 127px);
+  }
+
+  .add-yarn-body {
+    display: grid;
+    /* Три равные колонки (пользователь явно попросил именно так — 1fr 1fr
+       1fr, не минмакс-пропорции под Figma-холст, как раньше), тот же
+       принцип, что .stash-details-desktop-grid у карточки проекта. */
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "photos yarn swatches";
+    align-items: start;
+    gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px);
+    box-sizing: border-box;
+  }
+
+  .add-yarn-section--photos {
+    grid-area: photos;
+  }
+
+  .add-yarn-section--yarn {
+    grid-area: yarn;
+  }
+
+  .add-yarn-section--swatches {
+    grid-area: swatches;
+  }
+
+  .add-yarn-error {
+    grid-column: 1 / -1;
+  }
+
+  /* Шрифты полей/заголовков по макету (Figma node-id=1852:34888) — мобильные
+     значения заметно мельче (label:12px, input:15px, section-title:16px,
+     swatch-title:14px, "Удалить":13px, чипы инструмента:15px) и десктопного
+     переопределения для них не было вообще. */
+  .add-yarn-label {
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+  }
+
+  .add-yarn-input,
+  .add-yarn-textarea {
+    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+  }
+
+  .add-yarn-section-title {
+    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+  }
+
+  .add-yarn-swatch-draft-title {
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .add-yarn-swatch-remove {
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+  }
+
+  .add-yarn-instrument-chip {
+    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+  }
+
+  /* Заметка образца в макете выглядит как обычное однострочное поле
+     (44px), не растущая textarea — компактнее мобильного min-height:80px,
+     сама текстовая область (ресайз/многострочность) остаётся прежней. */
+  .add-yarn-swatch-draft .add-yarn-textarea {
+    min-height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+  }
+
+  /* Галерея — первое фото крупно справа, остальные миниатюрами слева (тот
+     же принцип, что StashImageGalleryDesktop на карточке пряжи), без
+     клика-выбора (это форма загрузки, не просмотра — "крупное" всегда
+     images[0]). */
+  .add-yarn-gallery-desktop {
+    display: flex;
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+  }
+
+  .add-yarn-gallery-desktop-thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    flex-shrink: 0;
+  }
+
+  .add-yarn-gallery-desktop-thumb {
+    position: relative;
+    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    flex-shrink: 0;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #f3f3f3;
+  }
+
+  .add-yarn-gallery-desktop-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .add-yarn-gallery-desktop-add {
+    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e5e5;
+    border-radius: 2px;
+    background: none;
+    color: #9b9a9a;
+    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    cursor: pointer;
+  }
+
+  .add-yarn-gallery-desktop-main {
+    flex: 1;
+    min-width: 0;
+    aspect-ratio: 428 / 447;
+    border-radius: 2px;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  .add-yarn-gallery-desktop-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .add-yarn-gallery-desktop-main-add {
+    width: 100%;
+    height: 100%;
+    border: 1px dashed #e5e5e5;
+    background: none;
+    color: #9b9a9a;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    cursor: pointer;
+  }
+
+  /* .add-yarn-footer (Закрыть/Сохранить колонкой на всю ширину) теперь
+     рендерится только на мобиле (isDesktop && ... в AddYarnModal.tsx) —
+     десктопная версия тех же кнопок живёт в .add-yarn-header-actions
+     (объявлено выше, рядом с .add-yarn-header), поэтому здесь для
+     .add-yarn-footer переопределений больше нет. */
+
+  .add-yarn-category-chip {
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    padding: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+  }
+
+  .add-yarn-category-chip svg {
+    width: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    height: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    display: block;
+  }
+}

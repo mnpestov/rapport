@@ -1,0 +1,81 @@
+/* Скрыт на мобильном — нижний TabBar остаётся единственной навигацией там.
+   Брейкпоинт 768px — тот же, что у useIsDesktop()/Catalog.css/
+   PatternDetails.css/FilterModal.css. */
+.top-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .top-nav {
+    display: flex;
+    /* sticky, не fixed — остаётся в потоке документа, страницам не нужно
+       резервировать отступ сверху отдельным классом (как .has-tab-bar у
+       TabBar.css снизу). */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: min(calc(64 * (100vw - 100px) / 1340), 64px);
+    background: #ffffff;
+    border-bottom: 1px solid #e5e5e5;
+    box-sizing: border-box;
+  }
+}
+
+/* Повторяет box-model .stash-container (Stash.css): max-width:1440px +
+   margin:0 auto + тот же боковой padding:50px — логотип и ссылки
+   выравниваются по тем же краям, что и контент страницы под шапкой, вместо
+   плоского отступа от края вьюпорта. */
+.top-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  /* padding: 0 min(calc(50 * (100vw - 100px) / 1340), 50px); */
+  padding: 0 50px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.top-nav-logo-btn {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.top-nav-logo {
+  height: min(calc(28 * (100vw - 100px) / 1340), 28px);
+  width: auto;
+  display: block;
+}
+
+.top-nav-links {
+  display: flex;
+  align-items: center;
+  gap: min(calc(36 * (100vw - 100px) / 1340), 36px);
+  height: 100%;
+}
+
+.top-nav-link {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 0;
+  font-family: Mulish, sans-serif;
+  font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  font-weight: 400;
+  color: #1d1c1c;
+  cursor: pointer;
+}
+
+.top-nav-link--active {
+  font-weight: 700;
+  border-bottom-color: #bec1f4;
+}

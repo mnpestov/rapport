@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { parseDecimalInput } from '../../utils/parseDecimal';
 import {
   updateStashSkein,
@@ -13,8 +14,12 @@ import {
   StashSwatch,
 } from '../../api/stashApi';
 import { API_URL } from '../../api/config';
+import { TopNav } from '../../components/TopNav/TopNav';
+import { Footer } from '../../components/Footer/Footer';
 import '../../styles/sheet.css';
 import '../Stash/AddYarnModal.css';
+
+const toDisplayUrl = (url: string) => (url.startsWith('/') ? `${API_URL}${url}` : url);
 
 const MAX_IMAGES = 5;
 
@@ -32,7 +37,7 @@ interface EditSkeinModalProps {
 interface SwatchEntry {
   key: string;
   id: string | null;
-  instrumentType: 'hook' | 'needle' | null;
+  instrumentType: 'hook' | 'needle' | 'machine' | null;
   needleSizeRaw: string;
   strandsCount: string;
   stitchesBefore: string;
@@ -98,6 +103,16 @@ function createEmptySwatchEntry(): SwatchEntry {
 //   новые добавляются тем же способом, что в AddYarnModal (POST).
 export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, onClose, onSaved }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
+  const isDesktop = useIsDesktop();
+
+  // Та же блокировка скролла фона, что в AddYarnModal — на десктопе эта
+  // форма тоже растягивается на весь экран поверх TopNav/Footer страницы.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [isOpen]);
 
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -306,40 +321,124 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
     }
   };
 
+  // Тот же приём, что в AddYarnModal: "Общий вес" на десктопе переезжает в
+  // колонку с фото (по Figma node-id=1852:34888), на мобиле остаётся полем
+  // внутри блока "Пряжа" — один JSX, место рендера зависит от isDesktop.
+  const totalWeightField = (
+    <div className="add-yarn-field">
+      <label className="add-yarn-label">Общий вес*</label>
+      <input
+        className="add-yarn-input"
+        value={totalWeightG}
+        placeholder="Вес в граммах"
+        inputMode="numeric"
+        onChange={(e) => setTotalWeightG(e.target.value)}
+      />
+    </div>
+  );
+
+  // "Заметки" — на десктопе тоже под фото/Общим весом, на мобиле отдельной
+  // секцией в конце (см. !isDesktop && notesSection ниже).
+  const notesSection = (
+    <div className="add-yarn-section add-yarn-section--notes">
+      <p className="add-yarn-section-title">Заметки</p>
+      <textarea
+        className="add-yarn-textarea"
+        value={note}
+        placeholder="Здесь можно писать всё, что душе угодно"
+        onChange={(e) => setNote(e.target.value)}
+      />
+    </div>
+  );
+
+  // Закрыть/Сохранить — на мобиле в подвале шторки, на десктопе рядом с
+  // заголовком в колонке "Образец" (add-yarn-column-actions ниже), тот же
+  // принцип, что в AddYarnModal.
+  const actionButtons = (
+    <>
+      <button type="button" className="btn add-yarn-close-btn" onClick={onClose} disabled={isSubmitting}>
+        Закрыть
+      </button>
+      <button
+        type="button"
+        className="btn add-yarn-save-btn"
+        onClick={handleSave}
+        disabled={!isValid || isSubmitting}
+      >
+        {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+      </button>
+    </>
+  );
+
   return (
     <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="add-yarn-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
+        {/* Та же логика, что в AddYarnModal — на десктопе модалка растянута
+            на весь экран (целая страница), поэтому TopNav/Footer страницы
+            позади неё рендерятся здесь ещё раз, только пока форма открыта. */}
+        {isDesktop && <TopNav />}
         <div className="add-yarn-header">
-          <h2 className="add-yarn-title">Редактировать пряжу</h2>
+          {isDesktop && <p className="stash-breadcrumb add-yarn-breadcrumb">Пряжа / Редактировать</p>}
+          {!isDesktop && <h2 className="add-yarn-title">Редактировать пряжу</h2>}
         </div>
 
         <div className="add-yarn-body">
-          <div className="add-yarn-section">
-            <p className="add-yarn-section-title">Фото</p>
-            <div className="add-yarn-photos">
-              {images.map((url) => (
-                <div key={url} className="add-yarn-photo-thumb">
-                  <img src={url.startsWith('/') ? `${API_URL}${url}` : url} alt="" />
-                  <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+          <div className="add-yarn-section add-yarn-section--photos">
+            {!isDesktop && <p className="add-yarn-section-title">Фото</p>}
+            {isDesktop ? (
+              <div className="add-yarn-gallery-desktop">
+                <div className="add-yarn-gallery-desktop-thumbs">
+                  {images.map((url) => (
+                    <div key={url} className="add-yarn-gallery-desktop-thumb">
+                      <img src={toDisplayUrl(url)} alt="" />
+                      <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+                    </div>
+                  ))}
+                  {images.length < MAX_IMAGES && (
+                    <button type="button" className="add-yarn-gallery-desktop-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                      +
+                    </button>
+                  )}
                 </div>
-              ))}
-              {images.length < MAX_IMAGES && (
-                <button type="button" className="add-yarn-photo-add" onClick={handleAddPhotoClick} disabled={isUploading}>
-                  +
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                style={{ display: 'none' }}
-                onChange={handleFileSelected}
-              />
-            </div>
+                <div className="add-yarn-gallery-desktop-main">
+                  {images.length > 0 ? (
+                    <img src={toDisplayUrl(images[0])} alt="" />
+                  ) : (
+                    <button type="button" className="add-yarn-gallery-desktop-main-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                      + Добавить фото
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="add-yarn-photos">
+                {images.map((url) => (
+                  <div key={url} className="add-yarn-photo-thumb">
+                    <img src={toDisplayUrl(url)} alt="" />
+                    <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <button type="button" className="add-yarn-photo-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                    +
+                  </button>
+                )}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleFileSelected}
+            />
+            {isDesktop && totalWeightField}
+            {isDesktop && notesSection}
           </div>
 
-          <div className="add-yarn-section">
+          <div className="add-yarn-section add-yarn-section--yarn">
+            {isDesktop && <h2 className="add-yarn-title">Редактировать пряжу</h2>}
             <p className="add-yarn-section-title">Пряжа</p>
 
             <div className="add-yarn-field">
@@ -413,19 +512,18 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
               <input className="add-yarn-input" value={dyelot} placeholder="Введите текст..." onChange={(e) => setDyelot(e.target.value)} />
             </div>
 
-            <div className="add-yarn-field">
-              <label className="add-yarn-label">Общий вес*</label>
-              <input
-                className="add-yarn-input"
-                value={totalWeightG}
-                placeholder="Вес в граммах"
-                inputMode="numeric"
-                onChange={(e) => setTotalWeightG(e.target.value)}
-              />
-            </div>
+            {!isDesktop && totalWeightField}
+            {/* На десктопе "Заметки" переехали под фото/Общий вес —
+                рендерятся в add-yarn-section--photos выше, здесь не
+                дублируются. */}
           </div>
 
-          <div className="add-yarn-section">
+          <div className="add-yarn-section add-yarn-section--swatches">
+            {isDesktop && (
+              <div className="add-yarn-column-actions">
+                {actionButtons}
+              </div>
+            )}
             <p className="add-yarn-section-title">Образец</p>
 
             {swatches.map((swatch, index) => (
@@ -464,17 +562,26 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                         >
                           Крючок
                         </button>
+                        <button
+                          type="button"
+                          className={`add-yarn-instrument-chip${swatch.instrumentType === 'machine' ? ' add-yarn-instrument-chip--active' : ''}`}
+                          onClick={() => updateSwatchEntry(swatch.key, { instrumentType: swatch.instrumentType === 'machine' ? null : 'machine', needleSizeRaw: '' })}
+                        >
+                          Вязальная машина
+                        </button>
                       </div>
                     </div>
 
-                    {/* instrumentType || needleSizeRaw — образцы, созданные
+                    {/* У вязальной машины нет параметра "размер" — поле
+                        скрыто, needleSizeRaw очищается при выборе machine.
+                        instrumentType || needleSizeRaw — образцы, созданные
                         до появления выбора инструмента, могут уже хранить
                         непустой needleSizeRaw при instrumentType=null;
                         гейтинг только на instrumentType скрыл бы это
                         старое значение от редактирования. */}
-                    {(swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
+                    {swatch.instrumentType !== 'machine' && (swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
                       <div className="add-yarn-field">
-                        <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
+                        <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : swatch.instrumentType === 'machine' ? 'вязальной машины' : 'инструмента'}</label>
                         <input
                           className="add-yarn-input"
                           value={swatch.needleSizeRaw}
@@ -541,7 +648,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                       <div className="add-yarn-photos">
                         {swatch.images.map((url) => (
                           <div key={url} className="add-yarn-photo-thumb">
-                            <img src={url.startsWith('/') ? `${API_URL}${url}` : url} alt="" />
+                            <img src={toDisplayUrl(url)} alt="" />
                             <button type="button" className="add-yarn-photo-remove" onClick={() => removeSwatchImage(swatch.key, url)}>×</button>
                           </div>
                         ))}
@@ -576,32 +683,18 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
             </button>
           </div>
 
-          <div className="add-yarn-section">
-            <p className="add-yarn-section-title">Заметки</p>
-            <textarea
-              className="add-yarn-textarea"
-              value={note}
-              placeholder="Здесь можно писать всё, что душе угодно"
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
+          {!isDesktop && notesSection}
 
           {error && <p className="add-yarn-error">{error}</p>}
         </div>
 
-        <div className="add-yarn-footer">
-          <button type="button" className="btn add-yarn-close-btn" onClick={onClose} disabled={isSubmitting}>
-            Закрыть
-          </button>
-          <button
-            type="button"
-            className="btn add-yarn-save-btn"
-            onClick={handleSave}
-            disabled={!isValid || isSubmitting}
-          >
-            {isSubmitting ? 'Сохранение...' : 'Сохранить'}
-          </button>
-        </div>
+        {isDesktop && <Footer />}
+
+        {!isDesktop && (
+          <div className="add-yarn-footer">
+            {actionButtons}
+          </div>
+        )}
       </div>
     </div>
   );

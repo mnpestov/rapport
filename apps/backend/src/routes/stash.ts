@@ -15,6 +15,7 @@ import {
   updateSkein,
   deleteSkein,
   logUsage,
+  logUsageForProject,
   updateUsage,
   undoUsage,
   createSwatch,
@@ -114,6 +115,7 @@ router.patch("/skeins/:id", loadOwnedSkein, updateSkein);
 router.delete("/skeins/:id", loadOwnedSkein, deleteSkein);
 
 router.post("/skeins/:id/usage", loadOwnedSkein, logUsage);
+router.post("/skeins/:id/usage-for-project", loadOwnedSkein, logUsageForProject);
 router.patch("/usage/:id", loadOwnedUsage, updateUsage);
 router.delete("/usage/:id", loadOwnedUsage, undoUsage);
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { parseDecimalInput } from '../../utils/parseDecimal';
 import {
   createStashSkein,
@@ -13,6 +14,8 @@ import {
   StashSkein,
   YarnSuggestion,
 } from '../../api/stashApi';
+import { TopNav } from '../../components/TopNav/TopNav';
+import { Footer } from '../../components/Footer/Footer';
 import '../../styles/sheet.css';
 import './AddYarnModal.css';
 
@@ -20,7 +23,7 @@ const MAX_IMAGES = 5;
 
 interface SwatchDraft {
   key: string;
-  instrumentType: 'hook' | 'needle' | null;
+  instrumentType: 'hook' | 'needle' | 'machine' | null;
   needleSizeRaw: string;
   strandsCount: string;
   stitchesBefore: string;
@@ -64,6 +67,19 @@ interface AddYarnModalProps {
 
 export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onCreated, onLimitReached, initialNameQuery }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
+  const isDesktop = useIsDesktop();
+
+  // Блокировка скролла основной страницы, пока открыта модалка — без этого
+  // фон за полноэкранной (на десктопе) панелью мог бы прокрутиться вместе с
+  // ней (например, на тач-жесте, "протекающем" сквозь overlay). Локально
+  // здесь, не в useSheetTransition — тот общий для множества модалок, менять
+  // его поведение означало бы менять их все разом, не только эту форму.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [isOpen]);
 
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -448,40 +464,140 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     }
   };
 
+  // "Остаток" — в макете (node-id=1852:34888) это отдельный блок под
+  // галереей (левая колонка), а НЕ последнее поле контейнера "Пряжа"
+  // (средняя колонка), как на мобиле. Вынесено в переменную, чтобы не
+  // дублировать JSX между мобильной позицией (внутри блока "Пряжа") и
+  // десктопной (в колонке с фото) — рендерится только в одной из двух по
+  // isDesktop, см. ниже.
+  const remainderField = (
+    <div className="add-yarn-field">
+      <label className="add-yarn-label">Остаток (г) *</label>
+      <input
+        className="add-yarn-input"
+        value={totalWeightG}
+        placeholder="Вес в граммах"
+        inputMode="numeric"
+        onChange={(e) => setTotalWeightG(e.target.value)}
+      />
+    </div>
+  );
+
+  // "Заметки" (пряжи, не образца) — в макете тоже под галереей, рядом с
+  // "Остаток", а не отдельным блоком в средней колонке под "Пряжа" (как на
+  // мобиле). Та же причина выноса в переменную, что у remainderField выше.
+  const notesSection = (
+    <div className="add-yarn-section add-yarn-section--notes">
+      <p className="add-yarn-section-title">Заметки</p>
+      <textarea
+        className="add-yarn-textarea"
+        value={note}
+        placeholder="Здесь можно писать всё, что душе угодно"
+        onChange={(e) => setNote(e.target.value)}
+      />
+    </div>
+  );
+
+  // Закрыть/Сохранить — на мобиле в подвале шторки (как раньше), на
+  // десктопе рядом с заголовком в хедере (см. add-yarn-header-actions
+  // ниже). Один и тот же JSX, разные места рендера по isDesktop.
+  const actionButtons = (
+    <>
+      <button type="button" className="btn add-yarn-close-btn" onClick={onClose} disabled={isSubmitting}>
+        Закрыть
+      </button>
+      <button
+        type="button"
+        className="btn add-yarn-save-btn"
+        onClick={handleSave}
+        disabled={!isValid || isSubmitting}
+      >
+        {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+      </button>
+    </>
+  );
+
   return (
     <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="add-yarn-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
+        {/* Модалка на десктопе растянута на весь экран (Figma node-id=
+            1852:34888 — целая страница), поэтому закрывает собой TopNav/
+            Footer САМОЙ страницы позади (они рендерятся один раз в App.tsx,
+            а оверлей — fixed inset:0 поверх всего). Рендерим те же общие
+            компоненты ещё раз здесь — только пока открыта модалка, только
+            на десктопе, мобильная шторка их не получает. */}
+        {isDesktop && <TopNav />}
         <div className="add-yarn-header">
-          <h2 className="add-yarn-title">Новая пряжа</h2>
+          {/* Десктоп (по образцу ProjectDetails — тот же 3-колоночный грид):
+              заголовок и кнопки переехали ВНУТРЬ грида (начало 2-й и 3-й
+              колонки), в хедере остаётся только хлебная крошка. На мобиле
+              хедер не менялся — тот же заголовок на месте, что и был. */}
+          {isDesktop && <p className="stash-breadcrumb add-yarn-breadcrumb">Пряжа / Новая пряжа</p>}
+          {!isDesktop && <h2 className="add-yarn-title">Новая пряжа</h2>}
         </div>
 
         <div className="add-yarn-body">
-          <div className="add-yarn-section">
-            <p className="add-yarn-section-title">Фото</p>
-            <div className="add-yarn-photos">
-              {images.map((url) => (
-                <div key={url} className="add-yarn-photo-thumb">
-                  <img src={url} alt="" />
-                  <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+          <div className="add-yarn-section add-yarn-section--photos">
+            {/* В макете (node-id=1852:34888) у галереи нет заголовка вообще
+                (в отличие от "Пряжа"/"Образцы") — на мобиле оставляем как
+                было ("Фото" всегда был), на десктопе скрываем. */}
+            {!isDesktop && <p className="add-yarn-section-title">Фото</p>}
+            {/* Десктоп (Figma node-id=1852:34888) — первое фото крупно
+                справа, остальные миниатюрами слева (плюс "+"), та же
+                images/removeImage/handleAddPhotoClick, что и в мобильной
+                плоской сетке ниже, просто другая раскладка тех же данных. */}
+            {isDesktop ? (
+              <div className="add-yarn-gallery-desktop">
+                <div className="add-yarn-gallery-desktop-thumbs">
+                  {images.map((url) => (
+                    <div key={url} className="add-yarn-gallery-desktop-thumb">
+                      <img src={url} alt="" />
+                      <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+                    </div>
+                  ))}
+                  {images.length < MAX_IMAGES && (
+                    <button type="button" className="add-yarn-gallery-desktop-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                      +
+                    </button>
+                  )}
                 </div>
-              ))}
-              {images.length < MAX_IMAGES && (
-                <button type="button" className="add-yarn-photo-add" onClick={handleAddPhotoClick} disabled={isUploading}>
-                  +
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                style={{ display: 'none' }}
-                onChange={handleFileSelected}
-              />
-            </div>
+                <div className="add-yarn-gallery-desktop-main">
+                  {images.length > 0 ? (
+                    <img src={images[0]} alt="" />
+                  ) : (
+                    <button type="button" className="add-yarn-gallery-desktop-main-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                      + Добавить фото
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="add-yarn-photos">
+                {images.map((url) => (
+                  <div key={url} className="add-yarn-photo-thumb">
+                    <img src={url} alt="" />
+                    <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <button type="button" className="add-yarn-photo-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                    +
+                  </button>
+                )}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleFileSelected}
+            />
           </div>
 
-          <div className="add-yarn-section">
+          <div className="add-yarn-section add-yarn-section--yarn">
+            {isDesktop && <h2 className="add-yarn-title">Новая пряжа</h2>}
             <p className="add-yarn-section-title">Пряжа</p>
 
             <div className="add-yarn-field add-yarn-field--autocomplete" ref={autocompleteFieldRef}>
@@ -586,19 +702,20 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
               <input className="add-yarn-input" value={dyelot} placeholder="Введите текст..." onChange={(e) => setDyelot(e.target.value)} />
             </div>
 
-            <div className="add-yarn-field">
-              <label className="add-yarn-label">Остаток (г) *</label>
-              <input
-                className="add-yarn-input"
-                value={totalWeightG}
-                placeholder="Вес в граммах"
-                inputMode="numeric"
-                onChange={(e) => setTotalWeightG(e.target.value)}
-              />
-            </div>
+            {remainderField}
+            {/* Заметки — на десктопе сразу здесь, под "Остаток" (по
+                просьбе пользователя, тот же 3-колоночный грид, что
+                ProjectDetails); на мобиле остаются отдельной секцией ниже
+                (см. !isDesktop && notesSection дальше по файлу). */}
+            {isDesktop && notesSection}
           </div>
 
-          <div className="add-yarn-section">
+          <div className="add-yarn-section add-yarn-section--swatches">
+            {isDesktop && (
+              <div className="add-yarn-column-actions">
+                {actionButtons}
+              </div>
+            )}
             <p className="add-yarn-section-title">Образец</p>
 
             {isSwatchSectionOpen && swatches.map((swatch, index) => (
@@ -627,10 +744,20 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                     >
                       Крючок
                     </button>
+                    <button
+                      type="button"
+                      className={`add-yarn-instrument-chip${swatch.instrumentType === 'machine' ? ' add-yarn-instrument-chip--active' : ''}`}
+                      onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'machine' ? null : 'machine', needleSizeRaw: '' })}
+                    >
+                      Вязальная машина
+                    </button>
                   </div>
                 </div>
 
-                {(swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
+                {/* У вязальной машины нет параметра "размер" — поле скрыто,
+                    needleSizeRaw очищается при выборе machine (см. onClick
+                    выше), чтобы не отправить устаревшее значение молча. */}
+                {swatch.instrumentType !== 'machine' && (swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
                   <div className="add-yarn-field">
                     <label className="add-yarn-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
                     <input
@@ -727,37 +854,26 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             ))}
 
             <button type="button" className="add-yarn-category-chip" onClick={handleAddSwatch}>
-              <Plus size={32} strokeWidth={1} className="add-yarn-category-chip-plus" />
+              {/* <Plus size={32} strokeWidth={1} className="add-yarn-category-chip-plus" /> */}
+              <Plus strokeWidth={1} className="add-yarn-category-chip-plus" />
               {swatches.length > 0 ? 'Добавить ещё образец' : 'Добавить образец'}
             </button>
           </div>
 
-          <div className="add-yarn-section">
-            <p className="add-yarn-section-title">Заметки</p>
-            <textarea
-              className="add-yarn-textarea"
-              value={note}
-              placeholder="Здесь можно писать всё, что душе угодно"
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
+          {/* На десктопе "Заметки" переехали под фото/Остаток — рендерятся в
+              add-yarn-section--photos выше, здесь не дублируются. */}
+          {!isDesktop && notesSection}
 
           {error && <p className="add-yarn-error">{error}</p>}
         </div>
 
-        <div className="add-yarn-footer">
-          <button type="button" className="btn add-yarn-close-btn" onClick={onClose} disabled={isSubmitting}>
-            Закрыть
-          </button>
-          <button
-            type="button"
-            className="btn add-yarn-save-btn"
-            onClick={handleSave}
-            disabled={!isValid || isSubmitting}
-          >
-            {isSubmitting ? 'Сохранение...' : 'Сохранить'}
-          </button>
-        </div>
+        {isDesktop && <Footer />}
+
+        {!isDesktop && (
+          <div className="add-yarn-footer">
+            {actionButtons}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -552,7 +552,7 @@
 }
 
 .add-project-date-field--end {
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .add-project-date-label {
@@ -598,7 +598,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 20px 8px;
+  padding: 4px 0px 8px;
   border: none;
   background: none;
   font-family: Mulish, sans-serif;
@@ -716,10 +716,20 @@
   display: block;
 }
 
+/* Заглушка-бобинка (нет фото мотка) — не растягивается на всю карточку
+   как реальное фото (cover), тот же приём, что .stash-usage-image-
+   placeholder img в StashSkeinDetails.css. Селектор с элементом img —
+   выше специфичность, чем у .add-project-yarn-card-image img выше. */
+.add-project-yarn-card-image img.add-project-yarn-card-image-placeholder {
+  width: 70%;
+  height: auto;
+  object-fit: contain;
+}
+
 .add-project-yarn-card-body {
   display: flex;
   flex-direction: column;
-  justify-content: start;
+  justify-content: space-evenly;
   gap: 4px;
   padding: 4px 0;
   min-width: 0;
@@ -911,4 +921,343 @@
   background: #ecedf9;
   color: #1d1c1c;
   font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .projects-status-icon-wrap {
+    width: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    height: min(calc(30 * (100vw - 100px) / 1340), 30px);
+  }
+
+  .projects-status-icon-wrap svg {
+    width: min(calc(13 * (100vw - 100px) / 1340), 13px);
+    height: min(calc(13 * (100vw - 100px) / 1340), 13px);
+  }
+
+  .add-project-pdf-row {
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+  }
+
+  .add-project-pdf-link {
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .add-project-date-label {
+    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+  }
+
+  .add-project-date-value {
+    gap: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .add-project-yarn-card-title {
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .plus-add-button {
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    padding: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+  }
+
+  .plus-add-button svg {
+    width: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    height: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    display: block;
+  }
+
+  .add-project-photo-thumb-referencePhotos {
+    width: min(calc(90 * (100vw - 100px) / 1340), 90px);
+    height: min(calc(117 * (100vw - 100px) / 1340), 117px);
+  }
+
+  .add-project-checkbox-row {
+    gap: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    padding: min(calc(4 * (100vw - 100px) / 1340), 4px) 0 min(calc(8 * (100vw - 100px) / 1340), 8px);
+    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+  }
+
+
+  .add-project-overlay {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .add-project-panel {
+    position: relative;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    overflow-y: auto;
+  }
+
+  .add-project-header {
+    text-align: left;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px) 0;
+    box-sizing: border-box;
+  }
+
+  .add-project-breadcrumb {
+    margin: 0;
+  }
+
+  /* Заголовок+статус и кнопки Закрыть/Сохранить переехали из хедера внутрь
+     колонок (начало .add-project-col-about/-meta) — тот же принцип, что в
+     ProjectDetails.tsx/AddYarnModal.css. В хедере остаётся только
+     хлебная крошка. */
+  .add-project-title-row {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    min-width: 0;
+  }
+
+  .add-project-title-row-top {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    padding-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  /* Это <input> (ввод названия проекта), не статический <h2> — те же
+     бордер/паддинг/фон, что у остальных полей формы (.add-project-input),
+     только крупнее: fluid-формула та же, что у .stash-details-name
+     (ProjectDetails/StashSkeinDetails), а не фиксированные 34px. */
+  .add-project-title--desktop {
+    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
+    font-family: Mulish, sans-serif;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 2px;
+    background: #ffffff;
+    padding: min(calc(12 * (100vw - 100px) / 1340), 12px) min(calc(16 * (100vw - 100px) / 1340), 16px);
+    color: #1d1c1c;
+    box-sizing: border-box;
+    min-width: 0;
+    flex: 1;
+    width: 100%;
+  }
+
+  .add-project-title--desktop:focus {
+    outline: none;
+    border: 1.5px solid var(--purple, #BEC1F4);
+  }
+
+  .add-project-title--desktop::placeholder {
+    color: #9b9a9a;
+  }
+
+  .add-project-column-actions {
+    display: flex;
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    min-width: 0;
+    justify-content: end;
+  }
+
+  /* Меньше мобильных 50px — по макету кнопки заметно компактнее (тот же
+     размер, что .stash-details-desktop-edit/-delete в ProjectDetails.tsx). */
+  .add-project-column-actions .add-project-close-btn,
+  .add-project-column-actions .add-project-save-btn {
+    width: auto;
+    flex: 1;
+    height: min(calc(40 * (100vw - 100px) / 1340), 40px);
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    padding: 0 min(calc(24 * (100vw - 100px) / 1340), 24px);
+    max-width: min(calc(127 * (100vw - 100px) / 1340), 127px);
+  }
+
+  /* .add-project-body — грид только для ширины 3 колонок, не для строк:
+     "photos"/"title"/"actions" и т.д. раньше жили в ОБЩИХ grid-row, из-за
+     чего высота строки = max(контент каждой колонки) — например, кнопки
+     Закрыть/Сохранить делили строку с заголовком (34px + бордер), и между
+     кнопками и "Сроки" оставался пробел = высота строки минус высота
+     кнопок, а не стандартный гэп. Теперь каждая колонка — САМОСТОЯТЕЛЬНАЯ
+     flex-колонка (.add-project-col-gallery/-about/-meta), ничего общего со
+     строками соседних колонок: высота каждого блока — ровно по его
+     контенту, гэп между блоками внутри колонки — свой, не зависящий от
+     других колонок. */
+  .add-project-body {
+    display: grid;
+    grid-template-columns: 3fr 3fr 2fr;
+    column-gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px);
+    box-sizing: border-box;
+  }
+
+  .add-project-col-gallery,
+  .add-project-col-about,
+  .add-project-col-meta {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    min-width: 0;
+  }
+
+  /* .add-project-section несёт мобильный margin-bottom:20px (ритм плоского
+     мобильного потока) — внутри колонки это складывалось бы с её gap,
+     гэпы были заметно больше стандартных. В десктопной колонке расстояние
+     целиком задаёт gap самой колонки. */
+  .add-project-col-gallery>.add-project-section,
+  .add-project-col-about>.add-project-section,
+  .add-project-col-meta>.add-project-section {
+    margin-bottom: 0;
+  }
+
+  .add-project-error {
+    grid-column: 1 / -1;
+  }
+
+  /* Шрифты полей/заголовков по макету — та же бумажка, что AddYarnModal.css
+     (мобильные значения заметно мельче, и десктопного переопределения для
+     них не было). */
+  .add-project-label {
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+  }
+
+  .add-project-input,
+  .add-project-textarea {
+    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+  }
+
+  .add-project-section-title {
+    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+  }
+
+  .add-project-swatch-draft-header {
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .add-project-swatch-remove {
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+  }
+
+  /* НЕ 17px, как у .add-yarn-instrument-chip в AddYarnModal — там колонка
+     равная трети ~1340px (широкая), здесь 3-я колонка грида фиксированная
+     ~390px ("Сроки"/"Инструмент"/"Пряжа"/"Образец") — при 17px самый длинный
+     чип "Вязальная машина" не помещался и визуально "пропадал" (текст
+     наезжал сам на себя/обрезался в тесной трети колонки). */
+  .add-project-instrument-type-row {
+    flex-wrap: wrap;
+  }
+
+  .add-project-instrument-chip {
+    font-size: min(calc(13 * (100vw - 100px) / 1340), 13px);
+    padding: min(calc(8 * (100vw - 100px) / 1340), 8px) min(calc(6 * (100vw - 100px) / 1340), 6px);
+  }
+
+  /* Заметка образца — компактнее мобильного min-height:80px, как у
+     AddYarnModal. */
+  .add-project-swatch-draft .add-project-textarea {
+    min-height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+  }
+
+  /* Галерея "Фото изделия" — первое фото крупно справа, остальные
+     миниатюрами слева (тот же принцип, что .add-yarn-gallery-desktop-*). */
+  .add-project-gallery-desktop {
+    display: flex;
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+  }
+
+  .add-project-gallery-desktop-thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    flex-shrink: 0;
+  }
+
+  .add-project-gallery-desktop-thumb {
+    position: relative;
+    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    flex-shrink: 0;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #f3f3f3;
+  }
+
+  .add-project-gallery-desktop-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .add-project-gallery-desktop-add {
+    /* width: 101px; */
+    /* height: 119px; */
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e5e5;
+    border-radius: 2px;
+    background: none;
+    color: #9b9a9a;
+    /* font-size: 20px; */
+    cursor: pointer;
+    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+  }
+
+  .add-project-gallery-desktop-main {
+    flex: 1;
+    min-width: 0;
+    aspect-ratio: 428 / 447;
+    border-radius: 2px;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  .add-project-pdf-upload-btn {
+    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    padding: min(calc(10 * (100vw - 100px) / 1340), 10px) min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+  }
+
+  .add-project-gallery-desktop-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .add-project-gallery-desktop-main-add {
+    width: 100%;
+    height: 100%;
+    border: 1px dashed #e5e5e5;
+    background: none;
+    color: #9b9a9a;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    cursor: pointer;
+  }
+
+  .status-badge {
+    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    padding: 0 min(calc(8 * (100vw - 100px) / 1340), 8px) 0 min(calc(2 * (100vw - 100px) / 1340), 2px);
+    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    margin: min(calc(4 * (100vw - 100px) / 1340), 4px) 0 0;
+  }
+
+  .add-project-instrument-size {
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  /* .add-project-footer (Закрыть/Сохранить колонкой на всю ширину) теперь
+     рендерится только на мобиле (isDesktop && ... в AddProjectModal.tsx) —
+     десктопная версия тех же кнопок живёт в .add-project-column-actions. */
 }

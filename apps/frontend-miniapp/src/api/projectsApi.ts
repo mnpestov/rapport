@@ -69,7 +69,7 @@ export interface ProjectSwatch {
   needleSizeRaw: string | null;
   // 'hook' = крючок, 'needle' = спицы, null = не указан (симметрично
   // StashSwatch.instrumentType).
-  instrumentType: 'hook' | 'needle' | null;
+  instrumentType: 'hook' | 'needle' | 'machine' | null;
   strandsCount: number | null;
   densityStitchesBefore: string | null;
   densityRowsBefore: string | null;
@@ -229,7 +229,7 @@ export interface CreateProjectPayload {
   swatches?: {
     images?: string[];
     needleSizeRaw?: string;
-    instrumentType?: 'hook' | 'needle';
+    instrumentType?: 'hook' | 'needle' | 'machine';
     strandsCount?: number;
     densityStitchesBefore?: number;
     densityRowsBefore?: number;
@@ -355,6 +355,23 @@ export const removeProjectYarn = async (projectId: string, skeinId: string): Pro
   if (!response.ok) throw new Error(`Failed to remove yarn: ${response.status}`);
 };
 
+export interface ProjectInstrumentOption {
+  id: string;
+  name: string;
+}
+
+// Весь справочник Instrument, без фильтра "используется хотя бы одним
+// Pattern" — в отличие от fetchFilters().instruments (патерновый facet
+// каталога описаний). Выбор инструмента для проекта — отдельная метаданность
+// пользователя, не должна зависеть от того, привязан ли инструмент уже к
+// какому-то описанию в каталоге (см. AddProjectModal.tsx).
+export const fetchProjectInstruments = async (): Promise<ProjectInstrumentOption[]> => {
+  const response = await authorizedFetch(`${API_URL}/projects/instruments`, {}, 10000);
+  if (!response.ok) throw new Error(`Failed to fetch instruments: ${response.status}`);
+  const data = await response.json();
+  return data.instruments;
+};
+
 export const addProjectInstrument = async (projectId: string, instrumentId: string): Promise<void> => {
   const response = await authorizedFetch(`${API_URL}/projects/${projectId}/instruments`, {
     method: 'POST',
@@ -372,7 +389,7 @@ export const removeProjectInstrument = async (projectId: string, instrumentId: s
 export interface CreateProjectSwatchPayload {
   images?: string[];
   needleSizeRaw?: string;
-  instrumentType?: 'hook' | 'needle';
+  instrumentType?: 'hook' | 'needle' | 'machine';
   strandsCount?: number;
   densityStitchesBefore?: number;
   densityRowsBefore?: number;

@@ -1,0 +1,73 @@
+/* Десктоп — небольшой центрированный диалог (по аналогии с LogUsageWizard/
+   CompleteProjectWizard), а не полноэкранная страница, как у AddYarnModal/
+   EditSkeinModal: эта форма — всего одна секция полей (инструмент/
+   плотность/фото), без галереи пряжи и 3-колоночного грида, растягивать
+   её на весь экран незачем. Общий файл для AddSwatchModal.tsx,
+   EditSwatchModal.tsx и ProjectSwatchModal.tsx (образец проекта) — та же
+   вёрстка/классы, тот же класс-скоуп.
+
+   Классы .add-yarn-overlay/.add-yarn-panel/.add-yarn-header/.add-yarn-body/
+   .add-yarn-footer переиспользуются из AddYarnModal.css (тот же импорт в
+   обоих файлах) — но там же для них уже есть десктопные правила,
+   превращающие панель в полноэкранную страницу. Чтобы не трогать тот файл
+   (и не задеть AddYarnModal/EditSkeinModal), все переопределения здесь
+   скоуплены через родительский класс .add-swatch-modal — составной/
+   descendant-селектор специфичнее одиночного класса и побеждает вне
+   зависимости от порядка подключения файлов. JS-ветвления по isDesktop не
+   нужно: разметка одна и та же, меняется только контейнер по CSS. */
+@media (min-width: 768px) {
+  .add-yarn-overlay.add-swatch-modal {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .add-swatch-modal .add-yarn-panel {
+    position: relative;
+    width: 100%;
+    max-width: min(calc(560 * (100vw - 100px) / 1340), 560px);
+    height: auto;
+    max-height: 90vh;
+    border-radius: 2px;
+    box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(30 * (100vw - 100px) / 1340), 30px);
+  }
+
+  .add-swatch-modal .add-yarn-header {
+    text-align: left;
+    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(24 * (100vw - 100px) / 1340), 24px) 0;
+  }
+
+  .add-swatch-modal .add-yarn-title {
+    font-size: min(calc(24 * (100vw - 100px) / 1340), 24px);
+  }
+
+  /* .add-yarn-body на десктопе глобально (в AddYarnModal.css, без скоупа)
+     становится 3-колоночным гридом (display:grid, align-items:start,
+     grid-template-areas "photos yarn swatches") — у этой маленькой формы
+     нет секций --photos/--yarn/--swatches, грид тут не нужен и просто
+     "протекал" бы сюда через каскад. Возвращаем обратно во flex-колонку
+     (gap из базового мобильного правила уже flex-колонка, этого было
+     недостаточно — grid перебивал его более специфичным unscoped-селектором
+     по этим конкретным свойствам). */
+  .add-swatch-modal .add-yarn-body {
+    display: flex;
+    align-items: normal;
+    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(30 * (100vw - 100px) / 1340), 30px);
+    gap: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .add-swatch-modal .add-yarn-footer {
+    flex-direction: row;
+    margin-bottom: 0;
+    padding: min(calc(16 * (100vw - 100px) / 1340), 16px) min(calc(24 * (100vw - 100px) / 1340), 24px);
+  }
+
+  .add-swatch-modal .add-yarn-close-btn,
+  .add-swatch-modal .add-yarn-save-btn {
+    width: auto;
+    flex: 1;
+    height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+  }
+}

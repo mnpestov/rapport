@@ -41,6 +41,25 @@
   margin: 0;
 }
 
+/* Десктопная хлебная крошка + кнопка добавления (Figma node-id=1651:21630) —
+   на мобиле их нет вовсе (заголовок/кнопка выше и ниже списка играют их
+   роль), поэтому скрыты по умолчанию и включаются только в десктопном
+   @media-блоке внизу файла. */
+.stash-breadcrumb,
+.stash-desktop-top-row {
+  display: none;
+}
+
+/* Компонентный селектор (две точки специфичности), а не просто
+   .stash-summary-cell--desktop-only — иначе проигрывает каскаду более
+   общему .stash-summary-cell{display:flex} ниже по файлу (та же
+   специфичность, но объявлена позже → побеждала бы она, и две десктопные
+   ячейки были бы видны на мобиле). Нашёл на реальном билде — не
+   умозрительно. */
+.stash-summary-cell.stash-summary-cell--desktop-only {
+  display: none;
+}
+
 /* Figma node-id=1701:23395 — сводка "общий вес"/"израсходовано" одним
    серым контейнером на всю ширину, "Архив" переехал в строку поиска
    (см. .stash-tab ниже). Левая ячейка сливается с фоном контейнера, правая
@@ -54,6 +73,11 @@
   border-radius: 2px;
   padding: 20px;
   margin: 1px 0;
+}
+
+.stash-summary-group-cell {
+  display: flex;
+  gap: 36px;
 }
 
 .stash-summary-cell {
@@ -344,4 +368,312 @@
   height: 100%;
   background: #bec1f4;
   border-radius: 10px;
+}
+
+/* ───────────────────────── Десктоп (Figma node-id=1651:21630) ─────────────
+   Брейкпоинт 768px — тот же, что useIsDesktop()/Catalog.css/
+   PatternDetails.css/FilterModal.css. TopNav.tsx (сквозная шапка) рендерится
+   отдельно в App.tsx, сюда не входит. */
+
+@media (min-width: 768px) {
+  .stash-container {
+    max-width: 1440px;
+    padding: 24px 50px calc(24px + env(safe-area-inset-bottom));
+    /* max-width: min(calc(1440 * (100vw - 100px) / 1340), 1440px); */
+    /* padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px) calc(24px + env(safe-area-inset-bottom)); */
+  }
+
+  /* Мобильный центрированный заголовок заменяется хлебной крошкой + TopNav
+     над страницей — дублировать "Пряжа" крупным текстом не нужно. */
+  .stash-header {
+    display: none;
+  }
+
+  .stash-breadcrumb {
+    display: block;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    color: #6b6b6b;
+    margin: 0;
+  }
+
+  .stash-desktop-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: min(calc(8 * (100vw - 100px) / 1340), 8px) 0 min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .stash-add-chip {
+    display: flex;
+    align-items: center;
+    gap: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    height: clamp(28px, calc(48 * (100vw - 100px) / 1340), 48px);
+    padding: clamp(12px, calc(12 * (100vw - 100px) / 1340), 12px) min(calc(16 * (100vw - 100px) / 1340), 16px);
+    border: 1px solid #e5e5e5;
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    color: #1d1c1c;
+    cursor: pointer;
+    min-width: min(calc(350 * (100vw - 100px) / 1340), 350px);
+  }
+
+  .stash-add-chip svg {
+    width: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    height: min(calc(24 * (100vw - 100px) / 1340), 24px);
+  }
+
+  .stash-add-chip--locked {
+    color: #9b9a9a;
+  }
+
+  /* Сводка — 4 отдельные белые карточки произвольной ширины вместо
+     мобильных 2 ячеек фиксированной геометрии (там левая сливалась с
+     фоном контейнера, здесь все четыре одинаково белые). */
+  .stash-summary-row {
+    gap: min(calc(36 * (100vw - 100px) / 1340), 36px);
+    padding: 30px 70px;
+    padding: min(calc((100vw - 100px) * 30 / 1340), 30px) min(calc((100vw - 100px) * 70 / 1340), 70px);
+    /* justify-content: flex-start; */
+  }
+
+  .stash-summary-cell--total,
+  .stash-summary-cell--used {
+    background: #ffffff;
+    border-radius: 2px;
+    width: auto;
+    padding: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    margin: 0;
+  }
+
+  .stash-summary-cell.stash-summary-cell--desktop-only {
+    display: flex;
+    background: #ffffff;
+    border-radius: 2px;
+    padding: min(calc(30 * (100vw - 100px) / 1340), 30px);
+  }
+
+  .stash-summary-value {
+    font-size: min(calc(30 * (100vw - 100px) / 1340), 30px);
+  }
+
+  .stash-summary-label {
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  /* Дублируются сводкой ("артикулов" карточка) и .stash-desktop-top-row
+     выше ("+ Добавить пряжу" чип).
+     Скоуп через .stash-container, а не голый .stash-add-button — этот класс
+     переиспользует и StashSkeinDetails.css (другая кнопка, "Добавить
+     образец"), с той же специфичностью (один класс) и без своего media-query.
+     При сборке её безусловное display:flex оказывается в бандле ПОСЛЕ этого
+     правила и перебивает его на десктопе. .stash-container добавляет
+     специфичность, которая выигрывает независимо от порядка в бандле. */
+  .stash-container .stash-count,
+  .stash-container .stash-add-button {
+    display: none;
+  }
+
+  .stash-search-row {
+    max-width: min(calc(627 * (100vw - 100px) / 1340), 627px);
+  }
+
+  .stash-search-input-wrapper {
+    max-width: min(calc(455 * (100vw - 100px) / 1340), 455px);
+  }
+
+  .stash-tab {
+    width: min(calc(141 * (100vw - 100px) / 1340), 141px);
+  }
+
+  .stash-grid-desktop {
+    display: grid;
+    /* minmax(0, 1fr), не голый 1fr — у grid-трека есть неявный min-width:
+       auto (= ширина самого широкого нерастяжимого содержимого, здесь —
+       white-space:nowrap в .stash-card-desktop-name/-row). Без minmax(0, …)
+       колонки не сжимаются уже этой ширины ни при каком размере экрана —
+       сетка держит фиксированную итоговую ширину и толкает страницу в
+       горизонтальный скролл вместо resize. Найдено на реальном билде. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: min(calc(36 * (100vw - 100px) / 1340), 36px) min(calc(20 * (100vw - 100px) / 1340), 20px);
+    margin-bottom: min(calc(100 * (100vw - 100px) / 1340), 100px);
+  }
+
+  .stash-card-desktop {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    /* Та же причина, что у minmax выше, но для flex-итема (grid-ячейки):
+       у flex/grid-детей тоже неявный min-width: auto — без обнуления сама
+       карточка не сжимается уже контента вложенных .stash-card-desktop-row. */
+    min-width: 0;
+    background: #ffffff;
+    border-radius: 2px;
+  }
+
+  .stash-card-desktop-main {
+    display: flex;
+    align-items: stretch;
+    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .stash-card-desktop-image {
+    width: min(calc(116 * (100vw - 100px) / 1340), 116px);
+    flex-shrink: 0;
+    background: #f3f3f3;
+    border-radius: 2px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stash-card-desktop-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .stash-card-desktop-image img.stash-card-image-placeholder {
+    width: 130%;
+    height: 130%;
+    object-fit: contain;
+  }
+
+  .stash-card-desktop-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    justify-content: center;
+    padding: min(calc(4 * (100vw - 100px) / 1340), 4px) 0;
+    min-width: 0;
+  }
+
+  .stash-card-desktop-name {
+    font-family: Mulish, sans-serif;
+    font-weight: 700;
+    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    color: #001e00;
+    margin: 0 0 min(calc(5 * (100vw - 100px) / 1340), 5px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stash-card-desktop-row {
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    color: #001e00;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stash-card-desktop-row b {
+    margin-right: min(calc(8 * (100vw - 100px) / 1340), 8px);
+  }
+
+  .stash-card-desktop-remainder {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    width: 100%;
+    margin-top: min(calc(6 * (100vw - 100px) / 1340), 6px);
+  }
+
+  .stash-card-desktop-progress-bar {
+    height: min(calc(8 * (100vw - 100px) / 1340), 8px);
+  }
+
+  .stash-card-desktop-delete {
+    flex-shrink: 0;
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    color: #9b9a9a;
+    cursor: pointer;
+  }
+
+  .stash-card-desktop-delete svg {
+    width: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    height: min(calc(16 * (100vw - 100px) / 1340), 16px);
+  }
+
+  .stash-card-desktop-delete:hover {
+    color: #c0392b;
+  }
+
+  .stash-search-row {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, calc(20 * (100vw - 100px) / 1340), 20px);
+    padding: 0;
+    margin: min(calc(40 * (100vw - 100px) / 1340), 40px) 0;
+  }
+
+  .stash-search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .stash-search-icon {
+    position: absolute;
+    left: min(calc(18 * (100vw - 100px) / 1340), 18px);
+    color: #9b9a9a;
+    pointer-events: none;
+  }
+
+  .stash-search-input {
+    width: 100%;
+    height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+    background: #f3f3f3;
+    border: none;
+    border-radius: 2px;
+    padding-left: min(calc(46 * (100vw - 100px) / 1340), 46px);
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    color: #1d1c1c;
+    min-width: min(calc(455 * (100vw - 100px) / 1340), 455px);
+  }
+
+  .stash-search-input::placeholder {
+    color: #9b9a9a;
+  }
+
+  .stash-search-input:focus {
+    outline: none;
+    border: 1.5px solid var(--purple, #BEC1F4);
+  }
+
+  .stash-tab {
+    flex-shrink: 0;
+    min-width: min(calc(34 * (100vw - 100px) / 1340), 34px);
+    height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+    padding: 0 min(calc(15 * (100vw - 100px) / 1340), 15px);
+    border-radius: 2px;
+    border: none;
+    background: #E5E5E5;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    color: #1D1C1C;
+    cursor: pointer;
+    letter-spacing: -0.85px;
+  }
 }

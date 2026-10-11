@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Plus, ChevronDown, SquareCheck, Square, Trash2 } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { parseDecimalInput } from '../../utils/parseDecimal';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON, STATUS_ORDER } from './projectStatus';
 import {
@@ -12,19 +13,24 @@ import {
   createProjectSwatch,
   uploadProjectDocument,
   deleteProjectDocument,
+  fetchProjectInstruments,
   ProjectDetail,
   ProjectDocument,
   ProjectInstrumentInput,
+  ProjectInstrumentOption,
   ProjectStatus,
   ProjectLimitReachedError,
   YarnUsageInput,
 } from '../../api/projectsApi';
-import { fetchPatterns, fetchPatternById, fetchFilters, Pattern, FilterOption } from '../../api/patternsApi';
+import { fetchPatterns, fetchPatternById, Pattern } from '../../api/patternsApi';
 import { fetchStashSkeins, uploadStashImage, StashSkein } from '../../api/stashApi';
 
 import { DateInputField } from './DateInputField';
 import { AddYarnModal } from '../Stash/AddYarnModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
+import { TopNav } from '../../components/TopNav/TopNav';
+import { Footer } from '../../components/Footer/Footer';
+import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
 
 // pdfjs-dist — тяжёлая зависимость (~1.3МБ worker), грузится только при
 // реальном открытии PDF-вьюера, не с основным бандлом приложения.
@@ -52,7 +58,7 @@ interface SelectedYarn {
 
 interface SwatchDraft {
   key: string;
-  instrumentType: 'hook' | 'needle' | null;
+  instrumentType: 'hook' | 'needle' | 'machine' | null;
   needleSizeRaw: string;
   strandsCount: string;
   stitchesBefore: string;
@@ -97,11 +103,43 @@ interface AddProjectModalProps {
   project?: ProjectDetail;
   onUpdated?: (project: ProjectDetail) => void;
   onRequestComplete?: () => void;
+  // Открытие из визарда списания пряжи ("Создать новый проект", когда
+  // привязываемого проекта ещё не было) — моток уже выбран пользователем
+  // раньше, просить его искать/привязывать ту же пряжу заново в разделе
+  // "Пряжа" незачем. Только для режима создания (project не задан).
+  initialYarn?: StashSkein;
 }
 
-export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClose, onCreated, onLimitReached, project, onUpdated, onRequestComplete }) => {
+function skeinToSelectedYarn(skein: StashSkein): SelectedYarn {
+  return {
+    skeinId: skein.id,
+    yarnNameSnapshot: skein.yarnNameSnapshot,
+    brandSnapshot: skein.brandSnapshot,
+    compositionSnapshot: skein.compositionSnapshot,
+    mPer100gSnapshot: skein.mPer100gSnapshot,
+    currentWeightG: skein.currentWeightG,
+    totalWeightG: skein.totalWeightG,
+    image: skein.images[0] ?? null,
+    amountG: '',
+  };
+}
+
+export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClose, onCreated, onLimitReached, project, onUpdated, onRequestComplete, initialYarn }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
   const isEditMode = !!project;
+  const isDesktop = useIsDesktop();
+
+  // Блокировка скролла основной страницы, пока открыта модалка — на
+  // десктопе панель полноэкранная (см. .add-project-panel ниже), без этого
+  // фон за ней мог бы прокрутиться вместе с ней. Тот же приём, что в
+  // AddYarnModal.tsx, локально здесь (useSheetTransition общий для многих
+  // модалок, трогать его поведение означало бы менять их все разом).
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [isOpen]);
 
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('IN_PROGRESS');
@@ -117,7 +155,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const [manualAuthor, setManualAuthor] = useState('');
   const [manualDescription, setManualDescription] = useState('');
 
-  const [instrumentOptions, setInstrumentOptions] = useState<FilterOption[]>([]);
+  const [instrumentOptions, setInstrumentOptions] = useState<ProjectInstrumentOption[]>([]);
   // Ключ — instrumentId выбранного (чекбокс включён) инструмента, значение —
   // введённый размер как СЫРАЯ строка поля ввода (не число: пользователь
   // печатает "2," и ещё не закончил вводить дробную часть — нельзя
@@ -243,15 +281,15 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     setPatternResults([]);
     setYarnQuery('');
     setYarnResults([]);
-    setSelectedYarns([]);
+    setSelectedYarns(!project && initialYarn ? [skeinToSelectedYarn(initialYarn)] : []);
     setIsAddYarnOpen(false);
     setIsYarnLimitPaywallOpen(false);
     setSwatches([]);
     setIsUploading(false);
     setError(null);
 
-    fetchFilters().then((res) => setInstrumentOptions(res.instruments)).catch(() => setInstrumentOptions([]));
-  }, [isOpen, project]);
+    fetchProjectInstruments().then(setInstrumentOptions).catch(() => setInstrumentOptions([]));
+  }, [isOpen, project, initialYarn]);
 
   // Тихое создание проекта-черновика для формы СОЗДАНИЯ — только так можно
   // прикрепить PDF-описание до нажатия "Сохранить" (загрузка документа
@@ -381,17 +419,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
 
   const handlePickYarn = (skein: StashSkein) => {
     if (selectedYarns.some((y) => y.skeinId === skein.id)) return;
-    setSelectedYarns((prev) => [...prev, {
-      skeinId: skein.id,
-      yarnNameSnapshot: skein.yarnNameSnapshot,
-      brandSnapshot: skein.brandSnapshot,
-      compositionSnapshot: skein.compositionSnapshot,
-      mPer100gSnapshot: skein.mPer100gSnapshot,
-      currentWeightG: skein.currentWeightG,
-      totalWeightG: skein.totalWeightG,
-      image: skein.images[0] ?? null,
-      amountG: '',
-    }]);
+    setSelectedYarns((prev) => [...prev, skeinToSelectedYarn(skein)]);
     setYarnQuery('');
     setYarnResults([]);
   };
@@ -698,498 +726,652 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     }
   };
 
+  // Десктоп (по образцу ProjectDetails.tsx) — плашка статуса переезжает
+  // наверх, рядом с заголовком, вместо отдельного блока "Статус" внутри
+  // формы. Вынесено в переменную, чтобы не дублировать JSX между мобильной
+  // позицией (ниже, .add-project-status-row-wrap) и десктопной.
+  const statusDropdown = (
+    <div className="add-project-status-dropdown-wrap">
+      <button
+        type="button"
+        className="status-badge"
+        style={{ background: STATUS_COLOR[status] }}
+        onClick={() => setIsStatusMenuOpen((v) => !v)}
+      >
+        {(() => {
+          const Icon = STATUS_ICON[status]; return (
+            <span className="projects-status-icon-wrap">
+              <Icon size={13} strokeWidth={1.5} color="#ffffff" />
+            </span>
+          );
+        })()}
+        {STATUS_LABEL[status]}
+      </button>
+      <ChevronDown size={24} strokeWidth={1.5} onClick={() => setIsStatusMenuOpen((v) => !v)} style={{ cursor: 'pointer' }} />
+      {isStatusMenuOpen && (
+        <div className="status-dropdown-list">
+          {STATUS_ORDER
+            .filter((s) => s !== status)
+            .map((s) => {
+              const Icon = STATUS_ICON[s];
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  className="status-badge"
+                  style={{ background: STATUS_COLOR[s] }}
+                  onClick={() => { setStatus(s); setIsStatusMenuOpen(false); }}
+                >
+                  <span className="projects-status-icon-wrap">
+                    <Icon size={13} strokeWidth={1.5} color="#ffffff" />
+                  </span>
+                  {STATUS_LABEL[s]}
+                </button>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
+
+  // Подсказки под статусом — та же переменная для мобильной и десктопной
+  // позиции (десктоп — под заголовком+статусом наверху).
+  const completionHint = (
+    <>
+      {isEditMode && isCompleted && project?.status !== 'COMPLETED' && (
+        <p className="add-project-field-hint" style={{ padding: '0 20px' }}>
+          Для завершения проекта нужно указать расход пряжи и фото готового изделия — нажмите "Сохранить", чтобы перейти к этому шагу.
+        </p>
+      )}
+    </>
+  );
+
+  // Закрыть/Сохранить — на мобиле в подвале шторки, на десктопе рядом с
+  // заголовком (см. add-project-column-actions ниже). Один и тот же JSX,
+  // разные места рендера по isDesktop (тот же приём, что в AddYarnModal.tsx).
+  const actionButtons = (
+    <>
+      <button type="button" className="btn add-project-close-btn" onClick={onClose} disabled={isSubmitting}>Закрыть</button>
+      <button type="button" className="btn add-project-save-btn" onClick={handleSave} disabled={!isValid || isSubmitting}>
+        {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+      </button>
+    </>
+  );
+
+  // Каждая секция — своя переменная (а не инлайн в return), чтобы на
+  // десктопе их можно было сгруппировать по колонкам (3 независимых
+  // flex-колонки, см. .add-project-col-gallery/-about/-meta ниже) БЕЗ
+  // дублирования JSX с мобильной плоской версткой — рендерится то же самое
+  // значение, просто в разных обёртках. Грид с явными grid-row не подошёл:
+  // высота строки = max(заголовок, кнопки), и "Сроки" начинались не сразу
+  // под кнопками, а только после того, как заканчивалась САМАЯ высокая
+  // ячейка строки — независимые колонки эту завязку полностью убирают.
+  const aboutSection = (
+    <div className="add-project-section add-project-section--about">
+      <p className="add-project-section-title">О проекте</p>
+
+      {/* На десктопе название вводится наверху, в заголовке формы
+          (add-project-title-row-top) — то же состояние title/setTitle,
+          отдельного поля здесь не дублируем. */}
+      {!isDesktop && (
+        <div className="add-project-field">
+          <label className="add-project-label">Название *</label>
+          <input className="add-project-input" value={title} placeholder="Введите текст..." onChange={(e) => setTitle(e.target.value)} />
+        </div>
+      )}
+
+      <div className="add-project-field">
+        <label className="add-project-label">Описание (выбрать из каталога)</label>
+        <input
+          className="add-project-input"
+          value={selectedPattern ? selectedPattern.title : patternQuery}
+          placeholder="Введите название или автора"
+          readOnly={!!selectedPattern}
+          onChange={(e) => setPatternQuery(e.target.value)}
+        />
+      </div>
+
+      {!selectedPattern && (
+        <button type="button" className="plus-add-button" onClick={() => setIsManualEntryOpen((v) => !v)}>
+          <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+          Добавить описание вручную
+        </button>
+      )}
+
+      {selectedPattern ? (
+        <div className="add-project-section-inner">
+          <p className="add-project-inner-label">Выбрано из каталога</p>
+          <div className="add-project-pattern-card add-project-pattern-card--static">
+            <div className="add-project-pattern-card-image">
+              {selectedPattern.thumbnailUrl && <img src={selectedPattern.thumbnailUrl} alt="" />}
+            </div>
+            <div className="add-project-pattern-card-body">
+              <p className="add-project-pattern-card-title">{selectedPattern.title}</p>
+              <p className="add-project-pattern-card-meta"><b>Автор:</b> {selectedPattern.author}</p>
+              {selectedPattern.instruments.length > 0 && (
+                <p className="add-project-pattern-card-meta"><b>Инструмент:</b> {selectedPattern.instruments.join(', ')}</p>
+              )}
+            </div>
+          </div>
+          <button type="button" className="add-project-text-link-btn" onClick={clearPattern}>
+            Сбросить выбор
+          </button>
+        </div>
+      ) : (
+        <div className="add-project-section-inner">
+          {!isSearchingPattern && patternQuery.trim().length >= 2 && patternResults.length === 0 && (
+            <p className="add-project-empty-text">Ничего не найдено</p>
+          )}
+          {patternResults.length > 0 && (
+            <>
+              <p className="add-project-inner-label">Выбрать из каталога</p>
+              <div className="add-project-cards-vertical">
+                {patternResults.map((p) => (
+                  <button key={p.id} type="button" className="add-project-pattern-card" onClick={() => handlePickPattern(p)}>
+                    <div className="add-project-pattern-card-image">
+                      <img src={p.thumbnailUrl} alt="" />
+                    </div>
+                    <div className="add-project-pattern-card-body">
+                      <p className="add-project-pattern-card-title">{p.title}</p>
+                      <p className="add-project-pattern-card-meta"><b>Автор:</b> {p.author}</p>
+                      {p.instruments.length > 0 && (
+                        <p className="add-project-pattern-card-meta"><b>Инструмент:</b> {p.instruments.join(', ')}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {isManualEntryOpen && (
+            <div className="add-project-manual-entry">
+              <div className="add-project-field">
+                <label className="add-project-label">Автор</label>
+                <input className="add-project-input" value={manualAuthor} placeholder="Введите имя автора" onChange={(e) => setManualAuthor(e.target.value)} />
+              </div>
+              <div className="add-project-field">
+                <label className="add-project-label">Описание</label>
+                <input className="add-project-input" value={manualDescription} placeholder="Введите название" onChange={(e) => setManualDescription(e.target.value)} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const datesSection = (
+    <div className="add-project-section add-project-section--dates">
+      <p className="add-project-section-title">Сроки</p>
+      <div className="add-project-dates-row">
+        <DateInputField label="Начало" value={startedAt} onChange={setStartedAt} />
+        <DateInputField label="Завершено" value={completedAt} onChange={setCompletedAt} disabled={!isCompleted} align="end" />
+      </div>
+    </div>
+  );
+
+  const instrumentsSection = instrumentOptions.length > 0 ? (
+    <div className="add-project-section add-project-section--instruments">
+      <p className="add-project-section-title">Инструмент</p>
+      <div className="add-project-checkbox-list">
+        {instrumentOptions.map((opt) => {
+          const checked = opt.id in instrumentSizes;
+          // Вязальная машина — без мм-размера (та же особенность,
+          // что у instrumentType==='machine' в образцах): можно
+          // отметить инструмент, но поле размера для него не нужно.
+          const isMachine = opt.name.trim().toLowerCase().includes('машина');
+          return (
+            <div key={opt.id} className="add-project-instrument-row">
+              <button type="button" className="add-project-checkbox-row" onClick={() => toggleInstrument(opt.id)}>
+                {checked ? <SquareCheck size={24} strokeWidth={1.5} /> : <Square size={24} strokeWidth={1.5} color="#9b9a9a" />}
+                <span>{opt.name}</span>
+              </button>
+              {checked && !isMachine && (
+                <label className="add-project-instrument-size">
+                  №
+                  <span className="add-project-instrument-size-input-wrap">
+                    <input
+                      className="add-project-input add-project-input-instrument-size"
+                      value={instrumentSizes[opt.id]}
+                      placeholder="2,25"
+                      inputMode="decimal"
+                      onChange={(e) => updateInstrumentSize(opt.id, e.target.value)}
+                    />
+                    <span className="add-project-instrument-size-unit">мм</span>
+                  </span>
+                </label>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
+  const yarnSection = !isEditMode ? (
+    <div className="add-project-section add-project-section--yarn">
+      <p className="add-project-section-title">Пряжа</p>
+      {selectedYarns.map((y) => (
+        <div key={y.skeinId} className="add-project-yarn-card-wrap">
+          <div className="add-project-yarn-card">
+            <div className="add-project-yarn-card-image">
+              {y.image ? <img src={y.image} alt="" /> : <img src={yarnPlaceholder} alt="" className="add-project-yarn-card-image-placeholder" />}
+            </div>
+            <div className="add-project-yarn-card-body">
+              <div className="add-project-yarn-card-title-row">
+                <p className="add-project-yarn-card-title">{y.yarnNameSnapshot}</p>
+                <button type="button" className="add-project-chip-remove" onClick={() => removeYarn(y.skeinId)}>×</button>
+              </div>
+              {y.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {y.brandSnapshot}</p>}
+              {y.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {y.compositionSnapshot}</p>}
+              {y.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {y.mPer100gSnapshot}м/100г</p>}
+              <p className="add-project-yarn-card-remainder"><b>Остаток:</b> {y.currentWeightG} г из {y.totalWeightG} г</p>
+            </div>
+          </div>
+          {isCompleted && (
+            <div className="add-project-field">
+              <label className="add-project-label">Расход</label>
+              <input
+                className="add-project-input"
+                value={y.amountG}
+                placeholder="320"
+                inputMode="numeric"
+
+                onChange={(e) => updateYarnAmount(y.skeinId, e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="add-project-field">
+        <input
+          className="add-project-input"
+          value={yarnQuery}
+          placeholder="Выбрать пряжу из моих запасов"
+          onChange={(e) => setYarnQuery(e.target.value)}
+          onFocus={() => setIsYarnFieldFocused(true)}
+          onBlur={() => setIsYarnFieldFocused(false)}
+        />
+      </div>
+      {/* Не прячем за фокусом/поиском — путь "в запасах такой пряжи
+          нет, создам новую" должен быть виден сразу, не только
+          после пустого результата поиска. */}
+      <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
+        <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+        Добавить новую пряжу
+      </button>
+      {yarnResults.length > 0 && (
+        <div className="add-project-cards-vertical">
+          {yarnResults.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="add-project-yarn-search-card"
+              // onMouseDown, не onClick — onBlur инпута (выше)
+              // срабатывает раньше onClick этой кнопки при клике по
+              // ней (blur — часть mousedown/focus-смены), список
+              // успел бы скрыться до того, как клик дойдёт до
+              // кнопки. mousedown происходит раньше blur.
+              onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
+            >
+              <div className="add-project-yarn-card-image">
+                {s.images[0] ? <img src={s.images[0]} alt="" /> : <img src={yarnPlaceholder} alt="" className="add-project-yarn-card-image-placeholder" />}
+              </div>
+              <div className="add-project-yarn-card-body">
+                <p className="add-project-yarn-card-title">{s.yarnNameSnapshot}</p>
+                {s.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {s.brandSnapshot}</p>}
+                {s.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {s.compositionSnapshot}</p>}
+                {s.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {s.mPer100gSnapshot}м/100г</p>}
+                <p className="add-project-yarn-card-remainder"><b>Остаток:</b> {s.currentWeightG} г из {s.totalWeightG} г</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
+        <p className="add-project-empty-text">
+          {yarnQuery.trim() ? 'В ваших запасах ничего не найдено' : 'В хранилище пока пусто'}
+        </p>
+      )}
+    </div>
+  ) : null;
+
+  const swatchSection = !isEditMode ? (
+    <div className="add-project-section add-project-section--swatch">
+      <p className="add-project-section-title">Образец</p>
+
+      {swatches.map((swatch, index) => (
+        <div key={swatch.key} className="add-project-swatch-draft">
+          {swatches.length > 1 && (
+            <div className="add-project-swatch-draft-header">
+              <span>Образец {index + 1}</span>
+              <button type="button" className="add-project-swatch-remove" onClick={() => removeSwatch(swatch.key)}>Удалить</button>
+            </div>
+          )}
+          <div className="add-project-field">
+            <label className="add-project-label">Инструмент</label>
+            <div className="add-project-instrument-type-row">
+              <button
+                type="button"
+                className={`add-project-instrument-chip${swatch.instrumentType === 'needle' ? ' add-project-instrument-chip--active' : ''}`}
+                onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'needle' ? null : 'needle' })}
+              >
+                Спицы
+              </button>
+              <button
+                type="button"
+                className={`add-project-instrument-chip${swatch.instrumentType === 'hook' ? ' add-project-instrument-chip--active' : ''}`}
+                onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'hook' ? null : 'hook' })}
+              >
+                Крючок
+              </button>
+              <button
+                type="button"
+                className={`add-project-instrument-chip${swatch.instrumentType === 'machine' ? ' add-project-instrument-chip--active' : ''}`}
+                onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'machine' ? null : 'machine', needleSizeRaw: '' })}
+              >
+                Вязальная машина
+              </button>
+            </div>
+          </div>
+          {/* У вязальной машины нет параметра "размер" — поле
+              скрыто, needleSizeRaw очищается при выборе machine. */}
+          {swatch.instrumentType !== 'machine' && (swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
+            <div className="add-project-field">
+              <label className="add-project-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
+              <input
+                className="add-project-input"
+                value={swatch.needleSizeRaw}
+                placeholder="Например: 3.5"
+                inputMode="decimal"
+                onChange={(e) => updateSwatch(swatch.key, { needleSizeRaw: e.target.value })}
+              />
+            </div>
+          )}
+          <div className="add-project-field">
+            <label className="add-project-label">Количество нитей</label>
+            <input className="add-project-input" value={swatch.strandsCount} placeholder="Введите число..." inputMode="numeric" onChange={(e) => updateSwatch(swatch.key, { strandsCount: e.target.value })} />
+          </div>
+          <div className="add-project-field">
+            <label className="add-project-label">До ВТО</label>
+            <div className="add-project-density-row">
+              <div className="add-project-density-col">
+                <input className="add-project-input" value={swatch.stitchesBefore} placeholder="46" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { stitchesBefore: e.target.value })} />
+                <span className="add-project-density-sublabel">Петли</span>
+              </div>
+              <span className="add-project-density-x">х</span>
+              <div className="add-project-density-col">
+                <input className="add-project-input" value={swatch.rowsBefore} placeholder="52" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { rowsBefore: e.target.value })} />
+                <span className="add-project-density-sublabel">Ряды</span>
+              </div>
+            </div>
+          </div>
+          <div className="add-project-field">
+            <label className="add-project-label">После ВТО</label>
+            <div className="add-project-density-row">
+              <div className="add-project-density-col">
+                <input className="add-project-input" value={swatch.stitchesAfter} placeholder="46" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { stitchesAfter: e.target.value })} />
+                <span className="add-project-density-sublabel">Петли</span>
+              </div>
+              <span className="add-project-density-x">х</span>
+              <div className="add-project-density-col">
+                <input className="add-project-input" value={swatch.rowsAfter} placeholder="52" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { rowsAfter: e.target.value })} />
+                <span className="add-project-density-sublabel">Ряды</span>
+              </div>
+            </div>
+          </div>
+          <div className="add-project-field">
+            <label className="add-project-label">Заметка</label>
+            <textarea
+              className="add-project-textarea"
+              value={swatch.note}
+              placeholder="Любые наблюдения об образце..."
+              onChange={(e) => updateSwatch(swatch.key, { note: e.target.value })}
+            />
+          </div>
+          <div className="add-project-field">
+            <label className="add-project-label">Фото образца</label>
+            <div className="add-project-photos">
+              {swatch.images.map((url) => (
+                <div key={url} className="add-project-photo-thumb">
+                  <img src={url} alt="" />
+                  <button type="button" className="add-project-photo-remove" onClick={() => removeSwatchImage(swatch.key, url)}>×</button>
+                </div>
+              ))}
+              {swatch.images.length < MAX_IMAGES && (
+                <button type="button" className="add-project-photo-add" onClick={() => swatchFileInputRefs.current[swatch.key]?.click()} disabled={uploadingSwatchKey === swatch.key}>+</button>
+              )}
+              <input
+                ref={(el) => { swatchFileInputRefs.current[swatch.key] = el; }}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleSwatchFileSelected(swatch.key)}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button type="button" className="plus-add-button" onClick={handleAddSwatch}>
+        <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+        {swatches.length > 0 ? 'Добавить ещё образец' : 'Добавить образец'}
+      </button>
+    </div>
+  ) : null;
+
+  const documentsSection = (
+    <div className="add-project-section add-project-section--documents">
+      <p className="add-project-section-title">Описание, файл</p>
+      {!isEditMode && isCreatingDraft ? (
+        <p className="add-project-field-hint">Подготовка загрузки...</p>
+      ) : (
+        <>
+          {documents.map((doc) => (
+            <div key={doc.id} className="add-project-pdf-row">
+              <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
+                #{doc.originalFileName}
+              </button>
+              <button type="button" className="add-project-pdf-remove" onClick={() => handleDeleteDocument(doc.id)} aria-label="Удалить файл">
+                <Trash2 size={16} strokeWidth={1.5} />
+              </button>
+            </div>
+          ))}
+          {documents.length < MAX_DOCUMENTS && (
+            <button type="button" className="add-project-pdf-upload-btn" onClick={() => documentFileInputRef.current?.click()} disabled={isUploadingDocument || !documentProjectId}>
+              <Plus size={8} strokeWidth={1.5} />
+              {isUploadingDocument ? 'Загрузка...' : 'Загрузить pdf'}
+            </button>
+          )}
+          <input
+            ref={documentFileInputRef}
+            type="file"
+            accept="application/pdf"
+            style={{ display: 'none' }}
+            onChange={handleDocumentFileSelected}
+          />
+          {links.map((link, index) => (
+            <div key={index} className="add-project-pdf-row">
+              <input
+                className="add-project-input add-project-link-input"
+                value={link}
+                placeholder="https://..."
+                onChange={(e) => updateLinkRow(index, e.target.value)}
+              />
+              <button type="button" className="add-project-pdf-remove" onClick={() => removeLinkRow(index)} aria-label="Удалить ссылку">
+                <Trash2 size={16} strokeWidth={1.5} />
+              </button>
+            </div>
+          ))}
+          <button type="button" className="add-project-pdf-upload-btn" onClick={addLinkRow}>
+            <Plus size={8} strokeWidth={1.5} />
+            Добавить ссылку
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  const referencesSection = (
+    <div className="add-project-section add-project-section--references">
+      <p className="add-project-section-title">Референс</p>
+      <div className="add-project-photos">
+        {referencePhotos.map((url) => (
+          <div key={url} className="add-project-photo-thumb">
+            <img src={url} alt="" />
+            <button type="button" className="add-project-photo-remove" onClick={() => removeReferencePhoto(url)}>×</button>
+          </div>
+        ))}
+        {referencePhotos.length < MAX_IMAGES && (
+          <button type="button" className="add-project-photo-add" onClick={() => referencePhotoInputRef.current?.click()} disabled={isUploading}>+</button>
+        )}
+        <input ref={referencePhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleReferencePhotoSelected} />
+      </div>
+    </div>
+  );
+
+  const notesSection = (
+    <div className="add-project-section add-project-section--notes">
+      <p className="add-project-section-title">Заметки</p>
+      <textarea className="add-project-textarea" value={note} placeholder="Здесь можно писать всё, что душе угодно" onChange={(e) => setNote(e.target.value)} />
+    </div>
+  );
+
+  const photosSection = (
+    <div className="add-project-section add-project-section--photos">
+      {!isDesktop && <p className="add-project-section-title">Фото изделия</p>}
+      {/* Десктоп (по образцу AddYarnModal — та же галерея: первое
+          фото крупно, остальные миниатюрами слева) — те же
+          finishedPhotos/handleFinishedPhotoSelected/removeFinishedPhoto,
+          что и в мобильной плоской сетке ниже, просто другая
+          раскладка тех же данных. */}
+      {isDesktop ? (
+        <div className="add-project-gallery-desktop">
+          <div className="add-project-gallery-desktop-thumbs">
+            {finishedPhotos.map((url) => (
+              <div key={url} className="add-project-gallery-desktop-thumb">
+                <img src={url} alt="" />
+                <button type="button" className="add-project-photo-remove" onClick={() => removeFinishedPhoto(url)}>×</button>
+              </div>
+            ))}
+            {finishedPhotos.length < MAX_IMAGES && (
+              <button type="button" className="add-project-gallery-desktop-add" onClick={() => finishedPhotoInputRef.current?.click()} disabled={isUploading}>
+                +
+              </button>
+            )}
+          </div>
+          <div className="add-project-gallery-desktop-main">
+            {finishedPhotos.length > 0 ? (
+              <img src={finishedPhotos[0]} alt="" />
+            ) : (
+              <button type="button" className="add-project-gallery-desktop-main-add" onClick={() => finishedPhotoInputRef.current?.click()} disabled={isUploading}>
+                + Добавить фото
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="add-project-photos">
+          {finishedPhotos.map((url) => (
+            <div key={url} className="add-project-photo-thumb">
+              <img src={url} alt="" />
+              <button type="button" className="add-project-photo-remove" onClick={() => removeFinishedPhoto(url)}>×</button>
+            </div>
+          ))}
+          {finishedPhotos.length < MAX_IMAGES && (
+            <button type="button" className="add-project-photo-add" onClick={() => finishedPhotoInputRef.current?.click()} disabled={isUploading}>+</button>
+          )}
+        </div>
+      )}
+      <input ref={finishedPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleFinishedPhotoSelected} />
+    </div>
+  );
+
   return (
     <div ref={sheetRef} className={`add-project-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="add-project-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
+        {/* Модалка на десктопе растянута на весь экран (как AddYarnModal) —
+            закрывает собой TopNav/Footer страницы позади, рендерим их ещё
+            раз здесь, только пока открыта модалка и только на десктопе. */}
+        {isDesktop && <TopNav />}
         <div className="add-project-header">
-          <h2 className="add-project-title">{isEditMode ? 'Редактировать проект' : 'Новый проект'}</h2>
+          {isDesktop ? (
+            <p className="stash-breadcrumb add-project-breadcrumb">Проекты / {isEditMode ? 'Редактировать проект' : 'Новый проект'}</p>
+          ) : (
+            <h2 className="add-project-title">{isEditMode ? 'Редактировать проект' : 'Новый проект'}</h2>
+          )}
         </div>
 
         <div className="add-project-body">
-          <div className="add-project-section">
-            <p className="add-project-section-title">О проекте</p>
-
-            <div className="add-project-field">
-              <label className="add-project-label">Название *</label>
-              <input className="add-project-input" value={title} placeholder="Введите текст..." onChange={(e) => setTitle(e.target.value)} />
-            </div>
-
-            <div className="add-project-field">
-              <label className="add-project-label">Описание (выбрать из каталога)</label>
-              <input
-                className="add-project-input"
-                value={selectedPattern ? selectedPattern.title : patternQuery}
-                placeholder="Введите название или автора"
-                readOnly={!!selectedPattern}
-                onChange={(e) => setPatternQuery(e.target.value)}
-              />
-            </div>
-
-            {!selectedPattern && (
-              <button type="button" className="plus-add-button" onClick={() => setIsManualEntryOpen((v) => !v)}>
-                <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-                Добавить описание вручную
-              </button>
-            )}
-
-            {selectedPattern ? (
-              <div className="add-project-section-inner">
-                <p className="add-project-inner-label">Выбрано из каталога</p>
-                <div className="add-project-pattern-card add-project-pattern-card--static">
-                  <div className="add-project-pattern-card-image">
-                    {selectedPattern.thumbnailUrl && <img src={selectedPattern.thumbnailUrl} alt="" />}
-                  </div>
-                  <div className="add-project-pattern-card-body">
-                    <p className="add-project-pattern-card-title">{selectedPattern.title}</p>
-                    <p className="add-project-pattern-card-meta"><b>Автор:</b> {selectedPattern.author}</p>
-                    {selectedPattern.instruments.length > 0 && (
-                      <p className="add-project-pattern-card-meta"><b>Инструмент:</b> {selectedPattern.instruments.join(', ')}</p>
-                    )}
-                  </div>
-                </div>
-                <button type="button" className="add-project-text-link-btn" onClick={clearPattern}>
-                  Сбросить выбор
-                </button>
+          {isDesktop ? (
+            <>
+              {/* 3 независимые flex-колонки (не grid-area на общем гриде с
+                  рядами) — высота каждой секции не завязана на соседние
+                  колонки: кнопки Закрыть/Сохранить ровно такой высоты, какой
+                  сами являются, "Сроки" идёт сразу под ними со стандартным
+                  gap, и так же дальше вниз по колонке. */}
+              <div className="add-project-col-gallery">
+                {photosSection}
+                {documentsSection}
+                {referencesSection}
               </div>
-            ) : (
-              <div className="add-project-section-inner">
-                {!isSearchingPattern && patternQuery.trim().length >= 2 && patternResults.length === 0 && (
-                  <p className="add-project-empty-text">Ничего не найдено</p>
-                )}
-                {patternResults.length > 0 && (
-                  <>
-                    <p className="add-project-inner-label">Выбрать из каталога</p>
-                    <div className="add-project-cards-vertical">
-                      {patternResults.map((p) => (
-                        <button key={p.id} type="button" className="add-project-pattern-card" onClick={() => handlePickPattern(p)}>
-                          <div className="add-project-pattern-card-image">
-                            <img src={p.thumbnailUrl} alt="" />
-                          </div>
-                          <div className="add-project-pattern-card-body">
-                            <p className="add-project-pattern-card-title">{p.title}</p>
-                            <p className="add-project-pattern-card-meta"><b>Автор:</b> {p.author}</p>
-                            {p.instruments.length > 0 && (
-                              <p className="add-project-pattern-card-meta"><b>Инструмент:</b> {p.instruments.join(', ')}</p>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {isManualEntryOpen && (
-                  <div className="add-project-manual-entry">
-                    <div className="add-project-field">
-                      <label className="add-project-label">Автор</label>
-                      <input className="add-project-input" value={manualAuthor} placeholder="Введите имя автора" onChange={(e) => setManualAuthor(e.target.value)} />
-                    </div>
-                    <div className="add-project-field">
-                      <label className="add-project-label">Описание</label>
-                      <input className="add-project-input" value={manualDescription} placeholder="Введите название" onChange={(e) => setManualDescription(e.target.value)} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="add-project-status-row-wrap">
-            <p className="add-project-section-title">Статус</p>
-            <div className="add-project-status-dropdown-wrap">
-              <button
-                type="button"
-                className="status-badge"
-                style={{ background: STATUS_COLOR[status] }}
-                onClick={() => setIsStatusMenuOpen((v) => !v)}
-              >
-                {(() => {
-                  const Icon = STATUS_ICON[status]; return (
-                    <span className="projects-status-icon-wrap">
-                      <Icon size={13} strokeWidth={1.5} color="#ffffff" />
-                    </span>
-                  );
-                })()}
-                {STATUS_LABEL[status]}
-              </button>
-              <ChevronDown size={24} strokeWidth={1.5} onClick={() => setIsStatusMenuOpen((v) => !v)} style={{ cursor: 'pointer' }} />
-              {isStatusMenuOpen && (
-                <div className="status-dropdown-list">
-                  {STATUS_ORDER
-                    .filter((s) => s !== status)
-                    .map((s) => {
-                      const Icon = STATUS_ICON[s];
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          className="status-badge"
-                          style={{ background: STATUS_COLOR[s] }}
-                          onClick={() => { setStatus(s); setIsStatusMenuOpen(false); }}
-                        >
-                          <span className="projects-status-icon-wrap">
-                            <Icon size={13} strokeWidth={1.5} color="#ffffff" />
-                          </span>
-                          {STATUS_LABEL[s]}
-                        </button>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          </div>
-          {!isEditMode && isCompleted && (
-            <p className="add-project-field-hint" style={{ padding: '0 20px' }}>
-              Проект будет создан сразу завершённым — для портфолио задним числом. Остаток пряжи в хранилище не изменится, изменится только общий вес мотка.
-            </p>
-          )}
-          {isEditMode && isCompleted && project?.status !== 'COMPLETED' && (
-            <p className="add-project-field-hint" style={{ padding: '0 20px' }}>
-              Для завершения проекта нужно указать расход пряжи и фото готового изделия — нажмите "Сохранить", чтобы перейти к этому шагу.
-            </p>
-          )}
-
-          <div className="add-project-section">
-            <p className="add-project-section-title">Сроки</p>
-            <div className="add-project-dates-row">
-              <DateInputField label="Начало" value={startedAt} onChange={setStartedAt} />
-              <DateInputField label="Завершено" value={completedAt} onChange={setCompletedAt} disabled={!isCompleted} align="end" />
-            </div>
-          </div>
-
-          {instrumentOptions.length > 0 && (
-            <div className="add-project-section">
-              <p className="add-project-section-title">Инструмент</p>
-              <div className="add-project-checkbox-list">
-                {instrumentOptions.map((opt) => {
-                  const checked = opt.id in instrumentSizes;
-                  return (
-                    <div key={opt.id} className="add-project-instrument-row">
-                      <button type="button" className="add-project-checkbox-row" onClick={() => toggleInstrument(opt.id)}>
-                        {checked ? <SquareCheck size={24} strokeWidth={1.5} /> : <Square size={24} strokeWidth={1.5} color="#9b9a9a" />}
-                        <span>{opt.name}</span>
-                      </button>
-                      {checked && (
-                        <label className="add-project-instrument-size">
-                          №
-                          <span className="add-project-instrument-size-input-wrap">
-                            <input
-                              className="add-project-input add-project-input-instrument-size"
-                              value={instrumentSizes[opt.id]}
-                              placeholder="2,25"
-                              inputMode="decimal"
-                              onChange={(e) => updateInstrumentSize(opt.id, e.target.value)}
-                            />
-                            <span className="add-project-instrument-size-unit">мм</span>
-                          </span>
-                        </label>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {!isEditMode && (
-            <div className="add-project-section">
-              <p className="add-project-section-title">Пряжа</p>
-              {selectedYarns.map((y) => (
-                <div key={y.skeinId} className="add-project-yarn-card-wrap">
-                  <div className="add-project-yarn-card">
-                    <div className="add-project-yarn-card-image">
-                      {y.image ? <img src={y.image} alt="" /> : null}
-                    </div>
-                    <div className="add-project-yarn-card-body">
-                      <div className="add-project-yarn-card-title-row">
-                        <p className="add-project-yarn-card-title">{y.yarnNameSnapshot}</p>
-                        <button type="button" className="add-project-chip-remove" onClick={() => removeYarn(y.skeinId)}>×</button>
-                      </div>
-                      {y.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {y.brandSnapshot}</p>}
-                      {y.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {y.compositionSnapshot}</p>}
-                      {y.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {y.mPer100gSnapshot}м/100г</p>}
-                      <p className="add-project-yarn-card-remainder"><b>Остаток:</b> {y.currentWeightG} г из {y.totalWeightG} г</p>
-                    </div>
-                  </div>
-                  {isCompleted && (
-                    <div className="add-project-field">
-                      <label className="add-project-label">Расход</label>
-                      <input
-                        className="add-project-input"
-                        value={y.amountG}
-                        placeholder="320"
-                        inputMode="numeric"
-
-                        onChange={(e) => updateYarnAmount(y.skeinId, e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <div className="add-project-field">
-                <input
-                  className="add-project-input"
-                  value={yarnQuery}
-                  placeholder="Выбрать пряжу из моих запасов"
-                  onChange={(e) => setYarnQuery(e.target.value)}
-                  onFocus={() => setIsYarnFieldFocused(true)}
-                  onBlur={() => setIsYarnFieldFocused(false)}
-                />
-              </div>
-              {yarnResults.length > 0 && (
-                <div className="add-project-cards-vertical">
-                  {yarnResults.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className="add-project-yarn-search-card"
-                      // onMouseDown, не onClick — onBlur инпута (выше)
-                      // срабатывает раньше onClick этой кнопки при клике по
-                      // ней (blur — часть mousedown/focus-смены), список
-                      // успел бы скрыться до того, как клик дойдёт до
-                      // кнопки. mousedown происходит раньше blur.
-                      onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
-                    >
-                      <div className="add-project-yarn-card-image">
-                        {s.images[0] ? <img src={s.images[0]} alt="" /> : null}
-                      </div>
-                      <div className="add-project-yarn-card-body">
-                        <p className="add-project-yarn-card-title">{s.yarnNameSnapshot}</p>
-                        {s.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {s.brandSnapshot}</p>}
-                        {s.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {s.compositionSnapshot}</p>}
-                        {s.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {s.mPer100gSnapshot}м/100г</p>}
-                        <p className="add-project-yarn-card-remainder"><b>Остаток:</b> {s.currentWeightG} г из {s.totalWeightG} г</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
-                <>
-                  <p className="add-project-empty-text">
-                    {yarnQuery.trim() ? 'В ваших запасах ничего не найдено' : 'В хранилище пока пусто'}
-                  </p>
-                  <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
-                    <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-                    Добавить новую пряжу
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {!isEditMode && (
-            <div className="add-project-section">
-              <p className="add-project-section-title">Образец</p>
-
-              {swatches.map((swatch, index) => (
-                <div key={swatch.key} className="add-project-swatch-draft">
-                  {swatches.length > 1 && (
-                    <div className="add-project-swatch-draft-header">
-                      <span>Образец {index + 1}</span>
-                      <button type="button" className="add-project-swatch-remove" onClick={() => removeSwatch(swatch.key)}>Удалить</button>
-                    </div>
-                  )}
-                  <div className="add-project-field">
-                    <label className="add-project-label">Инструмент</label>
-                    <div className="add-project-instrument-type-row">
-                      <button
-                        type="button"
-                        className={`add-project-instrument-chip${swatch.instrumentType === 'needle' ? ' add-project-instrument-chip--active' : ''}`}
-                        onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'needle' ? null : 'needle' })}
-                      >
-                        Спицы
-                      </button>
-                      <button
-                        type="button"
-                        className={`add-project-instrument-chip${swatch.instrumentType === 'hook' ? ' add-project-instrument-chip--active' : ''}`}
-                        onClick={() => updateSwatch(swatch.key, { instrumentType: swatch.instrumentType === 'hook' ? null : 'hook' })}
-                      >
-                        Крючок
-                      </button>
-                    </div>
-                  </div>
-                  {(swatch.instrumentType || swatch.needleSizeRaw.trim()) && (
-                    <div className="add-project-field">
-                      <label className="add-project-label">Размер {swatch.instrumentType === 'needle' ? 'спиц' : swatch.instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
-                      <input
-                        className="add-project-input"
-                        value={swatch.needleSizeRaw}
-                        placeholder="Например: 3.5"
-                        inputMode="decimal"
-                        onChange={(e) => updateSwatch(swatch.key, { needleSizeRaw: e.target.value })}
-                      />
-                    </div>
-                  )}
-                  <div className="add-project-field">
-                    <label className="add-project-label">Количество нитей</label>
-                    <input className="add-project-input" value={swatch.strandsCount} placeholder="Введите число..." inputMode="numeric" onChange={(e) => updateSwatch(swatch.key, { strandsCount: e.target.value })} />
-                  </div>
-                  <div className="add-project-field">
-                    <label className="add-project-label">До ВТО</label>
-                    <div className="add-project-density-row">
-                      <div className="add-project-density-col">
-                        <input className="add-project-input" value={swatch.stitchesBefore} placeholder="46" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { stitchesBefore: e.target.value })} />
-                        <span className="add-project-density-sublabel">Петли</span>
-                      </div>
-                      <span className="add-project-density-x">х</span>
-                      <div className="add-project-density-col">
-                        <input className="add-project-input" value={swatch.rowsBefore} placeholder="52" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { rowsBefore: e.target.value })} />
-                        <span className="add-project-density-sublabel">Ряды</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="add-project-field">
-                    <label className="add-project-label">После ВТО</label>
-                    <div className="add-project-density-row">
-                      <div className="add-project-density-col">
-                        <input className="add-project-input" value={swatch.stitchesAfter} placeholder="46" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { stitchesAfter: e.target.value })} />
-                        <span className="add-project-density-sublabel">Петли</span>
-                      </div>
-                      <span className="add-project-density-x">х</span>
-                      <div className="add-project-density-col">
-                        <input className="add-project-input" value={swatch.rowsAfter} placeholder="52" inputMode="decimal" onChange={(e) => updateSwatch(swatch.key, { rowsAfter: e.target.value })} />
-                        <span className="add-project-density-sublabel">Ряды</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="add-project-field">
-                    <label className="add-project-label">Заметка</label>
-                    <textarea
-                      className="add-project-textarea"
-                      value={swatch.note}
-                      placeholder="Любые наблюдения об образце..."
-                      onChange={(e) => updateSwatch(swatch.key, { note: e.target.value })}
-                    />
-                  </div>
-                  <div className="add-project-field">
-                    <label className="add-project-label">Фото образца</label>
-                    <div className="add-project-photos">
-                      {swatch.images.map((url) => (
-                        <div key={url} className="add-project-photo-thumb">
-                          <img src={url} alt="" />
-                          <button type="button" className="add-project-photo-remove" onClick={() => removeSwatchImage(swatch.key, url)}>×</button>
-                        </div>
-                      ))}
-                      {swatch.images.length < MAX_IMAGES && (
-                        <button type="button" className="add-project-photo-add" onClick={() => swatchFileInputRefs.current[swatch.key]?.click()} disabled={uploadingSwatchKey === swatch.key}>+</button>
-                      )}
-                      <input
-                        ref={(el) => { swatchFileInputRefs.current[swatch.key] = el; }}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        style={{ display: 'none' }}
-                        onChange={handleSwatchFileSelected(swatch.key)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <button type="button" className="plus-add-button" onClick={handleAddSwatch}>
-                <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-                {swatches.length > 0 ? 'Добавить ещё образец' : 'Добавить образец'}
-              </button>
-            </div>
-          )}
-
-          <div className="add-project-section">
-            <p className="add-project-section-title">Описание, файл</p>
-            {!isEditMode && isCreatingDraft ? (
-              <p className="add-project-field-hint">Подготовка загрузки...</p>
-            ) : (
-              <>
-                {documents.map((doc) => (
-                  <div key={doc.id} className="add-project-pdf-row">
-                    <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
-                      #{doc.originalFileName}
-                    </button>
-                    <button type="button" className="add-project-pdf-remove" onClick={() => handleDeleteDocument(doc.id)} aria-label="Удалить файл">
-                      <Trash2 size={16} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                ))}
-                {documents.length < MAX_DOCUMENTS && (
-                  <button type="button" className="add-project-pdf-upload-btn" onClick={() => documentFileInputRef.current?.click()} disabled={isUploadingDocument || !documentProjectId}>
-                    <Plus size={8} strokeWidth={1.5} />
-                    {isUploadingDocument ? 'Загрузка...' : 'Загрузить pdf'}
-                  </button>
-                )}
-                <input
-                  ref={documentFileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  style={{ display: 'none' }}
-                  onChange={handleDocumentFileSelected}
-                />
-                {links.map((link, index) => (
-                  <div key={index} className="add-project-pdf-row">
+              <div className="add-project-col-about">
+                <div className="add-project-title-row">
+                  <div className="add-project-title-row-top">
                     <input
-                      className="add-project-input add-project-link-input"
-                      value={link}
-                      placeholder="https://..."
-                      onChange={(e) => updateLinkRow(index, e.target.value)}
+                      className="add-project-title add-project-title--desktop"
+                      value={title}
+                      placeholder={isEditMode ? 'Редактировать проект' : 'Новый проект'}
+                      onChange={(e) => setTitle(e.target.value)}
                     />
-                    <button type="button" className="add-project-pdf-remove" onClick={() => removeLinkRow(index)} aria-label="Удалить ссылку">
-                      <Trash2 size={16} strokeWidth={1.5} />
-                    </button>
+                    {statusDropdown}
                   </div>
-                ))}
-                <button type="button" className="add-project-pdf-upload-btn" onClick={addLinkRow}>
-                  <Plus size={8} strokeWidth={1.5} />
-                  Добавить ссылку
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="add-project-section">
-            <p className="add-project-section-title">Референс</p>
-            <div className="add-project-photos">
-              {referencePhotos.map((url) => (
-                <div key={url} className="add-project-photo-thumb">
-                  <img src={url} alt="" />
-                  <button type="button" className="add-project-photo-remove" onClick={() => removeReferencePhoto(url)}>×</button>
+                  {completionHint}
                 </div>
-              ))}
-              {referencePhotos.length < MAX_IMAGES && (
-                <button type="button" className="add-project-photo-add" onClick={() => referencePhotoInputRef.current?.click()} disabled={isUploading}>+</button>
-              )}
-              <input ref={referencePhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleReferencePhotoSelected} />
-            </div>
-          </div>
-
-          <div className="add-project-section">
-            <p className="add-project-section-title">Заметки</p>
-            <textarea className="add-project-textarea" value={note} placeholder="Здесь можно писать всё, что душе угодно" onChange={(e) => setNote(e.target.value)} />
-          </div>
-
-          <div className="add-project-section">
-            <p className="add-project-section-title">Фото изделия</p>
-            <div className="add-project-photos">
-              {finishedPhotos.map((url) => (
-                <div key={url} className="add-project-photo-thumb">
-                  <img src={url} alt="" />
-                  <button type="button" className="add-project-photo-remove" onClick={() => removeFinishedPhoto(url)}>×</button>
+                {aboutSection}
+                {notesSection}
+              </div>
+              <div className="add-project-col-meta">
+                <div className="add-project-column-actions">
+                  {actionButtons}
                 </div>
-              ))}
-              {finishedPhotos.length < MAX_IMAGES && (
-                <button type="button" className="add-project-photo-add" onClick={() => finishedPhotoInputRef.current?.click()} disabled={isUploading}>+</button>
-              )}
-              <input ref={finishedPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleFinishedPhotoSelected} />
-            </div>
-          </div>
+                {datesSection}
+                {instrumentsSection}
+                {yarnSection}
+                {swatchSection}
+              </div>
+            </>
+          ) : (
+            <>
+              {aboutSection}
+              <div className="add-project-status-row-wrap">
+                <p className="add-project-section-title">Статус</p>
+                {statusDropdown}
+              </div>
+              {completionHint}
+              {datesSection}
+              {instrumentsSection}
+              {yarnSection}
+              {swatchSection}
+              {documentsSection}
+              {referencesSection}
+              {notesSection}
+              {photosSection}
+            </>
+          )}
 
           {error && <p className="add-project-error">{error}</p>}
         </div>
 
-        <div className="add-project-footer">
-          <button type="button" className="btn add-project-close-btn" onClick={onClose} disabled={isSubmitting}>Закрыть</button>
-          <button type="button" className="btn add-project-save-btn" onClick={handleSave} disabled={!isValid || isSubmitting}>
-            {isSubmitting ? 'Сохранение...' : 'Сохранить'}
-          </button>
-        </div>
+        {isDesktop && <Footer />}
+
+        {!isDesktop && (
+          <div className="add-project-footer">
+            {actionButtons}
+          </div>
+        )}
       </div>
 
 

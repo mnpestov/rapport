@@ -439,7 +439,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
                 create: swatchesInput.map((s) => ({
                   images: Array.isArray(s.images) ? s.images.map(String) : [],
                   needleSizeRaw: s.needleSizeRaw ? String(s.needleSizeRaw) : null,
-                  instrumentType: s.instrumentType === 'hook' || s.instrumentType === 'needle' ? s.instrumentType : null,
+                  instrumentType: s.instrumentType === 'hook' || s.instrumentType === 'needle' || s.instrumentType === 'machine' ? s.instrumentType : null,
                   strandsCount: toInt(s.strandsCount),
                   densityStitchesBefore: toDecimal(s.densityStitchesBefore),
                   densityRowsBefore: toDecimal(s.densityRowsBefore),
@@ -1062,6 +1062,25 @@ export const removeProjectYarn = async (req: Request, res: Response): Promise<vo
   }
 };
 
+// Список для чекбоксов "Инструмент" в AddProjectModal.tsx — раньше брался
+// из /filters (instruments facet каталога описаний), который возвращает
+// ТОЛЬКО инструменты, используемые хотя бы одним Pattern — инструмент
+// проекта (эта пользовательская метаданность) не должен зависеть от того,
+// привязан ли он уже к какому-то описанию в каталоге. Простой список всего
+// справочника Instrument, без фильтра по patterns.
+export const listAllInstruments = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const instruments = await prisma.instrument.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+    res.json({ instruments });
+  } catch (error) {
+    console.error("[Projects] listAllInstruments failed:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // Точечные add/remove без указания sizeMm — размер, если нужен,
 // правится через updateProject (полная замена instruments формой), эти
 // два эндпоинта не используются текущим UI (AddProjectModal шлёт весь
@@ -1124,7 +1143,7 @@ export const createProjectSwatch = async (req: Request, res: Response): Promise<
         projectId: project.id,
         images,
         needleSizeRaw: body.needleSizeRaw ? String(body.needleSizeRaw) : null,
-        instrumentType: body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null,
+        instrumentType: body.instrumentType === 'hook' || body.instrumentType === 'needle' || body.instrumentType === 'machine' ? body.instrumentType : null,
         strandsCount: toInt(body.strandsCount),
         densityStitchesBefore: toDecimal(body.densityStitchesBefore),
         densityRowsBefore: toDecimal(body.densityRowsBefore),
@@ -1164,7 +1183,7 @@ export const updateProjectSwatch = async (req: Request, res: Response): Promise<
     data.images = images;
   }
   if ("needleSizeRaw" in body) data.needleSizeRaw = body.needleSizeRaw ? String(body.needleSizeRaw) : null;
-  if ("instrumentType" in body) data.instrumentType = body.instrumentType === 'hook' || body.instrumentType === 'needle' ? body.instrumentType : null;
+  if ("instrumentType" in body) data.instrumentType = body.instrumentType === 'hook' || body.instrumentType === 'needle' || body.instrumentType === 'machine' ? body.instrumentType : null;
   const sc = toInt(body.strandsCount);
   if (sc !== undefined) data.strandsCount = sc;
   const dsb = toDecimal(body.densityStitchesBefore);

@@ -13,6 +13,7 @@ import { fetchPatterns, Pattern } from '../../api/patternsApi';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import '../../styles/sheet.css';
 import './LogUsageWizard.css';
+import './EditUsageModal.css';
 
 const MAX_PHOTOS = 5;
 
@@ -191,9 +192,17 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
     : matches.map((m) => ({ id: m.id, title: m.title, thumbnailUrl: m.thumbnailUrl, authorName: m.authorName, instruments: m.instruments }));
   const isShowingSearch = searchQuery.trim().length >= 2;
   const isRelatedLoading = isShowingSearch ? isSearching : matchesLoading;
+  // Описание уже привязано (выбран паттерн или вручную введены автор/
+  // название) — подсказки "Что можно связать из этой пряжи" не нужны, это
+  // не новое списание, а правка уже готовой записи. Поле "Описание" выше
+  // остаётся доступным, чтобы привязку можно было сменить — набор 2+ букв
+  // снова включает isShowingSearch и возвращает блок подсказок.
+  const hasAttachedDescription = !isShowingSearch && (
+    !!selectedPattern || (isManualEntryOpen && (manualAuthorName.trim() !== '' || manualDescriptionTitle.trim() !== ''))
+  );
 
   return (
-    <div ref={sheetRef} className={`log-usage-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+    <div ref={sheetRef} className={`log-usage-overlay sheet-overlay edit-usage-modal ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="log-usage-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="log-usage-header">
           <h2 className="log-usage-title">Редактировать проект</h2>
@@ -266,92 +275,72 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
           )}
 
           <div className="log-usage-related">
-            <p className="log-usage-section-title">Что можно связать из этой пряжи</p>
-            {isMatchesLocked ? (
+            {!hasAttachedDescription && (
               <>
-                <button type="button" className="log-usage-manual-add-btn" onClick={handleOpenManualEntry}>
-                  <Plus size={16} strokeWidth={1.5} />
-                  Добавить вручную
-                </button>
-                {isManualEntryOpen && (
-                  <div className="log-usage-manual-entry">
-                    <div className="log-usage-field">
-                      <label className="log-usage-label">Автор</label>
-                      <input
-                        className="log-usage-input"
-                        value={manualAuthorName}
-                        placeholder="Введите имя автора"
-                        onChange={(e) => setManualAuthorName(e.target.value)}
-                      />
-                    </div>
-                    <div className="log-usage-field">
-                      <label className="log-usage-label">Описание</label>
-                      <input
-                        className="log-usage-input"
-                        value={manualDescriptionTitle}
-                        placeholder="Введите название проекта"
-                        onChange={(e) => setManualDescriptionTitle(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {!isRelatedLoading && isShowingSearch && relatedCards.length === 0 && !isManualEntryOpen && (
+                <p className="log-usage-section-title">Что можно связать из этой пряжи</p>
+                {isMatchesLocked ? (
+                  <button type="button" className="log-usage-manual-add-btn" onClick={handleOpenManualEntry}>
+                    <Plus size={16} strokeWidth={1.5} />
+                    Добавить вручную
+                  </button>
+                ) : (
                   <>
-                    <p className="log-usage-empty-text">Ничего не найдено</p>
-                    <button type="button" className="log-usage-manual-add-btn" onClick={handleOpenManualEntry}>
-                      <Plus size={16} strokeWidth={1.5} />
-                      Добавить вручную
-                    </button>
+                    {!isRelatedLoading && isShowingSearch && relatedCards.length === 0 && !isManualEntryOpen && (
+                      <>
+                        <p className="log-usage-empty-text">Ничего не найдено</p>
+                        <button type="button" className="log-usage-manual-add-btn" onClick={handleOpenManualEntry}>
+                          <Plus size={16} strokeWidth={1.5} />
+                          Добавить вручную
+                        </button>
+                      </>
+                    )}
+                    {relatedCards.length > 0 && (
+                      <div className="log-usage-cards-vertical">
+                        {relatedCards.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`log-usage-card-row${selectedPattern?.id === p.id ? ' log-usage-card-row--selected' : ''}`}
+                            onClick={() => handlePickPattern(p.id, p.title)}
+                          >
+                            <img src={p.thumbnailUrl} alt="" className="log-usage-card-row-image" />
+                            <div className="log-usage-card-row-body">
+                              <p className="log-usage-card-row-title">{p.title}</p>
+                              <p className="log-usage-card-row-meta"><b>Автор:</b> {p.authorName}</p>
+                              {p.instruments.length > 0 && (
+                                <p className="log-usage-card-row-meta"><b>Инструмент:</b> {p.instruments.join(', ')}</p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
-                {relatedCards.length > 0 && (
-                  <div className="log-usage-cards-vertical">
-                    {relatedCards.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className={`log-usage-card-row${selectedPattern?.id === p.id ? ' log-usage-card-row--selected' : ''}`}
-                        onClick={() => handlePickPattern(p.id, p.title)}
-                      >
-                        <img src={p.thumbnailUrl} alt="" className="log-usage-card-row-image" />
-                        <div className="log-usage-card-row-body">
-                          <p className="log-usage-card-row-title">{p.title}</p>
-                          <p className="log-usage-card-row-meta"><b>Автор:</b> {p.authorName}</p>
-                          {p.instruments.length > 0 && (
-                            <p className="log-usage-card-row-meta"><b>Инструмент:</b> {p.instruments.join(', ')}</p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {isManualEntryOpen && (
-                  <div className="log-usage-manual-entry">
-                    <div className="log-usage-field">
-                      <label className="log-usage-label">Автор</label>
-                      <input
-                        className="log-usage-input"
-                        value={manualAuthorName}
-                        placeholder="Введите имя автора"
-                        onChange={(e) => setManualAuthorName(e.target.value)}
-                      />
-                    </div>
-                    <div className="log-usage-field">
-                      <label className="log-usage-label">Описание</label>
-                      <input
-                        className="log-usage-input"
-                        value={manualDescriptionTitle}
-                        placeholder="Введите название проекта"
-                        onChange={(e) => setManualDescriptionTitle(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
               </>
+            )}
+
+            {isManualEntryOpen && (
+              <div className="log-usage-manual-entry">
+                <div className="log-usage-field">
+                  <label className="log-usage-label">Автор</label>
+                  <input
+                    className="log-usage-input"
+                    value={manualAuthorName}
+                    placeholder="Введите имя автора"
+                    onChange={(e) => setManualAuthorName(e.target.value)}
+                  />
+                </div>
+                <div className="log-usage-field">
+                  <label className="log-usage-label">Описание</label>
+                  <input
+                    className="log-usage-input"
+                    value={manualDescriptionTitle}
+                    placeholder="Введите название проекта"
+                    onChange={(e) => setManualDescriptionTitle(e.target.value)}
+                  />
+                </div>
+              </div>
             )}
           </div>
 

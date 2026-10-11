@@ -3,7 +3,10 @@ import { EllipsisVertical, SquarePen, Trash2 } from 'lucide-react';
 import './HeaderActionsMenu.css';
 
 interface HeaderActionsMenuProps {
-  onEdit: () => void;
+  // Опционально — у карточки "Пряжа" в проекте нет своего редактирования
+  // (в отличие от "Образца"/шапки карточки), без onEdit пункт
+  // "Редактировать" просто не рендерится.
+  onEdit?: () => void;
   onDelete: () => void;
 }
 
@@ -39,14 +42,16 @@ export const HeaderActionsMenu: React.FC<HeaderActionsMenuProps> = ({ onEdit, on
       </button>
       {isOpen && (
         <div className="header-actions-menu-list">
-          <button
-            type="button"
-            className="header-actions-menu-item"
-            onClick={() => { setIsOpen(false); onEdit(); }}
-          >
-            <SquarePen size={18} strokeWidth={1.5} />
-            Редактировать
-          </button>
+          {onEdit && (
+            <button
+              type="button"
+              className="header-actions-menu-item"
+              onClick={() => { setIsOpen(false); onEdit(); }}
+            >
+              <SquarePen size={18} strokeWidth={1.5} />
+              Редактировать
+            </button>
+          )}
           <button
             type="button"
             className="header-actions-menu-item header-actions-menu-item--danger"

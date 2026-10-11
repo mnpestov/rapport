@@ -17,6 +17,7 @@ import {
   removeProjectPattern,
   addProjectYarn,
   removeProjectYarn,
+  listAllInstruments,
   addProjectInstrument,
   removeProjectInstrument,
   createProjectSwatch,
@@ -45,6 +46,8 @@ const router = Router();
 router.use(requireAuth, requirePermissionOrAdmin(Permission.PREMIUM_PROJECTS));
 
 router.get("/", listProjects);
+// До /:id — иначе "instruments" матчился бы как :id.
+router.get("/instruments", listAllInstruments);
 router.post("/", createProject);
 router.get("/:id", loadOwnedProject, getProject);
 router.patch("/:id", loadOwnedProject, updateProject);

@@ -4,10 +4,11 @@ import { parseDecimalInput } from '../../utils/parseDecimal';
 import { createStashSwatch, uploadStashImage } from '../../api/stashApi';
 import '../../styles/sheet.css';
 import '../Stash/AddYarnModal.css';
+import './AddSwatchModal.css';
 
 const MAX_IMAGES = 5;
 
-type InstrumentType = 'hook' | 'needle' | null;
+type InstrumentType = 'hook' | 'needle' | 'machine' | null;
 
 interface AddSwatchModalProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
   };
 
   return (
-    <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+    <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay add-swatch-modal ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="add-yarn-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="add-yarn-header">
           <h2 className="add-yarn-title">Добавить образец</h2>
@@ -124,10 +125,18 @@ export const AddSwatchModal: React.FC<AddSwatchModalProps> = ({ isOpen, skeinId,
               >
                 Крючок
               </button>
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'machine' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => { setInstrumentType(instrumentType === 'machine' ? null : 'machine'); setNeedleSizeRaw(''); }}
+              >
+                Вязальная машина
+              </button>
             </div>
           </div>
 
-          {(instrumentType || needleSizeRaw.trim()) && (
+          {/* У вязальной машины нет параметра "размер". */}
+          {instrumentType !== 'machine' && (instrumentType || needleSizeRaw.trim()) && (
             <div className="add-yarn-field">
               <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
               <input

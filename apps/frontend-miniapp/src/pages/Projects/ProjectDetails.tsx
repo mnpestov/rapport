@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, ChevronDown } from 'lucide-react';
+import { Plus, ChevronDown, SquarePen, Trash2 } from 'lucide-react';
+import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON, STATUS_ORDER } from './projectStatus';
 import {
   fetchProjectById,
@@ -26,8 +27,10 @@ import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteCo
 import { AddYarnModal } from '../Stash/AddYarnModal';
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import { StashImageCarousel } from '../StashSkeinDetails/StashImageCarousel';
+import { StashImageGalleryDesktop } from '../StashSkeinDetails/StashImageGalleryDesktop';
 import { HeaderActionsMenu } from '../../components/HeaderActionsMenu/HeaderActionsMenu';
 import { CollapsibleSection } from './CollapsibleSection';
+import { DateInputField } from './DateInputField';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
 import swatchPlaceholder from '../../assets/stash/swatchPlaceholder.svg';
@@ -37,9 +40,21 @@ import './AddProjectModal.css';
 
 const PdfViewerModal = lazy(() => import('./PdfViewerModal').then((m) => ({ default: m.PdfViewerModal })));
 
+// Склонение "день" под длительность блока "Сроки" (десктоп, Figma node-id=
+// 1617:19969) — стандартное русское правило множественного числа, тот же
+// приём, что pluralizeProjects в Projects.tsx.
+function pluralizeDays(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'день';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'дня';
+  return 'дней';
+}
+
 export const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
 
   const [project, setProject] = useState<ProjectDetailType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -286,438 +301,687 @@ export const ProjectDetails: React.FC = () => {
     }
   };
 
+  // Десктопный блок "Сроки" — клик по иконке календаря меняет дату прямо
+  // отсюда (DateInputField, тот же компонент и тот же кастомный
+  // dropdown-календарь, что в форме редактирования). "Завершено"
+  // редактируем только у УЖЕ завершённых проектов (project.status ===
+  // 'COMPLETED') — тот же принцип, что в AddProjectModal.tsx: completedAt
+  // заполняется только через визард завершения, не произвольной датой на
+  // ещё активном проекте.
+  const handleStartedAtChange = async (value: string) => {
+    if (!value) return;
+    try {
+      const updated = await updateProject(project.id, { startedAt: value });
+      setProject(updated);
+    } catch (err) {
+      console.error('[ProjectDetails] handleStartedAtChange failed:', err);
+      setError('Не удалось изменить дату начала.');
+    }
+  };
+
+  const handleCompletedAtChange = async (value: string) => {
+    try {
+      const updated = await updateProject(project.id, { completedAt: value || null });
+      setProject(updated);
+    } catch (err) {
+      console.error('[ProjectDetails] handleCompletedAtChange failed:', err);
+      setError('Не удалось изменить дату завершения.');
+    }
+  };
+
   const heroImages = project.finishedPhotos.length > 0 ? project.finishedPhotos : project.images;
   const firstPattern = project.patterns[0];
 
-  return (
-    <div className="stash-details-container">
-      <div className="stash-details-header">
-        <button className="back-button" onClick={handleBack}>
-          <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
-          Назад
-        </button>
-        <HeaderActionsMenu onEdit={() => setIsEditOpen(true)} onDelete={() => setIsDeleteProjectOpen(true)} />
-      </div>
-
-      <div className="stash-details-image-wrapper">
-        <div className="stash-details-image-container">
-          {heroImages.length > 0 ? (
-            <StashImageCarousel images={heroImages} alt={project.title} />
-          ) : (
-            <div className="stash-details-image stash-details-image-placeholder">
-              <img src={projectPlaceholder} alt="" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="stash-details-info add-details-info">
-        <h1 className="stash-details-name">{project.title}</h1>
-
-        <div className="stash-details-status-row">
-          <p className="pd-label">Статус</p>
-          <div className="add-project-status-dropdown-wrap">
-            {(() => {
-              const Icon = STATUS_ICON[project.status]; return (
+  // Бейдж статуса + выпадающий список — общий для мобиле (внутри строки
+  // "Статус") и десктопа (рядом с заголовком), вынесен в переменную, чтобы
+  // не дублировать JSX между двумя местами рендера.
+  const statusDropdown = (
+    <div className="add-project-status-dropdown-wrap">
+      {(() => {
+        const Icon = STATUS_ICON[project.status]; return (
+          <button
+            type="button"
+            className="status-badge"
+            style={{ background: STATUS_COLOR[project.status] }}
+            onClick={() => setIsStatusMenuOpen((v) => !v)}
+          >
+            <span className="projects-status-icon-wrap">
+              <Icon size={13} strokeWidth={1.5} color="#ffffff" />
+            </span>
+            {STATUS_LABEL[project.status]}
+          </button>
+        );
+      })()}
+      <ChevronDown size={24} strokeWidth={1.5} onClick={() => setIsStatusMenuOpen((v) => !v)} style={{ cursor: 'pointer' }} />
+      {isStatusMenuOpen && (
+        <div className="status-dropdown-list">
+          {STATUS_ORDER
+            .filter((s) => s !== project.status)
+            .map((s) => {
+              const Icon = STATUS_ICON[s];
+              return (
                 <button
+                  key={s}
                   type="button"
                   className="status-badge"
-                  style={{ background: STATUS_COLOR[project.status] }}
-                  onClick={() => setIsStatusMenuOpen((v) => !v)}
+                  style={{ background: STATUS_COLOR[s] }}
+                  onClick={() => handlePickStatus(s)}
                 >
                   <span className="projects-status-icon-wrap">
                     <Icon size={13} strokeWidth={1.5} color="#ffffff" />
                   </span>
-                  {STATUS_LABEL[project.status]}
+                  {STATUS_LABEL[s]}
                 </button>
               );
-            })()}
-            <ChevronDown size={24} strokeWidth={1.5} onClick={() => setIsStatusMenuOpen((v) => !v)} style={{ cursor: 'pointer' }} />
-            {isStatusMenuOpen && (
-              <div className="status-dropdown-list">
-                {STATUS_ORDER
-                  .filter((s) => s !== project.status)
-                  .map((s) => {
-                    const Icon = STATUS_ICON[s];
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        className="status-badge"
-                        style={{ background: STATUS_COLOR[s] }}
-                        onClick={() => handlePickStatus(s)}
-                      >
-                        <span className="projects-status-icon-wrap">
-                          <Icon size={13} strokeWidth={1.5} color="#ffffff" />
-                        </span>
-                        {STATUS_LABEL[s]}
-                      </button>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
+            })}
         </div>
+      )}
+    </div>
+  );
 
-        <div className="stash-details-dates-row">
-          <div className="stash-details-date-col add-details-date-col">
-            <p className="pd-label">Начало</p>
-            <p className="pd-value pd-value--bold">{new Date(project.startedAt).toLocaleDateString('ru-RU')}</p>
-          </div>
-          <div className="stash-details-date-col add-details-date-col stash-details-date-col--end">
-            <p className="pd-label">Завершено</p>
-            <p className="pd-value pd-value--bold">{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ru-RU') : '__.__.____'}</p>
-          </div>
-        </div>
-
-        {/* Вариативно (Figma node-id=1476:27969): паттерн выбран из
-            каталога → карточка узора (фото/название/автор/инструмент,
-            переживает даже удаление паттерна из каталога через снимки,
-            фото/инструмент — только пока патттерн жив, firstPattern.pattern
-            не null); паттерн заполнен вручную (кнопка "Добавить вручную")
-            → прежняя инлайн-разметка "Описание:"/"Автор:", без изменений.
-            Оба варианта — сворачиваемая секция (Figma node-id=1619:20364). */}
-        <CollapsibleSection title="Описание" isOpen={isSectionOpen('description')} onToggle={() => toggleSection('description')}>
-          {firstPattern ? (
-            <button
-              type="button"
-              className="stash-details-pattern-card"
-              onClick={() => { if (firstPattern.patternId) navigate(`/pattern/${firstPattern.patternId}`); }}
-              disabled={!firstPattern.patternId}
-            >
-              <div className="stash-details-pattern-card-image">
-                {firstPattern.pattern ? (
-                  <img src={firstPattern.pattern.thumbnailUrl ?? firstPattern.pattern.imageUrl} alt="" />
-                ) : (
-                  <div className="stash-details-pattern-card-image-placeholder" />
-                )}
-              </div>
-              <div className="stash-usage-body add-project-yarn-card-body">
-                <p className="add-project-yarn-card-title">{firstPattern.patternTitleSnapshot}</p>
-                <p className="pd-label-row"><b>Автор:</b> {firstPattern.patternAuthorSnapshot}</p>
-                {firstPattern.pattern && firstPattern.pattern.instruments.length > 0 && (
-                  <p className="pd-label-row"><b>Инструмент:</b> {firstPattern.pattern.instruments.map((i) => i.name).join(', ')}</p>
-                )}
-              </div>
-            </button>
-          ) : (
-            <div className="stash-details-tag-group">
-              {project.manualDescription && (
-                <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">{project.manualDescription}</span></p>
-              )}
-              {project.manualAuthor && (
-                <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{project.manualAuthor}</span></p>
-              )}
-            </div>
-          )}
-        </CollapsibleSection>
+  // Десктоп (Figma node-id=1617:19969) — "Описание"/"Автор"/"Инструмент" не
+  // сворачиваемой карточкой, как на мобиле (CollapsibleSection "Описание" +
+  // отдельно "Инструмент"), а простой строкой из трёх полей. Те же
+  // источники данных, что и в мобильных блоках: firstPattern, если есть,
+  // иначе manualDescription/manualAuthor; project.instruments — то же поле,
+  // что у мобильного "Инструмент".
+  const metadataRow = (
+    <div className="project-details-meta-row">
+      <div className="project-details-meta-item">
+        <p className="pd-label">Описание:</p>
+        <p className="pd-value">{firstPattern ? firstPattern.patternTitleSnapshot : (project.manualDescription || '—')}</p>
       </div>
-
-      <CollapsibleSection title="Пряжа" isOpen={isSectionOpen('yarn')} onToggle={() => toggleSection('yarn')} className="stash-details-usages">
-        {project.yarns.map((y) => (
-          <SwipeToDelete
-            key={y.id}
-            isOpen={openSwipeYarnId === y.id}
-            onSwipeOpen={() => setOpenSwipeYarnId(y.id)}
-            onSwipeClose={() => setOpenSwipeYarnId((cur) => (cur === y.id ? null : cur))}
-            onTap={() => { if (y.skeinId) navigate(`/stash/${y.skeinId}`); }}
-            onRequestDelete={() => y.skeinId && handleRemoveYarn(y.skeinId)}
-            cardClassName="stash-usage-card"
-          >
-            <div className="stash-usage-image">
-              {y.skein && y.skein.images.length > 0 ? (
-                <img src={y.skein.images[0]} alt="" className="stash-usage-image" />
-              ) : (
-                <div className="stash-usage-image-placeholder">
-                  <img src={yarnPlaceholder} alt="" />
-                </div>
-              )}
-            </div>
-            {/* Заголовок карточки (add-project-yarn-card-title) — та же
-                типографика, что у YarnCardCompact в форме
-                создания/редактирования (Figma node-id=1470:27049). Строки
-                Бренд/Состав/Метраж/Расход/Остаток — общий pd-label-row,
-                единый для всех подписей-заголовков карточки проекта. */}
-            <div className="stash-usage-body add-project-yarn-card-body">
-              <p className="add-project-yarn-card-title">{y.yarnNameSnapshot}</p>
-              {y.brandSnapshot && <p className="pd-label-row"><b>Бренд:</b> {y.brandSnapshot}</p>}
-              {y.skein?.compositionSnapshot && (
-                <p className="pd-label-row"><b>Состав:</b> {y.skein.compositionSnapshot}</p>
-              )}
-              {y.skein?.mPer100gSnapshot != null && (
-                <p className="pd-label-row"><b>Метраж:</b> {y.skein.mPer100gSnapshot} м/100г</p>
-              )}
-              {y.amountAtCompletionG != null && (
-                <p className="pd-label-row"><b>Расход:</b> {y.amountAtCompletionG} г</p>
-              )}
-              {y.skein && (
-                <p className="pd-label-row"><b>Остаток:</b> {y.skein.currentWeightG} г из {y.skein.totalWeightG} г</p>
-              )}
-              {!y.skeinId && <p className="pd-label-row">Моток удалён из хранилища</p>}
-            </div>
-          </SwipeToDelete>
-        ))}
-
-        {isYarnSearchOpen ? (
-          <div className="add-project-field">
-            <input
-              className="add-project-input"
-              value={yarnQuery}
-              placeholder="Найдите моток в хранилище"
-              onChange={(e) => setYarnQuery(e.target.value)}
-              onFocus={() => setIsYarnFieldFocused(true)}
-              onBlur={() => setIsYarnFieldFocused(false)}
-              autoFocus
-            />
-            {yarnResults.length > 0 && (
-              <div className="add-project-cards-vertical">
-                {yarnResults.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="add-project-card-row"
-                    // onMouseDown, не onClick — onBlur инпута (выше)
-                    // срабатывает раньше onClick при клике по кнопке (blur
-                    // — часть смены фокуса на mousedown), список успел бы
-                    // скрыться до того, как клик дойдёт до кнопки.
-                    onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
-                  >
-                    <div className="add-project-card-row-body">
-                      <p className="add-project-card-row-title">{s.yarnNameSnapshot}</p>
-                      <p className="add-project-card-row-meta">Остаток: {s.currentWeightG} г</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-            {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
-              <>
-                <p className="add-project-empty-text">
-                  {yarnQuery.trim() ? 'Ничего не найдено' : 'В хранилище пока пусто'}
-                </p>
-                <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
-                  <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-                  Добавить пряжу
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <button type="button" className="plus-add-button" onClick={() => setIsYarnSearchOpen(true)}>
-            <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-            Привязать пряжу
-          </button>
-        )}
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Образец" isOpen={isSectionOpen('swatch')} onToggle={() => toggleSection('swatch')} className="stash-details-swatches">
-        {project.swatches.map((swatch) => (
-          <SwipeToDelete
-            key={swatch.id}
-            isOpen={openSwipeSwatchId === swatch.id}
-            onSwipeOpen={() => setOpenSwipeSwatchId(swatch.id)}
-            onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
-            onTap={() => { }}
-            onRequestDelete={() => setDeleteSwatchTarget(swatch)}
-            onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
-            cardClassName="stash-swatch-block"
-          >
-            <div className="stash-swatch-image">
-              {swatch.images.length > 0 ? (
-                <StashImageCarousel images={swatch.images} alt="Образец" classPrefix="stash-swatch-image" />
-              ) : (
-                <div className="stash-swatch-image-placeholder">
-                  <img src={swatchPlaceholder} alt="" />
-                </div>
-              )}
-            </div>
-            <div className="stash-swatch-body">
-              {swatch.needleSizeRaw && (
-                <p className="pd-label-row">
-                  <b>{swatch.instrumentType === 'hook' ? 'Крючок:' : swatch.instrumentType === 'needle' ? 'Спицы:' : 'Инструмент:'}</b>
-                  {' '}{swatch.needleSizeRaw}
-                </p>
-              )}
-              {!swatch.needleSizeRaw && swatch.instrumentType && (
-                <p className="pd-label-row"><b>{swatch.instrumentType === 'hook' ? 'Крючок' : 'Спицы'}</b></p>
-              )}
-              {swatch.strandsCount != null && <p className="pd-label-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
-              {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
-                <p className="pd-label-row">
-                  <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
-                </p>
-              )}
-              {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
-                <p className="pd-label-row">
-                  <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
-                </p>
-              )}
-              {swatch.note && <p className="pd-label-row stash-swatch-note">{swatch.note}</p>}
-            </div>
-          </SwipeToDelete>
-        ))}
-        <button type="button" className="plus-add-button" onClick={() => setIsAddSwatchOpen(true)}>
-          <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
-          Добавить образец
-        </button>
-      </CollapsibleSection>
-
+      <div className="project-details-meta-item">
+        <p className="pd-label">Автор:</p>
+        <p className="pd-value">{firstPattern ? firstPattern.patternAuthorSnapshot : (project.manualAuthor || '—')}</p>
+      </div>
       {project.instruments.length > 0 && (
-        <CollapsibleSection title="Инструмент" isOpen={isSectionOpen('instruments')} onToggle={() => toggleSection('instruments')} className="stash-details-info">
-          <p className="stash-details-row">
+        <div className="project-details-meta-item">
+          <p className="pd-label">Инструмент:</p>
+          <p className="pd-value">
             {project.instruments
               .map((i) => (i.sizeMm != null ? `${i.instrument.name} ${String(i.sizeMm).replace('.', ',')} мм` : i.instrument.name))
               .join(', ')}
           </p>
-        </CollapsibleSection>
+        </div>
       )}
+    </div>
+  );
 
-      {(project.documents.length > 0 || project.links.length > 0) && (
-        <CollapsibleSection title="Описание, файл" isOpen={isSectionOpen('documents')} onToggle={() => toggleSection('documents')} className="add-project-section">
-          {project.documents.length > 0 && (
-            <>
-              <p className="pd-label-row"><b>Файлы:</b></p>
-              {project.documents.map((doc) => (
-                <div key={doc.id} className="add-project-pdf-row">
-                  <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
-                    {doc.originalFileName}
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
-          {project.links.length > 0 && (
-            <>
-              <p className="pd-label-row"><b>Ссылки:</b></p>
-              {project.links.map((link, index) => (
-                <div key={index} className="add-project-pdf-row">
-                  <a className="add-project-pdf-link" href={link} target="_blank" rel="noopener noreferrer">
-                    {link}
-                  </a>
-                </div>
-              ))}
-            </>
-          )}
-        </CollapsibleSection>
-      )}
+  // "Сроки" — новый блок, которого на мобиле нет вообще (там просто
+  // .stash-details-dates-row без длительности). Для активного проекта
+  // (нет completedAt) — длительность "идёт" считается от сегодня, не
+  // скрывается (решение пользователя).
+  const durationEndDate = project.completedAt ? new Date(project.completedAt) : new Date();
+  const durationDays = Math.max(0, Math.round((durationEndDate.getTime() - new Date(project.startedAt).getTime()) / 86_400_000));
+  const durationLabel = project.completedAt
+    ? `${durationDays} ${pluralizeDays(durationDays)}`
+    : `Идёт ${durationDays} ${pluralizeDays(durationDays)}`;
 
-      {project.referencePhotos.length > 0 && (
-        <CollapsibleSection title="Референс" isOpen={isSectionOpen('references')} onToggle={() => toggleSection('references')} className="add-project-section">
-          <div className="add-project-photos">
-            {project.referencePhotos.map((url) => (
-              <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
-                <img src={url} alt="" />
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
-        <textarea
-          className="stash-notes-textarea"
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-          placeholder="Быстрая заметка к проекту"
-          rows={3}
+  const datesBlock = (
+    <div className="project-details-dates">
+      <div className="project-details-dates-row">
+        <DateInputField
+          label="Начало"
+          value={project.startedAt.slice(0, 10)}
+          onChange={handleStartedAtChange}
+          iconSize={16}
         />
-      </CollapsibleSection>
+        <DateInputField
+          label="Завершено"
+          value={project.completedAt ? project.completedAt.slice(0, 10) : ''}
+          onChange={handleCompletedAtChange}
+          disabled={project.status !== 'COMPLETED'}
+          iconSize={16}
+          align="end"
+        />
+      </div>
+      <p className="project-details-duration">{durationLabel}</p>
+    </div>
+  );
 
-      <Footer />
+  // Ниже — блоки, общие для мобиле/десктопа дословно (тот же
+  // CollapsibleSection с тем же contentsResources), вынесены в переменные
+  // только чтобы не дублировать JSX между линейным мобильным порядком и
+  // 3-колоночной десктопной сеткой (см. return ниже).
+  // Заголовок карточки (add-project-yarn-card-title) — та же типографика,
+  // что у YarnCardCompact в форме создания/редактирования (Figma node-id=
+  // 1470:27049). Строки Бренд/Состав/Метраж/Расход/Остаток — общий
+  // pd-label-row, единый для всех подписей-заголовков карточки проекта.
+  // Вынесено в отдельную функцию — переиспользуется и мобильной
+  // (SwipeToDelete), и десктопной ("..." вместо свайпа) версткой карточки.
+  const renderYarnContent = (y: ProjectDetailType['yarns'][number]) => (
+    <>
+      <div className="stash-usage-image">
+        {y.skein && y.skein.images.length > 0 ? (
+          <img src={y.skein.images[0]} alt="" className="stash-usage-image" />
+        ) : (
+          <div className="stash-usage-image-placeholder">
+            <img src={yarnPlaceholder} alt="" />
+          </div>
+        )}
+      </div>
+      <div className="stash-usage-body add-project-yarn-card-body">
+        <p className="add-project-yarn-card-title">{y.yarnNameSnapshot}</p>
+        {y.brandSnapshot && <p className="pd-label-row"><b>Бренд:</b> {y.brandSnapshot}</p>}
+        {y.skein?.compositionSnapshot && (
+          <p className="pd-label-row"><b>Состав:</b> {y.skein.compositionSnapshot}</p>
+        )}
+        {y.skein?.mPer100gSnapshot != null && (
+          <p className="pd-label-row"><b>Метраж:</b> {y.skein.mPer100gSnapshot} м/100г</p>
+        )}
+        {y.amountAtCompletionG != null && (
+          <p className="pd-label-row"><b>Расход:</b> {y.amountAtCompletionG} г</p>
+        )}
+        {y.skein && (
+          <p className="pd-label-row"><b>Остаток:</b> {y.skein.currentWeightG} г из {y.skein.totalWeightG} г</p>
+        )}
+        {!y.skeinId && <p className="pd-label-row">Моток удалён из хранилища</p>}
+      </div>
+    </>
+  );
 
-      <AddProjectModal
-        isOpen={isEditOpen}
-        project={project}
-        onClose={() => setIsEditOpen(false)}
-        onUpdated={(updated) => {
-          setIsEditOpen(false);
-          setProject(updated);
-        }}
-        onRequestComplete={() => {
-          setIsEditOpen(false);
-          setIsCompleteWizardOpen(true);
-        }}
+  // Общий для моб./десктоп версий хвост секции "Пряжа" — поиск/привязка
+  // мотка из хранилища.
+  const yarnAddUI = (
+    <>
+      {isYarnSearchOpen ? (
+        <div className="add-project-field">
+          <input
+            className="add-project-input"
+            value={yarnQuery}
+            placeholder="Найдите моток в хранилище"
+            onChange={(e) => setYarnQuery(e.target.value)}
+            onFocus={() => setIsYarnFieldFocused(true)}
+            onBlur={() => setIsYarnFieldFocused(false)}
+            autoFocus
+          />
+          {yarnResults.length > 0 && (
+            <div className="add-project-cards-vertical">
+              {yarnResults.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="add-project-card-row"
+                  // onMouseDown, не onClick — onBlur инпута (выше)
+                  // срабатывает раньше onClick при клике по кнопке (blur
+                  // — часть смены фокуса на mousedown), список успел бы
+                  // скрыться до того, как клик дойдёт до кнопки.
+                  onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
+                >
+                  <div className="add-project-card-row-body">
+                    <p className="add-project-card-row-title">{s.yarnNameSnapshot}</p>
+                    <p className="add-project-card-row-meta">Остаток: {s.currentWeightG} г</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
+            <>
+              <p className="add-project-empty-text">
+                {yarnQuery.trim() ? 'Ничего не найдено' : 'В хранилище пока пусто'}
+              </p>
+              {/* <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
+                <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+                Добавить пряжу
+              </button> */}
+              <button type="button" className="plus-add-button" onClick={() => setIsAddYarnOpen(true)}>
+                <Plus strokeWidth={1} className="plus-add-button-icon" />
+                Добавить пряжу
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        // <button type="button" className="plus-add-button" onClick={() => setIsYarnSearchOpen(true)}>
+        //   <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+        //   Привязать пряжу
+        // </button>
+        <button type="button" className="plus-add-button" onClick={() => setIsYarnSearchOpen(true)}>
+          <Plus strokeWidth={1} className="plus-add-button-icon" />
+          Привязать пряжу
+        </button>
+      )}
+    </>
+  );
+
+  const yarnSection = (
+    <CollapsibleSection title="Пряжа" isOpen={isSectionOpen('yarn')} onToggle={() => toggleSection('yarn')} className="stash-details-usages">
+      {project.yarns.map((y) => (
+        <SwipeToDelete
+          key={y.id}
+          isOpen={openSwipeYarnId === y.id}
+          onSwipeOpen={() => setOpenSwipeYarnId(y.id)}
+          onSwipeClose={() => setOpenSwipeYarnId((cur) => (cur === y.id ? null : cur))}
+          onTap={() => { if (y.skeinId) navigate(`/stash/${y.skeinId}`); }}
+          onRequestDelete={() => y.skeinId && handleRemoveYarn(y.skeinId)}
+          cardClassName="stash-usage-card"
+        >
+          {renderYarnContent(y)}
+        </SwipeToDelete>
+      ))}
+      {yarnAddUI}
+    </CollapsibleSection>
+  );
+
+  // Десктоп — без свайпа (нет тача): клик по карточке ведёт на страницу
+  // мотка (как и тап на мобиле), а "Удалить" уходит под "..." (тот же
+  // HeaderActionsMenu, что и у "Образца"/в шапке карточки). Без
+  // "Редактировать" — для привязки пряжи к проекту нет своего
+  // редактирования (в отличие от образца), им в кебабе быть нечему.
+  const yarnSectionDesktop = (
+    <CollapsibleSection title="Пряжа" isOpen={isSectionOpen('yarn')} onToggle={() => toggleSection('yarn')} className="stash-details-usages">
+      {project.yarns.map((y) => (
+        <div
+          key={y.id}
+          className="stash-usage-card stash-usage-card--desktop"
+          onClick={() => { if (y.skeinId) navigate(`/stash/${y.skeinId}`); }}
+        >
+          {renderYarnContent(y)}
+          <div className="stash-usage-card-menu" onClick={(e) => e.stopPropagation()}>
+            <HeaderActionsMenu onDelete={() => y.skeinId && handleRemoveYarn(y.skeinId)} />
+          </div>
+        </div>
+      ))}
+      {yarnAddUI}
+    </CollapsibleSection>
+  );
+
+  // Переиспользуется мобильной (SwipeToDelete) и десктопной ("...") версткой.
+  const renderSwatchContent = (swatch: ProjectSwatch) => (
+    <>
+      <div className="stash-swatch-image">
+        {swatch.images.length > 0 ? (
+          <StashImageCarousel images={swatch.images} alt="Образец" classPrefix="stash-swatch-image" />
+        ) : (
+          <div className="stash-swatch-image-placeholder">
+            <img src={swatchPlaceholder} alt="" />
+          </div>
+        )}
+      </div>
+      <div className="stash-swatch-body">
+        {swatch.needleSizeRaw && (
+          <p className="pd-label-row">
+            <b>{swatch.instrumentType === 'hook' ? 'Крючок:' : swatch.instrumentType === 'needle' ? 'Спицы:' : swatch.instrumentType === 'machine' ? 'Вязальная машина:' : 'Инструмент:'}</b>
+            {' '}{swatch.needleSizeRaw}
+          </p>
+        )}
+        {/* Было без ветки для 'machine' (и без явного default) — любой
+            инструмент, кроме 'hook', молча подписывался "Спицы". */}
+        {!swatch.needleSizeRaw && swatch.instrumentType && (
+          <p className="pd-label-row"><b>{swatch.instrumentType === 'hook' ? 'Крючок' : swatch.instrumentType === 'machine' ? 'Вязальная машина' : 'Спицы'}</b></p>
+        )}
+        {swatch.strandsCount != null && <p className="pd-label-row"><b>Количество нитей:</b> {swatch.strandsCount}</p>}
+        {(swatch.densityStitchesBefore || swatch.densityRowsBefore) && (
+          <p className="pd-label-row">
+            <b>До ВТО:</b> {swatch.densityStitchesBefore ?? '—'} п. х {swatch.densityRowsBefore ?? '—'} р.
+          </p>
+        )}
+        {(swatch.densityStitchesAfter || swatch.densityRowsAfter) && (
+          <p className="pd-label-row">
+            <b>После ВТО:</b> {swatch.densityStitchesAfter ?? '—'} п. х {swatch.densityRowsAfter ?? '—'} р.
+          </p>
+        )}
+        {swatch.note && <p className="pd-label-row stash-swatch-note">{swatch.note}</p>}
+      </div>
+    </>
+  );
+
+  const swatchSection = (
+    <CollapsibleSection title="Образец" isOpen={isSectionOpen('swatch')} onToggle={() => toggleSection('swatch')} className="stash-details-swatches">
+      {project.swatches.map((swatch) => (
+        <SwipeToDelete
+          key={swatch.id}
+          isOpen={openSwipeSwatchId === swatch.id}
+          onSwipeOpen={() => setOpenSwipeSwatchId(swatch.id)}
+          onSwipeClose={() => setOpenSwipeSwatchId((cur) => (cur === swatch.id ? null : cur))}
+          onTap={() => { }}
+          onRequestDelete={() => setDeleteSwatchTarget(swatch)}
+          onRequestEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
+          cardClassName="stash-swatch-block"
+        >
+          {renderSwatchContent(swatch)}
+        </SwipeToDelete>
+      ))}
+      <button type="button" className="plus-add-button" onClick={() => setIsAddSwatchOpen(true)}>
+        <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+        Добавить образец
+      </button>
+    </CollapsibleSection>
+  );
+
+  // Десктоп — без свайпа, Редактировать/Удалить уходят под "..." (тот же
+  // HeaderActionsMenu, что в адаптиве карточки пряжи, StashSkeinDetails.tsx).
+  const swatchSectionDesktop = (
+    <CollapsibleSection title="Образец" isOpen={isSectionOpen('swatch')} onToggle={() => toggleSection('swatch')} className="stash-details-swatches">
+      {project.swatches.map((swatch) => (
+        <div key={swatch.id} className="stash-swatch-block stash-swatch-block--desktop">
+          {renderSwatchContent(swatch)}
+          <HeaderActionsMenu
+            onEdit={() => { setEditSwatchTarget(swatch); setLastEditSwatch(swatch); }}
+            onDelete={() => setDeleteSwatchTarget(swatch)}
+          />
+        </div>
+      ))}
+      <button type="button" className="plus-add-button" onClick={() => setIsAddSwatchOpen(true)}>
+        <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
+        Добавить образец
+      </button>
+    </CollapsibleSection>
+  );
+
+  const documentsSection = (project.documents.length > 0 || project.links.length > 0) ? (
+    <CollapsibleSection title="Описание, файл" isOpen={isSectionOpen('documents')} onToggle={() => toggleSection('documents')} className="add-project-section">
+      {project.documents.length > 0 && (
+        <>
+          <p className="pd-label-row"><b>Файлы:</b></p>
+          {project.documents.map((doc) => (
+            <div key={doc.id} className="add-project-pdf-row">
+              <button type="button" className="add-project-pdf-link" onClick={() => setViewingDocument(doc)}>
+                {doc.originalFileName}
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+      {project.links.length > 0 && (
+        <>
+          <p className="pd-label-row"><b>Ссылки:</b></p>
+          {project.links.map((link, index) => (
+            <div key={index} className="add-project-pdf-row">
+              <a className="add-project-pdf-link" href={link} target="_blank" rel="noopener noreferrer">
+                {link}
+              </a>
+            </div>
+          ))}
+        </>
+      )}
+    </CollapsibleSection>
+  ) : null;
+
+  const referencesSection = project.referencePhotos.length > 0 ? (
+    <CollapsibleSection title="Референс" isOpen={isSectionOpen('references')} onToggle={() => toggleSection('references')} className="add-project-section">
+      <div className="add-project-photos">
+        {project.referencePhotos.map((url) => (
+          <div key={url} className="add-project-photo-thumb add-project-photo-thumb-referencePhotos">
+            <img src={url} alt="" />
+          </div>
+        ))}
+      </div>
+    </CollapsibleSection>
+  ) : null;
+
+  const notesSection = (
+    <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
+      <textarea
+        className="stash-notes-textarea"
+        value={noteText}
+        onChange={(e) => setNoteText(e.target.value)}
+        placeholder="Быстрая заметка к проекту"
+        rows={3}
       />
+    </CollapsibleSection>
+  );
 
-      <CompleteProjectWizard
-        isOpen={isCompleteWizardOpen}
-        project={project}
-        onClose={() => setIsCompleteWizardOpen(false)}
-        onCompleted={(updated) => {
-          setIsCompleteWizardOpen(false);
-          setProject(updated);
-        }}
-      />
+  return (
+    <>
+      <div className="stash-details-container">
+        {isDesktop ? (
+          <>
+            <div className="stash-details-header">
+              <p className="stash-breadcrumb">Проекты / {project.title}</p>
+            </div>
 
-      <ProjectSwatchModal
-        isOpen={isAddSwatchOpen}
-        projectId={project.id}
-        onClose={() => setIsAddSwatchOpen(false)}
-        onSaved={() => {
-          setIsAddSwatchOpen(false);
-          load();
-        }}
-      />
+            <div className="project-details-desktop-grid">
+              <div className="stash-details-desktop-gallery">
+                {heroImages.length > 0 ? (
+                  <StashImageGalleryDesktop images={heroImages} alt={project.title} />
+                ) : (
+                  <div className="stash-gallery-desktop-main stash-gallery-desktop-main--placeholder">
+                    <img src={projectPlaceholder} alt="" />
+                  </div>
+                )}
+                {documentsSection}
+                {referencesSection}
+              </div>
 
-      {lastEditSwatch && (
+              <div className="project-details-title-row">
+                <h1 className="stash-details-name">{project.title}</h1>
+                {statusDropdown}
+              </div>
+
+              <div className="stash-details-desktop-actions">
+                {/* <button type="button" className="stash-details-desktop-edit" onClick={() => setIsEditOpen(true)}>
+                <SquarePen size={18} strokeWidth={1.5} />
+                Редактировать
+              </button>
+              <button type="button" className="stash-details-desktop-delete" onClick={() => setIsDeleteProjectOpen(true)} aria-label="Удалить">
+                <Trash2 size={18} strokeWidth={1.5} />
+              </button> */}
+                <button type="button" className="stash-details-desktop-edit" onClick={() => setIsEditOpen(true)}>
+                  <SquarePen strokeWidth={1.5} />
+                  Редактировать
+                </button>
+                <button type="button" className="stash-details-desktop-delete" onClick={() => setIsDeleteProjectOpen(true)} aria-label="Удалить">
+                  <Trash2 strokeWidth={1.5} />
+                </button>
+              </div>
+
+              {metadataRow}
+              {datesBlock}
+              <div className="project-details-row2-divider" />
+
+              <div className="project-details-desktop-content">
+                {yarnSectionDesktop}
+                {notesSection}
+              </div>
+
+              <div className="stash-details-desktop-swatches">
+                {swatchSectionDesktop}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="stash-details-header">
+              <button className="back-button" onClick={handleBack}>
+                <img src={arrowLeftIcon} alt="Back" className="back-button-icon" />
+                Назад
+              </button>
+              <HeaderActionsMenu onEdit={() => setIsEditOpen(true)} onDelete={() => setIsDeleteProjectOpen(true)} />
+            </div>
+
+            <div className="stash-details-image-wrapper">
+              <div className="stash-details-image-container">
+                {heroImages.length > 0 ? (
+                  <StashImageCarousel images={heroImages} alt={project.title} />
+                ) : (
+                  <div className="stash-details-image stash-details-image-placeholder">
+                    <img src={projectPlaceholder} alt="" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="stash-details-info add-details-info">
+              <h1 className="stash-details-name">{project.title}</h1>
+
+              <div className="stash-details-status-row">
+                <p className="pd-label">Статус</p>
+                {statusDropdown}
+              </div>
+
+              <div className="stash-details-dates-row">
+                <div className="stash-details-date-col add-details-date-col">
+                  <p className="pd-label">Начало</p>
+                  <p className="pd-value pd-value--bold">{new Date(project.startedAt).toLocaleDateString('ru-RU')}</p>
+                </div>
+                <div className="stash-details-date-col add-details-date-col stash-details-date-col--end">
+                  <p className="pd-label">Завершено</p>
+                  <p className="pd-value pd-value--bold">{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ru-RU') : '__.__.____'}</p>
+                </div>
+              </div>
+
+              {/* Вариативно (Figma node-id=1476:27969): паттерн выбран из
+                каталога → карточка узора (фото/название/автор/инструмент,
+                переживает даже удаление паттерна из каталога через снимки,
+                фото/инструмент — только пока патттерн жив, firstPattern.pattern
+                не null); паттерн заполнен вручную (кнопка "Добавить вручную")
+                → прежняя инлайн-разметка "Описание:"/"Автор:", без изменений.
+                Оба варианта — сворачиваемая секция (Figma node-id=1619:20364). */}
+              <CollapsibleSection title="Описание" isOpen={isSectionOpen('description')} onToggle={() => toggleSection('description')}>
+                {firstPattern ? (
+                  <button
+                    type="button"
+                    className="stash-details-pattern-card"
+                    onClick={() => { if (firstPattern.patternId) navigate(`/pattern/${firstPattern.patternId}`); }}
+                    disabled={!firstPattern.patternId}
+                  >
+                    <div className="stash-details-pattern-card-image">
+                      {firstPattern.pattern ? (
+                        <img src={firstPattern.pattern.thumbnailUrl ?? firstPattern.pattern.imageUrl} alt="" />
+                      ) : (
+                        <div className="stash-details-pattern-card-image-placeholder" />
+                      )}
+                    </div>
+                    <div className="stash-usage-body add-project-yarn-card-body">
+                      <p className="add-project-yarn-card-title">{firstPattern.patternTitleSnapshot}</p>
+                      <p className="pd-label-row"><b>Автор:</b> {firstPattern.patternAuthorSnapshot}</p>
+                      {firstPattern.pattern && firstPattern.pattern.instruments.length > 0 && (
+                        <p className="pd-label-row"><b>Инструмент:</b> {firstPattern.pattern.instruments.map((i) => i.name).join(', ')}</p>
+                      )}
+                    </div>
+                  </button>
+                ) : (
+                  <div className="stash-details-tag-group">
+                    {project.manualDescription && (
+                      <p className="stash-details-tag-row"><span className="pd-label">Описание:</span> <span className="pd-value">{project.manualDescription}</span></p>
+                    )}
+                    {project.manualAuthor && (
+                      <p className="stash-details-tag-row"><span className="pd-label">Автор:</span> <span className="pd-value">{project.manualAuthor}</span></p>
+                    )}
+                  </div>
+                )}
+              </CollapsibleSection>
+            </div>
+
+            {yarnSection}
+            {swatchSection}
+
+            {project.instruments.length > 0 && (
+              <CollapsibleSection title="Инструмент" isOpen={isSectionOpen('instruments')} onToggle={() => toggleSection('instruments')} className="stash-details-info">
+                <p className="stash-details-row">
+                  {project.instruments
+                    .map((i) => (i.sizeMm != null ? `${i.instrument.name} ${String(i.sizeMm).replace('.', ',')} мм` : i.instrument.name))
+                    .join(', ')}
+                </p>
+              </CollapsibleSection>
+            )}
+
+            {documentsSection}
+            {referencesSection}
+            {notesSection}
+          </>
+        )}
+
+        {/* <Footer /> */}
+
+        <AddProjectModal
+          isOpen={isEditOpen}
+          project={project}
+          onClose={() => setIsEditOpen(false)}
+          onUpdated={(updated) => {
+            setIsEditOpen(false);
+            setProject(updated);
+          }}
+          onRequestComplete={() => {
+            setIsEditOpen(false);
+            setIsCompleteWizardOpen(true);
+          }}
+        />
+
+        <CompleteProjectWizard
+          isOpen={isCompleteWizardOpen}
+          project={project}
+          onClose={() => setIsCompleteWizardOpen(false)}
+          onCompleted={(updated) => {
+            setIsCompleteWizardOpen(false);
+            setProject(updated);
+          }}
+        />
+
         <ProjectSwatchModal
-          isOpen={!!editSwatchTarget}
+          isOpen={isAddSwatchOpen}
           projectId={project.id}
-          swatch={lastEditSwatch}
-          onClose={() => setEditSwatchTarget(null)}
+          onClose={() => setIsAddSwatchOpen(false)}
           onSaved={() => {
-            setEditSwatchTarget(null);
+            setIsAddSwatchOpen(false);
             load();
           }}
         />
-      )}
 
-      <DeleteConfirmModal
-        isOpen={!!deleteSwatchTarget}
-        title="Удалить образец?"
-        text="Образец будет удалён без возможности восстановить."
-        isDeleting={isDeletingSwatch}
-        onCancel={() => setDeleteSwatchTarget(null)}
-        onConfirm={handleConfirmDeleteSwatch}
-      />
-
-      <DeleteProjectConfirmModal
-        isOpen={isDeleteProjectOpen}
-        projectTitle={project.title}
-        hasYarnUsages={project.usages.length > 0}
-        isDeleting={isDeletingProject}
-        onCancel={() => setIsDeleteProjectOpen(false)}
-        onConfirm={handleConfirmDeleteProject}
-      />
-
-      <AddYarnModal
-        isOpen={isAddYarnOpen}
-        initialNameQuery={yarnQuery}
-        onClose={() => setIsAddYarnOpen(false)}
-        onCreated={handleYarnCreated}
-        onLimitReached={() => {
-          setIsAddYarnOpen(false);
-          setIsYarnLimitPaywallOpen(true);
-        }}
-      />
-
-      <StashPaywallBanner
-        isOpen={isYarnLimitPaywallOpen}
-        reason="limit"
-        freeLimit={10}
-        onClose={() => setIsYarnLimitPaywallOpen(false)}
-      />
-
-      {viewingDocument && (
-        <Suspense fallback={null}>
-          <PdfViewerModal
-            isOpen={!!viewingDocument}
-            documentId={viewingDocument.id}
-            fileName={viewingDocument.originalFileName}
-            onClose={() => setViewingDocument(null)}
+        {lastEditSwatch && (
+          <ProjectSwatchModal
+            isOpen={!!editSwatchTarget}
+            projectId={project.id}
+            swatch={lastEditSwatch}
+            onClose={() => setEditSwatchTarget(null)}
+            onSaved={() => {
+              setEditSwatchTarget(null);
+              load();
+            }}
           />
-        </Suspense>
-      )}
-    </div>
+        )}
+
+        <DeleteConfirmModal
+          isOpen={!!deleteSwatchTarget}
+          title="Удалить образец?"
+          text="Образец будет удалён без возможности восстановить."
+          isDeleting={isDeletingSwatch}
+          onCancel={() => setDeleteSwatchTarget(null)}
+          onConfirm={handleConfirmDeleteSwatch}
+        />
+
+        <DeleteProjectConfirmModal
+          isOpen={isDeleteProjectOpen}
+          projectTitle={project.title}
+          hasYarnUsages={project.usages.length > 0}
+          isDeleting={isDeletingProject}
+          onCancel={() => setIsDeleteProjectOpen(false)}
+          onConfirm={handleConfirmDeleteProject}
+        />
+
+        <AddYarnModal
+          isOpen={isAddYarnOpen}
+          initialNameQuery={yarnQuery}
+          onClose={() => setIsAddYarnOpen(false)}
+          onCreated={handleYarnCreated}
+          onLimitReached={() => {
+            setIsAddYarnOpen(false);
+            setIsYarnLimitPaywallOpen(true);
+          }}
+        />
+
+        <StashPaywallBanner
+          isOpen={isYarnLimitPaywallOpen}
+          reason="limit"
+          freeLimit={10}
+          onClose={() => setIsYarnLimitPaywallOpen(false)}
+        />
+
+        {viewingDocument && (
+          <Suspense fallback={null}>
+            <PdfViewerModal
+              isOpen={!!viewingDocument}
+              documentId={viewingDocument.id}
+              fileName={viewingDocument.originalFileName}
+              onClose={() => setViewingDocument(null)}
+            />
+          </Suspense>
+        )}
+      </div>
+      <Footer />
+    </>
   );
 };

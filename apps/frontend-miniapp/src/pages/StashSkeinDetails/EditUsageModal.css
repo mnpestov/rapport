@@ -1,0 +1,53 @@
+/* Десктоп — небольшой центрированный диалог, одна прокручиваемая колонка
+   полей (как AddSwatchModal.css), а не двухколоночный грид с фото-колонкой
+   и степпером, как у LogUsageWizard/CompleteProjectWizard: это правка уже
+   существующей записи списания одним экраном, фото/шагов тут нет.
+
+   Классы .log-usage-overlay/.log-usage-panel/.log-usage-header/
+   .log-usage-body/.log-usage-footer переиспользуются из LogUsageWizard.css
+   (тот же импорт в EditUsageModal.tsx) — но там же для .log-usage-panel уже
+   есть десктопное правило (grid-template-areas "photo header"/"photo body"/
+   "footer footer"), рассчитанное на фото-колонку слева, которой здесь нет.
+   Чтобы не трогать тот файл (и не задеть сам LogUsageWizard/
+   CompleteProjectWizard), все переопределения здесь скоуплены через
+   родительский класс .edit-usage-modal — составной/descendant-селектор
+   специфичнее одиночного класса и побеждает вне зависимости от порядка
+   подключения файлов. .log-usage-overlay уже центрирует диалог (общее
+   правило в LogUsageWizard.css), здесь это не дублируется. */
+@media (min-width: 768px) {
+  .edit-usage-modal .log-usage-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: min(calc(640 * (100vw - 100px) / 1340), 640px);
+    max-height: 90vh;
+    border-radius: 2px;
+    box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
+    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(30 * (100vw - 100px) / 1340), 30px);
+    box-sizing: border-box;
+  }
+
+  .edit-usage-modal .log-usage-header {
+    display: block;
+    text-align: left;
+    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(24 * (100vw - 100px) / 1340), 24px) 0;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .edit-usage-modal .log-usage-title {
+    font-size: min(calc(24 * (100vw - 100px) / 1340), 24px);
+  }
+
+  .edit-usage-modal .log-usage-body {
+    padding: min(calc(16 * (100vw - 100px) / 1340), 16px) min(calc(24 * (100vw - 100px) / 1340), 24px);
+    overflow-y: auto;
+  }
+
+  .edit-usage-modal .log-usage-footer {
+    border-top: 1px solid #e5e5e5;
+    padding: min(calc(16 * (100vw - 100px) / 1340), 16px) min(calc(24 * (100vw - 100px) / 1340), 24px);
+    margin: 0;
+    flex-shrink: 0;
+  }
+}

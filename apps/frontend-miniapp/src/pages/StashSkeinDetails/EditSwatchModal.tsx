@@ -5,10 +5,11 @@ import { updateStashSwatch, uploadStashImage, StashSwatch } from '../../api/stas
 import { API_URL } from '../../api/config';
 import '../../styles/sheet.css';
 import '../Stash/AddYarnModal.css';
+import './AddSwatchModal.css';
 
 const MAX_IMAGES = 5;
 
-type InstrumentType = 'hook' | 'needle' | null;
+type InstrumentType = 'hook' | 'needle' | 'machine' | null;
 
 interface EditSwatchModalProps {
   isOpen: boolean;
@@ -104,7 +105,7 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
   };
 
   return (
-    <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+    <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay add-swatch-modal ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="add-yarn-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="add-yarn-header">
           <h2 className="add-yarn-title">Редактировать образец</h2>
@@ -128,17 +129,25 @@ export const EditSwatchModal: React.FC<EditSwatchModalProps> = ({ isOpen, swatch
               >
                 Крючок
               </button>
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'machine' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => { setInstrumentType(instrumentType === 'machine' ? null : 'machine'); setNeedleSizeRaw(''); }}
+              >
+                Вязальная машина
+              </button>
             </div>
           </div>
 
-          {/* instrumentType || needleSizeRaw — не только instrumentType:
-              образцы, созданные до появления выбора инструмента, имеют
-              instrumentType=null, но могут уже хранить непустой
-              needleSizeRaw (старый свободный текст размера). Если
+          {/* У вязальной машины нет параметра "размер" — поле ниже скрыто
+              для неё отдельно. instrumentType || needleSizeRaw — не только
+              instrumentType: образцы, созданные до появления выбора
+              инструмента, имеют instrumentType=null, но могут уже хранить
+              непустой needleSizeRaw (старый свободный текст размера). Если
               гейтить только на instrumentType, это старое значение стало
               бы невидимым/недоступным для правки в форме, хотя данные на
               сервере целы и продолжают отображаться в карточке. */}
-          {(instrumentType || needleSizeRaw.trim()) && (
+          {instrumentType !== 'machine' && (instrumentType || needleSizeRaw.trim()) && (
             <div className="add-yarn-field">
               <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
               <input

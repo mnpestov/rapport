@@ -8,6 +8,7 @@ import { StashSkeinDetails } from './pages/StashSkeinDetails/StashSkeinDetails';
 import { Projects } from './pages/Projects/Projects';
 import { ProjectDetails } from './pages/Projects/ProjectDetails';
 import { TabBar } from './components/TabBar/TabBar';
+import { TopNav } from './components/TopNav/TopNav';
 import { LoadingScreen } from './pages/LoadingScreen/LoadingScreen';
 import { SubscriptionRequired } from './pages/SubscriptionRequired/SubscriptionRequired';
 import { Maintenance } from './pages/Maintenance/Maintenance';
@@ -514,6 +515,9 @@ function App() {
 
   return (
     <>
+      {/* Тот же гейт, что у TabBar ниже — одна навигация на десктоп,
+          другая на мобиле, видимость целиком зависит от тех же разрешений. */}
+      {(access.yarnStash || access.projects) && <TopNav />}
       <Routes>
         <Route path="/" element={<Catalog />} />
         <Route path="/pattern/:id" element={<PatternDetails />} />

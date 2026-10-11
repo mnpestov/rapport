@@ -7,7 +7,7 @@
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -28,7 +28,7 @@
    низу экрана над ним. .favorites-container уже flex-колонка — margin-top:
    auto на Footer, её прямом flex-child (JSX-фрагмент не создаёт свой DOM-
    узел), забирает всё свободное место в колонке. */
-.favorites-container > .app-footer {
+.favorites-container>.app-footer {
   margin-top: auto;
 }
 

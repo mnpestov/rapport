@@ -6,10 +6,11 @@ import { uploadStashImage } from '../../api/stashApi';
 import { API_URL } from '../../api/config';
 import '../../styles/sheet.css';
 import '../Stash/AddYarnModal.css';
+import '../StashSkeinDetails/AddSwatchModal.css';
 
 const MAX_IMAGES = 5;
 
-type InstrumentType = 'hook' | 'needle' | null;
+type InstrumentType = 'hook' | 'needle' | 'machine' | null;
 
 interface ProjectSwatchModalProps {
   isOpen: boolean;
@@ -110,7 +111,7 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
   };
 
   return (
-    <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
+    <div ref={sheetRef} className={`add-yarn-overlay sheet-overlay add-swatch-modal ${isVisible ? 'sheet-open' : ''}`} onClick={onClose}>
       <div className="add-yarn-panel sheet-panel" onClick={(e) => e.stopPropagation()}>
         <div className="add-yarn-header">
           <h2 className="add-yarn-title">{isEditing ? 'Редактировать образец' : 'Новый образец'}</h2>
@@ -134,16 +135,25 @@ export const ProjectSwatchModal: React.FC<ProjectSwatchModalProps> = ({ isOpen, 
               >
                 Крючок
               </button>
+              <button
+                type="button"
+                className={`add-yarn-instrument-chip${instrumentType === 'machine' ? ' add-yarn-instrument-chip--active' : ''}`}
+                onClick={() => { setInstrumentType(instrumentType === 'machine' ? null : 'machine'); setNeedleSizeRaw(''); }}
+              >
+                Вязальная машина
+              </button>
             </div>
           </div>
 
-          {/* instrumentType || needleSizeRaw — образцы, созданные до
+          {/* У вязальной машины нет параметра "размер" — поле ниже скрыто
+              для неё отдельной проверкой instrumentType !== 'machine'.
+              instrumentType || needleSizeRaw — образцы, созданные до
               появления выбора инструмента, могут уже хранить непустой
               needleSizeRaw при instrumentType=null; гейтинг только на
               instrumentType скрыл бы это старое значение от редактирования. */}
-          {(instrumentType || needleSizeRaw.trim()) && (
+          {instrumentType !== 'machine' && (instrumentType || needleSizeRaw.trim()) && (
             <div className="add-yarn-field">
-              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : 'инструмента'}</label>
+              <label className="add-yarn-label">Размер {instrumentType === 'needle' ? 'спиц' : instrumentType === 'hook' ? 'крючка' : instrumentType === 'machine' ? 'вязальной машины' : 'инструмента'}</label>
               <input
                 className="add-yarn-input"
                 value={needleSizeRaw}

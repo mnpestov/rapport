@@ -24,7 +24,7 @@ export interface StashSwatch {
   images: string[];
   needleSizeRaw: string | null;
   // 'hook' = крючок, 'needle' = спицы, null = не указан.
-  instrumentType: 'hook' | 'needle' | null;
+  instrumentType: 'hook' | 'needle' | 'machine' | null;
   strandsCount: number | null;
   densityStitchesBefore: string | null;
   densityRowsBefore: string | null;
@@ -84,6 +84,8 @@ export interface FetchStashSkeinsResponse {
   // та же стабильная сводка, что и totalCurrentWeightG выше.
   totalWeightG: number;
   totalUsedWeightG: number;
+  // "N артикулов меньше 50 г" — десктопная сводка (Figma node-id=1651:21630).
+  lowStockCount: number;
   // Обновлённая модель платного доступа (Figma node-id=1358:21045/1358:21355):
   // хранилище бесплатно всем до freeLimit артикулов, PREMIUM_YARN_STASH
   // снимает лимит и открывает подбор описаний (matches).
@@ -335,7 +337,7 @@ export const deleteStashSkein = async (id: string): Promise<void> => {
 export interface CreateStashSwatchPayload {
   images?: string[];
   needleSizeRaw?: string;
-  instrumentType?: 'hook' | 'needle';
+  instrumentType?: 'hook' | 'needle' | 'machine';
   strandsCount?: number;
   densityStitchesBefore?: number;
   densityRowsBefore?: number;
@@ -400,6 +402,30 @@ export const logStashUsage = async (skeinId: string, payload: LogStashUsagePaylo
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error || `Failed to log stash usage: ${response.status}`);
+  }
+  return response.json();
+};
+
+export interface LogStashUsageForProjectPayload {
+  projectId: string;
+  amountG: number;
+  needleSizeRaw?: string;
+}
+
+// Шаг "Проект" визарда списания — в отличие от logStashUsage выше,
+// инкрементально добавляет вес к уже существующему списанию на эту же
+// пару (проект, моток), если оно уже есть (backend/stashController.ts::
+// logUsageForProject) — автор/описание берёт из самого проекта, сюда их
+// передавать не нужно.
+export const logStashUsageForProject = async (skeinId: string, payload: LogStashUsageForProjectPayload): Promise<StashUsage> => {
+  const response = await authorizedFetch(`${API_URL}/stash/skeins/${skeinId}/usage-for-project`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 10000);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `Failed to log stash usage for project: ${response.status}`);
   }
   return response.json();
 };
