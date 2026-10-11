@@ -25,7 +25,11 @@ export const Stash: React.FC = () => {
   const isDesktop = useIsDesktop();
   const [items, setItems] = useState<StashSkein[]>([]);
   const [total, setTotal] = useState(0);
-  const [totalWeight, setTotalWeight] = useState(0);
+  // Вес "в наличии" (сумма currentWeightG по всем моткам) — показывается как
+  // "общий вес" в шапке хранилища. Раньше тут был totalWeightG (вес на
+  // момент покупки, включая уже израсходованное) — по просьбе пользователя
+  // "общий вес" должен отражать то, что реально есть в наличии сейчас.
+  const [totalCurrentWeight, setTotalCurrentWeight] = useState(0);
   const [totalUsedWeight, setTotalUsedWeight] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -62,7 +66,7 @@ export const Stash: React.FC = () => {
       const data = await fetchStashSkeins({ page: pageToLoad, search: search || undefined, archived });
       setItems((prev) => (pageToLoad === 1 ? data.items : [...prev, ...data.items]));
       setTotal(data.total);
-      setTotalWeight(data.totalWeightG);
+      setTotalCurrentWeight(data.totalCurrentWeightG);
       setTotalUsedWeight(data.totalUsedWeightG);
       setIsUnlimited(data.isUnlimited);
       setFreeLimit(data.freeLimit);
@@ -110,11 +114,10 @@ export const Stash: React.FC = () => {
       await deleteStashSkein(deleteTarget.id);
       setItems((prev) => prev.filter((i) => i.id !== deleteTarget.id));
       setTotal((prev) => Math.max(0, prev - 1));
-      // totalWeight — общий вес (totalWeightG), не остаток: вычитаем
-      // totalWeightG удалённого мотка, а не currentWeightG (тот ушёл бы в
-      // totalUsedWeight отдельно). Раньше здесь по ошибке осталось
-      // currentWeightG — верно только пока ничего не списано с мотка.
-      setTotalWeight((prev) => Math.max(0, prev - deleteTarget.totalWeightG));
+      // totalCurrentWeight — вес "в наличии" (currentWeightG), не
+      // totalWeightG: удалённый моток убирает из остатка именно то, что у
+      // него реально оставалось, а не весь вес на момент покупки.
+      setTotalCurrentWeight((prev) => Math.max(0, prev - deleteTarget.currentWeightG));
       setTotalUsedWeight((prev) => Math.max(0, prev - (deleteTarget.totalWeightG - deleteTarget.currentWeightG)));
       setTotalSkeinCount((prev) => Math.max(0, prev - 1));
       setDeleteTarget(null);
@@ -169,7 +172,7 @@ export const Stash: React.FC = () => {
         {!isInitialLoading && (
           <div className="stash-summary-row">
             <div className="stash-summary-cell stash-summary-cell--total">
-              <p className="stash-summary-value">{formatWeight(totalWeight)}</p>
+              <p className="stash-summary-value">{formatWeight(totalCurrentWeight)}</p>
               <p className="stash-summary-label">общий вес</p>
             </div>
             <div className="stash-summary-group-cell">
@@ -291,10 +294,9 @@ export const Stash: React.FC = () => {
             setIsAddModalOpen(false);
             setItems((prev) => [skein, ...prev]);
             setTotal((prev) => prev + 1);
-            // totalWeight — общий вес (totalWeightG); у только что созданного
-            // мотка currentWeightG всё равно равен totalWeightG (ничего ещё
-            // не списано), но пишем явно верное поле для ясности.
-            setTotalWeight((prev) => prev + skein.totalWeightG);
+            // У только что созданного мотка currentWeightG равен totalWeightG
+            // (ничего ещё не списано) — пишем явно верное поле для ясности.
+            setTotalCurrentWeight((prev) => prev + skein.currentWeightG);
             setTotalSkeinCount((prev) => prev + 1);
           }}
           onLimitReached={() => {
