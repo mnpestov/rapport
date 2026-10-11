@@ -11,6 +11,16 @@ import { DeleteConfirmModal } from '../../components/DeleteConfirmModal/DeleteCo
 import { StashPaywallBanner } from '../../components/StashPaywallBanner/StashPaywallBanner';
 import './Stash.css';
 
+// Склонение "артикул" под число — тот же приём, что pluralizeProjects в
+// Projects.tsx/pluralizeDays в ProjectDetails.tsx.
+function pluralizeArticles(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'артикул';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'артикула';
+  return 'артикулов';
+}
+
 function formatWeight(grams: number): string {
   if (grams >= 1000) {
     const kg = Math.floor(grams / 1000);
@@ -187,11 +197,11 @@ export const Stash: React.FC = () => {
                   именно на текущей вкладке: в наличии или в архиве. total
                   уже считается на бэкенде с фильтром по archived. */}
                 <p className="stash-summary-value">{total}</p>
-                <p className="stash-summary-label">артикулов</p>
+                <p className="stash-summary-label">{pluralizeArticles(total)}</p>
               </div>
               <div className="stash-summary-cell stash-summary-cell--desktop-only">
                 <p className="stash-summary-value">{lowStockCount}</p>
-                <p className="stash-summary-label">артикула меньше 50 г</p>
+                <p className="stash-summary-label">{pluralizeArticles(lowStockCount)} меньше 50 г</p>
               </div>
             </div>
           </div>
