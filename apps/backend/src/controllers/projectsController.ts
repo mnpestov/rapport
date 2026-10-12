@@ -64,6 +64,11 @@ const PROJECT_LIST_SELECT = {
   completedAt: true,
   images: true,
   finishedPhotos: true,
+  // Только для вычисления coverUrl ниже (см. projectCover) — в сам ответ
+  // не попадает, вырезается вместе с instruments/_count при маппинге в
+  // listProjects, тот же принцип, что у carточки проекта (ProjectDetails.tsx):
+  // своих фото нет вовсе — обложкой идёт референс, вместо пустой заглушки.
+  referencePhotos: true,
   // Подпись карточки в списке ("название + инструмент и размер
   // инструмента") — instrument.name + собственный sizeMm ProjectInstrument
   // (не образца — у образца своя плотность/спицы, см. ProjectSwatch), берём
@@ -80,11 +85,14 @@ const PROJECT_LIST_SELECT = {
   _count: { select: { usages: true } },
 } satisfies Prisma.ProjectSelect;
 
-function projectCover(project: { images: string[]; finishedPhotos: string[] }): string | null {
+function projectCover(project: { images: string[]; finishedPhotos: string[]; referencePhotos: string[] }): string | null {
   // Обложка — простое поле на самом Project, без JOIN (см. §5.3: расход
   // на "живой JOIN"/снимок отменён, фото готового изделия хранятся один
   // раз на Project.finishedPhotos, не по нескольким StashUsage).
-  return project.finishedPhotos[0] ?? project.images[0] ?? null;
+  // referencePhotos — запасной вариант, только если своих фото нет вовсе
+  // (ни готового изделия, ни в процессе), та же логика, что в галерее
+  // карточки проекта (ProjectDetails.tsx, heroImages).
+  return project.finishedPhotos[0] ?? project.images[0] ?? project.referencePhotos[0] ?? null;
 }
 
 /** GET /projects — список проектов пользователя, с фильтром по статусу и поиском по title. */
@@ -154,9 +162,9 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
       : null;
 
     res.json({
-      items: items.map(({ instruments, _count, ...p }) => ({
+      items: items.map(({ instruments, _count, referencePhotos, ...p }) => ({
         ...p,
-        coverUrl: projectCover(p),
+        coverUrl: projectCover({ ...p, referencePhotos }),
         instrumentNames: instruments.map((i) => i.instrument.name),
         needleSizeRaw: instruments[0]?.sizeMm != null ? String(instruments[0].sizeMm) : null,
         hasYarnUsages: _count.usages > 0,
