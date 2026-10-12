@@ -244,6 +244,15 @@
   gap: 8px;
 }
 
+/* Только список результатов поиска описания — своя прокрутка нужна для
+   подгрузки остатка по скроллу (onScroll на этом же элементе). Список
+   пряжи переиспользует базовый .add-project-cards-vertical без этого
+   модификатора — у него нет пагинации, трогать его незачем. */
+.add-project-cards-vertical--scroll {
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
 /* Простая строка списка без картинки (статус-меню, "Остаток" в
    ProjectDetails). */
 .add-project-card-row {
@@ -304,6 +313,11 @@
   max-height: 72px;
   overflow: hidden;
   width: 100%;
+  /* Без этого в .add-project-cards-vertical--scroll (ограниченная высота +
+     overflow-y:auto) флекс вместо скролла внутри контейнера сжимал сами
+     карточки, чтобы влезли все разом — текст внутри схлопывался и
+     наезжал сам на себя. */
+  flex-shrink: 0;
   border: none;
   background: none;
   padding: 0;

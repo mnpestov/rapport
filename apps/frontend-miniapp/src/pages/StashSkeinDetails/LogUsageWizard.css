@@ -290,6 +290,11 @@
   text-align: left;
   cursor: pointer;
   width: 100%;
+  /* .log-usage-cards-vertical — flex-колонка с height:40vh/overflow-y:auto;
+     без этого при большом числе карточек флекс сжимал бы сами карточки
+     вместо прокрутки контейнера (тот же баг, что был у
+     .add-project-pattern-card в AddProjectModal.css). */
+  flex-shrink: 0;
 }
 
 .log-usage-card-row--selected {
