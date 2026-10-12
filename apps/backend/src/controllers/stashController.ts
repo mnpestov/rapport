@@ -231,38 +231,40 @@ export const createSkein = async (req: Request, res: Response): Promise<void> =>
       const normalizedKey = normalizeYarnKey(name);
 
       // Тот же путь создания, что и авторская заявка (createAuthorYarn),
-      // включая проверку дублей по normalizedKey (409) — только
-      // createdVia: STASH_USER, чтобы очередь модерации видела источник.
+      // включая проверку дублей по normalizedKey — но вместо 409 молча
+      // переиспользуем найденную запись (APPROVED или ещё PENDING).
+      // Раньше 409 блокировал второй моток ТОГО ЖЕ нового артикула другого
+      // цвета: пока первая заявка не прошла модерацию, она не попадает в
+      // автокомплит (suggestYarns ищет только APPROVED), и пользователь,
+      // введя то же название снова, просто упирался в ошибку "уже есть" —
+      // хотя это была его собственная ещё не одобренная заявка.
       const existing = await prisma.yarn.findUnique({
         where: { normalizedKey },
-        select: { id: true, name: true },
-      });
-      if (existing) {
-        res.status(409).json({
-          error: `Такой артикул уже есть: «${existing.name}»`,
-          id: existing.id,
-        });
-        return;
-      }
-      const created = await prisma.yarn.create({
-        data: {
-          name,
-          brand,
-          line,
-          isGeneric,
-          mPer100g:
-            body.newYarnMPer100g == null || body.newYarnMPer100g === ""
-              ? null
-              : Number(body.newYarnMPer100g),
-          composition: body.newYarnComposition ? String(body.newYarnComposition) : null,
-          normalizedKey,
-          dedupKey: yarnDedupKey(name),
-          status: YarnStatus.PENDING,
-          createdVia: "STASH_USER",
-        },
         select: { id: true, name: true, brand: true, mPer100g: true, composition: true },
       });
-      yarn = created;
+      if (existing) {
+        yarn = existing;
+      } else {
+        const created = await prisma.yarn.create({
+          data: {
+            name,
+            brand,
+            line,
+            isGeneric,
+            mPer100g:
+              body.newYarnMPer100g == null || body.newYarnMPer100g === ""
+                ? null
+                : Number(body.newYarnMPer100g),
+            composition: body.newYarnComposition ? String(body.newYarnComposition) : null,
+            normalizedKey,
+            dedupKey: yarnDedupKey(name),
+            status: YarnStatus.PENDING,
+            createdVia: "STASH_USER",
+          },
+          select: { id: true, name: true, brand: true, mPer100g: true, composition: true },
+        });
+        yarn = created;
+      }
     }
 
     const skein = await prisma.stashSkein.create({
