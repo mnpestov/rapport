@@ -959,7 +959,7 @@
    Брейкпоинт 820px — тот же, что везде. Мобильные блоки/классы выше не
    трогаем — на десктопе рендерится отдельная ветка JSX (см. isDesktop в
    StashSkeinDetails.tsx), эти правила касаются только её. */
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .stash-details-container {
     max-width: 1440px;
     padding: 24px 50px calc(24px + env(safe-area-inset-bottom));
@@ -1436,7 +1436,7 @@
    calc()-подгонки ширины под соседние колонки. .pd-label/.pd-value уже
    14px/16px (см. выше по файлу) — переопределять шрифты не нужно, только
    раскладка. */
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .project-details-desktop-grid {
     display: grid;
     grid-template-columns: 3fr 3fr 2fr;

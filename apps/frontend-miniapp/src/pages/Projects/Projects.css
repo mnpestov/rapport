@@ -325,7 +325,7 @@
    .stash-breadcrumb/.stash-desktop-top-row/.stash-add-chip/.stash-search-row
    — общие классы из Stash.css, уже применяются здесь без дополнительных
    правил (Projects.css их не переопределяет). */
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .projects-year-card.projects-year-card--mobile-only {
     display: none;
   }

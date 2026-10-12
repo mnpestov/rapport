@@ -430,7 +430,7 @@
 
 /* === RESPONSIVE === */
 
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .details-container {
     max-width: 1440px;
     padding-bottom: 0;

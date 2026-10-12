@@ -375,7 +375,7 @@
    PatternDetails.css/FilterModal.css. TopNav.tsx (сквозная шапка) рендерится
    отдельно в App.tsx, сюда не входит. */
 
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .stash-container {
     max-width: 1440px;
     padding: 24px 50px calc(24px + env(safe-area-inset-bottom));

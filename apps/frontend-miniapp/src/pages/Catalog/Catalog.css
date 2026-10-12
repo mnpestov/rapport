@@ -32,7 +32,7 @@
   margin-top: auto;
 }
 
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .catalog-container {
     padding: 0 24px calc(8px + env(safe-area-inset-bottom) + var(--tab-bar-reserve, 0px));
   }
@@ -83,7 +83,7 @@
   }
 }
 
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .catalog-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;

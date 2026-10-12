@@ -101,7 +101,7 @@
    с более крупным текстом, тот же брейкпоинт, что и везде (820px). Это
    общий компонент, используется на всех страницах — правки затрагивают
    десктоп целиком, не только "Пряжу". */
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .app-footer {
     background: #f3f3f3;
     padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(50 * (100vw - 100px) / 1340), 50px);

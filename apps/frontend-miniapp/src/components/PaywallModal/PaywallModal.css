@@ -288,7 +288,7 @@
 }
 
 /* === DESKTOP: центральный модал вместо нижней шторки === */
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .paywall-modal-overlay {
     justify-content: center;
   }

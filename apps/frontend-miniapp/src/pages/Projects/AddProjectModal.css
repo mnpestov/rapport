@@ -923,7 +923,7 @@
   font-weight: 700;
 }
 
-@media (min-width: 820px) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
   .projects-status-icon-wrap {
     width: min(calc(24 * (100vw - 100px) / 1340), 24px);
     height: min(calc(30 * (100vw - 100px) / 1340), 30px);
