@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { renderNoteWithLinks } from '../../utils/renderNoteWithLinks';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Lock, Loader2, Plus, SquarePen, Trash2, Heart } from 'lucide-react';
-import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, deleteStashSkein, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
+import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, deleteStashSkein, suggestYarnFields, updateStashSkein, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
 import { fetchProjects, ProjectListItem } from '../../api/projectsApi';
 import { canGoBackInApp } from '../../hooks/useNavigationDepth';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
@@ -124,6 +124,18 @@ export const StashSkeinDetails: React.FC = () => {
   const [isDeleteSkeinOpen, setIsDeleteSkeinOpen] = useState(false);
   const [isDeletingSkein, setIsDeletingSkein] = useState(false);
 
+  // Заметка — всегда на странице, с автосохранением (тот же приём, что
+  // ProjectDetails.tsx). noteText — локальная копия, не skein.note
+  // напрямую: иначе каждый keystroke пришлось бы гонять через setSkein
+  // (весь объект мотка) ради одного поля. EditSkeinModal.tsx своего поля
+  // "Заметки" больше не имеет — правка только здесь, единственный источник.
+  const [noteText, setNoteText] = useState('');
+  const [noteSkeinId, setNoteSkeinId] = useState<string | null>(null);
+  // textarea не может отрендерить кликабельную ссылку — по умолчанию
+  // заметка показывается как текст с ссылками (renderNoteWithLinks),
+  // textarea появляется только пока её редактируют.
+  const [isEditingNote, setIsEditingNote] = useState(false);
+
   // Горизонтальный скролл блока "Что можно связать из этой пряжи" — ref на
   // сам скроллящийся контейнер (не отдельные карточки), нужен и для
   // сохранения scrollLeft перед переходом в описание (см. onClick карточки
@@ -202,6 +214,45 @@ export const StashSkeinDetails: React.FC = () => {
   }, [matches, id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Синхронизация noteText из skein.note — только при смене мотка (id), не
+  // при каждом обновлении skein целиком: иначе автосохранение ниже (которое
+  // само вызывает setSkein после успешного PATCH) сбивало бы курсор/
+  // незасинканные keystrokes пользователя. Тот же приём, что в
+  // ProjectDetails.tsx.
+  useEffect(() => {
+    if (!skein) return;
+    if (noteSkeinId === skein.id) return;
+    setNoteText(skein.note ?? '');
+    setNoteSkeinId(skein.id);
+  }, [skein, noteSkeinId]);
+
+  // Автосохранение заметок — debounce, без кнопки "Сохранить". Пропускает
+  // самый первый рендер после синхронизации выше (noteText только что
+  // выставлен ИЗ skein.note, сохранять в бэкенд нечего) и повторное
+  // сохранение уже совпадающего значения.
+  useEffect(() => {
+    if (!skein || noteSkeinId !== skein.id) return;
+    if (noteText === (skein.note ?? '')) return;
+    const timer = setTimeout(() => {
+      // Бэкенд (updateSkein) сам приводит пустую строку к null в БД
+      // ("note" in body ? body.note ? String(...) : null), в отличие от
+      // updateProject, который сам требует string | null — тип здесь просто
+      // string, отправляем как есть.
+      updateStashSkein(skein.id, { note: noteText.trim() })
+        .then((updated) => setSkein((prev) => prev && { ...prev, ...updated }))
+        .catch((err) => {
+          // Пользователю молча — следующая правка текста или уход со
+          // страницы и возврат обратно синхронизирует noteText из
+          // актуального skein.note; настойчивый ретрай здесь избыточен для
+          // заметок. Лог оставляем — при повторяющихся сбоях PATCH нужно
+          // это видеть, не дожидаясь жалобы "заметка не сохранилась".
+          console.error('[StashSkeinDetails] note autosave failed:', err);
+        });
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteText]);
 
   // Автодогрузка по скроллу (без кнопки "показать ещё") — первая страница
   // (20 карточек) уже пришла через load() выше, дальше по 10 за раз, пока
@@ -532,7 +583,25 @@ export const StashSkeinDetails: React.FC = () => {
     </>
   );
 
-  const notesInner = skein.note ? <p className="stash-notes-text">{renderNoteWithLinks(skein.note)}</p> : null;
+  // Та же логика показа/редактирования, что в ProjectDetails.tsx —
+  // textarea не может отрендерить кликабельную ссылку, поэтому по
+  // умолчанию показываем текст со ссылками, textarea только пока её
+  // редактируют (клик по тексту/пустому месту, потеря фокуса — назад).
+  const notesInner = isEditingNote || !noteText ? (
+    <textarea
+      className="stash-notes-textarea"
+      value={noteText}
+      onChange={(e) => setNoteText(e.target.value)}
+      onBlur={() => setIsEditingNote(false)}
+      placeholder="Быстрая заметка к мотку"
+      rows={3}
+      autoFocus={isEditingNote}
+    />
+  ) : (
+    <p className="stash-notes-text stash-notes-text--editable" onClick={() => setIsEditingNote(true)}>
+      {renderNoteWithLinks(noteText)}
+    </p>
+  );
 
   const renderUsageContent = (usage: StashUsage) => (
     <>
@@ -657,11 +726,9 @@ export const StashSkeinDetails: React.FC = () => {
                 )}
                 {remainderBlock}
                 {actionsBlock}
-                {skein.note && (
-                  <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
-                    {notesInner}
-                  </CollapsibleSection>
-                )}
+                <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
+                  {notesInner}
+                </CollapsibleSection>
               </div>
 
               <div className="stash-details-desktop-info">
@@ -718,12 +785,10 @@ export const StashSkeinDetails: React.FC = () => {
               {swatchesInner}
             </div>
 
-            {skein.note && (
-              <div className="stash-details-notes">
-                <p className="stash-details-section-title">Заметки</p>
-                {notesInner}
-              </div>
-            )}
+            <div className="stash-details-notes">
+              <p className="stash-details-section-title">Заметки</p>
+              {notesInner}
+            </div>
 
             {usagesBlock}
 

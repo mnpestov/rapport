@@ -124,7 +124,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
   const [colorName, setColorName] = useState('');
   const [dyelot, setDyelot] = useState('');
   const [totalWeightG, setTotalWeightG] = useState('');
-  const [note, setNote] = useState('');
 
   const [swatches, setSwatches] = useState<SwatchEntry[]>([]);
   const [uploadingSwatchKey, setUploadingSwatchKey] = useState<string | null>(null);
@@ -145,7 +144,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
     setColorName(skein.colorName || '');
     setDyelot(skein.dyelot || '');
     setTotalWeightG(String(skein.totalWeightG));
-    setNote(skein.note || '');
     setSwatches(skein.swatches.map(swatchToEntry));
     setError(null);
   }, [isOpen, skein]);
@@ -256,7 +254,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
         brandSnapshot: brand.trim(),
         colorName: colorName.trim() || undefined,
         dyelot: dyelot.trim() || undefined,
-        note: note.trim() || undefined,
         totalWeightG: weightValue,
       });
 
@@ -333,20 +330,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
         placeholder="Вес в граммах"
         inputMode="numeric"
         onChange={(e) => setTotalWeightG(e.target.value)}
-      />
-    </div>
-  );
-
-  // "Заметки" — на десктопе тоже под фото/Общим весом, на мобиле отдельной
-  // секцией в конце (см. !isDesktop && notesSection ниже).
-  const notesSection = (
-    <div className="add-yarn-section add-yarn-section--notes">
-      <p className="add-yarn-section-title">Заметки</p>
-      <textarea
-        className="add-yarn-textarea"
-        value={note}
-        placeholder="Здесь можно писать всё, что душе угодно"
-        onChange={(e) => setNote(e.target.value)}
       />
     </div>
   );
@@ -434,7 +417,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
               onChange={handleFileSelected}
             />
             {isDesktop && totalWeightField}
-            {isDesktop && notesSection}
           </div>
 
           <div className="add-yarn-section add-yarn-section--yarn">
@@ -682,8 +664,6 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
               {swatches.length > 0 ? 'Добавить ещё образец' : 'Добавить образец'}
             </button>
           </div>
-
-          {!isDesktop && notesSection}
 
           {error && <p className="add-yarn-error">{error}</p>}
         </div>
