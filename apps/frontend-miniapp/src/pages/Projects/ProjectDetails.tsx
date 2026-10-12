@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, ChevronDown, SquarePen, Trash2 } from 'lucide-react';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
+import { renderNoteWithLinks } from '../../utils/renderNoteWithLinks';
 import { STATUS_LABEL, STATUS_COLOR, STATUS_ICON, STATUS_ORDER } from './projectStatus';
 import {
   fetchProjectById,
@@ -96,6 +97,12 @@ export const ProjectDetails: React.FC = () => {
   // через setProject (весь объект проекта) ради одного поля.
   const [noteText, setNoteText] = useState('');
   const [noteProjectId, setNoteProjectId] = useState<string | null>(null);
+  // textarea не может отрендерить кликабельную ссылку — по умолчанию
+  // заметка показывается как текст с ссылками (renderNoteWithLinks, тот
+  // же приём, что в StashSkeinDetails.tsx), textarea появляется только
+  // пока её редактируют (клик по тексту/пустому месту), тот же noteText/
+  // автосохранение ниже, просто другой режим отображения.
+  const [isEditingNote, setIsEditingNote] = useState(false);
 
   // Сворачиваемые блоки карточки (Figma node-id=1619:20364) — состояние
   // "открыт/закрыт" на каждую секцию, персистентно в localStorage,
@@ -722,13 +729,24 @@ export const ProjectDetails: React.FC = () => {
 
   const notesSection = (
     <CollapsibleSection title="Заметки" isOpen={isSectionOpen('notes')} onToggle={() => toggleSection('notes')} className="stash-details-notes">
-      <textarea
-        className="stash-notes-textarea"
-        value={noteText}
-        onChange={(e) => setNoteText(e.target.value)}
-        placeholder="Быстрая заметка к проекту"
-        rows={3}
-      />
+      {isEditingNote || !noteText ? (
+        <textarea
+          className="stash-notes-textarea"
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          onBlur={() => setIsEditingNote(false)}
+          placeholder="Быстрая заметка к проекту"
+          rows={3}
+          autoFocus={isEditingNote}
+        />
+      ) : (
+        // onClick выше по тексту включает редактирование; клик по самой
+        // ссылке внутрь не всплывает (stopPropagation в renderNoteWithLinks)
+        // и просто открывает её.
+        <p className="stash-notes-text stash-notes-text--editable" onClick={() => setIsEditingNote(true)}>
+          {renderNoteWithLinks(noteText)}
+        </p>
+      )}
     </CollapsibleSection>
   );
 

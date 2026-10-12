@@ -1,43 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-
-// Разбивает произвольный текст заметки на фрагменты, находит URL
-// (http:// и https://) и рендерит их как кликабельные ссылки.
-// Открывается в браузере через target="_blank" — в Telegram WebView это
-// означает InAppBrowser или системный браузер в зависимости от клиента.
-const URL_REGEX = /https?:\/\/[^\s]+/g;
-
-function renderNoteWithLinks(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  // reset перед каждым вызовом (глобальные regex имеют состояние)
-  URL_REGEX.lastIndex = 0;
-  while ((match = URL_REGEX.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const url = match[0];
-    parts.push(
-      <a
-        key={match.index}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="stash-note-link"
-        // Не всплываем клик выше — карточка или кнопка-предок не должны
-        // реагировать на тап по ссылке внутри заметки.
-        onClick={(e) => e.stopPropagation()}
-      >
-        {url}
-      </a>
-    );
-    lastIndex = match.index + url.length;
-  }
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-  return parts;
-}
+import { renderNoteWithLinks } from '../../utils/renderNoteWithLinks';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Lock, Loader2, Plus, SquarePen, Trash2, Heart } from 'lucide-react';
 import { fetchStashSkeinById, fetchStashMatches, undoStashUsage, deleteStashSwatch, deleteStashSkein, suggestYarnFields, StashSkeinDetail, StashMatchItem, StashUsage, StashSwatch } from '../../api/stashApi';
