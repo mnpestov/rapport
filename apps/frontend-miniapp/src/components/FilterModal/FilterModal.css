@@ -380,7 +380,7 @@
    направление движения общей .sheet-panel (селектор с .filter-modal-content
    специфичнее общего правила в styles/sheet.css, поэтому Сортировка,
    баннер подписки и форма ошибки продолжают выезжать снизу). */
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .filter-modal-overlay {
     flex-direction: row;
     justify-content: flex-start;
@@ -425,7 +425,7 @@
   }
 }
 
-@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+@media (min-width: 820px) and (prefers-reduced-motion: reduce) {
   .filter-modal-content.sheet-panel {
     transform: none;
   }

@@ -321,11 +321,11 @@
 }
 
 /* ───────────────────────── Десктоп (Figma node-id=1637:21739) ─────────────
-   Брейкпоинт 768px — тот же, что везде. .stash-container/.stash-header/
+   Брейкпоинт 820px — тот же, что везде. .stash-container/.stash-header/
    .stash-breadcrumb/.stash-desktop-top-row/.stash-add-chip/.stash-search-row
    — общие классы из Stash.css, уже применяются здесь без дополнительных
    правил (Projects.css их не переопределяет). */
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .projects-year-card.projects-year-card--mobile-only {
     display: none;
   }
