@@ -894,6 +894,14 @@ export const ProjectDetails: React.FC = () => {
           onUpdated={(updated) => {
             setIsEditOpen(false);
             setProject(updated);
+            // Синхронизация noteText из project.note (эффект выше) срабатывает
+            // только при СМЕНЕ project.id, не при каждом обновлении — иначе
+            // автосохранение заметки на этой же странице сбивало бы курсор
+            // пользователя. Но AddProjectModal.tsx правит то же поле note
+            // СВОИМ путём (отдельное поле "Заметки" в форме редактирования),
+            // id проекта при этом не меняется — без явного обновления здесь
+            // noteText оставался бы устаревшим до перезагрузки страницы.
+            setNoteText(updated.note ?? '');
           }}
           onRequestComplete={() => {
             setIsEditOpen(false);
