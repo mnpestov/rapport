@@ -97,6 +97,12 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Pattern[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  // Поиск ограничен лимитом 10 за раз — total говорит, сколько всего
+  // найдено, подгрузка по скроллу добирает остаток через offset, тот же
+  // приём, что у Ravelry-подсказок в AddYarnModal.tsx.
+  const [searchTotal, setSearchTotal] = useState(0);
+  const [isLoadingMoreSearch, setIsLoadingMoreSearch] = useState(false);
+  const searchResultsRef = useRef<HTMLDivElement>(null);
   const [selectedPattern, setSelectedPattern] = useState<{ id: string; title: string } | null>(null);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualAuthorName, setManualAuthorName] = useState('');
@@ -114,6 +120,8 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Защита от гонки ответов — тот же приём, что в AddProjectModal.tsx.
+  const searchSeqRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -188,23 +196,51 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSearchResults([]);
+      setSearchTotal(0);
       return;
     }
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(async () => {
+      const seq = ++searchSeqRef.current;
       setIsSearching(true);
       try {
         const res = await fetchPatterns({ search: searchQuery.trim(), limit: 10, titleAuthorOnly: true });
+        if (seq !== searchSeqRef.current) return; // пришёл не последний ответ — игнорируем
         setSearchResults(res.data);
+        setSearchTotal(res.total);
       } catch (err) {
         console.error('[LogUsageWizard] pattern search failed:', err);
-        setSearchResults([]);
+        if (seq === searchSeqRef.current) { setSearchResults([]); setSearchTotal(0); }
       } finally {
-        setIsSearching(false);
+        if (seq === searchSeqRef.current) setIsSearching(false);
       }
     }, 300);
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchQuery]);
+
+  // Подгрузка остатка найденного по скроллу — тот же приём, что в
+  // AddProjectModal.tsx.
+  const handleSearchResultsScroll = () => {
+    const el = searchResultsRef.current;
+    if (!el || isLoadingMoreSearch || searchResults.length >= searchTotal) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!nearBottom) return;
+
+    const seq = searchSeqRef.current;
+    setIsLoadingMoreSearch(true);
+    fetchPatterns({ search: searchQuery.trim(), limit: 10, offset: searchResults.length, titleAuthorOnly: true })
+      .then((res) => {
+        if (seq !== searchSeqRef.current) return;
+        setSearchResults((prev) => [...prev, ...res.data]);
+        setSearchTotal(res.total);
+      })
+      .catch((err) => {
+        console.error('[LogUsageWizard] load more patterns failed:', err);
+      })
+      .finally(() => {
+        if (seq === searchSeqRef.current) setIsLoadingMoreSearch(false);
+      });
+  };
 
   if (!isMounted) return null;
 
@@ -520,7 +556,11 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
                               </>
                             )}
                             {relatedCards.length > 0 && (
-                              <div className="log-usage-cards-vertical">
+                              <div
+                                className="log-usage-cards-vertical"
+                                ref={isShowingSearch ? searchResultsRef : undefined}
+                                onScroll={isShowingSearch ? handleSearchResultsScroll : undefined}
+                              >
                                 {relatedCards.map((p) => (
                                   <button
                                     key={p.id}
@@ -538,6 +578,9 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
                                     </div>
                                   </button>
                                 ))}
+                                {/* Подгрузка — только для поиска (matches/
+                                    "что можно связать" не пагинируется). */}
+                                {isShowingSearch && isLoadingMoreSearch && <p className="log-usage-empty-text">Загрузка...</p>}
                               </div>
                             )}
                           </>

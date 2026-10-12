@@ -150,6 +150,12 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const [patternQuery, setPatternQuery] = useState('');
   const [patternResults, setPatternResults] = useState<Pattern[]>([]);
   const [isSearchingPattern, setIsSearchingPattern] = useState(false);
+  // Поиск ограничен лимитом 10 за раз (limit в fetchPatterns) — total
+  // говорит, сколько всего найдено, подгрузка по скроллу добирает остаток
+  // через offset, тот же приём, что у Ravelry-подсказок в AddYarnModal.tsx.
+  const [patternTotal, setPatternTotal] = useState(0);
+  const [isLoadingMorePatterns, setIsLoadingMorePatterns] = useState(false);
+  const patternResultsRef = useRef<HTMLDivElement>(null);
   const [selectedPattern, setSelectedPattern] = useState<{ id: string; title: string; author: string; thumbnailUrl: string | null; instruments: string[] } | null>(null);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualAuthor, setManualAuthor] = useState('');
@@ -347,6 +353,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   useEffect(() => {
     if (patternQuery.trim().length < 2) {
       setPatternResults([]);
+      setPatternTotal(0);
       return;
     }
     if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current);
@@ -357,15 +364,41 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10, titleAuthorOnly: true });
         if (seq !== patternSearchSeqRef.current) return; // пришёл не последний ответ — игнорируем
         setPatternResults(res.data);
+        setPatternTotal(res.total);
       } catch (err) {
         console.error('[AddProjectModal] pattern search failed:', err);
-        if (seq === patternSearchSeqRef.current) setPatternResults([]);
+        if (seq === patternSearchSeqRef.current) { setPatternResults([]); setPatternTotal(0); }
       } finally {
         if (seq === patternSearchSeqRef.current) setIsSearchingPattern(false);
       }
     }, 300);
     return () => { if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current); };
   }, [patternQuery]);
+
+  // Подгрузка остатка найденного по скроллу внутри списка результатов —
+  // тот же приём, что у Ravelry-подсказок в AddYarnModal.tsx
+  // (handleSuggestionsScroll), offset вместо page.
+  const handlePatternResultsScroll = () => {
+    const el = patternResultsRef.current;
+    if (!el || isLoadingMorePatterns || patternResults.length >= patternTotal) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!nearBottom) return;
+
+    const seq = patternSearchSeqRef.current;
+    setIsLoadingMorePatterns(true);
+    fetchPatterns({ search: patternQuery.trim(), limit: 10, offset: patternResults.length, titleAuthorOnly: true })
+      .then((res) => {
+        if (seq !== patternSearchSeqRef.current) return; // запрос сменился, пока грузилась страница
+        setPatternResults((prev) => [...prev, ...res.data]);
+        setPatternTotal(res.total);
+      })
+      .catch((err) => {
+        console.error('[AddProjectModal] load more patterns failed:', err);
+      })
+      .finally(() => {
+        if (seq === patternSearchSeqRef.current) setIsLoadingMorePatterns(false);
+      });
+  };
 
   // Запускается и по вводу текста, и по самому факту фокуса на поле
   // (isYarnFieldFocused) — пустой yarnQuery + фокус означает "показать все
@@ -875,7 +908,11 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           {patternResults.length > 0 && (
             <>
               <p className="add-project-inner-label">Выбрать из каталога</p>
-              <div className="add-project-cards-vertical">
+              <div
+                className="add-project-cards-vertical add-project-cards-vertical--scroll"
+                ref={patternResultsRef}
+                onScroll={handlePatternResultsScroll}
+              >
                 {patternResults.map((p) => (
                   <button key={p.id} type="button" className="add-project-pattern-card" onClick={() => handlePickPattern(p)}>
                     <div className="add-project-pattern-card-image">
@@ -890,6 +927,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                     </div>
                   </button>
                 ))}
+                {isLoadingMorePatterns && <p className="add-project-empty-text">Загрузка...</p>}
               </div>
             </>
           )}

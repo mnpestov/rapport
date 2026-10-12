@@ -100,6 +100,12 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
   const [patternQuery, setPatternQuery] = useState('');
   const [patternResults, setPatternResults] = useState<Pattern[]>([]);
   const [isSearchingPattern, setIsSearchingPattern] = useState(false);
+  // Поиск ограничен лимитом 10 за раз — total говорит, сколько всего
+  // найдено, подгрузка по скроллу добирает остаток через offset, тот же
+  // приём, что у Ravelry-подсказок в AddYarnModal.tsx.
+  const [patternTotal, setPatternTotal] = useState(0);
+  const [isLoadingMorePatterns, setIsLoadingMorePatterns] = useState(false);
+  const patternResultsRef = useRef<HTMLDivElement>(null);
   const [selectedPattern, setSelectedPattern] = useState<{ id: string; title: string; author: string } | null>(null);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualAuthor, setManualAuthor] = useState('');
@@ -114,6 +120,8 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const patternDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Защита от гонки ответов — тот же приём, что в AddProjectModal.tsx.
+  const patternSearchSeqRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -159,23 +167,51 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
   useEffect(() => {
     if (patternQuery.trim().length < 2) {
       setPatternResults([]);
+      setPatternTotal(0);
       return;
     }
     if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current);
     patternDebounceRef.current = setTimeout(async () => {
+      const seq = ++patternSearchSeqRef.current;
       setIsSearchingPattern(true);
       try {
         const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10, titleAuthorOnly: true });
+        if (seq !== patternSearchSeqRef.current) return; // пришёл не последний ответ — игнорируем
         setPatternResults(res.data);
+        setPatternTotal(res.total);
       } catch (err) {
         console.error('[CompleteProjectWizard] pattern search failed:', err);
-        setPatternResults([]);
+        if (seq === patternSearchSeqRef.current) { setPatternResults([]); setPatternTotal(0); }
       } finally {
-        setIsSearchingPattern(false);
+        if (seq === patternSearchSeqRef.current) setIsSearchingPattern(false);
       }
     }, 300);
     return () => { if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current); };
   }, [patternQuery]);
+
+  // Подгрузка остатка найденного по скроллу — тот же приём, что в
+  // AddProjectModal.tsx.
+  const handlePatternResultsScroll = () => {
+    const el = patternResultsRef.current;
+    if (!el || isLoadingMorePatterns || patternResults.length >= patternTotal) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!nearBottom) return;
+
+    const seq = patternSearchSeqRef.current;
+    setIsLoadingMorePatterns(true);
+    fetchPatterns({ search: patternQuery.trim(), limit: 10, offset: patternResults.length, titleAuthorOnly: true })
+      .then((res) => {
+        if (seq !== patternSearchSeqRef.current) return;
+        setPatternResults((prev) => [...prev, ...res.data]);
+        setPatternTotal(res.total);
+      })
+      .catch((err) => {
+        console.error('[CompleteProjectWizard] load more patterns failed:', err);
+      })
+      .finally(() => {
+        if (seq === patternSearchSeqRef.current) setIsLoadingMorePatterns(false);
+      });
+  };
 
   useEffect(() => {
     if (!isYarnFieldFocused && yarnQuery.trim().length === 0) {
@@ -602,7 +638,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                     {patternResults.length > 0 && (
                       <>
                         <p className="log-usage-section-title">Результаты поиска</p>
-                        <div className="log-usage-cards-vertical">
+                        <div className="log-usage-cards-vertical" ref={patternResultsRef} onScroll={handlePatternResultsScroll}>
                           {patternResults.map((p) => (
                             <button key={p.id} type="button" className="log-usage-card-row" onClick={() => handlePickPattern(p)}>
                               <img src={p.thumbnailUrl} alt="" className="log-usage-card-row-image" />
@@ -612,6 +648,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                               </div>
                             </button>
                           ))}
+                          {isLoadingMorePatterns && <p className="log-usage-empty-text">Загрузка...</p>}
                         </div>
                       </>
                     )}
