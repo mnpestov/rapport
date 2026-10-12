@@ -165,7 +165,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
     patternDebounceRef.current = setTimeout(async () => {
       setIsSearchingPattern(true);
       try {
-        const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10 });
+        const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10, titleAuthorOnly: true });
         setPatternResults(res.data);
       } catch (err) {
         console.error('[CompleteProjectWizard] pattern search failed:', err);

@@ -36,6 +36,16 @@ export const getPatterns = async (req: Request, res: Response) => {
 
     const where: any = buildPatternWhere(stripPremiumFacetParams(req.query, core));
 
+    // Поиск "для привязки описания" (AddProjectModal/CompleteProjectWizard/
+    // LogUsageWizard/EditUsageModal — там ищут конкретное уже известное
+    // описание по названию/автору, не просматривают каталог) — матчить по
+    // категории/инструменту/тегам/артикулу пряжи там не нужно и вредно:
+    // пользователь искал "sunday", получал в выдаче совсем не связанные
+    // описания только потому, что к ним привязана пряжа с таким названием.
+    // Обычный поиск по каталогу (Catalog.tsx) этот параметр не передаёт и
+    // продолжает матчить по всем полям, как раньше.
+    const titleAuthorOnly = req.query.titleAuthorOnly === 'true';
+
     if (search && typeof search === 'string') {
       // Каждое слово запроса ищется по ВСЕМ полям (OR), а слова между собой
       // требуются ВСЕ разом (AND) — так "кардиган морозова" находит
@@ -48,16 +58,18 @@ export const getPatterns = async (req: Request, res: Response) => {
         OR: [
           { title: { contains: word, mode: 'insensitive' as const } },
           { author: { name: { contains: word, mode: 'insensitive' as const } } },
-          { categories: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
-          { instruments: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
-          { tags: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
-          // Артикул пряжи — как сам фильтр по нему, только для PREMIUM_CORE
-          // (описания без прав всё равно не получают yarnIds для
-          // сопоставления на клиенте, так что искать по этому полю для них
-          // незачем).
-          ...(core
-            ? [{ yarns: { some: { status: 'ACTIVE', yarn: { name: { contains: word, mode: 'insensitive' as const } } } } }]
-            : []),
+          ...(titleAuthorOnly ? [] : [
+            { categories: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
+            { instruments: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
+            { tags: { some: { name: { contains: word, mode: 'insensitive' as const } } } },
+            // Артикул пряжи — как сам фильтр по нему, только для PREMIUM_CORE
+            // (описания без прав всё равно не получают yarnIds для
+            // сопоставления на клиенте, так что искать по этому полю для них
+            // незачем).
+            ...(core
+              ? [{ yarns: { some: { status: 'ACTIVE', yarn: { name: { contains: word, mode: 'insensitive' as const } } } } }]
+              : []),
+          ]),
         ],
       });
       if (words.length > 1) {

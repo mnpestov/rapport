@@ -354,7 +354,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       const seq = ++patternSearchSeqRef.current;
       setIsSearchingPattern(true);
       try {
-        const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10 });
+        const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10, titleAuthorOnly: true });
         if (seq !== patternSearchSeqRef.current) return; // пришёл не последний ответ — игнорируем
         setPatternResults(res.data);
       } catch (err) {

@@ -110,7 +110,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
     searchDebounceRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetchPatterns({ search: searchQuery.trim(), limit: 10 });
+        const res = await fetchPatterns({ search: searchQuery.trim(), limit: 10, titleAuthorOnly: true });
         setSearchResults(res.data);
       } catch (err) {
         console.error('[EditUsageModal] pattern search failed:', err);

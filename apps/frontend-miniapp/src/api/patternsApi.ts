@@ -111,6 +111,12 @@ export interface FetchPatternsOptions {
   density?: string[];
   yarns?: string[];
   signal?: AbortSignal;
+  // Поиск "для привязки описания" (AddProjectModal/CompleteProjectWizard/
+  // LogUsageWizard/EditUsageModal) — там ищут конкретное уже известное
+  // описание по названию/автору, матч по категории/инструменту/тегам/
+  // артикулу пряжи там только засоряет выдачу несвязанными описаниями.
+  // Обычный поиск по каталогу (Catalog.tsx) этот флаг не передаёт.
+  titleAuthorOnly?: boolean;
 }
 
 export interface FilterOption {
@@ -154,7 +160,8 @@ export const fetchPatterns = async (options: FetchPatternsOptions = {}): Promise
   if (options?.priceMax) params.append("priceMax", options.priceMax);
   if (options?.limit !== undefined) params.append("limit", options.limit.toString());
   if (options?.offset !== undefined) params.append("offset", options.offset.toString());
-  
+  if (options?.titleAuthorOnly) params.append("titleAuthorOnly", "true");
+
   if (options?.categories && options.categories.length > 0) {
     options.categories.forEach(c => params.append("categories", c));
   }
