@@ -213,6 +213,14 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const finishedPhotoInputRef = useRef<HTMLInputElement>(null);
   const patternDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const yarnDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Защита от гонки: debounce только ограничивает частоту ЗАПУСКА таймера,
+  // но не гарантирует порядок ПРИХОДА ответов — если пользователь делает
+  // паузу при наборе ("sun" -> пауза -> "day"), уходят два отдельных
+  // запроса, и ответ на более ранний/короткий запрос может прийти позже
+  // ответа на актуальный. Без этого счётчика устаревший ответ молча
+  // перезатирал бы свежие результаты (видно "sunday" в поле, а в списке —
+  // результаты для "sun" или ещё короче).
+  const patternSearchSeqRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -343,15 +351,17 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     }
     if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current);
     patternDebounceRef.current = setTimeout(async () => {
+      const seq = ++patternSearchSeqRef.current;
       setIsSearchingPattern(true);
       try {
         const res = await fetchPatterns({ search: patternQuery.trim(), limit: 10 });
+        if (seq !== patternSearchSeqRef.current) return; // пришёл не последний ответ — игнорируем
         setPatternResults(res.data);
       } catch (err) {
         console.error('[AddProjectModal] pattern search failed:', err);
-        setPatternResults([]);
+        if (seq === patternSearchSeqRef.current) setPatternResults([]);
       } finally {
-        setIsSearchingPattern(false);
+        if (seq === patternSearchSeqRef.current) setIsSearchingPattern(false);
       }
     }, 300);
     return () => { if (patternDebounceRef.current) clearTimeout(patternDebounceRef.current); };
