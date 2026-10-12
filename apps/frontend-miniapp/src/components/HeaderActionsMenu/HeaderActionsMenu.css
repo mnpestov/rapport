@@ -56,3 +56,43 @@
 .header-actions-menu-item--danger {
   color: #c0392b;
 }
+
+/* ───────────────────────────────────────────────────────────────────────
+   Десктоп — адаптивные размеры.
+   Формула: min(calc(N * (100vw - 100px) / 1340), Npx). Фиксация сверху 1440px.
+   Иконки: размер через em от font-size, обводка пропорциональна (0.0625em = 1.5/24,
+   0.0833em = 1.5/18).
+   ─────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .header-actions-menu-list {
+    top: calc(100% + min(calc(4 * (100vw - 100px) / 1340), 4px));
+    padding: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(2 * (100vw - 100px) / 1340), 2px);
+    min-width: min(calc(180 * (100vw - 100px) / 1340), 180px);
+  }
+
+  .header-actions-menu-item {
+    gap: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    padding: min(calc(10 * (100vw - 100px) / 1340), 10px) min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+  }
+
+  /* Иконка триггера: 24px → адаптив. stroke-width: 1.5/24 = 0.0625em */
+  .header-actions-menu-trigger svg {
+    font-size: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    width: 1em;
+    height: 1em;
+    display: block;
+    stroke-width: 0.0625em;
+  }
+
+  /* Иконка пункта меню: 18px → адаптив. stroke-width: 1.5/18 = 0.0833em */
+  .header-actions-menu-item svg {
+    font-size: min(calc(18 * (100vw - 100px) / 1340), 18px);
+    width: 1em;
+    height: 1em;
+    display: block;
+    flex-shrink: 0;
+    stroke-width: 0.0833em;
+  }
+}

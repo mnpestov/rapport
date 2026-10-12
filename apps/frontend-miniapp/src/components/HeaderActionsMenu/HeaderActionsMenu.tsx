@@ -38,7 +38,7 @@ export const HeaderActionsMenu: React.FC<HeaderActionsMenuProps> = ({ onEdit, on
         onClick={() => setIsOpen((v) => !v)}
         aria-label="Действия"
       >
-        <EllipsisVertical size={24} strokeWidth={1.5} stroke="#9B9A9A" />
+        <EllipsisVertical size={24} stroke="#9B9A9A" />
       </button>
       {isOpen && (
         <div className="header-actions-menu-list">
@@ -48,7 +48,7 @@ export const HeaderActionsMenu: React.FC<HeaderActionsMenuProps> = ({ onEdit, on
               className="header-actions-menu-item"
               onClick={() => { setIsOpen(false); onEdit(); }}
             >
-              <SquarePen size={18} strokeWidth={1.5} />
+              <SquarePen size={18} />
               Редактировать
             </button>
           )}
@@ -57,7 +57,7 @@ export const HeaderActionsMenu: React.FC<HeaderActionsMenuProps> = ({ onEdit, on
             className="header-actions-menu-item header-actions-menu-item--danger"
             onClick={() => { setIsOpen(false); onDelete(); }}
           >
-            <Trash2 size={18} strokeWidth={1.5} />
+            <Trash2 size={18} />
             Удалить
           </button>
         </div>
