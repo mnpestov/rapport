@@ -56,14 +56,18 @@ export function Yarns() {
   const [deletingItem, setDeletingItem] = useState<YarnItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Очередь «На проверке» — отдельный список, отдельная загрузка. Не общий
-  // getYarns(search=...) с фильтром на клиенте: очередь должна показывать
-  // все PENDING разом, без пагинации — их число невелико по определению
-  // (модератор разбирает быстро, не копится тысячами).
+  // Очередь «На проверке» — отдельный список, отдельная загрузка. В
+  // отличие от справочника (catalog) очередь на практике тоже может
+  // перевалить за PAGE_SIZE (50) — бэкенд и так всегда применяет skip/take
+  // даже при pending=1, здесь просто не было своей пагинации/page-state.
   const [pendingItems, setPendingItems] = useState<YarnItem[]>([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pendingPageSize, setPendingPageSize] = useState(50);
+  const [pendingPage, setPendingPage] = useState(1);
   const [pendingLoading, setPendingLoading] = useState(true);
-  // Client-side, не новый запрос — очередь и так грузится целиком (см.
-  // комментарий выше про отсутствие пагинации у pending).
+  // Серверный фильтр (createdVia), не client-side: при постраничной загрузке
+  // фильтрация внутри уже загруженной (одной) страницы давала бы неполную
+  // картину, если заявки STASH_USER есть и на других страницах.
   const [stashOnly, setStashOnly] = useState(false);
   const [rejectingItem, setRejectingItem] = useState<YarnItem | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -105,18 +109,28 @@ export function Yarns() {
   const loadPending = useCallback(async () => {
     setPendingLoading(true);
     try {
-      const res = await getYarns({ pending: true });
+      const res = await getYarns({
+        pending: true,
+        page: pendingPage,
+        createdVia: stashOnly ? "STASH_USER" : undefined,
+      });
       setPendingItems(res.items);
+      setPendingTotal(res.total);
+      setPendingPageSize(res.pageSize);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось загрузить очередь");
     } finally {
       setPendingLoading(false);
     }
-  }, []);
+  }, [pendingPage, stashOnly]);
 
   useEffect(() => {
     loadPending();
   }, [loadPending]);
+
+  // Смена фильтра со второй страницы очереди оставила бы пустой список —
+  // тот же приём, что у смены фильтров каталога выше.
+  useEffect(() => setPendingPage(1), [stashOnly]);
 
   const loadFieldSuggestions = useCallback(async () => {
     setFieldSuggestionsLoading(true);
@@ -228,6 +242,7 @@ export function Yarns() {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pendingTotalPages = Math.max(1, Math.ceil(pendingTotal / pendingPageSize));
 
   return (
     <div className={styles.page}>
@@ -248,7 +263,7 @@ export function Yarns() {
       <ControlPanel
         tabs={[
           { value: "catalog", label: "Справочник" },
-          { value: "pending", label: "На проверке", count: pendingItems.length || undefined },
+          { value: "pending", label: "На проверке", count: pendingTotal || undefined },
           { value: "field-suggestions", label: "Заявки на метраж/состав", count: fieldSuggestions.length || undefined },
         ]}
         activeTab={tab}
@@ -348,9 +363,7 @@ export function Yarns() {
             <span>Описаний</span>
             <span />
           </div>
-          {pendingItems
-            .filter((y) => !stashOnly || y.createdVia === "STASH_USER")
-            .map((y) => (
+          {pendingItems.map((y) => (
             <div key={y.id} className={styles.row}>
               <span className={styles.nameCell}>
                 <span className={styles.name}>{y.name}</span>
@@ -400,9 +413,26 @@ export function Yarns() {
               </span>
             </div>
           ))}
-          {!pendingLoading && pendingItems.filter((y) => !stashOnly || y.createdVia === "STASH_USER").length === 0 && (
+          {!pendingLoading && pendingItems.length === 0 && (
             <div className={styles.empty}>
               {stashOnly ? "Нет заявок из хранилища пряжи" : "Нет артикулов на проверке"}
+            </div>
+          )}
+          {pendingTotalPages > 1 && (
+            <div className={styles.pager}>
+              <Button variant="secondary" disabled={pendingPage <= 1} onClick={() => setPendingPage((p) => p - 1)}>
+                Назад
+              </Button>
+              <span>
+                {pendingPage} из {pendingTotalPages}
+              </span>
+              <Button
+                variant="secondary"
+                disabled={pendingPage >= pendingTotalPages}
+                onClick={() => setPendingPage((p) => p + 1)}
+              >
+                Вперёд
+              </Button>
             </div>
           )}
         </div>
