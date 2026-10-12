@@ -329,7 +329,15 @@ export const ProjectDetails: React.FC = () => {
     }
   };
 
-  const heroImages = project.finishedPhotos.length > 0 ? project.finishedPhotos : project.images;
+  // Своих фото нет вовсе (ни готового изделия, ни в процессе) — в галерее
+  // показываем референсы вместо пустой плашки-заглушки. Если своё фото
+  // есть (любое из двух), референсы в галерею не подмешиваются — только
+  // фото проекта, по просьбе пользователя.
+  const heroImages = project.finishedPhotos.length > 0
+    ? project.finishedPhotos
+    : project.images.length > 0
+      ? project.images
+      : project.referencePhotos;
   const firstPattern = project.patterns[0];
 
   // Бейдж статуса + выпадающий список — общий для мобиле (внутри строки
