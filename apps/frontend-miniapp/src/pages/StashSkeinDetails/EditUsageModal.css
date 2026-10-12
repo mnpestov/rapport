@@ -14,7 +14,7 @@
    специфичнее одиночного класса и побеждает вне зависимости от порядка
    подключения файлов. .log-usage-overlay уже центрирует диалог (общее
    правило в LogUsageWizard.css), здесь это не дублируется. */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .edit-usage-modal .log-usage-panel {
     display: flex;
     flex-direction: column;

@@ -619,7 +619,7 @@
    указанию пользователя — та же структура/размер и для
    CompleteProjectWizard.tsx (эти классы импортируются и используются
    оттуда), меняется только наполнение самих полей. */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .log-usage-overlay {
     align-items: center;
     justify-content: center;

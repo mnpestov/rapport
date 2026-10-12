@@ -422,7 +422,7 @@
    3-колоночной раскладкой вместо одной колонки. Мобильные правила выше не
    меняются — .add-yarn-photos (плоская сетка) и .add-yarn-gallery-desktop-*
    не пересекаются, рендерятся по isDesktop в AddYarnModal.tsx. */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
 
   /* Во весь экран (Figma node-id=1852:34888 — целая страница, не плавающий
      диалог) — оверлей/панель растянуты на весь вьюпорт, бэкдроп под ними не

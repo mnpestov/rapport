@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
-// Единый брейкпоинт десктопа — тот же 820px, на котором завязаны адаптивы
+// Единый брейкпоинт десктопа — тот же 768px, на котором завязаны адаптивы
 // в CSS (Catalog.css, PatternDetails.css, FilterModal.css).
-const DESKTOP_QUERY = "(hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px)";
+const DESKTOP_QUERY = "(min-width: 768px)";
 
 // Нужен там, где на десктопе и мобиле разная РАЗМЕТКА, а не только стили:
 // шторка снизу против выпадающего селекта у кнопки сортировки. Для чисто

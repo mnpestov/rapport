@@ -956,10 +956,10 @@
 }
 
 /* ───────────────────────── Десктоп (Figma node-id=1659:22930) ─────────────
-   Брейкпоинт 820px — тот же, что везде. Мобильные блоки/классы выше не
+   Брейкпоинт 768px — тот же, что везде. Мобильные блоки/классы выше не
    трогаем — на десктопе рендерится отдельная ветка JSX (см. isDesktop в
    StashSkeinDetails.tsx), эти правила касаются только её. */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .stash-details-container {
     max-width: 1440px;
     padding: 24px 50px calc(24px + env(safe-area-inset-bottom));
@@ -1436,7 +1436,7 @@
    calc()-подгонки ширины под соседние колонки. .pd-label/.pd-value уже
    14px/16px (см. выше по файлу) — переопределять шрифты не нужно, только
    раскладка. */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .project-details-desktop-grid {
     display: grid;
     grid-template-columns: 3fr 3fr 2fr;

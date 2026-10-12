@@ -11,7 +11,7 @@
   margin: 0 auto;
 }
 
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .favorites-container {
     padding: 24px 24px calc(8px + var(--tab-bar-reserve, 0px));
   }

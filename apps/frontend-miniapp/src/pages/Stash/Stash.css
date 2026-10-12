@@ -371,11 +371,11 @@
 }
 
 /* ───────────────────────── Десктоп (Figma node-id=1651:21630) ─────────────
-   Брейкпоинт 820px — тот же, что useIsDesktop()/Catalog.css/
+   Брейкпоинт 768px — тот же, что useIsDesktop()/Catalog.css/
    PatternDetails.css/FilterModal.css. TopNav.tsx (сквозная шапка) рендерится
    отдельно в App.tsx, сюда не входит. */
 
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .stash-container {
     max-width: 1440px;
     padding: 24px 50px calc(24px + env(safe-area-inset-bottom));

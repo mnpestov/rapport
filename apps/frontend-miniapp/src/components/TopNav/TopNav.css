@@ -1,11 +1,11 @@
 /* Скрыт на мобильном — нижний TabBar остаётся единственной навигацией там.
-   Брейкпоинт 820px — тот же, что у useIsDesktop()/Catalog.css/
+   Брейкпоинт 768px — тот же, что у useIsDesktop()/Catalog.css/
    PatternDetails.css/FilterModal.css. */
 .top-nav {
   display: none;
 }
 
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .top-nav {
     display: flex;
     /* sticky, не fixed — остаётся в потоке документа, страницам не нужно

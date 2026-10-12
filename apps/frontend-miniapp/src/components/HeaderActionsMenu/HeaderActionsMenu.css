@@ -63,7 +63,7 @@
    Иконки: размер через em от font-size, обводка пропорциональна (0.0625em = 1.5/24,
    0.0833em = 1.5/18).
    ─────────────────────────────────────────────────────────────────────── */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .header-actions-menu-list {
     top: calc(100% + min(calc(4 * (100vw - 100px) / 1340), 4px));
     padding: min(calc(8 * (100vw - 100px) / 1340), 8px);

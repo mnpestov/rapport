@@ -15,7 +15,7 @@
    descendant-селектор специфичнее одиночного класса и побеждает вне
    зависимости от порядка подключения файлов. JS-ветвления по isDesktop не
    нужно: разметка одна и та же, меняется только контейнер по CSS. */
-@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+@media (min-width: 768px) {
   .add-yarn-overlay.add-swatch-modal {
     align-items: center;
     justify-content: center;

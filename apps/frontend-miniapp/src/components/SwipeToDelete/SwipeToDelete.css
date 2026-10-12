@@ -40,7 +40,7 @@
   transition: none !important;
 }
 
-/* @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 820px) {
+/* @media (min-width: 768px) {
   .swipe-to-delete-button {
     width: min(calc(56 * (100vw - 100px) / 1340), 56px);
     margin: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(1 * (100vw - 100px) / 1340), 1px);
