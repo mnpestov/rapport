@@ -368,23 +368,38 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
 
   if (!isOpen) return null;
 
-  // Завершение зума (пинч или колесо/двойной клик — те отключены ниже в
-  // JSX, но колбэк общий на случай будущих источников) — переводим
-  // "библиотечный" масштаб обратно в логический процент для индикатора/
-  // кнопок +/-. Во время самого жеста zoom state НЕ трогаем — визуально
-  // всё ведёт сам react-zoom-pan-pinch, лишний ре-рендер на каждый кадр не
-  // нужен (та же идея, что раньше решал isPinchingRef, просто теперь не
-  // наша забота).
+  // Переводит "библиотечный" масштаб в логический процент (1..4 = 100%..
+  // 400%) для индикатора/кнопок +/- — на всякий случай ещё и клампим:
+  // minScale/maxScale на TransformWrapper и так не дают реальному zoom
+  // выйти за границы, но если когда-нибудь всё же долетит пограничное
+  // значение (например, от библиотеки во время анимации), индикатор не
+  // должен показать "меньше 100%" на странице, которая на самом деле уже
+  // упёрлась в предел и не уменьшается.
+  const clampDisplayZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+
+  // Завершение зума пинчем/колесом-тачпада — переводим "библиотечный"
+  // масштаб обратно в логический процент для индикатора/кнопок +/-. Во
+  // время самого жеста zoom state НЕ трогаем — визуально всё ведёт сам
+  // react-zoom-pan-pinch, лишний ре-рендер на каждый кадр не нужен (та же
+  // идея, что раньше решал isPinchingRef, просто теперь не наша забота).
   const handleGestureSettled = (ctx: ReactZoomPanPinchContentRef) => {
-    setZoom(ctx.state.scale * RENDER_ZOOM_HEADROOM);
+    setZoom(clampDisplayZoom(ctx.state.scale * RENDER_ZOOM_HEADROOM));
   };
 
+  // Кнопки +/- — используем родные zoomIn/zoomOut библиотеки (не
+  // setTransform с текущими positionX/Y как раньше: тот держит левый
+  // верхний угол контента на месте, из-за чего зум визуально "уезжал" в
+  // один угол — zoomIn/zoomOut сами анимируют зум от ЦЕНТРА текущего
+  // видимого окна, ровно как ожидается от кнопок +/-).
   const zoomStep = (direction: 1 | -1) => {
     const ctx = transformRef.current;
     if (!ctx) return;
-    const next = Math.min(MAX_LIB_SCALE, Math.max(MIN_LIB_SCALE, ctx.state.scale + direction * (0.5 / RENDER_ZOOM_HEADROOM)));
-    ctx.setTransform(ctx.state.positionX, ctx.state.positionY, next, 200);
-    setZoom(next * RENDER_ZOOM_HEADROOM);
+    const step = 0.5 / RENDER_ZOOM_HEADROOM;
+    const action = direction === 1 ? ctx.zoomIn(step, 200) : ctx.zoomOut(step, 200);
+    action.then(() => {
+      const settled = transformRef.current;
+      if (settled) setZoom(clampDisplayZoom(settled.state.scale * RENDER_ZOOM_HEADROOM));
+    });
   };
 
   const handleDeleteHighlight = async (id: string) => {
@@ -777,15 +792,27 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               initialPositionX={0}
               initialPositionY={0}
               limitToBounds
-              // Зум/пан только в инструменте "Стрелка" — сознательное
-              // упрощение: пока активен Хайлайтер/Перо/Ластик, двухпальцевый
-              // жест однозначно адресован рисованию (см. activePointerIdsRef
-              // в канвасе рисования), а не масштабированию одновременно —
-              // раньше попытка разрешать оба жеста сразу и была источником
-              // конфликтов (см. историю правок).
-              disabled={toolMode !== 'pan'}
+              // Одним пальцем (panning) — только в инструменте "Стрелка":
+              // иначе одиночное касание в режиме Хайлайтер/Перо одновременно
+              // пыталось бы и панорамировать страницу, и рисовать штрих. Два
+              // пальца (pinch) — разрешены ВСЕГДА, в любом инструменте:
+              // защиту от конфликта с рисованием уже даёт activePointerIdsRef
+              // в канвасе рисования (как только ложится второй палец, текущий
+              // штрих/выделение обрывается без сохранения) — поэтому зуму не
+              // обязательно ждать переключения на "Стрелку", как было раньше
+              // (жалоба "зум двумя пальцами с выбранным инструментом не
+              // работает").
+              panning={{ disabled: toolMode !== 'pan' }}
+              pinch={{ disabled: false }}
               doubleClick={{ disabled: true }}
-              wheel={{ disabled: true }}
+              // wheelDisabled — обычная прокрутка колесом мыши не зумирует
+              // (неожиданно для десктопа); touchPadDisabled: false — зато
+              // pinch на трекпаде (браузер шлёт его как wheel+ctrlKey)
+              // перехватывается нами и зумирует ИМЕННО документ: раньше
+              // wheel был выключен целиком, из-за чего событие не
+              // гасилось (event.preventDefault() внутри библиотеки) и
+              // браузер зумировал всю страницу приложения жестом трекпада.
+              wheel={{ wheelDisabled: true, touchPadDisabled: false }}
               onZoomStop={handleGestureSettled}
               onPinchStop={handleGestureSettled}
             >
