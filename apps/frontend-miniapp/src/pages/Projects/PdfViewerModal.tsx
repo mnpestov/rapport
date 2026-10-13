@@ -96,7 +96,7 @@ const SWIPE_MAX_VERTICAL_RATIO = 0.5;
 // порог относительного изменения расстояния между пальцами — кто из двух
 // первым "набрал" свой порог, тот и определяет исход.
 const SWIPE_DECISION_DIST_PX = 16;
-const SWIPE_DECISION_RATIO = 100.72;
+const SWIPE_DECISION_RATIO = 0.36;
 
 type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
@@ -512,6 +512,40 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, error]);
 
+  // Свайп перелистывания (handleSwipeTouchStart/Move/End) — та же история,
+  // что чуть выше с канвасом рисования: это были React-пропсы onTouchStart/
+  // Move/End на pageWrapRef, и stopPropagation() оттуда ТОЖЕ опаздывал
+  // относительно нативного слушателя react-zoom-pan-pinch на его wrapper-
+  // узле (ближе к pageWrapRef по DOM, чем единый делегирующий слушатель
+  // React). Поэтому библиотека реально видела КАЖДЫЙ touchmove и честно
+  // реагировала на реальные микро-колебания расстояния между пальцами при
+  // обычном боковом свайпе — отсюда "микрозумирование", сколько бы ни
+  // поднимали порог классификатора (жалоба: "сделал порог 100 — всё равно
+  // зумирует"). Порог был ни при чём, stopPropagation просто не долетал.
+  useEffect(() => {
+    const wrap = pageWrapRef.current;
+    if (!wrap) return;
+
+    const onStart = (e: TouchEvent) => handleSwipeTouchStart(e);
+    const onMove = (e: TouchEvent) => handleSwipeTouchMove(e);
+    const onEnd = (e: TouchEvent) => handleSwipeTouchEnd(e);
+
+    wrap.addEventListener('touchstart', onStart, { capture: true, passive: false });
+    wrap.addEventListener('touchmove', onMove, { capture: true, passive: false });
+    wrap.addEventListener('touchend', onEnd, { capture: true, passive: false });
+    wrap.addEventListener('touchcancel', onEnd, { capture: true, passive: false });
+
+    return () => {
+      wrap.removeEventListener('touchstart', onStart, { capture: true } as EventListenerOptions);
+      wrap.removeEventListener('touchmove', onMove, { capture: true } as EventListenerOptions);
+      wrap.removeEventListener('touchend', onEnd, { capture: true } as EventListenerOptions);
+      wrap.removeEventListener('touchcancel', onEnd, { capture: true } as EventListenerOptions);
+    };
+    // pageWrapRef пересоздаётся вместе с канвасом рисования (тот же
+    // isLoading/error gate в JSX) — переподключаем на новый узел так же.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, error]);
+
   if (!isOpen) return null;
 
   // Переводит "библиотечный" масштаб в логический процент (1..4 = 100%..
@@ -580,7 +614,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // разрешает pinch в любом инструменте, см. pinch={{disabled:false}}):
   // если пальцы заметно сближаются/расходятся, это зум, не свайп —
   // отпускаем жест библиотеке как обычно.
-  const handleSwipeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleSwipeTouchStart = (e: TouchEvent) => {
     const count = e.touches.length;
     const isEligible = zoom <= MIN_ZOOM && (
       (toolMode === 'pan' && count === 1) ||
@@ -604,7 +638,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     swipeLastPointRef.current = point;
   };
 
-  const handleSwipeTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleSwipeTouchMove = (e: TouchEvent) => {
     const start = swipeStartRef.current;
     if (!start) return;
     const count = e.touches.length;
@@ -643,7 +677,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     e.stopPropagation();
   };
 
-  const handleSwipeTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleSwipeTouchEnd = (e: TouchEvent) => {
     const start = swipeStartRef.current;
     const lastPoint = swipeLastPointRef.current;
     swipeStartRef.current = null;
@@ -1166,9 +1200,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                 <div
                   ref={pageWrapRef}
                   className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''} ${!isPageReady ? 'pdf-viewer-page-wrap--transitioning' : ''}`}
-                  onTouchStart={handleSwipeTouchStart}
-                  onTouchMove={handleSwipeTouchMove}
-                  onTouchEnd={handleSwipeTouchEnd}
                 >
                   <canvas ref={canvasRef} className="pdf-viewer-canvas" />
                   <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
