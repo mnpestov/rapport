@@ -939,57 +939,57 @@
 
 @media (min-width: 768px) {
   .projects-status-icon-wrap {
-    width: min(calc(24 * (100vw - 100px) / 1340), 24px);
-    height: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    width: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    height: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
   }
 
   .projects-status-icon-wrap svg {
-    width: min(calc(13 * (100vw - 100px) / 1340), 13px);
-    height: min(calc(13 * (100vw - 100px) / 1340), 13px);
+    width: min(calc(13 * (100vw - 100px) / var(--fluid-divisor)), 13px);
+    height: min(calc(13 * (100vw - 100px) / var(--fluid-divisor)), 13px);
   }
 
   .add-project-pdf-row {
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .add-project-pdf-link {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .add-project-date-label {
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .add-project-date-value {
-    gap: min(calc(12 * (100vw - 100px) / 1340), 12px);
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .add-project-yarn-card-title {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .plus-add-button {
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
-    padding: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    padding: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .plus-add-button svg {
-    width: min(calc(32 * (100vw - 100px) / 1340), 32px);
-    height: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    width: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
+    height: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
     display: block;
   }
 
   .add-project-photo-thumb-referencePhotos {
-    width: min(calc(90 * (100vw - 100px) / 1340), 90px);
-    height: min(calc(117 * (100vw - 100px) / 1340), 117px);
+    width: min(calc(90 * (100vw - 100px) / var(--fluid-divisor)), 90px);
+    height: min(calc(117 * (100vw - 100px) / var(--fluid-divisor)), 117px);
   }
 
   .add-project-checkbox-row {
-    gap: min(calc(12 * (100vw - 100px) / 1340), 12px);
-    padding: min(calc(4 * (100vw - 100px) / 1340), 4px) 0 min(calc(8 * (100vw - 100px) / 1340), 8px);
-    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+    gap: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+    padding: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px) 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
   }
 
 
@@ -1014,7 +1014,7 @@
     max-width: 1440px;
     margin: 0 auto;
     width: 100%;
-    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px) 0;
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px) 0;
     box-sizing: border-box;
   }
 
@@ -1029,7 +1029,7 @@
   .add-project-title-row {
     display: flex;
     flex-direction: column;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     min-width: 0;
   }
 
@@ -1037,8 +1037,8 @@
     display: flex;
     flex-direction: column;
     align-items: start;
-    gap: min(calc(16 * (100vw - 100px) / 1340), 16px);
-    padding-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    padding-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     border-bottom: 1px solid #e5e5e5;
   }
 
@@ -1047,12 +1047,12 @@
      только крупнее: fluid-формула та же, что у .stash-details-name
      (ProjectDetails/StashSkeinDetails), а не фиксированные 34px. */
   .add-project-title--desktop {
-    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
     font-family: Mulish, sans-serif;
     border: 1.5px solid #e5e5e5;
     border-radius: 2px;
     background: #ffffff;
-    padding: min(calc(12 * (100vw - 100px) / 1340), 12px) min(calc(16 * (100vw - 100px) / 1340), 16px);
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px) min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     color: #1d1c1c;
     box-sizing: border-box;
     min-width: 0;
@@ -1071,7 +1071,7 @@
 
   .add-project-column-actions {
     display: flex;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     min-width: 0;
     justify-content: end;
   }
@@ -1082,10 +1082,10 @@
   .add-project-column-actions .add-project-save-btn {
     width: auto;
     flex: 1;
-    height: min(calc(40 * (100vw - 100px) / 1340), 40px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
-    padding: 0 min(calc(24 * (100vw - 100px) / 1340), 24px);
-    max-width: min(calc(127 * (100vw - 100px) / 1340), 127px);
+    height: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    padding: 0 min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor)), 127px);
   }
 
   /* .add-project-body — грид только для ширины 3 колонок, не для строк:
@@ -1101,11 +1101,11 @@
   .add-project-body {
     display: grid;
     grid-template-columns: 3fr 3fr 2fr;
-    column-gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
+    column-gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
     width: 100%;
     max-width: 1440px;
     margin: 0 auto;
-    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px);
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
     box-sizing: border-box;
   }
 
@@ -1114,7 +1114,7 @@
   .add-project-col-meta {
     display: flex;
     flex-direction: column;
-    gap: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    gap: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
     min-width: 0;
   }
 
@@ -1136,28 +1136,28 @@
      (мобильные значения заметно мельче, и десктопного переопределения для
      них не было). */
   .add-project-label {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .add-project-input,
   .add-project-textarea {
-    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
   }
 
   .add-project-section-title {
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .add-project-swatch-draft-header {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .add-project-swatch-remove {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   /* НЕ 17px, как у .add-yarn-instrument-chip в AddYarnModal — там колонка
-     равная трети ~1340px (широкая), здесь 3-я колонка грида фиксированная
+     равная трети ~var(--fluid-divisor)px (широкая), здесь 3-я колонка грида фиксированная
      ~390px ("Сроки"/"Инструмент"/"Пряжа"/"Образец") — при 17px самый длинный
      чип "Вязальная машина" не помещался и визуально "пропадал" (текст
      наезжал сам на себя/обрезался в тесной трети колонки). */
@@ -1166,35 +1166,35 @@
   }
 
   .add-project-instrument-chip {
-    font-size: min(calc(13 * (100vw - 100px) / 1340), 13px);
-    padding: min(calc(8 * (100vw - 100px) / 1340), 8px) min(calc(6 * (100vw - 100px) / 1340), 6px);
+    font-size: min(calc(13 * (100vw - 100px) / var(--fluid-divisor)), 13px);
+    padding: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px) min(calc(6 * (100vw - 100px) / var(--fluid-divisor)), 6px);
   }
 
   /* Заметка образца — компактнее мобильного min-height:80px, как у
      AddYarnModal. */
   .add-project-swatch-draft .add-project-textarea {
-    min-height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+    min-height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
   }
 
   /* Галерея "Фото изделия" — первое фото крупно справа, остальные
      миниатюрами слева (тот же принцип, что .add-yarn-gallery-desktop-*). */
   .add-project-gallery-desktop {
     display: flex;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .add-project-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
     flex-shrink: 0;
   }
 
   .add-project-gallery-desktop-thumb {
     position: relative;
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
-    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
     flex-shrink: 0;
     border-radius: 2px;
     overflow: hidden;
@@ -1221,9 +1221,9 @@
     color: #9b9a9a;
     /* font-size: 20px; */
     cursor: pointer;
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
-    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .add-project-gallery-desktop-main {
@@ -1236,9 +1236,9 @@
   }
 
   .add-project-pdf-upload-btn {
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
-    padding: min(calc(10 * (100vw - 100px) / 1340), 10px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
+    padding: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .add-project-gallery-desktop-main img {
@@ -1255,20 +1255,20 @@
     background: none;
     color: #9b9a9a;
     font-family: Mulish, sans-serif;
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
     cursor: pointer;
   }
 
   .status-badge {
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
-    padding: 0 min(calc(8 * (100vw - 100px) / 1340), 8px) 0 min(calc(2 * (100vw - 100px) / 1340), 2px);
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
-    margin: min(calc(4 * (100vw - 100px) / 1340), 4px) 0 0;
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
+    padding: 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px) 0 min(calc(2 * (100vw - 100px) / var(--fluid-divisor)), 2px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+    margin: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px) 0 0;
   }
 
   .add-project-instrument-size {
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   /* .add-project-footer (Закрыть/Сохранить колонкой на всю ширину) теперь

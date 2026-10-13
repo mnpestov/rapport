@@ -42,7 +42,7 @@
 
 /* @media (min-width: 768px) {
   .swipe-to-delete-button {
-    width: min(calc(56 * (100vw - 100px) / 1340), 56px);
-    margin: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(1 * (100vw - 100px) / 1340), 1px);
+    width: min(calc(56 * (100vw - 100px) / var(--fluid-divisor)), 56px);
+    margin: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px) min(calc(1 * (100vw - 100px) / var(--fluid-divisor)), 1px);
   }
 } */

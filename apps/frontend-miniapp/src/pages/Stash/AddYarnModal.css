@@ -458,7 +458,7 @@
     max-width: 1440px;
     margin: 0 auto;
     width: 100%;
-    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px) 0;
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px) 0;
     box-sizing: border-box;
   }
 
@@ -471,8 +471,8 @@
      (ProjectDetails.tsx: заголовок+статус в середине, даты в начале правой
      колонки). В хедере остаётся только хлебная крошка. */
   .add-yarn-title {
-    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
-    margin-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   /* Кнопки — начало 3-й колонки (.add-yarn-section--swatches), не в
@@ -481,8 +481,8 @@
      их в сам грид, под тем же принципом, что и у карточки проекта. */
   .add-yarn-column-actions {
     display: flex;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    margin-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     justify-content: end;
   }
 
@@ -490,11 +490,11 @@
   .add-yarn-column-actions .add-yarn-save-btn {
     width: auto;
     flex: 1;
-    height: min(calc(50 * (100vw - 100px) / 1340), 50px);
-    padding: 0 min(calc(24 * (100vw - 100px) / 1340), 24px);
-    /* height: min(calc(50 * (100vw - 100px) / 1340), 50px); */
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
-    max-width: min(calc(127 * (100vw - 100px) / 1340), 127px);
+    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
+    padding: 0 min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    /* height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px); */
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
+    max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor)), 127px);
   }
 
   .add-yarn-body {
@@ -505,11 +505,11 @@
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-areas: "photos yarn swatches";
     align-items: start;
-    gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
+    gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
     width: 100%;
     max-width: 1440px;
     margin: 0 auto;
-    padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px);
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
     box-sizing: border-box;
   }
 
@@ -534,35 +534,35 @@
      swatch-title:14px, "Удалить":13px, чипы инструмента:15px) и десктопного
      переопределения для них не было вообще. */
   .add-yarn-label {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .add-yarn-input,
   .add-yarn-textarea {
-    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
   }
 
   .add-yarn-section-title {
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .add-yarn-swatch-draft-title {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .add-yarn-swatch-remove {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .add-yarn-instrument-chip {
-    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
   }
 
   /* Заметка образца в макете выглядит как обычное однострочное поле
      (44px), не растущая textarea — компактнее мобильного min-height:80px,
      сама текстовая область (ресайз/многострочность) остаётся прежней. */
   .add-yarn-swatch-draft .add-yarn-textarea {
-    min-height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+    min-height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
   }
 
   /* Галерея — первое фото крупно справа, остальные миниатюрами слева (тот
@@ -571,21 +571,21 @@
      images[0]). */
   .add-yarn-gallery-desktop {
     display: flex;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .add-yarn-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
     flex-shrink: 0;
   }
 
   .add-yarn-gallery-desktop-thumb {
     position: relative;
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
-    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
     flex-shrink: 0;
     border-radius: 2px;
     overflow: hidden;
@@ -600,8 +600,8 @@
   }
 
   .add-yarn-gallery-desktop-add {
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
-    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -610,7 +610,7 @@
     border-radius: 2px;
     background: none;
     color: #9b9a9a;
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     cursor: pointer;
   }
 
@@ -637,7 +637,7 @@
     background: none;
     color: #9b9a9a;
     font-family: Mulish, sans-serif;
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
     cursor: pointer;
   }
 
@@ -648,14 +648,14 @@
      .add-yarn-footer переопределений больше нет. */
 
   .add-yarn-category-chip {
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
-    padding: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    padding: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .add-yarn-category-chip svg {
-    width: min(calc(32 * (100vw - 100px) / 1340), 32px);
-    height: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    width: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
+    height: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
     display: block;
   }
 }

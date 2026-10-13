@@ -985,52 +985,52 @@
   .stash-details-desktop-actions {
     display: flex;
     align-items: center;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .stash-details-desktop-edit,
   .stash-details-desktop-delete {
     display: flex;
     align-items: center;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    height: min(calc(40 * (100vw - 100px) / 1340), 40px);
-    padding: 0 min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    height: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    padding: 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     border: 1px solid #e5e5e5;
     border-radius: 2px;
     background: #ffffff;
     font-family: Mulish, sans-serif;
     font-weight: 700;
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
     color: #1c2a1e;
     cursor: pointer;
   }
 
   .stash-details-desktop-edit svg {
-    width: min(calc(16 * (100vw - 100px) / 1340), 16px);
-    height: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    width: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    height: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     display: block;
   }
 
   .stash-details-desktop-delete svg {
-    width: min(calc(16 * (100vw - 100px) / 1340), 16px);
-    height: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    width: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    height: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     display: block;
   }
 
   .stash-details-desktop-grid {
     display: grid;
     grid-template-columns: 2fr 3fr 3fr;
-    /* grid-template-columns: min(calc(544 * (100vw - 100px) / 1340), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / 1340), 308px); */
+    /* grid-template-columns: min(calc(544 * (100vw - 100px) / var(--fluid-divisor)), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / var(--fluid-divisor)), 308px); */
     align-items: start;
-    gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
-    margin-top: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    margin-top: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
   }
 
   .stash-details-desktop-gallery,
   .stash-details-desktop-info,
   .stash-details-desktop-swatches {
     min-width: 0;
-    gap: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    gap: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
     display: flex;
     flex-direction: column;
   }
@@ -1040,12 +1040,12 @@
   .stash-details-desktop-gallery {
     display: flex;
     flex-direction: column;
-    gap: min(calc(28 * (100vw - 100px) / 1340), 28px);
+    gap: min(calc(28 * (100vw - 100px) / var(--fluid-divisor)), 28px);
   }
 
   .stash-details-desktop-info .stash-details-name {
-    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
-    margin-bottom: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
+    margin-bottom: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
   }
 
   /* Внутри сетки эти блоки больше не формируют вертикальный ритм мобильного
@@ -1064,26 +1064,26 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    /* gap: min(calc(4 * (100vw - 100px) / 1340), 4px); */
+    /* gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px); */
   }
 
   /* ── Галерея (StashImageGalleryDesktop) ── */
   .stash-gallery-desktop {
     display: flex;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .stash-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
     flex-shrink: 0;
   }
 
   .stash-gallery-desktop-thumb {
-    width: min(calc(101 * (100vw - 100px) / 1340), 101px);
-    height: min(calc(119 * (100vw - 100px) / 1340), 119px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
     flex-shrink: 0;
     border: 1px solid transparent;
     border-radius: 2px;
@@ -1122,7 +1122,7 @@
 
   .stash-gallery-desktop-main--placeholder img {
     object-fit: contain;
-    padding: min(calc(60 * (100vw - 100px) / 1340), 60px);
+    padding: min(calc(60 * (100vw - 100px) / var(--fluid-divisor)), 60px);
     box-sizing: border-box;
   }
 
@@ -1135,24 +1135,24 @@
   }
 
   .stash-match-card {
-    width: min(calc(175 * (100vw - 100px) / 1340), 175px);
+    width: min(calc(175 * (100vw - 100px) / var(--fluid-divisor)), 175px);
   }
 
   .stash-match-image,
   .stash-match-image-frame {
-    width: min(calc(175 * (100vw - 100px) / 1340), 175px);
-    height: min(calc(216 * (100vw - 100px) / 1340), 216px);
+    width: min(calc(175 * (100vw - 100px) / var(--fluid-divisor)), 175px);
+    height: min(calc(216 * (100vw - 100px) / var(--fluid-divisor)), 216px);
   }
 
   .stash-match-favorite {
     position: absolute;
-    top: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    right: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    right: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: min(calc(32 * (100vw - 100px) / 1340), 32px);
-    height: min(calc(32 * (100vw - 100px) / 1340), 32px);
+    width: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
+    height: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
     border: none;
     background: transparent;
     padding: 0;
@@ -1185,252 +1185,252 @@
 
   /* ───────────────────────────────────────────────────────────────────────
      Адаптивные переопределения для общих классов (рендерятся и на мобильном,
-     и на десктопе). Формула: min(calc(N * (100vw - 100px) / 1340), Npx).
+     и на десктопе). Формула: min(calc(N * (100vw - 100px) / var(--fluid-divisor)), Npx).
      Фиксация сверху на 1440px. Мобильные-only классы и уже переопределённые
      выше в этом media-запросе — не дублируются.
      ─────────────────────────────────────────────────────────────────────── */
 
   .stash-details-header {
-    padding: min(calc(12 * (100vw - 100px) / 1340), 12px) 0;
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px) 0;
   }
 
   .stash-details-error {
-    margin-top: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    margin-top: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .stash-details-image-wrapper {
-    margin-bottom: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .stash-details-info {
-    margin-bottom: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    margin-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .stash-details-name {
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .stash-details-row {
-    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
   }
 
   .stash-details-row b {
-    margin-right: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    margin-right: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .pd-label {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .pd-value {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .pd-label-row {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .stash-details-pattern-card {
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    max-height: min(calc(72 * (100vw - 100px) / 1340), 72px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    max-height: min(calc(72 * (100vw - 100px) / var(--fluid-divisor)), 72px);
   }
 
   .stash-details-pattern-card-image {
-    width: min(calc(80 * (100vw - 100px) / 1340), 80px);
+    width: min(calc(80 * (100vw - 100px) / var(--fluid-divisor)), 80px);
   }
 
   .stash-details-date-col {
-    gap: min(calc(5 * (100vw - 100px) / 1340), 5px);
+    gap: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px);
   }
 
   .stash-details-tag-row {
-    gap: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    gap: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-details-remainder {
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    margin-top: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    margin-top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .stash-progress-bar {
-    height: min(calc(6 * (100vw - 100px) / 1340), 6px);
+    height: min(calc(6 * (100vw - 100px) / var(--fluid-divisor)), 6px);
   }
 
   .stash-details-section-title {
-    font-size: min(calc(17 * (100vw - 100px) / 1340), 17px);
-    margin: 0 0 min(calc(8 * (100vw - 100px) / 1340), 8px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
+    margin: 0 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .project-collapsible-header {
-    margin: 0 0 min(calc(8 * (100vw - 100px) / 1340), 8px);
+    margin: 0 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .project-collapsible-body {
-    gap: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    gap: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-details-swatches,
   .stash-details-notes,
   .stash-details-usages,
   .stash-details-matches {
-    margin: min(calc(20 * (100vw - 100px) / 1340), 20px) 0;
+    margin: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) 0;
   }
 
   .stash-notes-text {
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
   }
 
   .stash-note-link {
-    text-underline-offset: min(calc(2 * (100vw - 100px) / 1340), 2px);
+    text-underline-offset: min(calc(2 * (100vw - 100px) / var(--fluid-divisor)), 2px);
   }
 
   .stash-usage-card {
-    gap: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
   }
 
   .stash-details-usages .swipe-to-delete {
-    margin-bottom: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    margin-bottom: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-usage-body {
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .stash-usage-title {
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
   }
 
   .stash-usage-row {
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-usage-row b {
-    margin-right: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    margin-right: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .stash-usage-pattern-link {
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-swatch-block {
-    gap: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
   }
 
   .stash-details-swatches .swipe-to-delete {
-    margin-bottom: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    margin-bottom: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-add-button {
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
-    padding: min(calc(5 * (100vw - 100px) / 1340), 5px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    padding: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .stash-details-yarn-fix {
-    margin-bottom: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    margin-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .stash-details-yarn-fix-button {
-    padding: min(calc(12 * (100vw - 100px) / 1340), 12px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   .stash-details-yarn-fix-form {
-    gap: min(calc(10 * (100vw - 100px) / 1340), 10px);
-    padding: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-details-yarn-fix-hint {
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-details-yarn-fix-field {
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .stash-details-yarn-fix-label {
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-details-yarn-fix-input {
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
-    padding: min(calc(10 * (100vw - 100px) / 1340), 10px) min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
+    padding: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px) min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .stash-details-yarn-fix-error {
-    font-size: min(calc(13 * (100vw - 100px) / 1340), 13px);
+    font-size: min(calc(13 * (100vw - 100px) / var(--fluid-divisor)), 13px);
   }
 
   .stash-details-yarn-fix-actions {
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .stash-details-yarn-fix-actions .stash-action-btn {
-    height: min(calc(44 * (100vw - 100px) / 1340), 44px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
   }
 
   /* Второе определение .stash-notes-text (font-size:14px, padding:8px 20px,
      min/max-height:80px) — отличается от первого. Переопределяем только
      размерные свойства, text-decoration/font-family не трогаем. */
   .stash-notes-text {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
-    padding: min(calc(8 * (100vw - 100px) / 1340), 8px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    min-height: min(calc(80 * (100vw - 100px) / 1340), 80px);
-    max-height: min(calc(80 * (100vw - 100px) / 1340), 80px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    padding: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    min-height: min(calc(80 * (100vw - 100px) / var(--fluid-divisor)), 80px);
+    max-height: min(calc(80 * (100vw - 100px) / var(--fluid-divisor)), 80px);
   }
 
   .stash-notes-textarea {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
-    padding: min(calc(8 * (100vw - 100px) / 1340), 8px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    min-height: min(calc(80 * (100vw - 100px) / 1340), 80px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    padding: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    min-height: min(calc(80 * (100vw - 100px) / var(--fluid-divisor)), 80px);
   }
 
   .stash-matches-list {
-    gap: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
   }
 
   .stash-match-card {
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .stash-match-lock-icon {
-    top: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    right: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    right: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .stash-match-title {
-    font-size: min(calc(11 * (100vw - 100px) / 1340), 11px);
+    font-size: min(calc(11 * (100vw - 100px) / var(--fluid-divisor)), 11px);
   }
 
   .stash-match-category,
   .stash-match-instrument {
-    font-size: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    font-size: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
   }
 
   .stash-match-strands {
-    font-size: min(calc(10 * (100vw - 100px) / 1340), 10px);
-    margin: min(calc(2 * (100vw - 100px) / 1340), 2px) 0 0;
+    font-size: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
+    margin: min(calc(2 * (100vw - 100px) / var(--fluid-divisor)), 2px) 0 0;
   }
 
   .stash-details-actions {
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
-    margin: min(calc(20 * (100vw - 100px) / 1340), 20px) 0;
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    margin: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) 0;
   }
 
   .stash-action-btn {
-    height: min(calc(50 * (100vw - 100px) / 1340), 50px);
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
   }
 
   .stash-swatch-image {
-    width: min(calc(90 * (100vw - 100px) / 1340), 90px);
-    height: min(calc(136 * (100vw - 100px) / 1340), 136px);
+    width: min(calc(90 * (100vw - 100px) / var(--fluid-divisor)), 90px);
+    height: min(calc(136 * (100vw - 100px) / var(--fluid-divisor)), 136px);
   }
 
   .stash-usage-image {
-    width: min(calc(90 * (100vw - 100px) / 1340), 90px);
-    height: min(calc(136 * (100vw - 100px) / 1340), 136px);
+    width: min(calc(90 * (100vw - 100px) / var(--fluid-divisor)), 90px);
+    height: min(calc(136 * (100vw - 100px) / var(--fluid-divisor)), 136px);
   }
 }
 
@@ -1448,7 +1448,7 @@
   .project-details-desktop-grid {
     display: grid;
     grid-template-columns: 3fr 3fr 2fr;
-    /* grid-template-columns: min(calc(544 * (100vw - 100px) / 1340), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / 1340), 308px); */
+    /* grid-template-columns: min(calc(544 * (100vw - 100px) / var(--fluid-divisor)), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / var(--fluid-divisor)), 308px); */
     /* auto auto 1fr — строки "заголовок" и "метаданные/сроки" ровно по
        своему контенту; вся лишняя высота (когда галерея в 1-й колонке
        выше, чем title+meta вместе) уходит в 3-ю строку, а не "раздувает"
@@ -1460,10 +1460,10 @@
       "gallery content swatches";
     grid-template-rows: auto auto 1fr;
     align-items: start;
-    column-gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
-    row-gap: min(calc(30 * (100vw - 100px) / 1340), 30px);
-    margin-top: min(calc(24 * (100vw - 100px) / 1340), 24px);
-    margin-bottom: min(calc(100 * (100vw - 100px) / 1340), 100px);
+    column-gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    row-gap: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
+    margin-top: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    margin-bottom: min(calc(100 * (100vw - 100px) / var(--fluid-divisor)), 100px);
   }
 
   .project-details-desktop-grid>.stash-details-desktop-gallery {
@@ -1486,14 +1486,14 @@
     grid-area: meta;
     min-width: 0;
     align-self: stretch;
-    padding-bottom: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    padding-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .project-details-desktop-grid>.project-details-dates {
     grid-area: dates;
     min-width: 0;
     align-self: stretch;
-    padding-bottom: min(calc(9 * (100vw - 100px) / 1340), 9px);
+    padding-bottom: min(calc(9 * (100vw - 100px) / var(--fluid-divisor)), 9px);
   }
 
   /* Разделитель — отдельный элемент, а не border-bottom на каждой из
@@ -1516,7 +1516,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    gap: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
   }
 
   .project-details-desktop-content .stash-details-usages,
@@ -1529,34 +1529,34 @@
   }
 
   .project-details-title-row .stash-details-name {
-    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
-    /* margin-bottom: min(calc(10 * (100vw - 100px) / 1340), 10px); */
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
+    /* margin-bottom: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px); */
   }
 
   .project-details-title-row {
     display: flex;
     flex-direction: column;
     align-items: start;
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .project-details-meta-row {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .project-details-meta-item {
     display: flex;
     flex-direction: column;
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
   }
 
   .project-details-dates {
     display: flex;
     flex-direction: column;
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
     align-items: flex-end;
     width: 100%;
   }
@@ -1566,12 +1566,12 @@
     align-items: flex-end;
     justify-content: space-between;
     width: 100%;
-    gap: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .project-details-duration {
     font-family: Mulish, sans-serif;
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
     color: #6b6b6b;
     margin: 0;
   }

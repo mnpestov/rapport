@@ -104,13 +104,13 @@
 @media (min-width: 768px) {
   .app-footer {
     background: #f3f3f3;
-    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(50 * (100vw - 100px) / 1340), 50px);
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
     margin-top: auto;
   }
 
   .footer-link {
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
     text-decoration: none;
   }
 }

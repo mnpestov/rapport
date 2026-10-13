@@ -634,13 +634,13 @@
   .log-usage-panel {
     position: relative;
     display: grid;
-    grid-template-columns: min(calc(309 * (100vw - 100px) / 1340), 309px) minmax(0, 1fr);
+    grid-template-columns: min(calc(309 * (100vw - 100px) / var(--fluid-divisor)), 309px) minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
     grid-template-areas:
       "photo header"
       "photo body"
       "footer footer";
-    column-gap: min(calc(40 * (100vw - 100px) / 1340), 40px);
+    column-gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
     width: 100%;
     max-width: 980px;
     max-height: 90vh;
@@ -669,7 +669,7 @@
     grid-area: photo;
     display: flex;
     flex-direction: column;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     min-width: 0;
   }
 
@@ -724,7 +724,7 @@
     flex-direction: column;
     padding: 0;
     text-align: left;
-    margin-bottom: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    margin-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .log-usage-desktop-title-row {
@@ -737,7 +737,7 @@
 
   .log-usage-title,
   .complete-wizard-title {
-    font-size: min(calc(34 * (100vw - 100px) / 1340), 34px);
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
     text-align: left;
     margin: 0;
   }
@@ -792,7 +792,7 @@
     grid-area: footer;
     flex-direction: row;
     border-top: none;
-    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) 0 0;
+    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) 0 0;
     margin: 0;
   }
 

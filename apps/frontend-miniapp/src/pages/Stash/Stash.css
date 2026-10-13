@@ -379,8 +379,8 @@
   .stash-container {
     max-width: 1440px;
     padding: 24px 50px calc(24px + env(safe-area-inset-bottom));
-    /* max-width: min(calc(1440 * (100vw - 100px) / 1340), 1440px); */
-    /* padding: min(calc(24 * (100vw - 100px) / 1340), 24px) min(calc(50 * (100vw - 100px) / 1340), 50px) calc(24px + env(safe-area-inset-bottom)); */
+    /* max-width: min(calc(1440 * (100vw - 100px) / var(--fluid-divisor)), 1440px); */
+    /* padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px) calc(24px + env(safe-area-inset-bottom)); */
   }
 
   /* Мобильный центрированный заголовок заменяется хлебной крошкой + TopNav
@@ -392,7 +392,7 @@
   .stash-breadcrumb {
     display: block;
     font-family: Mulish, sans-serif;
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
     color: #6b6b6b;
     margin: 0;
   }
@@ -401,28 +401,28 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: min(calc(8 * (100vw - 100px) / 1340), 8px) 0 min(calc(16 * (100vw - 100px) / 1340), 16px);
+    margin: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px) 0 min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .stash-add-chip {
     display: flex;
     align-items: center;
-    gap: min(calc(24 * (100vw - 100px) / 1340), 24px);
-    height: clamp(28px, calc(48 * (100vw - 100px) / 1340), 48px);
-    padding: clamp(12px, calc(12 * (100vw - 100px) / 1340), 12px) min(calc(16 * (100vw - 100px) / 1340), 16px);
+    gap: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    height: clamp(28px, calc(48 * (100vw - 100px) / var(--fluid-divisor)), 48px);
+    padding: clamp(12px, calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px) min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     border: 1px solid #e5e5e5;
     border-radius: 2px;
     background: #ffffff;
     font-family: Mulish, sans-serif;
-    font-size: min(calc(14 * (100vw - 100px) / 1340), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
     color: #1d1c1c;
     cursor: pointer;
-    min-width: min(calc(350 * (100vw - 100px) / 1340), 350px);
+    min-width: min(calc(350 * (100vw - 100px) / var(--fluid-divisor)), 350px);
   }
 
   .stash-add-chip svg {
-    width: min(calc(24 * (100vw - 100px) / 1340), 24px);
-    height: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    width: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    height: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
   }
 
   .stash-add-chip--locked {
@@ -433,9 +433,9 @@
      мобильных 2 ячеек фиксированной геометрии (там левая сливалась с
      фоном контейнера, здесь все четыре одинаково белые). */
   .stash-summary-row {
-    gap: min(calc(36 * (100vw - 100px) / 1340), 36px);
+    gap: min(calc(36 * (100vw - 100px) / var(--fluid-divisor)), 36px);
     padding: 30px 70px;
-    padding: min(calc((100vw - 100px) * 30 / 1340), 30px) min(calc((100vw - 100px) * 70 / 1340), 70px);
+    padding: min(calc((100vw - 100px) * 30 / var(--fluid-divisor)), 30px) min(calc((100vw - 100px) * 70 / var(--fluid-divisor)), 70px);
     /* justify-content: flex-start; */
   }
 
@@ -444,7 +444,7 @@
     background: #ffffff;
     border-radius: 2px;
     width: auto;
-    padding: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    padding: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
     margin: 0;
   }
 
@@ -452,15 +452,15 @@
     display: flex;
     background: #ffffff;
     border-radius: 2px;
-    padding: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    padding: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
   }
 
   .stash-summary-value {
-    font-size: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    font-size: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
   }
 
   .stash-summary-label {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   /* Дублируются сводкой ("артикулов" карточка) и .stash-desktop-top-row
@@ -477,15 +477,15 @@
   }
 
   .stash-search-row {
-    max-width: min(calc(627 * (100vw - 100px) / 1340), 627px);
+    max-width: min(calc(627 * (100vw - 100px) / var(--fluid-divisor)), 627px);
   }
 
   .stash-search-input-wrapper {
-    max-width: min(calc(455 * (100vw - 100px) / 1340), 455px);
+    max-width: min(calc(455 * (100vw - 100px) / var(--fluid-divisor)), 455px);
   }
 
   .stash-tab {
-    width: min(calc(141 * (100vw - 100px) / 1340), 141px);
+    width: min(calc(141 * (100vw - 100px) / var(--fluid-divisor)), 141px);
   }
 
   .stash-grid-desktop {
@@ -497,15 +497,15 @@
        сетка держит фиксированную итоговую ширину и толкает страницу в
        горизонтальный скролл вместо resize. Найдено на реальном билде. */
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: min(calc(36 * (100vw - 100px) / 1340), 36px) min(calc(20 * (100vw - 100px) / 1340), 20px);
-    margin-bottom: min(calc(100 * (100vw - 100px) / 1340), 100px);
+    gap: min(calc(36 * (100vw - 100px) / var(--fluid-divisor)), 36px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    margin-bottom: min(calc(100 * (100vw - 100px) / var(--fluid-divisor)), 100px);
   }
 
   .stash-card-desktop {
     position: relative;
     display: flex;
     align-items: stretch;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     /* Та же причина, что у minmax выше, но для flex-итема (grid-ячейки):
        у flex/grid-детей тоже неявный min-width: auto — без обнуления сама
        карточка не сжимается уже контента вложенных .stash-card-desktop-row. */
@@ -517,7 +517,7 @@
   .stash-card-desktop-main {
     display: flex;
     align-items: stretch;
-    gap: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     flex: 1;
     min-width: 0;
     border: none;
@@ -528,7 +528,7 @@
   }
 
   .stash-card-desktop-image {
-    width: min(calc(116 * (100vw - 100px) / 1340), 116px);
+    width: min(calc(116 * (100vw - 100px) / var(--fluid-divisor)), 116px);
     flex-shrink: 0;
     background: #f3f3f3;
     border-radius: 2px;
@@ -536,6 +536,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    max-height: min(calc(172 * (100vw - 100px) / var(--fluid-divisor)), 172px);
   }
 
   .stash-card-desktop-image img {
@@ -555,18 +556,18 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     justify-content: center;
-    padding: min(calc(4 * (100vw - 100px) / 1340), 4px) 0;
+    padding: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px) 0;
     min-width: 0;
   }
 
   .stash-card-desktop-name {
     font-family: Mulish, sans-serif;
     font-weight: 700;
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     color: #001e00;
-    margin: 0 0 min(calc(5 * (100vw - 100px) / 1340), 5px);
+    margin: 0 0 min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -574,7 +575,7 @@
 
   .stash-card-desktop-row {
     font-family: Mulish, sans-serif;
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
     color: #001e00;
     margin: 0;
     white-space: nowrap;
@@ -583,19 +584,19 @@
   }
 
   .stash-card-desktop-row b {
-    margin-right: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    margin-right: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .stash-card-desktop-remainder {
     display: flex;
     flex-direction: column;
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     width: 100%;
-    margin-top: min(calc(6 * (100vw - 100px) / 1340), 6px);
+    margin-top: min(calc(6 * (100vw - 100px) / var(--fluid-divisor)), 6px);
   }
 
   .stash-card-desktop-progress-bar {
-    height: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    height: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
   }
 
   .stash-card-desktop-delete {
@@ -603,14 +604,14 @@
     align-self: flex-start;
     border: none;
     background: none;
-    padding: min(calc(4 * (100vw - 100px) / 1340), 4px);
+    padding: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
     color: #9b9a9a;
     cursor: pointer;
   }
 
   .stash-card-desktop-delete svg {
-    width: min(calc(16 * (100vw - 100px) / 1340), 16px);
-    height: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    width: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    height: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .stash-card-desktop-delete:hover {
@@ -620,9 +621,9 @@
   .stash-search-row {
     display: flex;
     align-items: center;
-    gap: clamp(16px, calc(20 * (100vw - 100px) / 1340), 20px);
+    gap: clamp(16px, calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     padding: 0;
-    margin: min(calc(40 * (100vw - 100px) / 1340), 40px) 0;
+    margin: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px) 0;
   }
 
   .stash-search-input-wrapper {
@@ -635,22 +636,22 @@
 
   .stash-search-icon {
     position: absolute;
-    left: min(calc(18 * (100vw - 100px) / 1340), 18px);
+    left: min(calc(18 * (100vw - 100px) / var(--fluid-divisor)), 18px);
     color: #9b9a9a;
     pointer-events: none;
   }
 
   .stash-search-input {
     width: 100%;
-    height: min(calc(44 * (100vw - 100px) / 1340), 44px);
+    height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
     background: #f3f3f3;
     border: none;
     border-radius: 2px;
-    padding-left: min(calc(46 * (100vw - 100px) / 1340), 46px);
+    padding-left: min(calc(46 * (100vw - 100px) / var(--fluid-divisor)), 46px);
     font-family: Mulish, sans-serif;
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
     color: #1d1c1c;
-    min-width: min(calc(455 * (100vw - 100px) / 1340), 455px);
+    min-width: min(calc(455 * (100vw - 100px) / var(--fluid-divisor)), 455px);
   }
 
   .stash-search-input::placeholder {
@@ -664,14 +665,14 @@
 
   .stash-tab {
     flex-shrink: 0;
-    min-width: min(calc(34 * (100vw - 100px) / 1340), 34px);
-    height: min(calc(44 * (100vw - 100px) / 1340), 44px);
-    padding: 0 min(calc(15 * (100vw - 100px) / 1340), 15px);
+    min-width: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
+    height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
+    padding: 0 min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
     border-radius: 2px;
     border: none;
     /* background: #E5E5E5; */
     font-family: Mulish, sans-serif;
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
     /* color: #1D1C1C; */
     cursor: pointer;
     letter-spacing: -0.85px;

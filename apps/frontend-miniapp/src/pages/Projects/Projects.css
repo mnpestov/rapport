@@ -13,7 +13,7 @@
 
 .projects-summary-group {
   display: flex;
-  gap: min(calc(36 * (100vw - 100px) / 1340), 36px);
+  gap: min(calc(36 * (100vw - 100px) / var(--fluid-divisor)), 36px);
   justify-content: center;
   align-items: center;
 }
@@ -332,17 +332,17 @@
 
   .projects-year-card.projects-year-card--desktop-only {
     display: flex;
-    width: min(calc(240 * (100vw - 100px) / 1340), 240px);
-    height: min(calc(116 * (100vw - 100px) / 1340), 116px);
+    width: min(calc(240 * (100vw - 100px) / var(--fluid-divisor)), 240px);
+    height: min(calc(116 * (100vw - 100px) / var(--fluid-divisor)), 116px);
   }
 
   .projects-summary-row {
-    gap: min(calc(29 * (100vw - 100px) / 1340), 29px);
-    padding: min(calc(20 * (100vw - 100px) / 1340), 20px) min(calc(70 * (100vw - 100px) / 1340), 70px);
+    gap: min(calc(29 * (100vw - 100px) / var(--fluid-divisor)), 29px);
+    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) min(calc(70 * (100vw - 100px) / var(--fluid-divisor)), 70px);
   }
 
   .projects-donut-hole {
-    inset: min(calc(9 * (100vw - 100px) / 1340), 9px);
+    inset: min(calc(9 * (100vw - 100px) / var(--fluid-divisor)), 9px);
   }
 
   .projects-summary-donut-block {
@@ -352,26 +352,26 @@
   /* Донат крупнее (141px, кольцо толщиной ~21.65px — те же пропорции, что
      в Figma: внешний маркер 141.421px, внутренняя "дырка" 98.119px). */
   .projects-donut {
-    width: min(calc(141 * (100vw - 100px) / 1340), 141px);
-    height: min(calc(141 * (100vw - 100px) / 1340), 141px);
+    width: min(calc(141 * (100vw - 100px) / var(--fluid-divisor)), 141px);
+    height: min(calc(141 * (100vw - 100px) / var(--fluid-divisor)), 141px);
   }
 
   .projects-donut-hole {
-    inset: min(calc(22 * (100vw - 100px) / 1340), 22px);
+    inset: min(calc(22 * (100vw - 100px) / var(--fluid-divisor)), 22px);
   }
 
   .projects-donut-total {
-    font-size: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    font-size: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
   }
 
   .projects-donut-sublabel {
     display: block;
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .projects-legend {
-    gap: min(calc(16 * (100vw - 100px) / 1340), 16px);
-    width: min(calc(220 * (100vw - 100px) / 1340), 220px);
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    width: min(calc(220 * (100vw - 100px) / var(--fluid-divisor)), 220px);
   }
 
   .projects-legend-item {
@@ -379,17 +379,17 @@
   }
 
   .projects-legend-dot {
-    width: min(calc(12 * (100vw - 100px) / 1340), 12px);
-    height: min(calc(12 * (100vw - 100px) / 1340), 12px);
+    width: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+    height: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
   }
 
   .projects-legend-label {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .projects-legend-count {
     display: block;
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   /* Три статкарты в ряд — тот же белый фон/паддинг/радиус, что у
@@ -397,17 +397,17 @@
   .projects-year-card {
     background: #ffffff;
     border-radius: 2px;
-    padding: min(calc(30 * (100vw - 100px) / 1340), 30px);
-    gap: min(calc(8 * (100vw - 100px) / 1340), 8px);
+    padding: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     margin: 0;
   }
 
   .projects-year-value {
-    font-size: min(calc(30 * (100vw - 100px) / 1340), 30px);
+    font-size: min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
   }
 
   .projects-year-label {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   /* .projects-mobile-add-button — модификатор именно этой кнопки (Projects.tsx),
@@ -427,7 +427,7 @@
   .projects-search-filter-row {
     display: flex;
     align-items: center;
-    gap: min(calc(36 * (100vw - 100px) / 1340), 36px);
+    gap: min(calc(36 * (100vw - 100px) / var(--fluid-divisor)), 36px);
   }
 
   .projects-status-filter-row {
@@ -435,10 +435,10 @@
   }
 
   .projects-status-filter-chip {
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
-    height: min(calc(38 * (100vw - 100px) / 1340), 38px);
-    /* padding: min(calc(7 * (100vw - 100px) / 1340), 7px) min(calc(12 * (100vw - 100px) / 1340), 12px) min(calc(7 * (100vw - 100px) / 1340), 7px) min(calc(4 * (100vw - 100px) / 1340), 4px); */
-    font-size: min(calc(15 * (100vw - 100px) / 1340), 15px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
+    height: min(calc(38 * (100vw - 100px) / var(--fluid-divisor)), 38px);
+    /* padding: min(calc(7 * (100vw - 100px) / var(--fluid-divisor)), 7px) min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px) min(calc(7 * (100vw - 100px) / var(--fluid-divisor)), 7px) min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px); */
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
   }
 
   .projects-grid-desktop {
@@ -448,8 +448,8 @@
        .projects-grid-card-title), сетка держит фиксированную ширину и
        толкает страницу в горизонтальный скролл вместо resize. */
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: min(calc(36 * (100vw - 100px) / 1340), 36px);
-    margin: min(calc(24 * (100vw - 100px) / 1340), 24px) auto min(calc(100 * (100vw - 100px) / 1340), 100px);
+    gap: min(calc(36 * (100vw - 100px) / var(--fluid-divisor)), 36px);
+    margin: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) auto min(calc(100 * (100vw - 100px) / var(--fluid-divisor)), 100px);
   }
 
   .projects-card-desktop {
@@ -489,13 +489,13 @@
 
   .projects-card-desktop-delete {
     position: absolute;
-    top: min(calc(10 * (100vw - 100px) / 1340), 10px);
-    right: min(calc(10 * (100vw - 100px) / 1340), 10px);
+    top: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
+    right: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: min(calc(24 * (100vw - 100px) / 1340), 24px);
-    height: min(calc(24 * (100vw - 100px) / 1340), 24px);
+    width: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    height: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
     border-radius: 50%;
     border: none;
     background: rgba(0, 0, 0, 0);
@@ -509,25 +509,37 @@
   }
 
   .projects-card-desktop-delete svg {
-    width: clamp(16px, calc(20 * (100vw - 100px) / 1340), 20px);
-    height: clamp(16px, calc(20 * (100vw - 100px) / 1340), 20px);
+    width: clamp(16px, calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    height: clamp(16px, calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     display: block;
   }
 
   .projects-grid-card-title {
-    font-size: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
   .projects-grid-card-meta {
-    font-size: min(calc(16 * (100vw - 100px) / 1340), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
 
   .projects-grid-card-badge {
-    left: min(calc(5 * (100vw - 100px) / 1340), 5px);
-    bottom: min(calc(5 * (100vw - 100px) / 1340), 5px);
-    gap: min(calc(4 * (100vw - 100px) / 1340), 4px);
-    padding: 0 min(calc(8 * (100vw - 100px) / 1340), 8px) 0 min(calc(2 * (100vw - 100px) / 1340), 2px);
-    font-size: min(calc(12 * (100vw - 100px) / 1340), 12px);
-    max-height: min(calc(20 * (100vw - 100px) / 1340), 20px);
+    left: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px);
+    bottom: min(calc(5 * (100vw - 100px) / var(--fluid-divisor)), 5px);
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor)), 4px);
+    padding: 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px) 0 min(calc(2 * (100vw - 100px) / var(--fluid-divisor)), 2px);
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+    max-height: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .projects-grid-desktop {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .projects-grid-desktop {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
