@@ -59,6 +59,12 @@ export const Projects: React.FC = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<ProjectListItem[]>([]);
   const [total, setTotal] = useState(0);
+  // Статус, которому реально соответствует текущее значение total — нужен
+  // только для бейджа счётчика на активном чипе фильтра (ниже): клик по
+  // чипу меняет statusFilter и подсвечивает чип СРАЗУ, а total приходит с
+  // сервера асинхронно — без этой метки бейдж на миг показывал бы total
+  // от ПРЕДЫДУЩЕГО фильтра (видимый "скачок" счётчика).
+  const [totalStatusFilter, setTotalStatusFilter] = useState<ProjectStatus | null>(null);
   // Сводка для шапки (донат + карточка года) — стабильная, не зависит от
   // текущего фильтра/поиска, см. комментарий у statusCounts в projectsApi.ts.
   const [statusCounts, setStatusCounts] = useState<Partial<Record<ProjectStatus, number>>>({});
@@ -103,6 +109,7 @@ export const Projects: React.FC = () => {
       const data = await fetchProjects({ page: pageToLoad, q: search || undefined, status: status ?? undefined });
       setItems((prev) => (pageToLoad === 1 ? data.items : [...prev, ...data.items]));
       setTotal(data.total);
+      setTotalStatusFilter(status);
       setStatusCounts(data.statusCounts);
       setCompletedThisYear(data.completedThisYear);
       setAvgDurationDays(data.avgDurationDays);
@@ -292,7 +299,21 @@ export const Projects: React.FC = () => {
                         <Icon size={13} strokeWidth={1.5} color={isActive ? '#ffffff' : f.color} />
                       </span>
                       <span>{f.label}</span>
-                      {isActive && <span className="projects-status-filter-count">{total}</span>}
+                      {/* statusCounts — стабильная сводка по статусам, уже в
+                        памяти с самого монтирования страницы (см. выше) —
+                        показываем её СРАЗУ по клику на чип, не дожидаясь
+                        ответа сервера по текущему фильтру/поиску. Как только
+                        реальный total (учитывающий активный поиск) приходит
+                        именно для этого статуса — подменяем им бесшумно:
+                        без активного поиска оба числа и так совпадают, с
+                        поиском — на миг видно более широкое число, которое
+                        тут же уточняется, но чип никогда не остаётся без
+                        цифры вовсе. */}
+                      {isActive && (
+                        <span className="projects-status-filter-count">
+                          {totalStatusFilter === f.value ? total : (statusCounts[f.value] ?? 0)}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
