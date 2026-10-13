@@ -362,9 +362,8 @@ export const ProjectDetails: React.FC = () => {
   // заполняется только через визард завершения, не произвольной датой на
   // ещё активном проекте.
   const handleStartedAtChange = async (value: string) => {
-    if (!value) return;
     try {
-      const updated = await updateProject(project.id, { startedAt: value });
+      const updated = await updateProject(project.id, { startedAt: value || null });
       setProject(updated);
     } catch (err) {
       console.error('[ProjectDetails] handleStartedAtChange failed:', err);

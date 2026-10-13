@@ -139,3 +139,22 @@
 .calendar-day--selected:hover {
   background: #abc6ba;
 }
+
+.calendar-clear-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px 0;
+  border: none;
+  border-top: 1px solid #f3f3f3;
+  border-radius: 0 0 6px 6px;
+  background: none;
+  font-family: Mulish, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #d8520f;
+  cursor: pointer;
+}
+
+.calendar-clear-btn:hover {
+  background: #f3f3f3;
+}

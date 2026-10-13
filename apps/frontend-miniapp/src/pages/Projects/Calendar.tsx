@@ -124,6 +124,16 @@ export const Calendar: React.FC<CalendarProps> = ({ value, onSelect, align = 'st
           </div>
         ))}
       </div>
+
+      {/* Сбросить дату обратно на "не указано" — без этой кнопки once дата
+        выбрана, убрать её назад в пустое поле было нечем (сетка дней не
+        отменяет саму себя). Показываем только когда реально есть что
+        сбрасывать. */}
+      {value !== '' && (
+        <button type="button" className="calendar-clear-btn" onClick={() => onSelect('')}>
+          Очистить дату
+        </button>
+      )}
     </div>
   );
 };
