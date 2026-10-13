@@ -88,6 +88,15 @@ const MAX_LIB_SCALE = MAX_ZOOM / RENDER_ZOOM_HEADROOM;
 const SWIPE_MIN_DISTANCE = 60;
 const SWIPE_MAX_TIME = 400;
 const SWIPE_MAX_VERTICAL_RATIO = 0.5;
+// Двухпальцевый свайп (см. handleSwipeTouchStart/Move/End) не может
+// определить "это свайп или пинч-зум" по одному кадру — расстояние между
+// пальцами естественным образом немного "гуляет" само по себе при боковом
+// движении рукой, без всякого намерения зумировать. Поэтому решение
+// откладывается до накопления однозначного сигнала: порог смещения (px) и
+// порог относительного изменения расстояния между пальцами — кто из двух
+// первым "набрал" свой порог, тот и определяет исход.
+const SWIPE_DECISION_DIST_PX = 16;
+const SWIPE_DECISION_RATIO = 0.18;
 
 type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
@@ -219,8 +228,12 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // Начало свайпа для перелистывания страниц — см. handleSwipeTouchStart/
   // Move/End ниже. dist — расстояние между пальцами в момент старта (только
   // для двухпальцевого свайпа, см. комментарий там) — null для одного
-  // пальца.
-  const swipeStartRef = useRef<{ x: number; y: number; time: number; dist: number | null } | null>(null);
+  // пальца. decided — итог классификатора "свайп или зум" (см.
+  // SWIPE_DECISION_DIST_PX/RATIO выше): 'pending' пока неясно (копим
+  // сигнал, глушим жест от TransformWrapper), 'swipe' — решили в пользу
+  // перелистывания (продолжаем глушить), 'pinch' — решили, что это зум
+  // (больше НЕ глушим, отпускаем жест библиотеке с этого момента).
+  const swipeStartRef = useRef<{ x: number; y: number; time: number; dist: number | null; decided: 'pending' | 'swipe' | 'pinch' } | null>(null);
   // Последняя известная точка свайпа — нужна отдельно от swipeStartRef,
   // потому что при двухпальцевом свайпе touchend не гарантирует, что ОБА
   // пальца окажутся в e.changedTouches одновременно (физически они редко
@@ -584,6 +597,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       y: point.y,
       time: Date.now(),
       dist: count === 2 ? swipeTouchDistance(e.touches) : null,
+      // Один палец — решать тут нечего, "зум" физически невозможен одним
+      // пальцем, сразу считаем жест свайпом.
+      decided: count === 2 ? 'pending' : 'swipe',
     };
     swipeLastPointRef.current = point;
   };
@@ -597,16 +613,32 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     // не обновляем "последнюю точку", touchend сработает по тому, что
     // успели увидеть здесь в последний раз.
     if (count !== expectedCount) return;
-    if (start.dist != null) {
-      const currentDist = swipeTouchDistance(e.touches);
-      if (Math.abs(currentDist / start.dist - 1) > 0.15) {
-        // Расстояние между пальцами заметно изменилось — это pinch-зум, не
-        // свайп. Прекращаем считать жест свайпом и отдаём его библиотеке.
-        swipeStartRef.current = null;
-        swipeLastPointRef.current = null;
-        return;
+
+    if (start.decided === 'pending') {
+      const point = swipeTouchPoint(e.touches);
+      const dx = point.x - start.x;
+      const dy = point.y - start.y;
+      // Два независимых "счётчика уверенности" — у кого раньше наберётся
+      // 1.0, тот и определяет исход. Сравнение именно с НАЧАЛЬНЫМ
+      // расстоянием/точкой (не с предыдущим кадром) — иначе жест никогда
+      // бы не набрал уверенность, если он колеблется туда-сюда мелкими
+      // шагами на каждый кадр.
+      const moveScore = Math.hypot(dx, dy) / SWIPE_DECISION_DIST_PX;
+      const pinchScore = start.dist != null
+        ? Math.abs(swipeTouchDistance(e.touches) / start.dist - 1) / SWIPE_DECISION_RATIO
+        : 0;
+      if (moveScore >= 1 || pinchScore >= 1) {
+        start.decided = pinchScore > moveScore ? 'pinch' : 'swipe';
       }
     }
+
+    if (start.decided === 'pinch') {
+      // Решили, что это зум — больше не вмешиваемся, пускай
+      // TransformWrapper обрабатывает жест сам с этого момента (он видел
+      // исходный touchstart и так, промежуточные move просто не доходили).
+      return;
+    }
+
     swipeLastPointRef.current = swipeTouchPoint(e.touches);
     e.stopPropagation();
   };
@@ -616,7 +648,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     const lastPoint = swipeLastPointRef.current;
     swipeStartRef.current = null;
     swipeLastPointRef.current = null;
-    if (!start || !lastPoint) return;
+    if (!start || !lastPoint || start.decided === 'pinch') return;
     const dx = lastPoint.x - start.x;
     const dy = lastPoint.y - start.y;
     const dt = Date.now() - start.time;
