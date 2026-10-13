@@ -804,6 +804,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               // работает").
               panning={{ disabled: toolMode !== 'pan' }}
               pinch={{ disabled: false }}
+              // По умолчанию у библиотеки выключен (disabled: true) — без
+              // этого жест двумя пальцами по тачпаду (без зажатого Ctrl,
+              // просто свайп) никак не обрабатывался, перемещение с
+              // ноутбука работало только протягиванием через клик.
+              trackPadPanning={{ disabled: toolMode !== 'pan' }}
               doubleClick={{ disabled: true }}
               // wheelDisabled — обычная прокрутка колесом мыши не зумирует
               // (неожиданно для десктопа); touchPadDisabled: false — зато
