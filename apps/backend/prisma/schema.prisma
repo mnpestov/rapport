@@ -1555,7 +1555,9 @@ model Project {
   manualAuthor      String?
   manualDescription String?
 
-  startedAt   DateTime  @default(now())
+  // Пусто для проекта "В планах" — дата старта заполняется пользователем
+  // вручную (при создании или позже), не подставляется автоматически.
+  startedAt   DateTime?
   completedAt DateTime?
 
   instruments ProjectInstrument[]

@@ -154,10 +154,13 @@ export const listProjects = async (req: Request, res: Response): Promise<void> =
     const statusCounts: Record<string, number> = {};
     for (const g of statusGroups) statusCounts[g.status] = g._count;
 
-    const avgDurationDays = completedDurations.length > 0
+    // startedAt теперь может быть пустым (проект "В планах", дата не
+    // указана) — такие записи не считаем, чтобы не портить среднее.
+    const validDurations = completedDurations.filter((p) => p.startedAt != null);
+    const avgDurationDays = validDurations.length > 0
       ? Math.round(
-          completedDurations.reduce((sum, p) => sum + (p.completedAt!.getTime() - p.startedAt.getTime()), 0)
-          / completedDurations.length / 86_400_000,
+          validDurations.reduce((sum, p) => sum + (p.completedAt!.getTime() - p.startedAt!.getTime()), 0)
+          / validDurations.length / 86_400_000,
         )
       : null;
 
@@ -264,10 +267,20 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
       ? (body.status as ProjectStatus)
       : ProjectStatus.IN_PROGRESS;
 
-  const startedAt = body.startedAt ? new Date(body.startedAt) : new Date();
-  if (Number.isNaN(startedAt.getTime())) {
-    res.status(400).json({ error: "Invalid startedAt" });
-    return;
+  // null — явно очищено на фронте (статус "В планах", дата не указана);
+  // отсутствует вовсе — старое поведение по умолчанию (сегодня), кроме
+  // случая создания сразу "В планах", где дата тоже остаётся пустой.
+  let startedAt: Date | null;
+  if (body.startedAt === null) {
+    startedAt = null;
+  } else if (typeof body.startedAt === "string" && body.startedAt) {
+    startedAt = new Date(body.startedAt);
+    if (Number.isNaN(startedAt.getTime())) {
+      res.status(400).json({ error: "Invalid startedAt" });
+      return;
+    }
+  } else {
+    startedAt = status === ProjectStatus.PLANNED ? null : new Date();
   }
 
   const unlimited = await hasUnlimitedStashAccess(userId);
@@ -558,7 +571,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
   const data: Prisma.ProjectUpdateInput = {};
   if ("title" in body) data.title = String(body.title).trim();
   if ("status" in body && body.status !== ProjectStatus.COMPLETED) data.status = body.status as ProjectStatus;
-  if ("startedAt" in body) data.startedAt = new Date(body.startedAt);
+  if ("startedAt" in body) data.startedAt = body.startedAt ? new Date(body.startedAt) : null;
   if ("completedAt" in body) data.completedAt = body.completedAt ? new Date(body.completedAt) : null;
   if ("manualAuthor" in body) data.manualAuthor = body.manualAuthor ? String(body.manualAuthor).trim() : null;
   if ("manualDescription" in body) data.manualDescription = body.manualDescription ? String(body.manualDescription).trim() : null;

@@ -460,17 +460,23 @@ export const ProjectDetails: React.FC = () => {
   // (нет completedAt) — длительность "идёт" считается от сегодня, не
   // скрывается (решение пользователя).
   const durationEndDate = project.completedAt ? new Date(project.completedAt) : new Date();
-  const durationDays = Math.max(0, Math.round((durationEndDate.getTime() - new Date(project.startedAt).getTime()) / 86_400_000));
-  const durationLabel = project.completedAt
-    ? `${durationDays} ${pluralizeDays(durationDays)}`
-    : `Идёт ${durationDays} ${pluralizeDays(durationDays)}`;
+  // Дата начала не указана (проект "В планах") — длительность считать не от
+  // чего, строку вовсе не показываем (см. datesBlock ниже).
+  const durationDays = project.startedAt
+    ? Math.max(0, Math.round((durationEndDate.getTime() - new Date(project.startedAt).getTime()) / 86_400_000))
+    : null;
+  const durationLabel = durationDays == null
+    ? null
+    : project.completedAt
+      ? `${durationDays} ${pluralizeDays(durationDays)}`
+      : `Идёт ${durationDays} ${pluralizeDays(durationDays)}`;
 
   const datesBlock = (
     <div className="project-details-dates">
       <div className="project-details-dates-row">
         <DateInputField
           label="Начало"
-          value={project.startedAt.slice(0, 10)}
+          value={project.startedAt ? project.startedAt.slice(0, 10) : ''}
           onChange={handleStartedAtChange}
           iconSize={16}
         />
@@ -483,7 +489,7 @@ export const ProjectDetails: React.FC = () => {
           align="end"
         />
       </div>
-      <p className="project-details-duration">{durationLabel}</p>
+      {durationLabel && <p className="project-details-duration">{durationLabel}</p>}
     </div>
   );
 
@@ -897,7 +903,7 @@ export const ProjectDetails: React.FC = () => {
               <div className="stash-details-dates-row">
                 <div className="stash-details-date-col add-details-date-col">
                   <p className="pd-label">Начало</p>
-                  <p className="pd-value pd-value--bold">{new Date(project.startedAt).toLocaleDateString('ru-RU')}</p>
+                  <p className="pd-value pd-value--bold">{project.startedAt ? new Date(project.startedAt).toLocaleDateString('ru-RU') : '__.__.____'}</p>
                 </div>
                 <div className="stash-details-date-col add-details-date-col stash-details-date-col--end">
                   <p className="pd-label">Завершено</p>

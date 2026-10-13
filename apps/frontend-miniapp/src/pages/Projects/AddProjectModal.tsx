@@ -258,7 +258,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         Object.fromEntries(project.instruments.map((i) => [i.instrumentId, i.sizeMm != null ? String(i.sizeMm) : '']))
       );
       instrumentsTouchedRef.current = true;
-      setStartedAt(project.startedAt.slice(0, 10));
+      setStartedAt(project.startedAt ? project.startedAt.slice(0, 10) : '');
       setCompletedAt(project.completedAt ? project.completedAt.slice(0, 10) : '');
       setReferencePhotos(project.referencePhotos);
       setFinishedPhotos(project.finishedPhotos);
@@ -652,7 +652,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         const updated = await updateProject(project.id, {
           title: title.trim(),
           status: status as Exclude<ProjectStatus, 'COMPLETED'>,
-          startedAt: startedAt || undefined,
+          startedAt: startedAt || null,
           // Этой веткой редактируется уже ЗАВЕРШЁННЫЙ проект (иначе выше
           // сработал бы onRequestComplete — визард завершения). Дата
           // завершения правится здесь же, в форме — раньше поле не
@@ -706,7 +706,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           // остаёмся не-COMPLETED (PATCH на COMPLETED напрямую запрещён
           // бэкендом), довершает переход completeProject ниже.
           status: (isCompleted ? 'IN_PROGRESS' : status) as Exclude<ProjectStatus, 'COMPLETED'>,
-          startedAt: startedAt || undefined,
+          startedAt: startedAt || null,
           patternIds: selectedPattern ? [selectedPattern.id] : [],
           manualAuthor: !selectedPattern ? manualAuthor.trim() || null : null,
           manualDescription: !selectedPattern ? manualDescription.trim() || null : null,
@@ -738,7 +738,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       const createdProject = await createProject({
         title: title.trim(),
         status,
-        startedAt: startedAt || undefined,
+        startedAt: startedAt || null,
         completedAt: isCompleted ? (completedAt || undefined) : undefined,
         patternIds: selectedPattern ? [selectedPattern.id] : undefined,
         manualAuthor: !selectedPattern ? manualAuthor.trim() || undefined : undefined,
@@ -803,7 +803,15 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                   type="button"
                   className="status-badge"
                   style={{ background: STATUS_COLOR[s] }}
-                  onClick={() => { setStatus(s); setIsStatusMenuOpen(false); }}
+                  onClick={() => {
+                    setStatus(s);
+                    // При создании: выбор "В планах" очищает дату начала —
+                    // у проекта в планах обычно нет даты старта, пользователь
+                    // укажет её сам, если понадобится. В режиме редактирования
+                    // уже существующую дату не трогаем.
+                    if (!isEditMode && s === 'PLANNED') setStartedAt('');
+                    setIsStatusMenuOpen(false);
+                  }}
                 >
                   <span className="projects-status-icon-wrap">
                     <Icon size={13} strokeWidth={1.5} color="#ffffff" />

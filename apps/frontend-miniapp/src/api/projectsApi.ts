@@ -15,7 +15,7 @@ export interface ProjectListItem {
   id: string;
   title: string;
   status: ProjectStatus;
-  startedAt: string;
+  startedAt: string | null;
   completedAt: string | null;
   images: string[];
   finishedPhotos: string[];
@@ -118,7 +118,7 @@ export interface ProjectDetail {
   status: ProjectStatus;
   manualAuthor: string | null;
   manualDescription: string | null;
-  startedAt: string;
+  startedAt: string | null;
   completedAt: string | null;
   note: string | null;
   images: string[];
@@ -211,7 +211,7 @@ export interface YarnUsageInput {
 export interface CreateProjectPayload {
   title: string;
   status: ProjectStatus;
-  startedAt?: string;
+  startedAt?: string | null;
   completedAt?: string;
   patternIds?: string[];
   manualAuthor?: string;
@@ -258,7 +258,7 @@ export const createProject = async (payload: CreateProjectPayload): Promise<Proj
 export interface UpdateProjectPayload {
   title?: string;
   status?: Exclude<ProjectStatus, 'COMPLETED'>;
-  startedAt?: string;
+  startedAt?: string | null;
   completedAt?: string | null;
   manualAuthor?: string | null;
   manualDescription?: string | null;
