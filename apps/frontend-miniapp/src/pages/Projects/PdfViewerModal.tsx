@@ -182,24 +182,39 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // прямоугольниках".
   const activePointerIdsRef = useRef<Set<number>>(new Set());
 
-  // Стек последних действий (создание ИЛИ стирание) для кнопки "Отменить"
-  // — без него единственный способ убрать неверный штрих пера был
-  // переключить инструмент на ластик и обратно (жалоба пользователя), а
-  // отменить само стирание ластиком было нечем вообще (жалоба "разве undo
-  // не должен отменять действие ластика?"). create — undo удаляет запись;
-  // erase хранит данные стёртого ЦЕЛИКОМ (сервер их уже не помнит, id
-  // записи больше не существует) — undo пересоздаёт тем же содержимым.
-  // Храним только действия В ЭТОМ сеансе просмотра — элементы, загруженные
-  // с сервера при открытии страницы и ничем пока не тронутые, сюда не
-  // попадают (undo не должен внезапно стирать уже сохранённые раньше
-  // пометки).
+  // Полная хронологическая история действий (создание И стирание) для
+  // кнопки "Отменить" — без него единственный способ убрать неверный штрих
+  // пера был переключить инструмент на ластик и обратно (жалоба
+  // пользователя), а отменить само стирание ластиком было нечем вообще
+  // (жалоба "разве undo не должен отменять действие ластика?").
+  //
+  // localId, не серверный id — серверный id меняется при каждом
+  // восстановлении (erase-undo пересоздаёт запись заново, id новый), а
+  // история ссылается на один и тот же ЛОГИЧЕСКИЙ элемент много раз (его
+  // создание, потом стирание, может быть снова стирание после
+  // восстановления и т.д.). idMapRef — localId → ТЕКУЩИЙ серверный id
+  // (резолвится в момент отмены, не хранится статично в записи — иначе
+  // "создание" после восстановления пыталось бы удалить уже не
+  // существующий старый id и падало с 404, как было в первой версии этого
+  // фикса). serverIdToLocalIdRef — обратный поиск для ластика (тот видит
+  // только текущий серверный id стираемой записи).
+  //
+  // Каждая запись достаётся из истории и применяется РОВНО ОДИН РАЗ,
+  // ничего не кладётся обратно при успехе — иначе порядок отмены сбивался:
+  // "стёр элемент2, потом элемент1" → "Отменить" должно вернуть 1, затем 2,
+  // затем убрать 2, затем убрать 1 (линейная история назад), а не
+  // чередовать "восстановить/тут же удалить" для одного элемента, прежде
+  // чем дойти до второго (жалоба пользователя с конкретным протоколом
+  // нажатий, где порядок не совпал с ожидаемым).
   type UndoEntry =
-    | { action: 'create'; kind: 'drawing'; id: string }
-    | { action: 'create'; kind: 'highlight'; id: string }
-    | { action: 'erase'; kind: 'drawing'; points: DrawingPoint[] }
-    | { action: 'erase'; kind: 'highlight'; rects: HighlightRect[]; color: string };
+    | { action: 'create'; kind: 'drawing' | 'highlight'; localId: string }
+    | { action: 'erase'; kind: 'drawing'; localId: string; points: DrawingPoint[] }
+    | { action: 'erase'; kind: 'highlight'; localId: string; rects: HighlightRect[]; color: string };
   const undoStackRef = useRef<UndoEntry[]>([]);
   const [canUndo, setCanUndo] = useState(false);
+  const nextLocalIdRef = useRef(0);
+  const idMapRef = useRef<Map<string, string>>(new Map()); // localId -> текущий серверный id
+  const serverIdToLocalIdRef = useRef<Map<string, string>>(new Map()); // текущий серверный id -> localId
 
   // Начало свайпа для перелистывания страниц — см. handleSwipeTouchStart/
   // Move/End ниже.
@@ -545,11 +560,15 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     try {
       await deleteDocumentHighlight(id);
       setHighlights((prev) => prev.filter((h) => h.id !== id));
-      removeCreateFromUndoStack('highlight', id);
       // Удаление этой кнопкой — такое же стирание, как ластиком: тоже
       // должно отменяться через "Отменить" (та же логика восстановления).
-      if (highlight) undoStackRef.current.push({ action: 'erase', kind: 'highlight', rects: highlight.rects, color: highlight.color });
-      setCanUndo(true);
+      if (highlight) {
+        const localId = getOrCreateLocalId(id);
+        idMapRef.current.delete(localId);
+        serverIdToLocalIdRef.current.delete(id);
+        undoStackRef.current.push({ action: 'erase', kind: 'highlight', localId, rects: highlight.rects, color: highlight.color });
+        setCanUndo(true);
+      }
     } catch (err) {
       console.error('[PdfViewerModal] delete highlight failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось удалить выделение');
@@ -663,6 +682,25 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
   };
 
+  // Новый localId для свежесозданного штриха/выделения — см. комментарий
+  // у UndoEntry/idMapRef выше.
+  const makeLocalId = () => `local-${nextLocalIdRef.current++}`;
+
+  // localId для УЖЕ существующей записи (по её текущему серверному id) —
+  // заводит новую привязку, если её ещё не было (запись загружена с
+  // сервера при открытии страницы и ни разу не трогалась в этом сеансе).
+  // Нужно ластику/кнопке удаления: они видят только серверный id, но для
+  // истории "Отменить" нужен стабильный localId, не меняющийся при
+  // будущих восстановлениях.
+  const getOrCreateLocalId = (serverId: string): string => {
+    const existing = serverIdToLocalIdRef.current.get(serverId);
+    if (existing) return existing;
+    const localId = makeLocalId();
+    serverIdToLocalIdRef.current.set(serverId, localId);
+    idMapRef.current.set(localId, serverId);
+    return localId;
+  };
+
   const handleDrawingPointerUp = async (e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointerIdsRef.current.delete(e.pointerId);
     if (!isDrawingRef.current) return;
@@ -674,7 +712,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       try {
         const created = await createDocumentDrawing(documentId, { pageNumber, points });
         setDrawings((prev) => [...prev, created]);
-        undoStackRef.current.push({ action: 'create', kind: 'drawing', id: created.id });
+        const localId = makeLocalId();
+        idMapRef.current.set(localId, created.id);
+        serverIdToLocalIdRef.current.set(created.id, localId);
+        undoStackRef.current.push({ action: 'create', kind: 'drawing', localId });
         setCanUndo(true);
       } catch (err) {
         console.error('[PdfViewerModal] save drawing failed:', err);
@@ -699,7 +740,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       try {
         const created = await createDocumentHighlight(documentId, { pageNumber, rects, color: selectedHighlightColor });
         setHighlights((prev) => [...prev, created]);
-        undoStackRef.current.push({ action: 'create', kind: 'highlight', id: created.id });
+        const localId = makeLocalId();
+        idMapRef.current.set(localId, created.id);
+        serverIdToLocalIdRef.current.set(created.id, localId);
+        undoStackRef.current.push({ action: 'create', kind: 'highlight', localId });
         setCanUndo(true);
       } catch (err) {
         console.error('[PdfViewerModal] save highlight failed:', err);
@@ -711,68 +755,48 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
   };
 
-  // Убирает из стека "Отменить" запись про конкретное СОЗДАНИЕ (create) —
-  // вызывается из ластика/кнопки удаления: если элемент стёрт, запись о
-  // его создании (если она там ещё есть) должна исчезнуть, иначе
-  // "Отменить" позже попытается удалить уже не существующую на сервере
-  // запись и получит 404 (жалоба: "нарисовал, стёр ластиком, нажал
-  // Отменить — 404"). Само стирание добавляет СВОЮ запись (action: erase)
-  // отдельно — см. вызовы ниже.
-  const removeCreateFromUndoStack = (kind: 'highlight' | 'drawing', id: string) => {
-    const idx = undoStackRef.current.findIndex((e) => e.action === 'create' && e.kind === kind && e.id === id);
-    if (idx === -1) return;
-    undoStackRef.current.splice(idx, 1);
-    setCanUndo(undoStackRef.current.length > 0);
-  };
-
-  // "Отменить" — откатывает последнее действие В ЭТОМ сеансе просмотра:
-  // создание (удаляет запись) ИЛИ стирание ластиком/кнопкой (пересоздаёт
-  // запись тем же содержимым — сервер её уже не помнит, id не существует,
-  // поэтому нужны данные штриха/выделения целиком, см. UndoEntry выше).
-  // Раньше отмена стирания была вообще невозможна — прямая жалоба
-  // пользователя ("разве undo не должен отменять действие ластика?").
+  // "Отменить" — откатывает ОДНО действие из линейной истории назад,
+  // ровно один раз за нажатие (ничего не кладёт обратно при успехе — это
+  // принципиально: раньше восстановленный элемент получал свежую запись
+  // "создание" НАВЕРХ стека, из-за чего при "стёр элемент2, потом элемент1"
+  // порядок отмены сбивался — вместо "вернуть 1, вернуть 2, убрать 2,
+  // убрать 1" получалось "вернуть 1, убрать 1, вернуть 2, убрать 2").
+  // Текущий серверный id резолвится через idMapRef по localId записи, а не
+  // хранится в самой записи — он меняется при каждом восстановлении
+  // (erase-undo пересоздаёт запись заново), а история может ссылаться на
+  // один и тот же логический элемент несколько раз подряд.
   const handleUndo = async () => {
     const last = undoStackRef.current.pop();
     if (!last) return;
     setCanUndo(undoStackRef.current.length > 0);
     try {
       if (last.action === 'create') {
+        const currentId = idMapRef.current.get(last.localId);
+        // Записи уже нет (например, стёрли ещё раз после восстановления, и
+        // та более поздняя отмена уже обработана) — отменять нечего, не
+        // показываем ошибку, молча пропускаем.
+        if (!currentId) return;
         if (last.kind === 'drawing') {
-          await deleteDocumentDrawing(last.id);
-          setDrawings((prev) => prev.filter((d) => d.id !== last.id));
+          await deleteDocumentDrawing(currentId);
+          setDrawings((prev) => prev.filter((d) => d.id !== currentId));
         } else {
-          await deleteDocumentHighlight(last.id);
-          setHighlights((prev) => prev.filter((h) => h.id !== last.id));
+          await deleteDocumentHighlight(currentId);
+          setHighlights((prev) => prev.filter((h) => h.id !== currentId));
         }
+        idMapRef.current.delete(last.localId);
+        serverIdToLocalIdRef.current.delete(currentId);
       } else if (last.kind === 'drawing') {
         const restored = await createDocumentDrawing(documentId, { pageNumber, points: last.points });
         setDrawings((prev) => [...prev, restored]);
-        // Восстановленный штрих получает НОВЫЙ id (сервер не помнит
-        // удалённую запись) — кладём на него свежую запись "создание",
-        // иначе история обрывается после одной отмены: без этого "Отменить"
-        // возвращал стёртый штрих, но второй раз его уже нечем было отменить
-        // (жалоба "отменилось стирание, второй раз не нажимается").
-        undoStackRef.current.push({ action: 'create', kind: 'drawing', id: restored.id });
-        setCanUndo(true);
+        idMapRef.current.set(last.localId, restored.id);
+        serverIdToLocalIdRef.current.set(restored.id, last.localId);
       } else {
         const restored = await createDocumentHighlight(documentId, { pageNumber, rects: last.rects, color: last.color });
         setHighlights((prev) => [...prev, restored]);
-        undoStackRef.current.push({ action: 'create', kind: 'highlight', id: restored.id });
-        setCanUndo(true);
+        idMapRef.current.set(last.localId, restored.id);
+        serverIdToLocalIdRef.current.set(restored.id, last.localId);
       }
     } catch (err) {
-      // 404 — запись уже удалена где-то ещё (например, повторным стиранием
-      // в другой вкладке) — результат ("её больше нет") уже достигнут,
-      // возвращать в стек и пугать ошибкой нечего: иначе следующее
-      // "Отменить" снова упрётся в тот же 404 по кругу. Относится только к
-      // action:'create' — erase восстанавливает через POST, у него 404 в
-      // принципе не бывает.
-      const isNotFound = last.action === 'create' && err instanceof Error && err.message.includes('404');
-      if (isNotFound) {
-        if (last.kind === 'drawing') setDrawings((prev) => prev.filter((d) => d.id !== last.id));
-        else setHighlights((prev) => prev.filter((h) => h.id !== last.id));
-        return;
-      }
       console.error('[PdfViewerModal] undo failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось отменить действие');
       // Реально не удалилось — возвращаем в стек, чтобы можно было
@@ -818,8 +842,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       if (hit) {
         erasedInGestureRef.current.add(key);
         setDrawings((prev) => prev.filter((d) => d.id !== drawing.id));
-        removeCreateFromUndoStack('drawing', drawing.id);
-        undoStackRef.current.push({ action: 'erase', kind: 'drawing', points: drawing.points });
+        const localId = getOrCreateLocalId(drawing.id);
+        idMapRef.current.delete(localId);
+        serverIdToLocalIdRef.current.delete(drawing.id);
+        undoStackRef.current.push({ action: 'erase', kind: 'drawing', localId, points: drawing.points });
         setCanUndo(true);
         deleteDocumentDrawing(drawing.id).catch(() => {
           // Молча — штрих уже убран из UI, повторная синхронизация
@@ -843,8 +869,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       if (hit) {
         erasedInGestureRef.current.add(key);
         setHighlights((prev) => prev.filter((h) => h.id !== highlight.id));
-        removeCreateFromUndoStack('highlight', highlight.id);
-        undoStackRef.current.push({ action: 'erase', kind: 'highlight', rects: highlight.rects, color: highlight.color });
+        const localId = getOrCreateLocalId(highlight.id);
+        idMapRef.current.delete(localId);
+        serverIdToLocalIdRef.current.delete(highlight.id);
+        undoStackRef.current.push({ action: 'erase', kind: 'highlight', localId, rects: highlight.rects, color: highlight.color });
         setCanUndo(true);
         deleteDocumentHighlight(highlight.id).catch(() => {
           // Молча — то же соображение, что у штрихов пера выше.
