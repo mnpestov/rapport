@@ -585,6 +585,7 @@
 
   .stash-card-desktop-row b {
     margin-right: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
   }
 
   .stash-card-desktop-remainder {
