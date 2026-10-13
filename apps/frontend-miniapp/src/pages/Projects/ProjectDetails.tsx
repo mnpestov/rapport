@@ -524,6 +524,11 @@ export const ProjectDetails: React.FC = () => {
                   // скрыться до того, как клик дойдёт до кнопки.
                   onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
                 >
+                  <img
+                    src={s.images[0] ?? yarnPlaceholder}
+                    alt=""
+                    className="add-project-card-row-image"
+                  />
                   <div className="add-project-card-row-body">
                     <p className="add-project-card-row-title">{s.yarnNameSnapshot}</p>
                     <p className="add-project-card-row-meta">Остаток: {s.currentWeightG} г</p>
