@@ -514,6 +514,7 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  justify-content: space-evenly;
 }
 
 .stash-usage-title {
