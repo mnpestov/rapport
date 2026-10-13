@@ -496,6 +496,16 @@ export const ProjectDetails: React.FC = () => {
     </>
   );
 
+  // Мотки, уже привязанные к ЭТОМУ проекту, не нужно показывать в
+  // результатах поиска — незачем предлагать привязать то, что и так уже
+  // в проекте (handlePickYarn и так от этого защищён, но до клика
+  // карточка всё равно не должна быть видна). По skeinId конкретного
+  // мотка, не по yarnId артикула — у проекта может быть несколько
+  // мотков одного артикула разных цветов, их все ещё можно привязывать.
+  const visibleYarnResults = yarnResults.filter(
+    (s) => !project.yarns.some((y) => y.skeinId === s.id),
+  );
+
   // Общий для моб./десктоп версий хвост секции "Пряжа" — поиск/привязка
   // мотка из хранилища.
   const yarnAddUI = (
@@ -518,9 +528,9 @@ export const ProjectDetails: React.FC = () => {
             onBlur={() => setIsYarnFieldFocused(false)}
             autoFocus
           />
-          {yarnResults.length > 0 && (
+          {visibleYarnResults.length > 0 && (
             <div className="add-project-cards-vertical">
-              {yarnResults.map((s) => (
+              {visibleYarnResults.map((s) => (
                 <button
                   key={s.id}
                   type="button"
@@ -546,7 +556,7 @@ export const ProjectDetails: React.FC = () => {
               ))}
             </div>
           )}
-          {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
+          {!isSearchingYarn && visibleYarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
             <>
               <p className="add-project-empty-text">
                 {yarnQuery.trim() ? 'Ничего не найдено' : 'В хранилище пока пусто'}
