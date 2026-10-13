@@ -37,6 +37,18 @@
   display: none;
 }
 
+/* Активный пункт (Figma node-id=1771:28970) — нижний бордер под иконкой и
+   лейблом; паддингов из макета сознательно не берём (по просьбе
+   пользователя), чтобы высота пункта не менялась при переключении вкладки. */
+.tab-bar-item--active {
+  border-bottom: 2px solid #1d1c1c;
+}
+
+.tab-bar-item--active .tab-bar-label {
+  font-weight: 700;
+  color: #1d1c1c;
+}
+
 .tab-bar-icon-wrap {
   position: relative;
   display: block;

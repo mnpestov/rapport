@@ -64,7 +64,7 @@ export const TabBar: React.FC = () => {
             <button
               key={tab.path}
               type="button"
-              className="tab-bar-item"
+              className={`tab-bar-item${isActive ? ' tab-bar-item--active' : ''}`}
               onClick={() => { if (!isActive) navigate(tab.path); }}
               aria-current={isActive ? 'page' : undefined}
             >
@@ -73,9 +73,8 @@ export const TabBar: React.FC = () => {
                 alt=""
                 className="tab-bar-icon"
               />
-              {/* Лейбл всегда серый (#9b9a9a), даже под активной иконкой —
-                  так во всех состояниях в макете, меняется только цвет
-                  самой иконки. */}
+              {/* Активный лейбл — жирный и чёрный (Figma node-id=1771:28970),
+                  неактивный остаётся серым обычным начертанием. */}
               <span className="tab-bar-label">{tab.label}</span>
             </button>
           );
