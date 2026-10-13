@@ -506,8 +506,15 @@ export const ProjectDetails: React.FC = () => {
             className="add-project-input"
             value={yarnQuery}
             placeholder="Найдите моток в хранилище"
-            onChange={(e) => setYarnQuery(e.target.value)}
-            onFocus={() => setIsYarnFieldFocused(true)}
+            // isSearchingYarn выставляется здесь же, синхронно с фокусом/
+            // вводом, а не только внутри эффекта ниже — тот запускается
+            // уже ПОСЛЕ коммита этого рендера, и без этого между "стало
+            // focused" и "эффект сам взвёл isSearchingYarn" проскакивал
+            // один лишний рендер с устаревшим isSearchingYarn=false, на
+            // котором успевала на долю кадра мелькнуть заглушка "В
+            // хранилище пока пусто" поверх ещё не загруженного списка.
+            onChange={(e) => { setYarnQuery(e.target.value); setIsSearchingYarn(true); }}
+            onFocus={() => { setIsYarnFieldFocused(true); setIsSearchingYarn(true); }}
             onBlur={() => setIsYarnFieldFocused(false)}
             autoFocus
           />
@@ -531,6 +538,8 @@ export const ProjectDetails: React.FC = () => {
                   />
                   <div className="add-project-card-row-body">
                     <p className="add-project-card-row-title">{s.yarnNameSnapshot}</p>
+                    {s.colorName && <p className="add-project-card-row-meta">Цвет: {s.colorName}</p>}
+                    {s.dyelot && <p className="add-project-card-row-meta">Партия: {s.dyelot}</p>}
                     <p className="add-project-card-row-meta">Остаток: {s.currentWeightG} г</p>
                   </div>
                 </button>
