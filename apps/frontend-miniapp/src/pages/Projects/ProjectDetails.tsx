@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, ChevronDown, SquarePen, Trash2 } from 'lucide-react';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
@@ -78,6 +78,12 @@ export const ProjectDetails: React.FC = () => {
   // навсегда после первого открытия формы поиска (isYarnSearchOpen сам по
   // себе про показ ИНПУТА, не про показ списка под ним).
   const [isYarnFieldFocused, setIsYarnFieldFocused] = useState(false);
+  // Тот же паттерн, что patternSearchSeqRef в AddProjectModal.tsx: без
+  // счётчика устаревший (более медленный) ответ на ПРЕДЫДУЩИЙ запрос мог
+  // прийти позже свежего и затереть yarnResults пустым/неполным массивом —
+  // с уже сброшенным isSearchingYarn это молча показывало "В хранилище
+  // пока пусто" поверх реально непустого хранилища.
+  const yarnSearchSeqRef = useRef(0);
   const [isAddYarnOpen, setIsAddYarnOpen] = useState(false);
   const [isYarnLimitPaywallOpen, setIsYarnLimitPaywallOpen] = useState(false);
   const [openSwipeYarnId, setOpenSwipeYarnId] = useState<string | null>(null);
@@ -203,13 +209,19 @@ export const ProjectDetails: React.FC = () => {
     }
     setIsSearchingYarn(true);
     const timer = setTimeout(() => {
+      const seq = ++yarnSearchSeqRef.current;
       fetchStashSkeins({ search: yarnQuery.trim() || undefined })
-        .then((res) => setYarnResults(res.items))
+        .then((res) => {
+          if (seq !== yarnSearchSeqRef.current) return; // пришёл не последний ответ — игнорируем
+          setYarnResults(res.items);
+        })
         .catch((err) => {
           console.error('[ProjectDetails] yarn search failed:', err);
-          setYarnResults([]);
+          if (seq === yarnSearchSeqRef.current) setYarnResults([]);
         })
-        .finally(() => setIsSearchingYarn(false));
+        .finally(() => {
+          if (seq === yarnSearchSeqRef.current) setIsSearchingYarn(false);
+        });
     }, 300);
     return () => clearTimeout(timer);
   }, [yarnQuery, isYarnFieldFocused]);
