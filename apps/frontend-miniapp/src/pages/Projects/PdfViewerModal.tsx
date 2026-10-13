@@ -2,7 +2,7 @@
 // основного потока, см. комментарий в самом файле.
 import './promiseWithResolversPolyfill';
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Trash2, MousePointer2, Highlighter, Pen, Eraser } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, MousePointer2, Highlighter, Pen, Eraser, Undo2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
@@ -120,6 +120,20 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const isPinchingRef = useRef(false);
   const pinchStartDistRef = useRef(0);
   const pinchStartZoomRef = useRef(1);
+  // Точка, которую пользователь реально сводит пальцами — в координатах
+  // прокрутки .pdf-viewer-body (contentX/Y, не зависят от текущего
+  // scrollLeft/Top) + клиентские координаты середины пальцев (clientX/Y).
+  // Нужна дважды: transformOrigin в handlePinchStart (чтобы ВИЗУАЛЬНЫЙ CSS-
+  // scale во время жеста рос вокруг пальцев, а не центра страницы — прямая
+  // причина жалобы "приближаю — перескакивает на центр"), и ratio ниже
+  // (чтобы после настоящего растрового рендера в новом разрешении вернуть
+  // эту же точку под пальцы, а не туда, где скролл случайно оказался).
+  const pinchFocalRef = useRef<{ contentX: number; contentY: number; clientX: number; clientY: number } | null>(null);
+  // Выставляется в handlePinchEnd, считывается и сбрасывается один раз —
+  // уже ПОСЛЕ debounced renderPageAtZoom на новом zoom (см. соответствующий
+  // useEffect) — именно тогда известны финальные размеры канваса, под
+  // которые нужно подогнать scrollLeft/Top.
+  const pendingZoomFocalRef = useRef<{ ratio: number; clientX: number; clientY: number; contentX: number; contentY: number } | null>(null);
 
   // Панорамирование инструментом "Стрелка" — протягивание одним
   // пальцем/мышью скроллит .pdf-viewer-body (нативный overflow:auto
@@ -140,6 +154,25 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const isDrawingRef = useRef(false);
   const erasedInGestureRef = useRef<Set<string>>(new Set());
+  // Активные пальцы на канвасе рисования — если их больше одного, значит
+  // это pinch-жест (вторая рука сводит масштаб), а не протягивание
+  // выделения/пера: без этой проверки каждый палец pinch'а независимо тянул
+  // свой прямоугольник/штрих поверх CSS-зума — прямая причина жалобы
+  // "вся страница в разных прямоугольниках". pointerId, не количество
+  // touches — тот же физический жест виден канвасу через Pointer Events
+  // по одному на палец, хотя сам пинч считается через TouchEvent на
+  // родителе (handlePinchStart/Move), эти два набора обработчиков не
+  // синхронизированы напрямую, поэтому считаем независимо здесь же.
+  const activePointerIdsRef = useRef<Set<number>>(new Set());
+
+  // Стек последних сохранённых выделений/штрихов для кнопки "Отменить" —
+  // без него единственный способ убрать неверный штрих пера был переключить
+  // инструмент на ластик и обратно (жалоба пользователя). Храним только то,
+  // что создано В ЭТОМ сеансе просмотра — элементы, загруженные с сервера
+  // при открытии страницы, сюда не попадают (undo не должен внезапно
+  // стирать уже сохранённые раньше пометки).
+  const undoStackRef = useRef<Array<{ kind: 'highlight' | 'drawing'; id: string }>>([]);
+  const [canUndo, setCanUndo] = useState(false);
 
   // Загрузка бинарника документа — только при открытии/смене документа, не
   // при каждой смене страницы (страница рендерится из уже загруженного
@@ -302,9 +335,28 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
     if (!pageRef.current) return;
     const timer = setTimeout(() => {
-      renderPageAtZoom(zoom, false).catch((err) => {
-        console.error('[PdfViewerModal] zoom render failed:', err);
-      });
+      renderPageAtZoom(zoom, false)
+        .then(() => {
+          // Возвращаем точку, которую пользователь реально сводил пальцами,
+          // под эти же пальцы — без этого скролл после растрового рендера
+          // в новом разрешении оставался там, где случайно оказался, и
+          // видимое содержимое "прыгало" (жалоба "перескакивает на центр").
+          // Для зума кнопками +/- (zoomStep) pendingZoomFocalRef пуст —
+          // поведение остаётся прежним, без доп. подгонки скролла.
+          const pending = pendingZoomFocalRef.current;
+          pendingZoomFocalRef.current = null;
+          const container = containerRef.current;
+          if (pending && container) {
+            const containerRect = container.getBoundingClientRect();
+            const newContentX = pending.contentX * pending.ratio;
+            const newContentY = pending.contentY * pending.ratio;
+            container.scrollLeft = newContentX - (pending.clientX - containerRect.left);
+            container.scrollTop = newContentY - (pending.clientY - containerRect.top);
+          }
+        })
+        .catch((err) => {
+          console.error('[PdfViewerModal] zoom render failed:', err);
+        });
     }, 120);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -328,12 +380,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       .catch(() => setDrawings([]));
   }, [isOpen, documentId, pageNumber]);
 
+  // Стек "Отменить" — свой на каждую страницу/документ: иначе кнопка после
+  // смены страницы могла бы незаметно для пользователя удалить пометку с
+  // СОВСЕМ ДРУГОЙ страницы, которую он уже не видит.
+  useEffect(() => {
+    undoStackRef.current = [];
+    setCanUndo(false);
+  }, [documentId, pageNumber]);
+
   // Переключение инструмента сбрасывает незавершённые состояния других
   // инструментов — иначе застрявший inProgressHighlightRect от
   // "Хайлайтера" мог бы всплыть поверх холста в режиме "Пера".
   useEffect(() => {
     setSelectedHighlightId(null);
     setInProgressHighlightRect(null);
+    activePointerIdsRef.current.clear();
     if (toolMode !== 'highlight') setIsColorPickerOpen(false);
   }, [toolMode]);
 
@@ -362,6 +423,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
   };
 
+  const midpointFromTouches = (touches: React.TouchList): { x: number; y: number } => {
+    const [a, b] = [touches[0], touches[1]];
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  };
+
   // Pinch-жест — два пальца на странице. Во время движения масштабируем
   // ДЕШЁВЫМ CSS transform на обёртке (не перерендериваем canvas на каждый
   // touchmove — на телефоне это заметно тормозит и жест выглядит рваным),
@@ -373,6 +439,32 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     isPinchingRef.current = true;
     pinchStartDistRef.current = distanceBetweenTouches(e.touches);
     pinchStartZoomRef.current = zoomRef.current;
+
+    const mid = midpointFromTouches(e.touches);
+    // transformOrigin — один раз на весь жест, от точки, которую реально
+    // сводят пальцами (а не жёстко 'center center', как раньше — прямая
+    // причина жалобы "приближаю — перескакивает на центр"). wrapRect берём
+    // ДО применения transform в этом жесте (предыдущий жест уже сбросил
+    // transform к '' после своего растрового рендера, см. renderPageAtZoom)
+    // — поэтому это ещё нетрансформированный локальный прямоугольник,
+    // ровно то, что требует transform-origin по спецификации CSS.
+    if (pageWrapRef.current) {
+      const wrapRect = pageWrapRef.current.getBoundingClientRect();
+      pageWrapRef.current.style.transformOrigin = `${mid.x - wrapRect.left}px ${mid.y - wrapRect.top}px`;
+    }
+    // Та же точка, но в координатах прокрутки контейнера — чтобы в
+    // handlePinchEnd вернуть её под пальцы уже после настоящего растрового
+    // рендера (см. useEffect на zoom выше).
+    const container = containerRef.current;
+    if (container) {
+      const containerRect = container.getBoundingClientRect();
+      pinchFocalRef.current = {
+        contentX: container.scrollLeft + (mid.x - containerRect.left),
+        contentY: container.scrollTop + (mid.y - containerRect.top),
+        clientX: mid.x,
+        clientY: mid.y,
+      };
+    }
   };
 
   const handlePinchMove = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -387,18 +479,31 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       // делим на тот множитель, что уже "запечён" в canvas сейчас
       // (последний завершённый renderPageAtZoom), иначе масштаб
       // накапливался бы неправильно между последовательными жестами.
+      // transformOrigin НЕ трогаем здесь — он уже выставлен один раз в
+      // handlePinchStart; смена origin посреди жеста сама по себе визуально
+      // дёргает картинку (браузер пересчитывает текущий transform от новой
+      // точки), поэтому фиксируем точку один раз, а не на каждый кадр.
       pageWrapRef.current.style.transform = `scale(${nextZoom / pinchStartZoomRef.current})`;
-      pageWrapRef.current.style.transformOrigin = 'center center';
     }
   };
 
   const handlePinchEnd = () => {
     if (!isPinchingRef.current) return;
     isPinchingRef.current = false;
-    setZoom(zoomRef.current);
+    const finalZoom = zoomRef.current;
+    const startZoom = pinchStartZoomRef.current;
+    const focal = pinchFocalRef.current;
+    pendingZoomFocalRef.current = focal && startZoom > 0
+      ? { ratio: finalZoom / startZoom, clientX: focal.clientX, clientY: focal.clientY, contentX: focal.contentX, contentY: focal.contentY }
+      : null;
+    setZoom(finalZoom);
   };
 
   const zoomStep = (direction: 1 | -1) => {
+    // Зум кнопками +/- не привязан к конкретной точке пальцев — не
+    // подгоняем скролл, оставляем прежнее поведение (и не даём протухшему
+    // pinchFocalRef от предыдущего жеста случайно сработать здесь).
+    pendingZoomFocalRef.current = null;
     const next = clampZoom(zoomRef.current + direction * 0.5);
     zoomRef.current = next;
     setZoom(next);
@@ -445,6 +550,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const highlightStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleDrawingPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointerIdsRef.current.add(e.pointerId);
+    if (activePointerIdsRef.current.size > 1) {
+      // Второй палец лёг на канвас — это pinch (родитель уже считает его
+      // через touch-события, см. handlePinchStart), а не протягивание
+      // выделения/пера. Обрываем то, что успел начать первый палец, и не
+      // начинаем ничего для второго — иначе оба пальца независимо тянут
+      // свой прямоугольник/штрих поверх CSS-зума (жалоба "вся страница в
+      // разных прямоугольниках").
+      isDrawingRef.current = false;
+      setInProgressStroke(null);
+      setInProgressHighlightRect(null);
+      highlightStartRef.current = null;
+      return;
+    }
+
     const viewport = viewportRef.current;
     if (!viewport) return;
     const local = localPointFromEvent(e);
@@ -468,6 +588,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
 
   const handleDrawingPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
+    if (activePointerIdsRef.current.size > 1) return;
     const viewport = viewportRef.current;
     if (!viewport) return;
     const local = localPointFromEvent(e);
@@ -490,7 +611,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
   };
 
-  const handleDrawingPointerUp = async () => {
+  const handleDrawingPointerUp = async (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointerIdsRef.current.delete(e.pointerId);
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
 
@@ -500,6 +622,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       try {
         const created = await createDocumentDrawing(documentId, { pageNumber, points });
         setDrawings((prev) => [...prev, created]);
+        undoStackRef.current.push({ kind: 'drawing', id: created.id });
+        setCanUndo(true);
       } catch (err) {
         console.error('[PdfViewerModal] save drawing failed:', err);
         setError(err instanceof Error ? err.message : 'Не удалось сохранить штрих');
@@ -523,6 +647,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       try {
         const created = await createDocumentHighlight(documentId, { pageNumber, rects, color: selectedHighlightColor });
         setHighlights((prev) => [...prev, created]);
+        undoStackRef.current.push({ kind: 'highlight', id: created.id });
+        setCanUndo(true);
       } catch (err) {
         console.error('[PdfViewerModal] save highlight failed:', err);
         setError(err instanceof Error ? err.message : 'Не удалось сохранить выделение');
@@ -530,6 +656,32 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     } else {
       setInProgressStroke(null);
       setInProgressHighlightRect(null);
+    }
+  };
+
+  // "Отменить" — убирает последнее СОЗДАННОЕ в этом сеансе выделение/штрих
+  // (не трогает то, что уже было на странице до открытия визарда). Раньше
+  // единственный способ убрать неверный штрих пера был переключить
+  // инструмент на ластик и обратно — прямая жалоба пользователя.
+  const handleUndo = async () => {
+    const last = undoStackRef.current.pop();
+    if (!last) return;
+    setCanUndo(undoStackRef.current.length > 0);
+    try {
+      if (last.kind === 'drawing') {
+        await deleteDocumentDrawing(last.id);
+        setDrawings((prev) => prev.filter((d) => d.id !== last.id));
+      } else {
+        await deleteDocumentHighlight(last.id);
+        setHighlights((prev) => prev.filter((h) => h.id !== last.id));
+      }
+    } catch (err) {
+      console.error('[PdfViewerModal] undo failed:', err);
+      setError(err instanceof Error ? err.message : 'Не удалось отменить действие');
+      // Реально не удалилось — возвращаем в стек, чтобы можно было
+      // попробовать ещё раз, а не молча потерять возможность отмены.
+      undoStackRef.current.push(last);
+      setCanUndo(true);
     }
   };
 
@@ -730,6 +882,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               title="Ластик"
             >
               <Eraser size={18} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              className="pdf-viewer-tool-btn"
+              onClick={handleUndo}
+              disabled={!canUndo}
+              aria-label="Отменить"
+              title="Отменить последнее действие"
+            >
+              <Undo2 size={18} strokeWidth={1.5} />
             </button>
           </div>
           <button type="button" className="pdf-viewer-close-btn" onClick={onClose} aria-label="Закрыть">
