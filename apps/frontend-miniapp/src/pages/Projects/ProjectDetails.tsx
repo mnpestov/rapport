@@ -293,6 +293,24 @@ export const ProjectDetails: React.FC = () => {
     }
   };
 
+  // Добавление/редактирование образца (ProjectSwatchModal.onSaved) — тот
+  // же приём, что у handlePickYarn/handleRemoveYarn выше: модалка уже
+  // отдаёт сохранённый образец целиком, полный await load() не нужен.
+  // Один обработчик на оба случая — если id уже есть в списке, это
+  // редактирование (заменяем на месте), иначе новый (добавляем в конец).
+  const upsertSwatch = (saved: ProjectSwatch) => {
+    setProject((prev) => {
+      if (!prev) return prev;
+      const exists = prev.swatches.some((s) => s.id === saved.id);
+      return {
+        ...prev,
+        swatches: exists
+          ? prev.swatches.map((s) => (s.id === saved.id ? saved : s))
+          : [...prev.swatches, saved],
+      };
+    });
+  };
+
   const handleConfirmDeleteSwatch = async () => {
     if (!deleteSwatchTarget || isDeletingSwatch) return;
     setIsDeletingSwatch(true);
@@ -987,9 +1005,9 @@ export const ProjectDetails: React.FC = () => {
           isOpen={isAddSwatchOpen}
           projectId={project.id}
           onClose={() => setIsAddSwatchOpen(false)}
-          onSaved={() => {
+          onSaved={(saved) => {
             setIsAddSwatchOpen(false);
-            load();
+            upsertSwatch(saved);
           }}
         />
 
@@ -999,9 +1017,9 @@ export const ProjectDetails: React.FC = () => {
             projectId={project.id}
             swatch={lastEditSwatch}
             onClose={() => setEditSwatchTarget(null)}
-            onSaved={() => {
+            onSaved={(saved) => {
               setEditSwatchTarget(null);
-              load();
+              upsertSwatch(saved);
             }}
           />
         )}
