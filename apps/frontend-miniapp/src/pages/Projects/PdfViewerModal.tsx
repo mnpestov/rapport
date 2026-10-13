@@ -217,8 +217,30 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const serverIdToLocalIdRef = useRef<Map<string, string>>(new Map()); // текущий серверный id -> localId
 
   // Начало свайпа для перелистывания страниц — см. handleSwipeTouchStart/
-  // Move/End ниже.
-  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  // Move/End ниже. dist — расстояние между пальцами в момент старта (только
+  // для двухпальцевого свайпа, см. комментарий там) — null для одного
+  // пальца.
+  const swipeStartRef = useRef<{ x: number; y: number; time: number; dist: number | null } | null>(null);
+  // Последняя известная точка свайпа — нужна отдельно от swipeStartRef,
+  // потому что при двухпальцевом свайпе touchend не гарантирует, что ОБА
+  // пальца окажутся в e.changedTouches одновременно (физически они редко
+  // поднимаются в одну и ту же миллисекунду) — используем последнюю
+  // середину между пальцами, которую успели увидеть в touchmove, а не
+  // пытаемся дождаться событие с двумя одновременными touches.
+  const swipeLastPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Блокировка скролла фонового окна (страницы проекта), пока открыт
+  // полноэкранный просмотр PDF — без неё жесты внутри модалки (особенно
+  // pinch/pan от react-zoom-pan-pinch) иногда протекали наружу, и
+  // пользователь видел, что страница ПОД модалкой продолжает скроллиться
+  // (жалоба: "ползунок вертикального скролла окна проекта постоянно
+  // двигается").
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [isOpen]);
 
   // Загрузка бинарника документа — только при открытии/смене документа, не
   // при каждой смене страницы (страница рендерится из уже загруженного
@@ -513,34 +535,90 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     });
   };
 
-  // Перелистывание страниц свайпом — только на 100% зуме (zoom === MIN_ZOOM)
-  // и только в инструменте "Стрелка": на 100% панорамировать и так некуда
-  // (страница ровно по ширине контейнера, limitToBounds не даст сдвинуть),
-  // поэтому одиночный палец в этой зоне свободен под свайп, не отбирает
-  // ничего у реального панорамирования зумленной страницы. stopPropagation
-  // в touchmove не даёт TransformWrapper параллельно "подёргать" контент
-  // тем же касанием, пока мы решаем — свайп это или нет.
+  // Средняя точка между двумя пальцами (или координата одного пальца, если
+  // он один) — общий способ измерить "где сейчас находится жест" что для
+  // одно-, что для двухпальцевого свайпа.
+  const swipeTouchPoint = (touches: React.TouchList | TouchList): { x: number; y: number } => {
+    if (touches.length >= 2) {
+      const a = touches[0];
+      const b = touches[1];
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    }
+    const t = touches[0];
+    return { x: t.clientX, y: t.clientY };
+  };
+  const swipeTouchDistance = (touches: React.TouchList | TouchList): number => {
+    const a = touches[0];
+    const b = touches[1];
+    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+  };
+
+  // Перелистывание страниц свайпом — только на 100% зуме (zoom === MIN_ZOOM):
+  // панорамировать и так некуда (страница ровно по контейнеру, limitToBounds
+  // не даст сдвинуть), поэтому жест в этой зоне свободен под свайп, не
+  // отбирает ничего у реального панорамирования зумленной страницы.
+  // Один палец — в инструменте "Стрелка" (второй там не нужен — рисовать
+  // нечем). Два пальца — в любом ДРУГОМ инструменте: один палец там занят
+  // рисованием, поэтому свайп двумя пальцами — единственный доступный
+  // способ перелистнуть страницу, не выходя из Хайлайтера/Пера/Ластика
+  // (жалоба: "перелистывание не работает при выбранном другом инструменте
+  // и свайпом двумя пальцами"). Расстояние между пальцами проверяем
+  // отдельно (dist) — чтобы отличить свайп от pinch-зума (TransformWrapper
+  // разрешает pinch в любом инструменте, см. pinch={{disabled:false}}):
+  // если пальцы заметно сближаются/расходятся, это зум, не свайп —
+  // отпускаем жест библиотеке как обычно.
   const handleSwipeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (zoom > MIN_ZOOM || toolMode !== 'pan' || e.touches.length !== 1) {
+    const count = e.touches.length;
+    const isEligible = zoom <= MIN_ZOOM && (
+      (toolMode === 'pan' && count === 1) ||
+      (toolMode !== 'pan' && count === 2)
+    );
+    if (!isEligible) {
       swipeStartRef.current = null;
+      swipeLastPointRef.current = null;
       return;
     }
-    const t = e.touches[0];
-    swipeStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+    const point = swipeTouchPoint(e.touches);
+    swipeStartRef.current = {
+      x: point.x,
+      y: point.y,
+      time: Date.now(),
+      dist: count === 2 ? swipeTouchDistance(e.touches) : null,
+    };
+    swipeLastPointRef.current = point;
   };
 
   const handleSwipeTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!swipeStartRef.current || e.touches.length !== 1) return;
+    const start = swipeStartRef.current;
+    if (!start) return;
+    const count = e.touches.length;
+    const expectedCount = toolMode === 'pan' ? 1 : 2;
+    // Число пальцев изменилось посреди жеста (один уже подняли) — больше
+    // не обновляем "последнюю точку", touchend сработает по тому, что
+    // успели увидеть здесь в последний раз.
+    if (count !== expectedCount) return;
+    if (start.dist != null) {
+      const currentDist = swipeTouchDistance(e.touches);
+      if (Math.abs(currentDist / start.dist - 1) > 0.15) {
+        // Расстояние между пальцами заметно изменилось — это pinch-зум, не
+        // свайп. Прекращаем считать жест свайпом и отдаём его библиотеке.
+        swipeStartRef.current = null;
+        swipeLastPointRef.current = null;
+        return;
+      }
+    }
+    swipeLastPointRef.current = swipeTouchPoint(e.touches);
     e.stopPropagation();
   };
 
   const handleSwipeTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     const start = swipeStartRef.current;
+    const lastPoint = swipeLastPointRef.current;
     swipeStartRef.current = null;
-    if (!start) return;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
+    swipeLastPointRef.current = null;
+    if (!start || !lastPoint) return;
+    const dx = lastPoint.x - start.x;
+    const dy = lastPoint.y - start.y;
     const dt = Date.now() - start.time;
     if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return;
     if (dt > SWIPE_MAX_TIME) return;
