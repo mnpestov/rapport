@@ -281,7 +281,12 @@ export const ProjectDetails: React.FC = () => {
   const handleRemoveYarn = async (skeinId: string) => {
     try {
       await removeProjectYarn(project.id, skeinId);
-      await load();
+      // Точечно убираем связь локально вместо await load() — тот же
+      // приём, что и у добавления пряжи (handlePickYarn) и у удаления
+      // образца (handleConfirmDeleteSwatch) ниже: await load() включал
+      // setLoading(true) и на время запроса размонтировал всю страницу
+      // целиком вместо обновления одного списка "Пряжа".
+      setProject((prev) => prev && { ...prev, yarns: prev.yarns.filter((y) => y.skeinId !== skeinId) });
     } catch (err) {
       console.error('[ProjectDetails] handleRemoveYarn failed:', err);
       setError('Не удалось отвязать пряжу.');
