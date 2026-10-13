@@ -66,10 +66,32 @@ export interface PendingYarnFieldSuggestion {
   composition: string | null;
 }
 
+// "В процессе"/"В планах" на карточке мотка (ниже "Связано") — проекты, у
+// которых этот моток в материалах (ProjectYarn), независимо от того,
+// списан ли уже с него вес (в отличие от usages/"Связано" — тех
+// СПИСАНИЙ может не быть вовсе, если моток только привязан, но ничего не
+// логировали).
+export interface StashLinkedProject {
+  id: string;
+  title: string;
+  status: 'PLANNED' | 'IN_PROGRESS' | 'PAUSED';
+  coverUrl: string | null;
+  // Тот же набор полей, что у карточки "Связано" (StashUsage) —
+  // Автор/Описание/Расход/Спицы, по просьбе пользователя показываются
+  // одинаково независимо от источника записи.
+  patternAuthorSnapshot: string | null;
+  patternTitleSnapshot: string | null;
+  amountG: number | null;
+  // Все инструменты проекта через запятую (не только первый) — "Инструмент",
+  // не "Спицы": может быть крючок/машина/несколько сразу.
+  instrumentsLabel: string | null;
+}
+
 export interface StashSkeinDetail extends StashSkein {
   swatches: StashSwatch[];
   usages: StashUsage[];
   pendingYarnFieldSuggestion: PendingYarnFieldSuggestion | null;
+  linkedProjects: StashLinkedProject[];
 }
 
 export interface FetchStashSkeinsResponse {
@@ -179,6 +201,10 @@ export const fetchStashSkeinById = async (id: string): Promise<StashSkeinDetail>
     usages: skein.usages.map((usage) => ({
       ...usage,
       finishedPhotos: usage.finishedPhotos.map((url) => (url.startsWith('/') ? `${API_URL}${url}` : url)),
+    })),
+    linkedProjects: skein.linkedProjects.map((p) => ({
+      ...p,
+      coverUrl: p.coverUrl && p.coverUrl.startsWith('/') ? `${API_URL}${p.coverUrl}` : p.coverUrl,
     })),
   };
 };

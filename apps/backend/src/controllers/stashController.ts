@@ -302,8 +302,9 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
   // loadOwnedSkein уже проверил владение и положил базовую запись в
   // req.skein — здесь дозагружаем swatches/usages одним запросом.
   const id = req.skein!.id;
+  const userId = req.user!.userId;
   try {
-    const [skein, pendingSuggestion] = await Promise.all([
+    const [skein, pendingSuggestion, linkedProjects] = await Promise.all([
       prisma.stashSkein.findUnique({
         where: { id },
         select: {
@@ -328,6 +329,53 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
         where: { yarnId: req.skein!.yarnId, status: "PENDING" },
         select: { id: true, mPer100g: true, composition: true },
       }),
+      // "В процессе"/"В планах" ниже "Связано" (карточка мотка) — проекты,
+      // у которых этот моток в материалах (ProjectYarn), независимо от
+      // того, списан ли уже с него вес. "Связано" выше показывает только
+      // ФАКТ списания (StashUsage) — проект, которому моток только что
+      // привязан через "Привязать пряжу" (ProjectDetails.tsx), но по
+      // которому ещё ничего не списывали, туда не попадает вообще, хотя
+      // моток уже зарезервирован под него. PAUSED группируется на фронте
+      // ПОД "В процессе" (пауза — всё ещё не завершённый проект), а не в
+      // отдельный блок — поэтому включаем его в выборку здесь. COMPLETED
+      // сюда не включён — по просьбе пользователя эти блоки только про
+      // незавершённые проекты.
+      prisma.project.findMany({
+        where: {
+          userId,
+          status: { in: ["IN_PROGRESS", "PAUSED", "PLANNED"] },
+          yarns: { some: { skeinId: id } },
+        },
+        select: {
+          id: true, title: true, status: true, images: true, finishedPhotos: true, referencePhotos: true,
+          manualAuthor: true, manualDescription: true,
+          // Тот же набор полей, что в карточке "Связано" (Автор/Описание/
+          // Расход/Спицы, renderUsageContent на фронте) — пользователь
+          // попросил показывать одинаково, какой бы ни был источник записи.
+          patterns: {
+            take: 1,
+            orderBy: { createdAt: "asc" },
+            select: { patternAuthorSnapshot: true, patternTitleSnapshot: true },
+          },
+          // Все инструменты проекта (take:1 раньше ошибочно показывал
+          // только первый — пользователь выбирает несколько, например
+          // спицы И крючок, все они должны попасть в карточку).
+          instruments: {
+            orderBy: { createdAt: "asc" },
+            select: { sizeMm: true, instrument: { select: { name: true } } },
+          },
+          // Расход ИМЕННО по этому мотку — amountAtCompletionG синхронен с
+          // StashUsage.amountG (см. комментарий у поля в schema.prisma),
+          // null, пока по этой паре (проект, моток) ещё ничего не
+          // списывали.
+          yarns: {
+            where: { skeinId: id },
+            take: 1,
+            select: { amountAtCompletionG: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
     // Merge: для проектных списаний реальный источник фото — Project, не
@@ -339,7 +387,31 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
       finishedPhotos: usage.projectId ? project?.finishedPhotos ?? [] : usage.finishedPhotos,
     }));
 
-    res.json({ ...skein, usages, pendingYarnFieldSuggestion: pendingSuggestion });
+    // Обложка — та же логика, что у списка проектов (projectsController.ts,
+    // projectCover): готовое изделие → фото в процессе → референс, только
+    // если своих фото нет вовсе.
+    const linkedProjectItems = linkedProjects.map((p) => {
+      const firstPattern = p.patterns[0];
+      return {
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        coverUrl: p.finishedPhotos[0] ?? p.images[0] ?? p.referencePhotos[0] ?? null,
+        patternAuthorSnapshot: firstPattern?.patternAuthorSnapshot ?? p.manualAuthor ?? null,
+        patternTitleSnapshot: firstPattern?.patternTitleSnapshot ?? p.manualDescription ?? null,
+        amountG: p.yarns[0]?.amountAtCompletionG ?? null,
+        // Все инструменты проекта через запятую (тот же формат, что
+        // ProjectDetails.tsx использует для своего блока "Инструмент") —
+        // не "Спицы", раз инструмент может быть и крючком, и машиной.
+        instrumentsLabel: p.instruments.length > 0
+          ? p.instruments
+            .map((i) => (i.sizeMm != null ? `${i.instrument.name} ${String(i.sizeMm).replace(".", ",")} мм` : i.instrument.name))
+            .join(", ")
+          : null,
+      };
+    });
+
+    res.json({ ...skein, usages, pendingYarnFieldSuggestion: pendingSuggestion, linkedProjects: linkedProjectItems });
   } catch (error) {
     console.error(`[Stash] getSkein failed skeinId=${id}:`, error);
     res.status(500).json({ error: "Internal server error" });

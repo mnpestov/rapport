@@ -24,6 +24,7 @@ import arrowLeftIcon from '../../assets/arrow-left.svg';
 import yarnPlaceholder from '../../assets/stash/yarn-placeholder.png';
 import swatchPlaceholder from '../../assets/stash/swatchPlaceholder.svg';
 import projectPlaceholder from '../../components/TabBar/icons/project1.svg';
+import { STATUS_LABEL } from '../Projects/projectStatus';
 import './StashSkeinDetails.css';
 
 export const StashSkeinDetails: React.FC = () => {
@@ -684,6 +685,77 @@ export const StashSkeinDetails: React.FC = () => {
     </CollapsibleSection>
   ) : null;
 
+  // "В процессе"/"В планах" — ниже "Связано". В отличие от usages (факт
+  // списания), это проекты, у которых этот моток просто в материалах
+  // (ProjectYarn), даже если по нему ещё ничего не списывали — см.
+  // комментарий у linkedProjects в stashApi.ts/stashController.ts.
+  // Тот же набор полей, что у "Связано" (renderUsageContent выше) —
+  // Автор/Описание/Расход/Спицы, по просьбе пользователя одинаковый
+  // список полей независимо от источника карточки. Без свайпа и
+  // Редактировать/Удалить — это ссылка на проект, не редактируемая
+  // запись мотка.
+  const renderLinkedProjectCard = (p: StashSkeinDetail['linkedProjects'][number]) => (
+    <button
+      key={p.id}
+      type="button"
+      className="stash-usage-card"
+      onClick={() => navigate(`/projects/${p.id}`)}
+    >
+      <div className="stash-usage-image">
+        {p.coverUrl ? (
+          <img src={p.coverUrl} alt="" className="stash-usage-image" />
+        ) : (
+          <div className="stash-usage-image-placeholder">
+            <img src={projectPlaceholder} alt="" />
+          </div>
+        )}
+      </div>
+      <div className="stash-usage-body">
+        <p className="stash-usage-title">{p.title}</p>
+        {p.patternAuthorSnapshot && (
+          <p className="stash-usage-row"><b>Автор:</b> {p.patternAuthorSnapshot}</p>
+        )}
+        {p.patternTitleSnapshot && (
+          <p className="stash-usage-row"><b>Описание:</b> {p.patternTitleSnapshot}</p>
+        )}
+        {p.amountG != null && (
+          <p className="stash-usage-row"><b>Расход:</b> {p.amountG} г</p>
+        )}
+        {p.instrumentsLabel && (
+          <p className="stash-usage-row"><b>Инструмент:</b> {p.instrumentsLabel}</p>
+        )}
+      </div>
+    </button>
+  );
+
+  // "В процессе" включает и PAUSED — пауза это всё ещё не завершённый
+  // проект, пользователь попросил не заводить для неё отдельный блок.
+  const makeLinkedProjectsBlock = (
+    statuses: StashSkeinDetail['linkedProjects'][number]['status'][],
+    title: string,
+    sectionKey: string,
+    desktop: boolean,
+  ) => {
+    const items = skein.linkedProjects.filter((p) => statuses.includes(p.status));
+    if (items.length === 0) return null;
+    const cards = items.map(renderLinkedProjectCard);
+    return desktop ? (
+      <CollapsibleSection title={title} isOpen={isSectionOpen(sectionKey)} onToggle={() => toggleSection(sectionKey)} className="stash-details-usages">
+        {cards}
+      </CollapsibleSection>
+    ) : (
+      <div className="stash-details-usages">
+        <p className="stash-details-section-title">{title}</p>
+        {cards}
+      </div>
+    );
+  };
+
+  const linkedInProgressBlock = makeLinkedProjectsBlock(['IN_PROGRESS', 'PAUSED'], STATUS_LABEL.IN_PROGRESS, 'linkedInProgress', false);
+  const linkedPlannedBlock = makeLinkedProjectsBlock(['PLANNED'], STATUS_LABEL.PLANNED, 'linkedPlanned', false);
+  const linkedInProgressBlockDesktop = makeLinkedProjectsBlock(['IN_PROGRESS', 'PAUSED'], STATUS_LABEL.IN_PROGRESS, 'linkedInProgress', true);
+  const linkedPlannedBlockDesktop = makeLinkedProjectsBlock(['PLANNED'], STATUS_LABEL.PLANNED, 'linkedPlanned', true);
+
   const actionsBlock = (
     <div className="stash-details-actions">
       <button
@@ -741,6 +813,8 @@ export const StashSkeinDetails: React.FC = () => {
 
                 {yarnFixBlock}
                 {usagesBlockDesktop}
+                {linkedInProgressBlockDesktop}
+                {linkedPlannedBlockDesktop}
               </div>
 
               <div className="stash-details-desktop-swatches">
@@ -791,6 +865,8 @@ export const StashSkeinDetails: React.FC = () => {
             </div>
 
             {usagesBlock}
+            {linkedInProgressBlock}
+            {linkedPlannedBlock}
 
             {actionsBlock}
           </>
