@@ -732,6 +732,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           ? await completeProject(draftProjectId, {
             yarnUsages,
             finishedPhotos,
+            completedAt: completedAt || undefined,
           })
           : patchedDraft;
         onCreated?.(finalProject);

@@ -283,6 +283,18 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
     startedAt = status === ProjectStatus.PLANNED ? null : new Date();
   }
 
+  // Backdated-завершение — явно переданная дата используется, только если
+  // проект создаётся сразу COMPLETED (см. completedAt в data ниже);
+  // отсутствует/не COMPLETED — старое поведение (сегодня/null).
+  let completedAtInput: Date | undefined;
+  if (typeof body.completedAt === "string" && body.completedAt) {
+    completedAtInput = new Date(body.completedAt);
+    if (Number.isNaN(completedAtInput.getTime())) {
+      res.status(400).json({ error: "Invalid completedAt" });
+      return;
+    }
+  }
+
   const unlimited = await hasUnlimitedStashAccess(userId);
   if (!unlimited) {
     const existingCount = await prisma.project.count({ where: { userId } });
@@ -437,7 +449,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
           manualAuthor: patternIds.length ? null : manualAuthor,
           manualDescription: patternIds.length ? null : manualDescription,
           startedAt,
-          completedAt: status === ProjectStatus.COMPLETED ? new Date() : null,
+          completedAt: status === ProjectStatus.COMPLETED ? (completedAtInput ?? new Date()) : null,
           note: body.note ? String(body.note) : null,
           images,
           referencePhotos,
