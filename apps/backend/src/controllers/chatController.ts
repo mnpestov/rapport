@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../prismaClient";
-import { checkTelegramSubscriptionOnce } from "../utils/checkSubscription";
+import { getCachedSubscriptions } from "../utils/checkSubscription";
 
 export interface ChatMessage {
   id: string;
@@ -177,9 +177,8 @@ export const getRequests = async (_req: Request, res: Response): Promise<void> =
   const whitelistIds = await prisma.whitelistedUser.findMany({ select: { telegramId: true } });
   const whitelistSet = new Set(whitelistIds.map((w) => w.telegramId.toString()));
 
-  const subscriptionResults = await Promise.all(
-    latest.map((u) => checkTelegramSubscriptionOnce(Number(u.telegramId)).catch(() => null))
-  );
+  // Из кэша, без запросов в gateway на каждый диалог (см. getCachedSubscriptions).
+  const subscriptionResults = getCachedSubscriptions(latest.map((u) => Number(u.telegramId)));
 
   const result = latest
     .map((u, i) => ({

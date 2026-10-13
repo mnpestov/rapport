@@ -134,3 +134,70 @@ export async function checkTelegramSubscriptionOnce(userId: number): Promise<boo
     return null;
   }
 }
+
+// Кэш статуса подписки для списков в админке (вкладка «Заявки»). Раньше каждая
+// загрузка списка (каждые 20 с на открытой вкладке) слала в gateway по запросу на
+// КАЖДОГО из ~127 диалогов одновременно; одноядерный gateway не успевал
+// поднять столько TLS-соединений с Telegram за свои 10 с, и 13 октября 2026
+// падали все запросы пачки. Теперь список отдаёт то, что уже в кэше, а
+// устаревшие записи обновляются в фоне, не более SUBSCRIPTION_REFRESH_CONCURRENCY
+// запросов одновременно. Установившаяся нагрузка на gateway — ~127 запросов раз
+// в 10 минут вместо 127 раз в 20 секунд.
+const SUBSCRIPTION_CACHE_TTL_MS = 10 * 60 * 1000;
+// После неудачной проверки следующую пробуем не раньше чем через столько, чтобы
+// не долбить gateway во время его сбоя на каждом опросе списка.
+const SUBSCRIPTION_RETRY_AFTER_FAILURE_MS = 2 * 60 * 1000;
+const SUBSCRIPTION_REFRESH_CONCURRENCY = 3;
+
+interface SubscriptionCacheEntry {
+  value: boolean | null;
+  // Момент, когда запись считается протухшей (мс с эпохи).
+  expiresAt: number;
+}
+
+const subscriptionCache = new Map<number, SubscriptionCacheEntry>();
+const refreshQueue = new Set<number>();
+const refreshInFlight = new Set<number>();
+
+function pumpSubscriptionRefresh(): void {
+  while (refreshInFlight.size < SUBSCRIPTION_REFRESH_CONCURRENCY && refreshQueue.size > 0) {
+    const userId = refreshQueue.values().next().value as number;
+    refreshQueue.delete(userId);
+    refreshInFlight.add(userId);
+
+    checkTelegramSubscriptionOnce(userId)
+      .catch(() => null)
+      .then((value) => {
+        const now = Date.now();
+        if (value === null) {
+          // Не затираем прежний определённый статус неудачной проверкой.
+          const previous = subscriptionCache.get(userId);
+          subscriptionCache.set(userId, {
+            value: previous?.value ?? null,
+            expiresAt: now + SUBSCRIPTION_RETRY_AFTER_FAILURE_MS,
+          });
+        } else {
+          subscriptionCache.set(userId, { value, expiresAt: now + SUBSCRIPTION_CACHE_TTL_MS });
+        }
+      })
+      .finally(() => {
+        refreshInFlight.delete(userId);
+        pumpSubscriptionRefresh();
+      });
+  }
+}
+
+// Отдаёт статусы из кэша мгновенно (null — ещё неизвестно/не удалось определить) и
+// ставит в фоновую очередь обновление для протухших и неизвестных.
+export function getCachedSubscriptions(userIds: number[]): (boolean | null)[] {
+  const now = Date.now();
+  const values = userIds.map((userId) => {
+    const entry = subscriptionCache.get(userId);
+    if (!entry || entry.expiresAt <= now) {
+      if (!refreshInFlight.has(userId)) refreshQueue.add(userId);
+    }
+    return entry?.value ?? null;
+  });
+  pumpSubscriptionRefresh();
+  return values;
+}
