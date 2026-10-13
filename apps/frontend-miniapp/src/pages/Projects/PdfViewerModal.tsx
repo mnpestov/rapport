@@ -414,6 +414,44 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [isColorPickerOpen]);
 
+  // Гасит одно-пальцевое касание/клик мышью на канвасе рисования ДО того,
+  // как react-zoom-pan-pinch успеет его увидеть (panning теперь включён в
+  // любом инструменте — см. panning={{disabled: zoom <= MIN_ZOOM}} в JSX —
+  // без этого гашения один палец в режиме "Хайлайтер"/"Перо" одновременно
+  // и рисует, и двигает страницу: жалоба "страница двигается и рисуются
+  // каракули"). ОБЯЗАТЕЛЬНО нативный addEventListener с {capture: true}, а
+  // не React-проп onTouchStart/onMouseDown: react-zoom-pan-pinch слушает
+  // touchstart/mousedown нативно прямо на своём wrapper-узле (ближе к
+  // канвасу по DOM, чем React), и успевает сработать ПЕРЕД тем, как React
+  // (единый делегирующий слушатель на корне) вообще вызовет наш
+  // синтетический обработчик — stopPropagation() оттуда опаздывает.
+  // Capture-фаза идёт сверху вниз ДО bubble-фазы библиотеки, поэтому
+  // перехватывает надёжно независимо от этой гонки. Два пальца НЕ гасим
+  // (условие touches.length === 1) — тогда это pinch, его обрабатывает
+  // TransformWrapper, а рисование само обрывается через activePointerIdsRef.
+  useEffect(() => {
+    const canvas = drawingCanvasRef.current;
+    if (!canvas) return;
+
+    const stopIfSingleTouch = (e: TouchEvent) => {
+      if (e.touches.length === 1) e.stopPropagation();
+    };
+    const stopMouse = (e: MouseEvent) => e.stopPropagation();
+
+    canvas.addEventListener('touchstart', stopIfSingleTouch, { capture: true, passive: false });
+    canvas.addEventListener('touchmove', stopIfSingleTouch, { capture: true, passive: false });
+    canvas.addEventListener('mousedown', stopMouse, { capture: true });
+
+    return () => {
+      canvas.removeEventListener('touchstart', stopIfSingleTouch, { capture: true } as EventListenerOptions);
+      canvas.removeEventListener('touchmove', stopIfSingleTouch, { capture: true } as EventListenerOptions);
+      canvas.removeEventListener('mousedown', stopMouse, { capture: true } as EventListenerOptions);
+    };
+    // Канвас пересоздаётся при открытии/загрузке документа (см. isLoading/
+    // error в JSX) — переподключаем слушатели на новый DOM-узел каждый раз.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, error]);
+
   if (!isOpen) return null;
 
   // Переводит "библиотечный" масштаб в логический процент (1..4 = 100%..
@@ -957,16 +995,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                   {/* Отдельный canvas поверх highlight-слоя — активен (ловит
                       pointer-события) в режимах "Хайлайтер"/"Перо"/"Ластик", в
                       режиме "Стрелка" пропускает события насквозь (drag/пинч
-                      обрабатывает TransformWrapper выше).
-                      onMouseDown/onTouchStart/onTouchMove гасят ОДНОПАЛЬЦЕВОЕ/
-                      мышиное событие до того, как оно долетит до
-                      TransformWrapper (panning там теперь включён всегда, см.
-                      комментарий у panning={{disabled:false}}) — иначе клик/
-                      один палец одновременно пытался бы и рисовать, и двигать
-                      страницу. Два пальца НЕ гасим (условие touches.length===1)
-                      — тогда это pinch, его обрабатывает TransformWrapper, а
-                      drawing-хендлеры сами прерывают рисование через
-                      activePointerIdsRef. */}
+                      обрабатывает TransformWrapper выше). Гашение
+                      одно-пальцевого/мышиного касания, чтобы оно не долетало
+                      до TransformWrapper, — см. useEffect с нативными
+                      capture-листенерами ниже (React-пропсы onTouchStart и
+                      т.п. тут не работают, см. комментарий там). */}
                   <canvas
                     ref={drawingCanvasRef}
                     className={`pdf-viewer-drawing-layer ${toolMode !== 'pan' ? 'pdf-viewer-drawing-layer--active' : ''} ${toolMode === 'eraser' ? 'pdf-viewer-drawing-layer--eraser' : ''}`}
@@ -974,9 +1007,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                     onPointerMove={handleDrawingPointerMove}
                     onPointerUp={handleDrawingPointerUp}
                     onPointerLeave={handleDrawingPointerUp}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => { if (e.touches.length === 1) e.stopPropagation(); }}
-                    onTouchMove={(e) => { if (e.touches.length === 1) e.stopPropagation(); }}
                   />
 
                   {inProgressHighlightRect && (
