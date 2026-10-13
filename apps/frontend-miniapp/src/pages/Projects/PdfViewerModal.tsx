@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Trash2, MousePointer2, Highlighter, Pen, Eraser, Undo2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import { TransformWrapper, TransformComponent, type ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 
 const { TextLayer } = pdfjsLib;
 import {
@@ -47,7 +48,37 @@ const HIGHLIGHT_COLORS = ['#ffe066', '#a9ae36', '#bec1f4', '#d8520f'];
 // пиксельную область, не растирает частично.
 const DRAWING_COLOR = '#1d1c1c';
 const DRAWING_WIDTH = 1.5;
+// В пикселях КАНВАСА (не экрана) при 100% логическом зуме — см.
+// getDisplayScale()/eraseAtLocalPoint ниже, где это переводится в реальные
+// экранные пиксели независимо от текущего масштаба.
 const ERASER_HIT_RADIUS = 10;
+
+// Зум поверх "базового" масштаба (100% = подогнано под ширину контейнера).
+// 1..4 — тот же диапазон, что и раньше, в терминах ЛОГИЧЕСКОГО процента,
+// который видит пользователь (100%..400%).
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+
+// Канвас печётся ОДИН раз за открытие страницы, сразу с запасом резкости
+// на будущий зум — не на каждый шаг зума заново, как было раньше (именно
+// эта схема — "дешёвый CSS-transform во время жеста, потом debounced
+// re-render в новом разрешении, потом подгонка скролла под жест" — была
+// источником всех предыдущих багов с зумом/паном). Теперь react-zoom-pan-
+// pinch отвечает ТОЛЬКО за визуальный transform (zoom/pan/pinch) поверх уже
+// готового канваса — печь новый растр при каждом шаге зума больше не нужно.
+// 2 — разумный компромисс: на максимальном логическом зуме (400%)
+// эффективная чёткость равна напечённому разрешению БЕЗ дополнительного
+// размытия от CSS-растяжения сверху (см. MIN/MAX_LIB_SCALE ниже); больше —
+// чётче на самом сильном зуме ценой заметно большего канваса в памяти.
+const RENDER_ZOOM_HEADROOM = 2;
+// "Шкала" react-zoom-pan-pinch — множитель ПОВЕРХ уже напечённого (с
+// запасом headroom) канваса, не логический зум пользователя напрямую:
+// 1/HEADROOM соответствует логическим 100% (напечённый канвас показан
+// уменьшенным — "как было бы без запаса"), MAX_ZOOM/HEADROOM — логическим
+// 400% (напечённый канвас показан БЕЗ дополнительного уменьшения/растяжения,
+// пиксель в пиксель).
+const MIN_LIB_SCALE = 1 / RENDER_ZOOM_HEADROOM;
+const MAX_LIB_SCALE = MAX_ZOOM / RENDER_ZOOM_HEADROOM;
 
 type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
@@ -104,46 +135,17 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // в момент готовности viewport, без дублирования самого объекта в state.
   const [viewportVersion, setViewportVersion] = useState(0);
 
-  // Зум поверх "базового" масштаба (100% = подогнано под ширину
-  // контейнера, как было раньше). MIN/MAX — разумные пределы для PDF
-  // страницы: меньше 1 не имеет смысла (документ и так по ширине экрана),
-  // больше 4 растровый canvas на телефоне становится непрактично тяжёлым.
-  const [zoom, setZoom] = useState(1);
-  const zoomRef = useRef(1);
-  // Пока идёт pinch-жест, canvas визуально масштабируется дешёвым CSS
-  // transform (см. handlePinchMove) — полный перерендер в новом разрешении
-  // происходит только после того, как жест закончился (см. useEffect на
-  // zoom ниже, debounce). isPinchingRef разделяет "визуальный" зум
-  // (transform) от "растрового" (React state zoom, вызывающего реальный
-  // рендер) — без этого разделения слушатель touchmove на каждый кадр
-  // жеста заново рендерил бы canvas, что на телефоне заметно тормозит.
-  const isPinchingRef = useRef(false);
-  const pinchStartDistRef = useRef(0);
-  const pinchStartZoomRef = useRef(1);
-  // Точка, которую пользователь реально сводит пальцами — как ДОЛЯ
-  // (0..1) от текущего (нетрансформированного) прямоугольника pageWrapRef,
-  // плюс клиентские координаты середины пальцев. Доля, а не абсолютные
-  // координаты скролла — PDF-контент всегда растёт равномерно от
-  // собственного левого верхнего угла pageWrapRef, поэтому доля остаётся
-  // той же самой и ДО, и ПОСЛЕ растрового рендера в новом разрешении,
-  // независимо от того, как именно .pdf-viewer-body (flex +
-  // justify-content:center) на самом деле трактует scrollLeft/Top —
-  // раньше пересчёт через "scrollLeft + offset" как координату контента
-  // был неверным именно из-за центрирования flex-контейнера и уводил
-  // скролл систематически в один угол.
-  const pinchFocalRef = useRef<{ fracX: number; fracY: number; clientX: number; clientY: number } | null>(null);
-  // Выставляется в handlePinchEnd, считывается и сбрасывается один раз —
-  // уже ПОСЛЕ debounced renderPageAtZoom на новом zoom (см. соответствующий
-  // useEffect) — именно тогда известны финальные размеры канваса, под
-  // которые нужно подогнать scrollLeft/Top.
-  const pendingZoomFocalRef = useRef<{ fracX: number; fracY: number; clientX: number; clientY: number } | null>(null);
-
-  // Панорамирование инструментом "Стрелка" — протягивание одним
-  // пальцем/мышью скроллит .pdf-viewer-body (нативный overflow:auto
-  // контейнер), а не CSS transform: так поведение остаётся идентичным
-  // обычному скроллу и не конфликтует с pinch-zoom transform выше.
-  const isPanningRef = useRef(false);
-  const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  // Логический зум, который видит пользователь (1..4 = 100%..400%) — см.
+  // MIN_ZOOM/MAX_ZOOM/RENDER_ZOOM_HEADROOM выше. Обновляется только по
+  // завершении жеста/клика (handleGestureSettled/zoomStep), не на каждый
+  // кадр — сам зум/пан визуально полностью ведёт react-zoom-pan-pinch,
+  // это state нужен только для индикатора "%" и disabled у кнопок +/-.
+  const [zoom, setZoom] = useState(MIN_ZOOM);
+  // Императивный доступ к react-zoom-pan-pinch — сброс трансформации при
+  // смене страницы (useEffect ниже) и шаг зума по кнопкам +/- (zoomStep,
+  // кнопки лежат в футере, вне поддерева TransformWrapper, поэтому
+  // useControls() тут не подходит — тот хук работает только из потомков).
+  const transformRef = useRef<ReactZoomPanPinchContentRef>(null);
 
   const highlightToolBtnWrapRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -158,14 +160,12 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const isDrawingRef = useRef(false);
   const erasedInGestureRef = useRef<Set<string>>(new Set());
   // Активные пальцы на канвасе рисования — если их больше одного, значит
-  // это pinch-жест (вторая рука сводит масштаб), а не протягивание
-  // выделения/пера: без этой проверки каждый палец pinch'а независимо тянул
-  // свой прямоугольник/штрих поверх CSS-зума — прямая причина жалобы
-  // "вся страница в разных прямоугольниках". pointerId, не количество
-  // touches — тот же физический жест виден канвасу через Pointer Events
-  // по одному на палец, хотя сам пинч считается через TouchEvent на
-  // родителе (handlePinchStart/Move), эти два набора обработчиков не
-  // синхронизированы напрямую, поэтому считаем независимо здесь же.
+  // это pinch-жест (TransformWrapper сейчас отключён в режимах рисования,
+  // см. disabled в JSX, но на миг между "второй палец лёг" и реакцией
+  // библиотеки события на канвас всё равно успевают дойти), а не
+  // протягивание выделения/пера: без этой проверки каждый палец pinch'а
+  // независимо тянул свой прямоугольник/штрих — прямая причина жалобы
+  // "вся страница в разных прямоугольниках".
   const activePointerIdsRef = useRef<Set<number>>(new Set());
 
   // Стек последних сохранённых выделений/штрихов для кнопки "Отменить" —
@@ -206,47 +206,34 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     return () => { cancelled = true; };
   }, [isOpen, documentId]);
 
-  // Отменяет "устаревшие" рендеры: каждый вызов renderPageAtZoom
-  // запоминает свой номер при старте, и после каждого await сверяет его с
-  // актуальным — если за время ожидания стартовал более новый рендер
-  // (сменили страницу/зум ещё раз), текущий молча прекращается. Проще и
-  // надёжнее, чем прокидывать cancel-флаг наружу через замыкание из
-  // async-функции (тот вариант ломается: caller не может пометить
-  // cancelled=true ДО завершения await'ов — флаг живёт только внутри
-  // самой функции).
+  // Отменяет "устаревшие" рендеры: каждый вызов renderPage запоминает свой
+  // номер при старте, и после каждого await сверяет его с актуальным —
+  // если за время ожидания стартовал более новый рендер (сменили страницу
+  // ещё раз), текущий молча прекращается. Проще и надёжнее, чем
+  // прокидывать cancel-флаг наружу через замыкание из async-функции (тот
+  // вариант ломается: caller не может пометить cancelled=true ДО
+  // завершения await'ов — флаг живёт только внутри самой функции).
   const renderTokenRef = useRef(0);
 
-  // Полный рендер страницы в растр (canvas) под конкретный zoom-множитель
-  // поверх fitScale. Общая функция для двух случаев: смена страницы
-  // (zoomMultiplier всегда 1 — сбрасываем зум) и debounced завершение
-  // pinch-жеста/клик по +/− (текущий zoomRef.current). shouldResetZoom
-  // отдельным флагом, а не просто "смена страницы = zoom 1" по факту вызова
-  // — иначе пришлось бы дублировать сброс zoomRef/setZoom в двух местах.
-  const renderPageAtZoom = async (zoomMultiplier: number, shouldResetZoom: boolean): Promise<void> => {
+  // Полный рендер страницы в растр (canvas) — один раз на страницу, с
+  // запасом резкости на будущий зум (см. RENDER_ZOOM_HEADROOM выше). Зум
+  // после этого — чисто визуальный CSS-transform react-zoom-pan-pinch,
+  // этот рендер больше НЕ вызывается заново на каждый шаг зума.
+  const renderPage = async (): Promise<void> => {
     const page = pageRef.current;
     if (!page) return;
     const myToken = ++renderTokenRef.current;
 
-    if (shouldResetZoom) {
-      zoomRef.current = 1;
-      setZoom(1);
-    }
-
     const containerWidth = containerRef.current?.clientWidth ?? 350;
     const baseViewport = page.getViewport({ scale: 1 });
     const fitScale = containerWidth / baseViewport.width;
-    const scale = fitScale * zoomMultiplier;
+    const scale = fitScale * RENDER_ZOOM_HEADROOM;
     const viewport = page.getViewport({ scale });
     viewportRef.current = viewport;
 
     const canvas = canvasRef.current;
     const textLayerEl = textLayerRef.current;
     if (!canvas || !textLayerEl) return;
-
-    // Сбрасываем CSS transform от pinch-жеста (см. handlePinchMove) — canvas
-    // теперь рендерится в новом разрешении нативно, масштабировать
-    // отображение больше не нужно.
-    if (pageWrapRef.current) pageWrapRef.current.style.transform = '';
 
     // devicePixelRatio — без этого canvas рендерится 1:1 в CSS-пикселях и
     // браузер растягивает его на физические пиксели экрана, отсюда
@@ -305,8 +292,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   };
 
   // Рендер текущей страницы: canvas + текстовый слой. Пересоздаётся при
-  // смене страницы или после первой загрузки документа — всегда со
-  // сбросом зума на 100% (см. renderPageAtZoom).
+  // смене страницы или после первой загрузки документа — зум/позиция
+  // react-zoom-pan-pinch сбрасываются следом явно (новая страница не
+  // обязана открываться с зумом предыдущей).
   useEffect(() => {
     if (!pdfDoc) return;
     setSelectedHighlightId(null);
@@ -315,7 +303,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     (async () => {
       const page = await pdfDoc.getPage(pageNumber);
       pageRef.current = page;
-      await renderPageAtZoom(1, true);
+      await renderPage();
+      transformRef.current?.setTransform(0, 0, MIN_LIB_SCALE, 0);
+      setZoom(MIN_ZOOM);
     })().catch((err) => {
       // Полный stack trace в консоли — err.message на минифицированном
       // коде сам по себе малополезен (см. промахнувшуюся первую гипотезу
@@ -325,54 +315,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       setError(err instanceof Error ? err.message : 'Не удалось отрисовать страницу');
     });
   }, [pdfDoc, pageNumber]);
-
-  // Завершение pinch-жеста/клика по +/− — debounce (не мгновенно на каждое
-  // изменение zoom state, хотя сейчас zoom меняется только по окончании
-  // жеста/по клику, не непрерывно; debounce здесь на случай будущих
-  // источников изменения zoom и просто как защита от двойного клика).
-  const isFirstZoomRenderRef = useRef(true);
-  useEffect(() => {
-    if (isFirstZoomRenderRef.current) {
-      isFirstZoomRenderRef.current = false;
-      return;
-    }
-    if (!pageRef.current) return;
-    const timer = setTimeout(() => {
-      renderPageAtZoom(zoom, false)
-        .then(() => {
-          // Возвращаем точку, которую пользователь реально сводил пальцами,
-          // под эти же пальцы — без этого скролл после растрового рендера
-          // в новом разрешении оставался там, где случайно оказался, и
-          // видимое содержимое "прыгало" (жалоба "перескакивает на центр").
-          // Для зума кнопками +/- (zoomStep) pendingZoomFocalRef пуст —
-          // поведение остаётся прежним, без доп. подгонки скролла.
-          const pending = pendingZoomFocalRef.current;
-          pendingZoomFocalRef.current = null;
-          const container = containerRef.current;
-          const wrap = pageWrapRef.current;
-          if (pending && container && wrap) {
-            // Не моделируем координаты скролла сами (та версия систематически
-            // уводила в один угол — .pdf-viewer-body это flex с
-            // justify-content:center, scrollLeft/Top не равны простой
-            // "координате контента"), а просто измеряем, где точка
-            // оказалась СЕЙЧАС (после рендера в новом разрешении, по той
-            // же доле 0..1 от уже увеличенного pageWrapRef — контент растёт
-            // равномерно от его собственного угла), и подвигаем скролл на
-            // разницу с тем, где она должна быть (там же, где пальцы).
-            const wrapRect = wrap.getBoundingClientRect();
-            const currentScreenX = wrapRect.left + pending.fracX * wrapRect.width;
-            const currentScreenY = wrapRect.top + pending.fracY * wrapRect.height;
-            container.scrollLeft += currentScreenX - pending.clientX;
-            container.scrollTop += currentScreenY - pending.clientY;
-          }
-        })
-        .catch((err) => {
-          console.error('[PdfViewerModal] zoom render failed:', err);
-        });
-    }, 120);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom]);
 
   // Существующие выделения для текущей страницы — перезагружаются при
   // смене страницы, не всей БД разом (PROJECTS_PLAN.md §8.2 п.4).
@@ -426,90 +368,23 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
 
   if (!isOpen) return null;
 
-  const MIN_ZOOM = 1;
-  const MAX_ZOOM = 4;
-  const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
-
-  const distanceBetweenTouches = (touches: React.TouchList): number => {
-    const [a, b] = [touches[0], touches[1]];
-    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-  };
-
-  const midpointFromTouches = (touches: React.TouchList): { x: number; y: number } => {
-    const [a, b] = [touches[0], touches[1]];
-    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
-  };
-
-  // Pinch-жест — два пальца на странице. Во время движения масштабируем
-  // ДЕШЁВЫМ CSS transform на обёртке (не перерендериваем canvas на каждый
-  // touchmove — на телефоне это заметно тормозит и жест выглядит рваным),
-  // финальный чёткий растровый рендер в новом разрешении происходит уже
-  // после отпускания пальцев (handlePinchEnd → setZoom → debounced эффект
-  // выше).
-  const handlePinchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length !== 2) return;
-    isPinchingRef.current = true;
-    pinchStartDistRef.current = distanceBetweenTouches(e.touches);
-    pinchStartZoomRef.current = zoomRef.current;
-
-    const mid = midpointFromTouches(e.touches);
-    // transformOrigin — один раз на весь жест, от точки, которую реально
-    // сводят пальцами (а не жёстко 'center center', как раньше — прямая
-    // причина жалобы "приближаю — перескакивает на центр"). wrapRect берём
-    // ДО применения transform в этом жесте (предыдущий жест уже сбросил
-    // transform к '' после своего растрового рендера, см. renderPageAtZoom)
-    // — поэтому это ещё нетрансформированный локальный прямоугольник,
-    // ровно то, что требует transform-origin по спецификации CSS. Та же
-    // точка запоминается ещё и как ДОЛЯ (0..1) от текущего прямоугольника —
-    // см. комментарий у pinchFocalRef — чтобы в handlePinchEnd вернуть её
-    // под пальцы уже после настоящего растрового рендера.
-    if (pageWrapRef.current) {
-      const wrapRect = pageWrapRef.current.getBoundingClientRect();
-      pageWrapRef.current.style.transformOrigin = `${mid.x - wrapRect.left}px ${mid.y - wrapRect.top}px`;
-      pinchFocalRef.current = {
-        fracX: (mid.x - wrapRect.left) / wrapRect.width,
-        fracY: (mid.y - wrapRect.top) / wrapRect.height,
-        clientX: mid.x,
-        clientY: mid.y,
-      };
-    }
-  };
-
-  const handlePinchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isPinchingRef.current || e.touches.length !== 2) return;
-    e.preventDefault();
-    const dist = distanceBetweenTouches(e.touches);
-    if (pinchStartDistRef.current === 0) return;
-    const nextZoom = clampZoom(pinchStartZoomRef.current * (dist / pinchStartDistRef.current));
-    zoomRef.current = nextZoom;
-    if (pageWrapRef.current) {
-      // Визуальный CSS-масштаб относительно уже отрендеренного zoom —
-      // делим на тот множитель, что уже "запечён" в canvas сейчас
-      // (последний завершённый renderPageAtZoom), иначе масштаб
-      // накапливался бы неправильно между последовательными жестами.
-      // transformOrigin НЕ трогаем здесь — он уже выставлен один раз в
-      // handlePinchStart; смена origin посреди жеста сама по себе визуально
-      // дёргает картинку (браузер пересчитывает текущий transform от новой
-      // точки), поэтому фиксируем точку один раз, а не на каждый кадр.
-      pageWrapRef.current.style.transform = `scale(${nextZoom / pinchStartZoomRef.current})`;
-    }
-  };
-
-  const handlePinchEnd = () => {
-    if (!isPinchingRef.current) return;
-    isPinchingRef.current = false;
-    pendingZoomFocalRef.current = pinchFocalRef.current;
-    setZoom(zoomRef.current);
+  // Завершение зума (пинч или колесо/двойной клик — те отключены ниже в
+  // JSX, но колбэк общий на случай будущих источников) — переводим
+  // "библиотечный" масштаб обратно в логический процент для индикатора/
+  // кнопок +/-. Во время самого жеста zoom state НЕ трогаем — визуально
+  // всё ведёт сам react-zoom-pan-pinch, лишний ре-рендер на каждый кадр не
+  // нужен (та же идея, что раньше решал isPinchingRef, просто теперь не
+  // наша забота).
+  const handleGestureSettled = (ctx: ReactZoomPanPinchContentRef) => {
+    setZoom(ctx.state.scale * RENDER_ZOOM_HEADROOM);
   };
 
   const zoomStep = (direction: 1 | -1) => {
-    // Зум кнопками +/- не привязан к конкретной точке пальцев — не
-    // подгоняем скролл, оставляем прежнее поведение (и не даём протухшему
-    // pinchFocalRef от предыдущего жеста случайно сработать здесь).
-    pendingZoomFocalRef.current = null;
-    const next = clampZoom(zoomRef.current + direction * 0.5);
-    zoomRef.current = next;
-    setZoom(next);
+    const ctx = transformRef.current;
+    if (!ctx) return;
+    const next = Math.min(MAX_LIB_SCALE, Math.max(MIN_LIB_SCALE, ctx.state.scale + direction * (0.5 / RENDER_ZOOM_HEADROOM)));
+    ctx.setTransform(ctx.state.positionX, ctx.state.positionY, next, 200);
+    setZoom(next * RENDER_ZOOM_HEADROOM);
   };
 
   const handleDeleteHighlight = async (id: string) => {
@@ -523,13 +398,30 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
   };
 
+  // Во сколько раз канвас рисования СЕЙЧАС визуально крупнее/мельче своего
+  // напечённого размера — канвас всегда рендерится в фиксированном
+  // максимальном разрешении (см. RENDER_ZOOM_HEADROOM), а react-zoom-pan-
+  // pinch поверх него просто визуально масштабирует через CSS transform.
+  // offsetWidth — собственный (нетрансформированный) layout-размер
+  // элемента, getBoundingClientRect().width — уже с учётом текущего
+  // transform; отношение между ними и есть текущий видимый масштаб.
+  const getDisplayScale = (): number => {
+    const canvas = drawingCanvasRef.current;
+    if (!canvas || canvas.offsetWidth === 0) return 1;
+    return canvas.getBoundingClientRect().width / canvas.offsetWidth;
+  };
+
   // Локальные координаты канваса рисования (не PDF-координаты) из
-  // pointer-события — общая точка входа для пера и ластика.
+  // pointer-события — общая точка входа для пера и ластика. Переводим в
+  // систему координат НАПЕЧЁННОГО (нетрансформированного) канваса — именно
+  // в ней работает viewport.convertToPdfPoint ниже — иначе штрих рисуется
+  // не под пальцем на любом зуме, кроме как раз напечённого.
   const localPointFromEvent = (e: React.PointerEvent<HTMLCanvasElement>): { x: number; y: number } | null => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const displayScale = getDisplayScale();
+    return { x: (e.clientX - rect.left) / displayScale, y: (e.clientY - rect.top) / displayScale };
   };
 
   // Кратчайшее расстояние от точки до отрезка — для ластика: штрих
@@ -555,12 +447,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const handleDrawingPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointerIdsRef.current.add(e.pointerId);
     if (activePointerIdsRef.current.size > 1) {
-      // Второй палец лёг на канвас — это pinch (родитель уже считает его
-      // через touch-события, см. handlePinchStart), а не протягивание
+      // Второй палец лёг на канвас — это pinch, а не протягивание
       // выделения/пера. Обрываем то, что успел начать первый палец, и не
       // начинаем ничего для второго — иначе оба пальца независимо тянут
-      // свой прямоугольник/штрих поверх CSS-зума (жалоба "вся страница в
-      // разных прямоугольниках").
+      // свой прямоугольник/штрих (жалоба "вся страница в разных
+      // прямоугольниках").
       isDrawingRef.current = false;
       setInProgressStroke(null);
       setInProgressHighlightRect(null);
@@ -581,7 +472,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     } else if (toolMode === 'eraser') {
       isDrawingRef.current = true;
       erasedInGestureRef.current = new Set();
-      eraseAtLocalPoint(local);
+      eraseAtLocalPoint(local, getDisplayScale());
     } else if (toolMode === 'highlight') {
       isDrawingRef.current = true;
       highlightStartRef.current = local;
@@ -601,7 +492,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       const [pdfX, pdfY] = viewport.convertToPdfPoint(local.x, local.y);
       setInProgressStroke((prev) => (prev ? [...prev, { x: pdfX, y: pdfY }] : [{ x: pdfX, y: pdfY }]));
     } else if (toolMode === 'eraser') {
-      eraseAtLocalPoint(local);
+      eraseAtLocalPoint(local, getDisplayScale());
     } else if (toolMode === 'highlight') {
       const start = highlightStartRef.current;
       if (!start) return;
@@ -688,52 +579,24 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
   };
 
-  // Панорамирование инструментом "Стрелка" — drag скроллит
-  // .pdf-viewer-body. Слушает на самом контейнере (не на drawing-канвасе,
-  // тот активен только для Пера/Ластика/Хайлайтера), поэтому работает
-  // везде на странице, включая пустые поля вокруг canvas.
-  const handlePanPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (toolMode !== 'pan') return;
-    const container = containerRef.current;
-    if (!container) return;
-    isPanningRef.current = true;
-    panStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      scrollLeft: container.scrollLeft,
-      scrollTop: container.scrollTop,
-    };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePanPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanningRef.current) return;
-    const container = containerRef.current;
-    if (!container) return;
-    const dx = e.clientX - panStartRef.current.x;
-    const dy = e.clientY - panStartRef.current.y;
-    container.scrollLeft = panStartRef.current.scrollLeft - dx;
-    container.scrollTop = panStartRef.current.scrollTop - dy;
-  };
-
-  const handlePanPointerUp = () => {
-    isPanningRef.current = false;
-  };
-
   // Стирание — проверяет и штрихи пера, и цветные выделения текста (оба
   // рисуются/лежат ПОД canvas'ом рисования, который в режиме "Ластик"
   // перехватывает pointer-события первым — обычный onClick у
   // highlight-rect в этом режиме физически недостижим, поэтому ластик сам
   // отвечает за оба типа объектов на странице). Штрих задет, если курсор
-  // прошёл ближе ERASER_HIT_RADIUS px от любого его отрезка; highlight
+  // прошёл ближе эффективного радиуса от любого его отрезка; highlight
   // задет, если курсор попал в один из его прямоугольников (с тем же
-  // допуском по краям). Всё в координатах канваса (пикселях), не PDF,
-  // чтобы хитбокс оставался постоянным в пикселях независимо от масштаба.
+  // допуском по краям). Всё в координатах НАПЕЧЁННОГО канваса (см.
+  // localPointFromEvent) — ERASER_HIT_RADIUS делим на displayScale, чтобы
+  // хитбокс оставался постоянным в РЕАЛЬНЫХ (экранных) пикселях под
+  // пальцем, а не в пикселях напечённого канваса — иначе на уменьшенном
+  // (не 400%) зуме ластик промахивался бы гораздо чаще.
   // erasedInGestureRef не даёт повторно слать DELETE за тот же жест
   // протягивания, пока запрос на предыдущий ещё не устоялся в state.
-  const eraseAtLocalPoint = (local: { x: number; y: number }) => {
+  const eraseAtLocalPoint = (local: { x: number; y: number }, displayScale: number) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    const radius = ERASER_HIT_RADIUS / displayScale;
 
     for (const drawing of drawings) {
       const key = `drawing:${drawing.id}`;
@@ -744,7 +607,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       });
       let hit = false;
       for (let i = 0; i < viewportPoints.length - 1; i++) {
-        if (distanceToSegment(local, viewportPoints[i], viewportPoints[i + 1]) <= ERASER_HIT_RADIUS) {
+        if (distanceToSegment(local, viewportPoints[i], viewportPoints[i + 1]) <= radius) {
           hit = true;
           break;
         }
@@ -765,10 +628,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       const hit = highlight.rects.some((rect) => {
         const [vx1, vy1] = viewport.convertToViewportPoint(rect.x, rect.y);
         const [vx2, vy2] = viewport.convertToViewportPoint(rect.x + rect.width, rect.y + rect.height);
-        const left = Math.min(vx1, vx2) - ERASER_HIT_RADIUS;
-        const right = Math.max(vx1, vx2) + ERASER_HIT_RADIUS;
-        const top = Math.min(vy1, vy2) - ERASER_HIT_RADIUS;
-        const bottom = Math.max(vy1, vy2) + ERASER_HIT_RADIUS;
+        const left = Math.min(vx1, vx2) - radius;
+        const right = Math.max(vx1, vx2) + radius;
+        const top = Math.min(vy1, vy2) - radius;
+        const bottom = Math.max(vy1, vy2) + radius;
         return local.x >= left && local.x <= right && local.y >= top && local.y <= bottom;
       });
       if (hit) {
@@ -906,82 +769,98 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
           {isLoading && <p className="loading-message">Загрузка файла...</p>}
           {error && <p className="pdf-viewer-error">{error}</p>}
           {!isLoading && !error && (
-            <div
-              ref={pageWrapRef}
-              className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''}`}
-              onTouchStart={handlePinchStart}
-              onTouchMove={handlePinchMove}
-              onTouchEnd={handlePinchEnd}
-              onPointerDown={handlePanPointerDown}
-              onPointerMove={handlePanPointerMove}
-              onPointerUp={handlePanPointerUp}
-              onPointerLeave={handlePanPointerUp}
+            <TransformWrapper
+              ref={transformRef}
+              initialScale={MIN_LIB_SCALE}
+              minScale={MIN_LIB_SCALE}
+              maxScale={MAX_LIB_SCALE}
+              initialPositionX={0}
+              initialPositionY={0}
+              limitToBounds
+              // Зум/пан только в инструменте "Стрелка" — сознательное
+              // упрощение: пока активен Хайлайтер/Перо/Ластик, двухпальцевый
+              // жест однозначно адресован рисованию (см. activePointerIdsRef
+              // в канвасе рисования), а не масштабированию одновременно —
+              // раньше попытка разрешать оба жеста сразу и была источником
+              // конфликтов (см. историю правок).
+              disabled={toolMode !== 'pan'}
+              doubleClick={{ disabled: true }}
+              wheel={{ disabled: true }}
+              onZoomStop={handleGestureSettled}
+              onPinchStop={handleGestureSettled}
             >
-              <canvas ref={canvasRef} className="pdf-viewer-canvas" />
-              <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
-              <div ref={highlightLayerRef} className="pdf-viewer-highlight-layer">
-                {viewport && highlights.map((h) => (
-                  <React.Fragment key={h.id}>
-                    {h.rects.map((rect, i) => {
-                      const [vx1, vy1] = viewport.convertToViewportPoint(rect.x, rect.y);
-                      const [vx2, vy2] = viewport.convertToViewportPoint(rect.x + rect.width, rect.y + rect.height);
-                      return (
-                        <div
-                          key={i}
-                          className="pdf-viewer-highlight-rect"
-                          style={{
-                            left: Math.min(vx1, vx2),
-                            top: Math.min(vy1, vy2),
-                            width: Math.abs(vx2 - vx1),
-                            height: Math.abs(vy2 - vy1),
-                            background: h.color,
-                          }}
-                          onClick={() => setSelectedHighlightId(h.id)}
-                        />
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
-              </div>
-
-              {/* Отдельный canvas поверх highlight-слоя — активен (ловит
-                  pointer-события) в режимах "Хайлайтер"/"Перо"/"Ластик", в
-                  режиме "Стрелка" пропускает события насквозь (drag
-                  панорамирует страницу через pageWrapRef выше). */}
-              <canvas
-                ref={drawingCanvasRef}
-                className={`pdf-viewer-drawing-layer ${toolMode !== 'pan' ? 'pdf-viewer-drawing-layer--active' : ''} ${toolMode === 'eraser' ? 'pdf-viewer-drawing-layer--eraser' : ''}`}
-                onPointerDown={handleDrawingPointerDown}
-                onPointerMove={handleDrawingPointerMove}
-                onPointerUp={handleDrawingPointerUp}
-                onPointerLeave={handleDrawingPointerUp}
-              />
-
-              {inProgressHighlightRect && (
+              <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
                 <div
-                  className="pdf-viewer-highlight-rect pdf-viewer-highlight-rect--in-progress"
-                  style={{
-                    left: inProgressHighlightRect.x,
-                    top: inProgressHighlightRect.y,
-                    width: inProgressHighlightRect.width,
-                    height: inProgressHighlightRect.height,
-                    background: selectedHighlightColor,
-                  }}
-                />
-              )}
+                  ref={pageWrapRef}
+                  className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''}`}
+                >
+                  <canvas ref={canvasRef} className="pdf-viewer-canvas" />
+                  <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
+                  <div ref={highlightLayerRef} className="pdf-viewer-highlight-layer">
+                    {viewport && highlights.map((h) => (
+                      <React.Fragment key={h.id}>
+                        {h.rects.map((rect, i) => {
+                          const [vx1, vy1] = viewport.convertToViewportPoint(rect.x, rect.y);
+                          const [vx2, vy2] = viewport.convertToViewportPoint(rect.x + rect.width, rect.y + rect.height);
+                          return (
+                            <div
+                              key={i}
+                              className="pdf-viewer-highlight-rect"
+                              style={{
+                                left: Math.min(vx1, vx2),
+                                top: Math.min(vy1, vy2),
+                                width: Math.abs(vx2 - vx1),
+                                height: Math.abs(vy2 - vy1),
+                                background: h.color,
+                              }}
+                              onClick={() => setSelectedHighlightId(h.id)}
+                            />
+                          );
+                        })}
+                      </React.Fragment>
+                    ))}
+                  </div>
 
-              {selectedHighlightId && (
-                <div className="pdf-viewer-highlight-actions">
-                  <button type="button" className="pdf-viewer-highlight-delete-btn" onClick={() => handleDeleteHighlight(selectedHighlightId)}>
-                    <Trash2 size={16} strokeWidth={1.5} />
-                    Удалить выделение
-                  </button>
-                  <button type="button" className="pdf-viewer-text-link-btn" onClick={() => setSelectedHighlightId(null)}>
-                    Отмена
-                  </button>
+                  {/* Отдельный canvas поверх highlight-слоя — активен (ловит
+                      pointer-события) в режимах "Хайлайтер"/"Перо"/"Ластик", в
+                      режиме "Стрелка" пропускает события насквозь (drag/пинч
+                      обрабатывает TransformWrapper выше). */}
+                  <canvas
+                    ref={drawingCanvasRef}
+                    className={`pdf-viewer-drawing-layer ${toolMode !== 'pan' ? 'pdf-viewer-drawing-layer--active' : ''} ${toolMode === 'eraser' ? 'pdf-viewer-drawing-layer--eraser' : ''}`}
+                    onPointerDown={handleDrawingPointerDown}
+                    onPointerMove={handleDrawingPointerMove}
+                    onPointerUp={handleDrawingPointerUp}
+                    onPointerLeave={handleDrawingPointerUp}
+                  />
+
+                  {inProgressHighlightRect && (
+                    <div
+                      className="pdf-viewer-highlight-rect pdf-viewer-highlight-rect--in-progress"
+                      style={{
+                        left: inProgressHighlightRect.x,
+                        top: inProgressHighlightRect.y,
+                        width: inProgressHighlightRect.width,
+                        height: inProgressHighlightRect.height,
+                        background: selectedHighlightColor,
+                      }}
+                    />
+                  )}
+
+                  {selectedHighlightId && (
+                    <div className="pdf-viewer-highlight-actions">
+                      <button type="button" className="pdf-viewer-highlight-delete-btn" onClick={() => handleDeleteHighlight(selectedHighlightId)}>
+                        <Trash2 size={16} strokeWidth={1.5} />
+                        Удалить выделение
+                      </button>
+                      <button type="button" className="pdf-viewer-text-link-btn" onClick={() => setSelectedHighlightId(null)}>
+                        Отмена
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </TransformComponent>
+            </TransformWrapper>
           )}
         </div>
 

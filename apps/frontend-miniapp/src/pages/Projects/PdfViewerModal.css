@@ -105,7 +105,12 @@
 
 .pdf-viewer-body {
   flex: 1;
-  overflow: auto;
+  /* hidden, не auto — зум/пан теперь полностью ведёт react-zoom-pan-pinch
+     через свой CSS-transform (см. TransformWrapper в PdfViewerModal.tsx),
+     нативный скролл этого контейнера больше не участвует и только мешал
+     бы (двойной источник движения — та же причина, что раньше была у
+     ручного JS-пана). */
+  overflow: hidden;
   background: #f3f3f3;
   display: flex;
   justify-content: center;
@@ -125,15 +130,6 @@
   height: fit-content;
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  /* none, не pan-y — раньше вертикальный скролл отдавался браузеру, а
-     JS (handlePanPointerMove) параллельно сам же двигал scrollLeft/Top:
-     два механизма дрались за один и тот же скролл одновременно (жалоба
-     "двигать приближенное могу только вверх-вниз, всё скачет"). Теперь
-     панорамирование в обе стороны полностью ведёт JS (handlePanPointerMove)
-     без конкуренции с нативным скроллом; pinch-zoom и так всегда шёл через
-     JS (handlePinchMove вызывает preventDefault сам) — для него ничего не
-     меняется. */
-  touch-action: none;
 }
 
 /* Инструмент "Стрелка" — drag мышью/пальцем панорамирует
