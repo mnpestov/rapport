@@ -246,7 +246,7 @@ export const EditUsageModal: React.FC<EditUsageModalProps> = ({ isOpen, skein, u
 
         <div className="log-usage-body">
           <div className="log-usage-remainder">
-            <p className="log-usage-remainder-row"><b>Остаток:</b> {skein.currentWeightG} г из {skein.totalWeightG} г</p>
+            <p className="log-usage-remainder-row"><b>Остаток:</b> <b>{skein.currentWeightG} г</b> из {skein.totalWeightG} г</p>
             <div className="stash-progress-bar">
               <div
                 className="stash-progress-fill"

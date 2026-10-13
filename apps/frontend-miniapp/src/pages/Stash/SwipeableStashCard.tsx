@@ -52,7 +52,7 @@ export const SwipeableStashCard: React.FC<SwipeableStashCardProps> = ({
         )}
         <div className="stash-card-remainder">
           <p className="stash-card-row">
-            <b>Остаток:</b> {item.currentWeightG} г из {item.totalWeightG} г
+            <b>Остаток:</b> <b>{item.currentWeightG} г</b> из {item.totalWeightG} г
           </p>
           <div className="stash-card-progress-bar">
             <div className="stash-card-progress-fill" style={{ width: `${remainderPercent}%` }} />

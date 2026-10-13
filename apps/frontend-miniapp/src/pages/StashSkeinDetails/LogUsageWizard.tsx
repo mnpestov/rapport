@@ -673,7 +673,7 @@ export const LogUsageWizard: React.FC<LogUsageWizardProps> = ({ isOpen, skein, o
           {step === 2 && (
             <>
               <div className="log-usage-remainder">
-                <p className="log-usage-remainder-row"><b>Остаток:</b> {skein.currentWeightG} г из {skein.totalWeightG} г</p>
+                <p className="log-usage-remainder-row"><b>Остаток:</b> <b>{skein.currentWeightG} г</b> из {skein.totalWeightG} г</p>
                 <div className="stash-progress-bar">
                   <div
                     className="stash-progress-fill"

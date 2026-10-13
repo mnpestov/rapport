@@ -429,7 +429,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
                 {firstYarn.skein && (
                   <>
                     <p className="complete-success-yarn-row">
-                      <b>Остаток:</b> {firstYarn.skein.currentWeightG} г из {firstYarn.skein.totalWeightG} г
+                      <b>Остаток:</b> <b>{firstYarn.skein.currentWeightG} г</b> из {firstYarn.skein.totalWeightG} г
                     </p>
                     <div className="stash-progress-bar">
                       <div className="stash-progress-fill" style={{ width: `${yarnPercent}%` }} />

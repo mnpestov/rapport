@@ -39,7 +39,7 @@ export const StashCardDesktop: React.FC<StashCardDesktopProps> = ({ item, onOpen
           )}
           <div className="stash-card-desktop-remainder">
             <p className="stash-card-desktop-row">
-              <b>Остаток:</b> {item.currentWeightG} г из {item.totalWeightG} г
+              <b>Остаток:</b> <b>{item.currentWeightG} г</b> из {item.totalWeightG} г
             </p>
             <div className="stash-card-progress-bar stash-card-desktop-progress-bar">
               <div className="stash-card-progress-fill" style={{ width: `${remainderPercent}%` }} />

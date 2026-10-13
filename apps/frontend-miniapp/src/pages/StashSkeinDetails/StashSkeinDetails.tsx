@@ -412,7 +412,7 @@ export const StashSkeinDetails: React.FC = () => {
 
   const remainderBlock = (
     <div className="stash-details-remainder">
-      <p className="stash-details-row"><b>Остаток:</b> {skein.currentWeightG} г из {skein.totalWeightG} г</p>
+      <p className="stash-details-row"><b>Остаток:</b> <b>{skein.currentWeightG} г</b> из {skein.totalWeightG} г</p>
       <div className="stash-progress-bar">
         <div className="stash-progress-fill" style={{ width: `${remainderPercent}%` }} />
       </div>

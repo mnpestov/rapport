@@ -146,8 +146,9 @@
 
 .stash-details-row b {
   font-weight: 700;
-  color: #9b9a9a;
   margin-right: 4px;
+  font-weight: 700;
+  color: #1d1c1c;
 }
 
 /* Заметка образца (StashSwatch.note/ProjectSwatch.note) — свободный текст

@@ -1013,7 +1013,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
               {y.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {y.brandSnapshot}</p>}
               {y.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {y.compositionSnapshot}</p>}
               {y.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {y.mPer100gSnapshot}м/100г</p>}
-              <p className="add-project-yarn-card-remainder"><b>Остаток:</b> {y.currentWeightG} г из {y.totalWeightG} г</p>
+              <p className="add-project-yarn-card-remainder"><b>Остаток:</b> <b>{y.currentWeightG} г</b> из {y.totalWeightG} г</p>
             </div>
           </div>
           {isCompleted && (
@@ -1071,7 +1071,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
                 {s.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {s.brandSnapshot}</p>}
                 {s.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {s.compositionSnapshot}</p>}
                 {s.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {s.mPer100gSnapshot}м/100г</p>}
-                <p className="add-project-yarn-card-remainder"><b>Остаток:</b> {s.currentWeightG} г из {s.totalWeightG} г</p>
+                <p className="add-project-yarn-card-remainder"><b>Остаток:</b> <b>{s.currentWeightG} г</b> из {s.totalWeightG} г</p>
               </div>
             </button>
           ))}

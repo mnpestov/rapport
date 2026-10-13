@@ -521,7 +521,7 @@ export const ProjectDetails: React.FC = () => {
           <p className="pd-label-row"><b>Расход:</b> {y.amountAtCompletionG} г</p>
         )}
         {y.skein && (
-          <p className="pd-label-row"><b>Остаток:</b> {y.skein.currentWeightG} г из {y.skein.totalWeightG} г</p>
+          <p className="pd-label-row"><b>Остаток:</b> <b>{y.skein.currentWeightG} г</b> из {y.skein.totalWeightG} г</p>
         )}
         {!y.skeinId && <p className="pd-label-row">Моток удалён из хранилища</p>}
       </div>
