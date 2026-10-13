@@ -120,20 +120,23 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const isPinchingRef = useRef(false);
   const pinchStartDistRef = useRef(0);
   const pinchStartZoomRef = useRef(1);
-  // Точка, которую пользователь реально сводит пальцами — в координатах
-  // прокрутки .pdf-viewer-body (contentX/Y, не зависят от текущего
-  // scrollLeft/Top) + клиентские координаты середины пальцев (clientX/Y).
-  // Нужна дважды: transformOrigin в handlePinchStart (чтобы ВИЗУАЛЬНЫЙ CSS-
-  // scale во время жеста рос вокруг пальцев, а не центра страницы — прямая
-  // причина жалобы "приближаю — перескакивает на центр"), и ratio ниже
-  // (чтобы после настоящего растрового рендера в новом разрешении вернуть
-  // эту же точку под пальцы, а не туда, где скролл случайно оказался).
-  const pinchFocalRef = useRef<{ contentX: number; contentY: number; clientX: number; clientY: number } | null>(null);
+  // Точка, которую пользователь реально сводит пальцами — как ДОЛЯ
+  // (0..1) от текущего (нетрансформированного) прямоугольника pageWrapRef,
+  // плюс клиентские координаты середины пальцев. Доля, а не абсолютные
+  // координаты скролла — PDF-контент всегда растёт равномерно от
+  // собственного левого верхнего угла pageWrapRef, поэтому доля остаётся
+  // той же самой и ДО, и ПОСЛЕ растрового рендера в новом разрешении,
+  // независимо от того, как именно .pdf-viewer-body (flex +
+  // justify-content:center) на самом деле трактует scrollLeft/Top —
+  // раньше пересчёт через "scrollLeft + offset" как координату контента
+  // был неверным именно из-за центрирования flex-контейнера и уводил
+  // скролл систематически в один угол.
+  const pinchFocalRef = useRef<{ fracX: number; fracY: number; clientX: number; clientY: number } | null>(null);
   // Выставляется в handlePinchEnd, считывается и сбрасывается один раз —
   // уже ПОСЛЕ debounced renderPageAtZoom на новом zoom (см. соответствующий
   // useEffect) — именно тогда известны финальные размеры канваса, под
   // которые нужно подогнать scrollLeft/Top.
-  const pendingZoomFocalRef = useRef<{ ratio: number; clientX: number; clientY: number; contentX: number; contentY: number } | null>(null);
+  const pendingZoomFocalRef = useRef<{ fracX: number; fracY: number; clientX: number; clientY: number } | null>(null);
 
   // Панорамирование инструментом "Стрелка" — протягивание одним
   // пальцем/мышью скроллит .pdf-viewer-body (нативный overflow:auto
@@ -346,12 +349,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
           const pending = pendingZoomFocalRef.current;
           pendingZoomFocalRef.current = null;
           const container = containerRef.current;
-          if (pending && container) {
-            const containerRect = container.getBoundingClientRect();
-            const newContentX = pending.contentX * pending.ratio;
-            const newContentY = pending.contentY * pending.ratio;
-            container.scrollLeft = newContentX - (pending.clientX - containerRect.left);
-            container.scrollTop = newContentY - (pending.clientY - containerRect.top);
+          const wrap = pageWrapRef.current;
+          if (pending && container && wrap) {
+            // Не моделируем координаты скролла сами (та версия систематически
+            // уводила в один угол — .pdf-viewer-body это flex с
+            // justify-content:center, scrollLeft/Top не равны простой
+            // "координате контента"), а просто измеряем, где точка
+            // оказалась СЕЙЧАС (после рендера в новом разрешении, по той
+            // же доле 0..1 от уже увеличенного pageWrapRef — контент растёт
+            // равномерно от его собственного угла), и подвигаем скролл на
+            // разницу с тем, где она должна быть (там же, где пальцы).
+            const wrapRect = wrap.getBoundingClientRect();
+            const currentScreenX = wrapRect.left + pending.fracX * wrapRect.width;
+            const currentScreenY = wrapRect.top + pending.fracY * wrapRect.height;
+            container.scrollLeft += currentScreenX - pending.clientX;
+            container.scrollTop += currentScreenY - pending.clientY;
           }
         })
         .catch((err) => {
@@ -447,20 +459,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     // ДО применения transform в этом жесте (предыдущий жест уже сбросил
     // transform к '' после своего растрового рендера, см. renderPageAtZoom)
     // — поэтому это ещё нетрансформированный локальный прямоугольник,
-    // ровно то, что требует transform-origin по спецификации CSS.
+    // ровно то, что требует transform-origin по спецификации CSS. Та же
+    // точка запоминается ещё и как ДОЛЯ (0..1) от текущего прямоугольника —
+    // см. комментарий у pinchFocalRef — чтобы в handlePinchEnd вернуть её
+    // под пальцы уже после настоящего растрового рендера.
     if (pageWrapRef.current) {
       const wrapRect = pageWrapRef.current.getBoundingClientRect();
       pageWrapRef.current.style.transformOrigin = `${mid.x - wrapRect.left}px ${mid.y - wrapRect.top}px`;
-    }
-    // Та же точка, но в координатах прокрутки контейнера — чтобы в
-    // handlePinchEnd вернуть её под пальцы уже после настоящего растрового
-    // рендера (см. useEffect на zoom выше).
-    const container = containerRef.current;
-    if (container) {
-      const containerRect = container.getBoundingClientRect();
       pinchFocalRef.current = {
-        contentX: container.scrollLeft + (mid.x - containerRect.left),
-        contentY: container.scrollTop + (mid.y - containerRect.top),
+        fracX: (mid.x - wrapRect.left) / wrapRect.width,
+        fracY: (mid.y - wrapRect.top) / wrapRect.height,
         clientX: mid.x,
         clientY: mid.y,
       };
@@ -490,13 +498,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const handlePinchEnd = () => {
     if (!isPinchingRef.current) return;
     isPinchingRef.current = false;
-    const finalZoom = zoomRef.current;
-    const startZoom = pinchStartZoomRef.current;
-    const focal = pinchFocalRef.current;
-    pendingZoomFocalRef.current = focal && startZoom > 0
-      ? { ratio: finalZoom / startZoom, clientX: focal.clientX, clientY: focal.clientY, contentX: focal.contentX, contentY: focal.contentY }
-      : null;
-    setZoom(finalZoom);
+    pendingZoomFocalRef.current = pinchFocalRef.current;
+    setZoom(zoomRef.current);
   };
 
   const zoomStep = (direction: 1 | -1) => {
