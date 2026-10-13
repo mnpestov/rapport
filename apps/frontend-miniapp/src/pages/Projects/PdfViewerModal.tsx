@@ -88,15 +88,17 @@ const MAX_LIB_SCALE = MAX_ZOOM / RENDER_ZOOM_HEADROOM;
 const SWIPE_MIN_DISTANCE = 60;
 const SWIPE_MAX_TIME = 400;
 const SWIPE_MAX_VERTICAL_RATIO = 0.5;
-// Двухпальцевый свайп (см. handleSwipeTouchStart/Move/End) не может
-// определить "это свайп или пинч-зум" по одному кадру — расстояние между
-// пальцами естественным образом немного "гуляет" само по себе при боковом
-// движении рукой, без всякого намерения зумировать. Поэтому решение
-// откладывается до накопления однозначного сигнала: порог смещения (px) и
-// порог относительного изменения расстояния между пальцами — кто из двух
-// первым "набрал" свой порог, тот и определяет исход.
-const SWIPE_DECISION_DIST_PX = 16;
-const SWIPE_DECISION_RATIO = 1000;
+// Двухпальцевый свайп-перелистывание (см. handlePinchGestureStart/Stop) не
+// пытается перехватить сам touch-жест на лету (та версия не сработала —
+// react-zoom-pan-pinch получал события раньше, чем помогал
+// stopPropagation, независимо от порога, см. историю правок). Вместо этого
+// жест ВСЕГДА отдаётся библиотеке как обычный pinch, а по его завершении
+// (onPinchStop, ref.state уже содержит фактический итог) смотрим на
+// результат: если итоговый масштаб почти не изменился, а позиция заметно
+// сдвинулась по горизонтали — это было намерение свайпнуть, а не
+// зумировать, откатываем дрейф зума/позиции одним кадром и переключаем
+// страницу.
+const PINCH_SWIPE_SCALE_DRIFT_MAX = 0.12;
 
 type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
@@ -225,22 +227,15 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const idMapRef = useRef<Map<string, string>>(new Map()); // localId -> текущий серверный id
   const serverIdToLocalIdRef = useRef<Map<string, string>>(new Map()); // текущий серверный id -> localId
 
-  // Начало свайпа для перелистывания страниц — см. handleSwipeTouchStart/
-  // Move/End ниже. dist — расстояние между пальцами в момент старта (только
-  // для двухпальцевого свайпа, см. комментарий там) — null для одного
-  // пальца. decided — итог классификатора "свайп или зум" (см.
-  // SWIPE_DECISION_DIST_PX/RATIO выше): 'pending' пока неясно (копим
-  // сигнал, глушим жест от TransformWrapper), 'swipe' — решили в пользу
-  // перелистывания (продолжаем глушить), 'pinch' — решили, что это зум
-  // (больше НЕ глушим, отпускаем жест библиотеке с этого момента).
-  const swipeStartRef = useRef<{ x: number; y: number; time: number; dist: number | null; decided: 'pending' | 'swipe' | 'pinch' } | null>(null);
-  // Последняя известная точка свайпа — нужна отдельно от swipeStartRef,
-  // потому что при двухпальцевом свайпе touchend не гарантирует, что ОБА
-  // пальца окажутся в e.changedTouches одновременно (физически они редко
-  // поднимаются в одну и ту же миллисекунду) — используем последнюю
-  // середину между пальцами, которую успели увидеть в touchmove, а не
-  // пытаемся дождаться событие с двумя одновременными touches.
-  const swipeLastPointRef = useRef<{ x: number; y: number } | null>(null);
+  // Начало одно-пальцевого свайпа для перелистывания страниц в инструменте
+  // "Стрелка" — см. handleSwipeTouchStart/Move/End ниже. Двухпальцевый
+  // случай (другие инструменты) обрабатывается отдельно, через
+  // onPinchStart/onPinchStop TransformWrapper — см. pinchSwipeStartRef.
+  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  // Начало/итог двухпальцевого жеста для "свайп vs зум" — см.
+  // handlePinchGestureStart/Stop ниже и PINCH_SWIPE_SCALE_DRIFT_MAX выше.
+  const pinchSwipeStartRef = useRef<{ scale: number; positionX: number; positionY: number; time: number } | null>(null);
 
   // Блокировка скролла фонового окна (страницы проекта), пока открыт
   // полноэкранный просмотр PDF — без неё жесты внутри модалки (особенно
@@ -512,40 +507,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, error]);
 
-  // Свайп перелистывания (handleSwipeTouchStart/Move/End) — та же история,
-  // что чуть выше с канвасом рисования: это были React-пропсы onTouchStart/
-  // Move/End на pageWrapRef, и stopPropagation() оттуда ТОЖЕ опаздывал
-  // относительно нативного слушателя react-zoom-pan-pinch на его wrapper-
-  // узле (ближе к pageWrapRef по DOM, чем единый делегирующий слушатель
-  // React). Поэтому библиотека реально видела КАЖДЫЙ touchmove и честно
-  // реагировала на реальные микро-колебания расстояния между пальцами при
-  // обычном боковом свайпе — отсюда "микрозумирование", сколько бы ни
-  // поднимали порог классификатора (жалоба: "сделал порог 100 — всё равно
-  // зумирует"). Порог был ни при чём, stopPropagation просто не долетал.
-  useEffect(() => {
-    const wrap = pageWrapRef.current;
-    if (!wrap) return;
-
-    const onStart = (e: TouchEvent) => handleSwipeTouchStart(e);
-    const onMove = (e: TouchEvent) => handleSwipeTouchMove(e);
-    const onEnd = (e: TouchEvent) => handleSwipeTouchEnd(e);
-
-    wrap.addEventListener('touchstart', onStart, { capture: true, passive: false });
-    wrap.addEventListener('touchmove', onMove, { capture: true, passive: false });
-    wrap.addEventListener('touchend', onEnd, { capture: true, passive: false });
-    wrap.addEventListener('touchcancel', onEnd, { capture: true, passive: false });
-
-    return () => {
-      wrap.removeEventListener('touchstart', onStart, { capture: true } as EventListenerOptions);
-      wrap.removeEventListener('touchmove', onMove, { capture: true } as EventListenerOptions);
-      wrap.removeEventListener('touchend', onEnd, { capture: true } as EventListenerOptions);
-      wrap.removeEventListener('touchcancel', onEnd, { capture: true } as EventListenerOptions);
-    };
-    // pageWrapRef пересоздаётся вместе с канвасом рисования (тот же
-    // isLoading/error gate в JSX) — переподключаем на новый узел так же.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, error]);
-
   if (!isOpen) return null;
 
   // Переводит "библиотечный" масштаб в логический процент (1..4 = 100%..
@@ -582,109 +543,34 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     });
   };
 
-  // Средняя точка между двумя пальцами (или координата одного пальца, если
-  // он один) — общий способ измерить "где сейчас находится жест" что для
-  // одно-, что для двухпальцевого свайпа.
-  const swipeTouchPoint = (touches: React.TouchList | TouchList): { x: number; y: number } => {
-    if (touches.length >= 2) {
-      const a = touches[0];
-      const b = touches[1];
-      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
-    }
-    const t = touches[0];
-    return { x: t.clientX, y: t.clientY };
-  };
-  const swipeTouchDistance = (touches: React.TouchList | TouchList): number => {
-    const a = touches[0];
-    const b = touches[1];
-    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-  };
-
-  // Перелистывание страниц свайпом — только на 100% зуме (zoom === MIN_ZOOM):
-  // панорамировать и так некуда (страница ровно по контейнеру, limitToBounds
-  // не даст сдвинуть), поэтому жест в этой зоне свободен под свайп, не
-  // отбирает ничего у реального панорамирования зумленной страницы.
-  // Один палец — в инструменте "Стрелка" (второй там не нужен — рисовать
-  // нечем). Два пальца — в любом ДРУГОМ инструменте: один палец там занят
-  // рисованием, поэтому свайп двумя пальцами — единственный доступный
-  // способ перелистнуть страницу, не выходя из Хайлайтера/Пера/Ластика
-  // (жалоба: "перелистывание не работает при выбранном другом инструменте
-  // и свайпом двумя пальцами"). Расстояние между пальцами проверяем
-  // отдельно (dist) — чтобы отличить свайп от pinch-зума (TransformWrapper
-  // разрешает pinch в любом инструменте, см. pinch={{disabled:false}}):
-  // если пальцы заметно сближаются/расходятся, это зум, не свайп —
-  // отпускаем жест библиотеке как обычно.
-  const handleSwipeTouchStart = (e: TouchEvent) => {
-    const count = e.touches.length;
-    const isEligible = zoom <= MIN_ZOOM && (
-      (toolMode === 'pan' && count === 1) ||
-      (toolMode !== 'pan' && count === 2)
-    );
-    if (!isEligible) {
+  // Перелистывание страниц одно-пальцевым свайпом — только в инструменте
+  // "Стрелка" и только на 100% зуме (zoom === MIN_ZOOM): панорамировать и
+  // так некуда (страница ровно по контейнеру, limitToBounds не даст
+  // сдвинуть, да и panning={{disabled: zoom<=MIN_ZOOM}} уже выключен),
+  // поэтому жест в этой зоне свободен под свайп. Двухпальцевый случай
+  // (другие инструменты) обрабатывается отдельно — см.
+  // handlePinchGestureStart/Stop ниже.
+  const handleSwipeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (zoom > MIN_ZOOM || toolMode !== 'pan' || e.touches.length !== 1) {
       swipeStartRef.current = null;
-      swipeLastPointRef.current = null;
       return;
     }
-    const point = swipeTouchPoint(e.touches);
-    swipeStartRef.current = {
-      x: point.x,
-      y: point.y,
-      time: Date.now(),
-      dist: count === 2 ? swipeTouchDistance(e.touches) : null,
-      // Один палец — решать тут нечего, "зум" физически невозможен одним
-      // пальцем, сразу считаем жест свайпом.
-      decided: count === 2 ? 'pending' : 'swipe',
-    };
-    swipeLastPointRef.current = point;
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
   };
 
-  const handleSwipeTouchMove = (e: TouchEvent) => {
-    const start = swipeStartRef.current;
-    if (!start) return;
-    const count = e.touches.length;
-    const expectedCount = toolMode === 'pan' ? 1 : 2;
-    // Число пальцев изменилось посреди жеста (один уже подняли) — больше
-    // не обновляем "последнюю точку", touchend сработает по тому, что
-    // успели увидеть здесь в последний раз.
-    if (count !== expectedCount) return;
-
-    if (start.decided === 'pending') {
-      const point = swipeTouchPoint(e.touches);
-      const dx = point.x - start.x;
-      const dy = point.y - start.y;
-      // Два независимых "счётчика уверенности" — у кого раньше наберётся
-      // 1.0, тот и определяет исход. Сравнение именно с НАЧАЛЬНЫМ
-      // расстоянием/точкой (не с предыдущим кадром) — иначе жест никогда
-      // бы не набрал уверенность, если он колеблется туда-сюда мелкими
-      // шагами на каждый кадр.
-      const moveScore = Math.hypot(dx, dy) / SWIPE_DECISION_DIST_PX;
-      const pinchScore = start.dist != null
-        ? Math.abs(swipeTouchDistance(e.touches) / start.dist - 1) / SWIPE_DECISION_RATIO
-        : 0;
-      if (moveScore >= 1 || pinchScore >= 1) {
-        start.decided = pinchScore > moveScore ? 'pinch' : 'swipe';
-      }
-    }
-
-    if (start.decided === 'pinch') {
-      // Решили, что это зум — больше не вмешиваемся, пускай
-      // TransformWrapper обрабатывает жест сам с этого момента (он видел
-      // исходный touchstart и так, промежуточные move просто не доходили).
-      return;
-    }
-
-    swipeLastPointRef.current = swipeTouchPoint(e.touches);
+  const handleSwipeTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!swipeStartRef.current || e.touches.length !== 1) return;
     e.stopPropagation();
   };
 
-  const handleSwipeTouchEnd = (e: TouchEvent) => {
+  const handleSwipeTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     const start = swipeStartRef.current;
-    const lastPoint = swipeLastPointRef.current;
     swipeStartRef.current = null;
-    swipeLastPointRef.current = null;
-    if (!start || !lastPoint || start.decided === 'pinch') return;
-    const dx = lastPoint.x - start.x;
-    const dy = lastPoint.y - start.y;
+    if (!start) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
     const dt = Date.now() - start.time;
     if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return;
     if (dt > SWIPE_MAX_TIME) return;
@@ -696,6 +582,66 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     } else {
       setPageNumber((p) => Math.max(1, p - 1));
     }
+  };
+
+  // Двухпальцевое перелистывание в инструментах РИСОВАНИЯ (не "Стрелка") —
+  // один палец там занят рисованием, поэтому свайп двумя пальцами — его
+  // аналог. Пинч-зум в этих же инструментах тоже всегда разрешён (см.
+  // pinch={{disabled:false}} ниже), а "это свайп или зум" неразличимо В
+  // НАЧАЛЕ жеста — оба начинаются одинаково, с двух пальцев на экране.
+  // Поэтому решение не пытается перехватить сам touch-жест на лету (та
+  // версия не сработала — react-zoom-pan-pinch получал события раньше, чем
+  // помогал stopPropagation, независимо от порога классификатора — жалоба
+  // "сделал порог 1000 — всё равно зумирует"). Вместо этого жест ВСЕГДА
+  // отдаётся библиотеке как обычный pinch, а по его завершению смотрим на
+  // ФАКТИЧЕСКИЙ итог через её же состояние (onPinchStart/onPinchStop,
+  // ref.state) — надёжно, не зависит от того, кто раньше увидел событие.
+  const handlePinchGestureStart = (ctx: ReactZoomPanPinchContentRef) => {
+    if (zoom > MIN_ZOOM || toolMode === 'pan') {
+      pinchSwipeStartRef.current = null;
+      return;
+    }
+    pinchSwipeStartRef.current = {
+      scale: ctx.state.scale,
+      positionX: ctx.state.positionX,
+      positionY: ctx.state.positionY,
+      time: Date.now(),
+    };
+  };
+
+  const handlePinchGestureStop = (ctx: ReactZoomPanPinchContentRef) => {
+    const start = pinchSwipeStartRef.current;
+    pinchSwipeStartRef.current = null;
+    if (!start) {
+      handleGestureSettled(ctx);
+      return;
+    }
+    const dt = Date.now() - start.time;
+    const scaleDrift = Math.abs(ctx.state.scale / start.scale - 1);
+    // positionX/Y — translate() в CSS-пикселях экрана (в этой же системе
+    // измеряются SWIPE_MIN_DISTANCE и SWIPE_MAX_VERTICAL_RATIO), не нужно
+    // домножать/делить на масштаб.
+    const dx = ctx.state.positionX - start.positionX;
+    const dy = ctx.state.positionY - start.positionY;
+    const isSwipeLike =
+      dt <= SWIPE_MAX_TIME &&
+      scaleDrift <= PINCH_SWIPE_SCALE_DRIFT_MAX &&
+      Math.abs(dx) >= SWIPE_MIN_DISTANCE &&
+      Math.abs(dy) <= Math.abs(dx) * SWIPE_MAX_VERTICAL_RATIO;
+    if (isSwipeLike) {
+      // Возвращаем ровно туда, откуда начали (убираем дрейф зума/позиции,
+      // который библиотека успела применить за время жеста), без анимации,
+      // одним кадром — и только потом переключаем страницу.
+      ctx.setTransform(start.positionX, start.positionY, start.scale, 0);
+      const total = pdfDoc?.numPages ?? 1;
+      if (dx < 0) {
+        setPageNumber((p) => Math.min(total, p + 1));
+      } else {
+        setPageNumber((p) => Math.max(1, p - 1));
+      }
+      return;
+    }
+    handleGestureSettled(ctx);
   };
 
   const handleDeleteHighlight = async (id: string) => {
@@ -1194,12 +1140,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               // браузер зумировал всю страницу приложения жестом трекпада.
               wheel={{ wheelDisabled: true, touchPadDisabled: false }}
               onZoomStop={handleGestureSettled}
-              onPinchStop={handleGestureSettled}
+              onPinchStart={handlePinchGestureStart}
+              onPinchStop={handlePinchGestureStop}
             >
               <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
                 <div
                   ref={pageWrapRef}
                   className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''} ${!isPageReady ? 'pdf-viewer-page-wrap--transitioning' : ''}`}
+                  onTouchStart={handleSwipeTouchStart}
+                  onTouchMove={handleSwipeTouchMove}
+                  onTouchEnd={handleSwipeTouchEnd}
                 >
                   <canvas ref={canvasRef} className="pdf-viewer-canvas" />
                   <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
