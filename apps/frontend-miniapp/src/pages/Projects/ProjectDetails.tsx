@@ -253,8 +253,17 @@ export const ProjectDetails: React.FC = () => {
     setYarnResults([]);
     setIsYarnSearchOpen(false);
     try {
-      await addProjectYarn(project.id, skein.id);
-      await load();
+      const created = await addProjectYarn(project.id, skein.id);
+      // Точечно дописываем новую связь в список вместо await load() —
+      // тот перезагружал ВЕСЬ проект через fetchProjectById и на время
+      // запроса включал setLoading(true), из-за которого вся страница
+      // (включая несвязанные секции) размонтировалась и показывала
+      // "Загрузка...", а не просто обновлялся список "Пряжа". Ответ
+      // addProjectYarn не содержит skein (бэкенд отдаёт сырую строку
+      // ProjectYarn без include), но он уже есть здесь в виде searched
+      // skein — с теми же полями/абсолютными URL фото, что отдал бы
+      // полный рефетч.
+      setProject((prev) => prev && { ...prev, yarns: [...prev.yarns, { ...created, skein }] });
     } catch (err) {
       console.error('[ProjectDetails] handlePickYarn failed:', err);
       setError('Не удалось привязать пряжу.');
