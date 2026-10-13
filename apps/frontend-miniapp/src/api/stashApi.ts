@@ -146,6 +146,10 @@ export interface YarnSuggestion {
   ravelryId?: number;
   name: string;
   brand: string | null;
+  // Бренд-свободный артикул — name исторически уже "бренд + артикул"
+  // склеенный (см. composeYarnName на бэкенде), для поля "Артикул" в форме
+  // нужна только эта часть (бренд показывается отдельно, в скобках).
+  line: string | null;
   mPer100g: number | null;
   composition: string | null;
   normalizedKey: string;

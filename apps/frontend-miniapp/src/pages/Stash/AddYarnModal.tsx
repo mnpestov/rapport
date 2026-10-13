@@ -49,6 +49,15 @@ function createEmptySwatchDraft(): SwatchDraft {
   };
 }
 
+// name — исторически уже "бренд + артикул" склеенный (см. composeYarnName
+// на бэкенде), для поля "Артикул"/подсказки нужен только артикул (line),
+// бренд показывается отдельно, в скобках — "Silk Mohair (Lana Gatto)".
+// line отсутствует у старых generic-записей — тогда фоллбэк на name as is.
+function formatYarnSuggestionName(item: Pick<YarnSuggestion, 'name' | 'line' | 'brand'>): string {
+  const article = item.line ?? item.name;
+  return item.brand ? `${article} (${item.brand})` : article;
+}
+
 interface AddYarnModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -250,7 +259,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
 
   const applySuggestion = (item: YarnSuggestion) => {
     setSelectedYarn(item);
-    setNameQuery(item.name);
+    setNameQuery(formatYarnSuggestionName(item));
     setBrand(item.brand || '');
     setMPer100g(item.mPer100g != null ? String(item.mPer100g) : '');
     setComposition(item.composition || '');
@@ -270,7 +279,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     // доступ к остальным).
     if (!item.id && item.ravelryId != null) {
       setIsImportingYarn(true);
-      setNameQuery(item.name);
+      setNameQuery(formatYarnSuggestionName(item));
       try {
         const imported = await importRavelryYarn(item.ravelryId);
         applySuggestion(imported);
@@ -627,7 +636,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                       onClick={() => handlePickSuggestion(s)}
                       disabled={isImportingYarn}
                     >
-                      {s.name}{s.brand ? ` — ${s.brand}` : ''}
+                      {formatYarnSuggestionName(s)}
                       {s.fromRavelry && <span className="add-yarn-suggestion-source">Данные с Ravelry</span>}
                     </button>
                   ))}

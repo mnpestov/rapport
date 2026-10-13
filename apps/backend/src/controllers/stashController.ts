@@ -1441,7 +1441,7 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
           ],
         },
         select: {
-          id: true, name: true, brand: true, mPer100g: true, composition: true,
+          id: true, name: true, brand: true, line: true, mPer100g: true, composition: true,
           normalizedKey: true, isGeneric: true, photoUrl: true, _count: { select: { patterns: true } },
         },
         orderBy: [{ patterns: { _count: "desc" } }, { name: "asc" }],
@@ -1457,7 +1457,7 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
   // получают.
   const itemsWithSource: Array<
     Partial<typeof items[number]> &
-      Pick<typeof items[number], "name" | "brand" | "normalizedKey" | "isGeneric" | "mPer100g" | "composition" | "photoUrl" | "_count"> & {
+      Pick<typeof items[number], "name" | "brand" | "line" | "normalizedKey" | "isGeneric" | "mPer100g" | "composition" | "photoUrl" | "_count"> & {
         fromRavelry: boolean;
         ravelryId?: number;
       }
@@ -1527,6 +1527,7 @@ export const suggestYarns = async (req: Request, res: Response): Promise<void> =
         ravelryId: p.ravelryId,
         name: p.name,
         brand: p.brand,
+        line: p.line,
         mPer100g: null,
         composition: null,
         normalizedKey: normalizeYarnKey(p.name),

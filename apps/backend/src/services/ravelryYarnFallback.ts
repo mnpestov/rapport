@@ -76,6 +76,11 @@ export interface RavelryPreviewYarn {
   ravelryId: number;
   name: string;
   brand: string | null;
+  // Бренд-свободный артикул (r.name как есть, без склейки с brand) — нужен
+  // фронту отдельно от name: там name исторически уже "бренд + артикул"
+  // склеенный (см. composeYarnName), а поле "Артикул" должно показывать
+  // только артикул (бренд — отдельно, в скобках, см. AddYarnModal.tsx).
+  line: string;
 }
 
 export interface RavelryPreviewPage {
@@ -98,6 +103,7 @@ export async function searchRavelryPreview(query: string, page = 1): Promise<Rav
       ravelryId: r.id,
       name: r.yarn_company_name ? `${r.yarn_company_name} ${r.name}` : r.name,
       brand: r.yarn_company_name,
+      line: r.name,
     })),
     hasMore,
   };
@@ -107,6 +113,7 @@ export interface RavelryFallbackYarn {
   id: string;
   name: string;
   brand: string | null;
+  line: string | null;
   mPer100g: number | null;
   composition: string | null;
   photoUrl: string | null;
@@ -121,7 +128,7 @@ export interface RavelryFallbackYarn {
 export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallbackYarn | null> {
   const existing = await prisma.yarn.findUnique({
     where: { ravelryId },
-    select: { id: true, name: true, brand: true, mPer100g: true, composition: true, photoUrl: true },
+    select: { id: true, name: true, brand: true, line: true, mPer100g: true, composition: true, photoUrl: true },
   });
   if (existing) return existing;
 
@@ -153,7 +160,7 @@ export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallb
         status: YarnStatus.PENDING,
         createdVia: "STASH_USER",
       },
-      select: { id: true, name: true, brand: true, mPer100g: true, composition: true, photoUrl: true },
+      select: { id: true, name: true, brand: true, line: true, mPer100g: true, composition: true, photoUrl: true },
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -165,7 +172,7 @@ export async function importRavelryYarn(ravelryId: number): Promise<RavelryFallb
       console.warn(`[ravelryYarnFallback] Yarn with normalizedKey=${normalizedKey} or ravelryId=${ravelryId} already exists — returning existing record.`);
       const byKey = await prisma.yarn.findFirst({
         where: { OR: [{ normalizedKey }, { ravelryId }] },
-        select: { id: true, name: true, brand: true, mPer100g: true, composition: true, photoUrl: true },
+        select: { id: true, name: true, brand: true, line: true, mPer100g: true, composition: true, photoUrl: true },
       });
       return byKey;
     }
