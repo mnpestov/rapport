@@ -968,7 +968,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
       <p className="add-project-section-title">Сроки</p>
       <div className="add-project-dates-row">
         <DateInputField label="Начало" value={startedAt} onChange={setStartedAt} />
-        <DateInputField label="Завершено" value={completedAt} onChange={setCompletedAt} disabled={!isCompleted} align="end" />
+        <DateInputField label="Завершено" value={completedAt} onChange={setCompletedAt} align="end" />
       </div>
     </div>
   );
