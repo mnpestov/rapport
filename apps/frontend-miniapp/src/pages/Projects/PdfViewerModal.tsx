@@ -96,7 +96,7 @@ const SWIPE_MAX_VERTICAL_RATIO = 0.5;
 // порог относительного изменения расстояния между пальцами — кто из двух
 // первым "набрал" свой порог, тот и определяет исход.
 const SWIPE_DECISION_DIST_PX = 16;
-const SWIPE_DECISION_RATIO = 0.36;
+const SWIPE_DECISION_RATIO = 10.36;
 
 type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
