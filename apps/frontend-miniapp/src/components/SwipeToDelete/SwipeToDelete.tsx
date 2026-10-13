@@ -63,11 +63,20 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   // рука, слегка выправившая траекторию на середине скролла, дёргала бы
   // карточку). false — жест распознан как горизонтальный свайп.
   const isVerticalScrollRef = useRef<boolean | null>(null);
+  // Жест начался внутри вложенной галереи миниатюр (StashImageCarousel,
+  // .carousel-touch-track) — у неё свой нативный горизонтальный скролл
+  // (overflow-x + scroll-snap), и без этой проверки тот же тач ТАКЖЕ
+  // прочитывался бы этим компонентом как свайп карточки: пользователь
+  // листает фото, а заодно выезжают кнопки Редактировать/Удалить.
+  // touchmove/touchend ниже становятся no-op на всё время этого касания.
+  const isInNestedCarouselRef = useRef(false);
 
   const baseOffset = isOpen ? -openWidth : 0;
   const offset = isDragging ? dragX : baseOffset;
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    isInNestedCarouselRef.current = (e.target as HTMLElement).closest('.carousel-touch-track') != null;
+    if (isInNestedCarouselRef.current) return; // отдаём жест нативному скроллу галереи целиком
     startXRef.current = e.touches[0].clientX;
     startYRef.current = e.touches[0].clientY;
     draggingRef.current = true;
@@ -77,6 +86,7 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (isInNestedCarouselRef.current) return;
     if (startXRef.current == null || startYRef.current == null) return;
     const deltaX = e.touches[0].clientX - startXRef.current;
     const deltaY = e.touches[0].clientY - startYRef.current;
@@ -99,6 +109,10 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   };
 
   const handleTouchEnd = () => {
+    if (isInNestedCarouselRef.current) {
+      isInNestedCarouselRef.current = false;
+      return;
+    }
     draggingRef.current = false;
     setIsDragging(false);
     startXRef.current = null;

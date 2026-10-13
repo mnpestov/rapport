@@ -38,7 +38,12 @@ export const StashImageCarousel: React.FC<CarouselProps> = ({ images, alt, class
 
   return (
     <>
-      <div className={`${classPrefix}-track`} ref={trackRef} onScroll={handleScroll}>
+      {/* carousel-touch-track — статичный маркер поверх classPrefix-based
+          класса (тот у каждого вызова свой: stash-usage-image-track/
+          stash-swatch-image-track/stash-details-image-track), по нему
+          SwipeToDelete.tsx узнаёт "здесь свой горизонтальный скролл,
+          жест карточки не трогать" независимо от префикса. */}
+      <div className={`${classPrefix}-track carousel-touch-track`} ref={trackRef} onScroll={handleScroll}>
         {images.map((src, index) => (
           <ImageWithRetry
             key={index}
