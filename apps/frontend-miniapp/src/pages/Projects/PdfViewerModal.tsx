@@ -156,6 +156,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // useControls() тут не подходит — тот хук работает только из потомков).
   const transformRef = useRef<ReactZoomPanPinchContentRef>(null);
 
+  // Плавная смена страниц (не мгновенная перерисовка канваса) — см.
+  // useEffect рендера страницы ниже и .pdf-viewer-page-wrap--transitioning
+  // в CSS.
+  const [isPageReady, setIsPageReady] = useState(true);
+
   const highlightToolBtnWrapRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageWrapRef = useRef<HTMLDivElement>(null);
@@ -319,18 +324,34 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // Рендер текущей страницы: canvas + текстовый слой. Пересоздаётся при
   // смене страницы или после первой загрузки документа — зум/позиция
   // react-zoom-pan-pinch сбрасываются следом явно (новая страница не
-  // обязана открываться с зумом предыдущей).
+  // обязана открываться с зумом предыдущей), и сразу по центру (centerView,
+  // не setTransform(0,0,...) — та версия прижимала страницу к левому
+  // верхнему углу, а не центрировала её).
+  //
+  // isPageReady уводит страницу в opacity:0 ПЕРЕД тем, как менять её
+  // содержимое (жалоба "дёргано" — раньше канвас просто мгновенно
+  // перерисовывался новым содержимым без всякого перехода). Короткая пауза
+  // в начале — даёт CSS-переходу реально скрыть старую страницу, прежде чем
+  // мы её очистим и начнём рисовать новую: без паузы смена была бы видна
+  // "сквозь" ещё не потускневший старый кадр.
   useEffect(() => {
     if (!pdfDoc) return;
     setSelectedHighlightId(null);
     setInProgressHighlightRect(null);
+    setIsPageReady(false);
+    let cancelled = false;
 
     (async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      if (cancelled) return;
       const page = await pdfDoc.getPage(pageNumber);
+      if (cancelled) return;
       pageRef.current = page;
       await renderPage();
-      transformRef.current?.setTransform(0, 0, MIN_LIB_SCALE, 0);
+      if (cancelled) return;
+      transformRef.current?.centerView(MIN_LIB_SCALE, 0);
       setZoom(MIN_ZOOM);
+      setIsPageReady(true);
     })().catch((err) => {
       // Полный stack trace в консоли — err.message на минифицированном
       // коде сам по себе малополезен (см. промахнувшуюся первую гипотезу
@@ -339,6 +360,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       console.error('[PdfViewerModal] render page failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось отрисовать страницу');
     });
+
+    return () => { cancelled = true; };
   }, [pdfDoc, pageNumber]);
 
   // Существующие выделения для текущей страницы — перезагружаются при
@@ -861,22 +884,29 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               // panning.disabled в этой библиотеке — один общий флаг сразу
               // и на мышь (десктоп), и на одно-пальцевый тач (мобила), и на
               // "можно ли двигать двумя пальцами ПОКА идёт pinch" — отдельно
-              // друг от друга их не выключить через пропсы. Поэтому держим
-              // panning включённым ВСЕГДА (false), а одиночное касание/клик
-              // в режимах рисования гасим сами через stopPropagation прямо
-              // на канвасе рисования (onMouseDown/onTouchStart/onTouchMove
-              // ниже) — так мышь на десктопе по-прежнему не двигает страницу
-              // во время рисования, а телефон при этом получает желаемое:
-              // двумя пальцами можно зумировать И двигать одновременно, не
-              // переключаясь на "Стрелку" (allowPanning ниже — та самая
-              // "два пальца двигают, не только зумируют" часть).
-              panning={{ disabled: false }}
+              // друг от друга их не выключить через пропсы. Одиночное
+              // касание/клик в режимах рисования гасим сами через
+              // stopPropagation прямо на канвасе рисования (onMouseDown/
+              // onTouchStart/onTouchMove ниже) — так мышь на десктопе
+              // по-прежнему не двигает страницу во время рисования, а
+              // телефон при этом получает желаемое: двумя пальцами можно
+              // зумировать И двигать одновременно, не переключаясь на
+              // "Стрелку" (allowPanning ниже — та самая "два пальца
+              // двигают, не только зумируют" часть). Сам флаг — zoom <=
+              // MIN_ZOOM: на 100% двигать и так нечего (contain-fit уже
+              // показывает страницу целиком по центру), поэтому страница
+              // не должна случайно сдвигаться, пока пользователь не
+              // зумировал по-настоящему (прямой запрос "не двигать её до
+              // зумирования").
+              panning={{ disabled: zoom <= MIN_ZOOM }}
               pinch={{ disabled: false, allowPanning: true }}
-              // По умолчанию у библиотеки выключен (disabled: true) — без
-              // этого жест двумя пальцами по тачпаду (без зажатого Ctrl,
-              // просто свайп) никак не обрабатывался, перемещение с
-              // ноутбука работало только протягиванием через клик.
-              trackPadPanning={{ disabled: toolMode !== 'pan' }}
+              // disabled: true по умолчанию у библиотеки — без этого жест
+              // двумя пальцами по тачпаду (без зажатого Ctrl, просто свайп)
+              // никак не обрабатывался, перемещение с ноутбука работало
+              // только протягиванием через клик. Тот же zoom <= MIN_ZOOM,
+              // что и у panning — не двигать страницу трекпадом, пока не
+              // зумировали.
+              trackPadPanning={{ disabled: zoom <= MIN_ZOOM }}
               doubleClick={{ disabled: true }}
               // wheelDisabled — обычная прокрутка колесом мыши не зумирует
               // (неожиданно для десктопа); touchPadDisabled: false — зато
@@ -892,7 +922,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
                 <div
                   ref={pageWrapRef}
-                  className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''}`}
+                  className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''} ${!isPageReady ? 'pdf-viewer-page-wrap--transitioning' : ''}`}
                   onTouchStart={handleSwipeTouchStart}
                   onTouchMove={handleSwipeTouchMove}
                   onTouchEnd={handleSwipeTouchEnd}

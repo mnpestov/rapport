@@ -130,11 +130,19 @@
   height: fit-content;
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  /* Плавная смена страниц (PdfViewerModal.tsx — useEffect рендера
+     страницы ставит --transitioning ДО смены содержимого канваса, снимает
+     после) — вместо мгновенной подмены кадра, которая выглядела дёргано. */
+  transition: opacity 0.18s ease;
 }
 
-/* Инструмент "Стрелка" — drag мышью/пальцем панорамирует
-   .pdf-viewer-body (см. handlePanPointerMove); grab-курсор подсказывает,
-   что страницу можно потаскать, как в Figma/Acrobat. */
+.pdf-viewer-page-wrap--transitioning {
+  opacity: 0;
+}
+
+/* Инструмент "Стрелка" — pan через react-zoom-pan-pinch (см.
+   TransformWrapper); grab-курсор подсказывает, что страницу можно
+   потаскать, как в Figma/Acrobat. */
 .pdf-viewer-page-wrap--pan {
   cursor: grab;
 }
