@@ -80,6 +80,15 @@ const RENDER_ZOOM_HEADROOM = 2;
 const MIN_LIB_SCALE = 1 / RENDER_ZOOM_HEADROOM;
 const MAX_LIB_SCALE = MAX_ZOOM / RENDER_ZOOM_HEADROOM;
 
+// Свайп-перелистывание страниц — порог по пути (px) и времени (ms), тот же
+// принцип "быстро и далеко, не просто палец дрогнул", что у остальных
+// жестов в проекте (см. SwipeToDelete.tsx). Вертикаль ограничиваем
+// отдельно — иначе обычный вертикальный скролл/тряска руки засчитывались
+// бы как горизонтальный свайп.
+const SWIPE_MIN_DISTANCE = 60;
+const SWIPE_MAX_TIME = 400;
+const SWIPE_MAX_VERTICAL_RATIO = 0.5;
+
 type ToolMode = 'pan' | 'highlight' | 'pen' | 'eraser';
 
 interface PdfViewerModalProps {
@@ -160,12 +169,12 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   const isDrawingRef = useRef(false);
   const erasedInGestureRef = useRef<Set<string>>(new Set());
   // Активные пальцы на канвасе рисования — если их больше одного, значит
-  // это pinch-жест (TransformWrapper сейчас отключён в режимах рисования,
-  // см. disabled в JSX, но на миг между "второй палец лёг" и реакцией
-  // библиотеки события на канвас всё равно успевают дойти), а не
-  // протягивание выделения/пера: без этой проверки каждый палец pinch'а
-  // независимо тянул свой прямоугольник/штрих — прямая причина жалобы
-  // "вся страница в разных прямоугольниках".
+  // это pinch (теперь разрешён в любом инструменте, см. pinch={{disabled:
+  // false}} в JSX — пользователю нужно зумировать/двигать двумя пальцами,
+  // не переключаясь на "Стрелку"), а не протягивание выделения/пера: без
+  // этой проверки каждый палец pinch'а независимо тянул свой
+  // прямоугольник/штрих — прямая причина жалобы "вся страница в разных
+  // прямоугольниках".
   const activePointerIdsRef = useRef<Set<number>>(new Set());
 
   // Стек последних сохранённых выделений/штрихов для кнопки "Отменить" —
@@ -176,6 +185,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // стирать уже сохранённые раньше пометки).
   const undoStackRef = useRef<Array<{ kind: 'highlight' | 'drawing'; id: string }>>([]);
   const [canUndo, setCanUndo] = useState(false);
+
+  // Начало свайпа для перелистывания страниц — см. handleSwipeTouchStart/
+  // Move/End ниже.
+  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   // Загрузка бинарника документа — только при открытии/смене документа, не
   // при каждой смене страницы (страница рендерится из уже загруженного
@@ -400,6 +413,47 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       const settled = transformRef.current;
       if (settled) setZoom(clampDisplayZoom(settled.state.scale * RENDER_ZOOM_HEADROOM));
     });
+  };
+
+  // Перелистывание страниц свайпом — только на 100% зуме (zoom === MIN_ZOOM)
+  // и только в инструменте "Стрелка": на 100% панорамировать и так некуда
+  // (страница ровно по ширине контейнера, limitToBounds не даст сдвинуть),
+  // поэтому одиночный палец в этой зоне свободен под свайп, не отбирает
+  // ничего у реального панорамирования зумленной страницы. stopPropagation
+  // в touchmove не даёт TransformWrapper параллельно "подёргать" контент
+  // тем же касанием, пока мы решаем — свайп это или нет.
+  const handleSwipeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (zoom > MIN_ZOOM || toolMode !== 'pan' || e.touches.length !== 1) {
+      swipeStartRef.current = null;
+      return;
+    }
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+  };
+
+  const handleSwipeTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!swipeStartRef.current || e.touches.length !== 1) return;
+    e.stopPropagation();
+  };
+
+  const handleSwipeTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const dt = Date.now() - start.time;
+    if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return;
+    if (dt > SWIPE_MAX_TIME) return;
+    if (Math.abs(dy) > Math.abs(dx) * SWIPE_MAX_VERTICAL_RATIO) return;
+    e.stopPropagation();
+    const total = pdfDoc?.numPages ?? 1;
+    if (dx < 0) {
+      setPageNumber((p) => Math.min(total, p + 1));
+    } else {
+      setPageNumber((p) => Math.max(1, p - 1));
+    }
   };
 
   const handleDeleteHighlight = async (id: string) => {
@@ -792,18 +846,20 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
               initialPositionX={0}
               initialPositionY={0}
               limitToBounds
-              // Одним пальцем (panning) — только в инструменте "Стрелка":
-              // иначе одиночное касание в режиме Хайлайтер/Перо одновременно
-              // пыталось бы и панорамировать страницу, и рисовать штрих. Два
-              // пальца (pinch) — разрешены ВСЕГДА, в любом инструменте:
-              // защиту от конфликта с рисованием уже даёт activePointerIdsRef
-              // в канвасе рисования (как только ложится второй палец, текущий
-              // штрих/выделение обрывается без сохранения) — поэтому зуму не
-              // обязательно ждать переключения на "Стрелку", как было раньше
-              // (жалоба "зум двумя пальцами с выбранным инструментом не
-              // работает").
-              panning={{ disabled: toolMode !== 'pan' }}
-              pinch={{ disabled: false }}
+              // panning.disabled в этой библиотеке — один общий флаг сразу
+              // и на мышь (десктоп), и на одно-пальцевый тач (мобила), и на
+              // "можно ли двигать двумя пальцами ПОКА идёт pinch" — отдельно
+              // друг от друга их не выключить через пропсы. Поэтому держим
+              // panning включённым ВСЕГДА (false), а одиночное касание/клик
+              // в режимах рисования гасим сами через stopPropagation прямо
+              // на канвасе рисования (onMouseDown/onTouchStart/onTouchMove
+              // ниже) — так мышь на десктопе по-прежнему не двигает страницу
+              // во время рисования, а телефон при этом получает желаемое:
+              // двумя пальцами можно зумировать И двигать одновременно, не
+              // переключаясь на "Стрелку" (allowPanning ниже — та самая
+              // "два пальца двигают, не только зумируют" часть).
+              panning={{ disabled: false }}
+              pinch={{ disabled: false, allowPanning: true }}
               // По умолчанию у библиотеки выключен (disabled: true) — без
               // этого жест двумя пальцами по тачпаду (без зажатого Ctrl,
               // просто свайп) никак не обрабатывался, перемещение с
@@ -825,6 +881,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                 <div
                   ref={pageWrapRef}
                   className={`pdf-viewer-page-wrap ${toolMode === 'pan' ? 'pdf-viewer-page-wrap--pan' : ''}`}
+                  onTouchStart={handleSwipeTouchStart}
+                  onTouchMove={handleSwipeTouchMove}
+                  onTouchEnd={handleSwipeTouchEnd}
                 >
                   <canvas ref={canvasRef} className="pdf-viewer-canvas" />
                   <div ref={textLayerRef} className="pdf-viewer-text-layer textLayer" />
@@ -856,7 +915,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                   {/* Отдельный canvas поверх highlight-слоя — активен (ловит
                       pointer-события) в режимах "Хайлайтер"/"Перо"/"Ластик", в
                       режиме "Стрелка" пропускает события насквозь (drag/пинч
-                      обрабатывает TransformWrapper выше). */}
+                      обрабатывает TransformWrapper выше).
+                      onMouseDown/onTouchStart/onTouchMove гасят ОДНОПАЛЬЦЕВОЕ/
+                      мышиное событие до того, как оно долетит до
+                      TransformWrapper (panning там теперь включён всегда, см.
+                      комментарий у panning={{disabled:false}}) — иначе клик/
+                      один палец одновременно пытался бы и рисовать, и двигать
+                      страницу. Два пальца НЕ гасим (условие touches.length===1)
+                      — тогда это pinch, его обрабатывает TransformWrapper, а
+                      drawing-хендлеры сами прерывают рисование через
+                      activePointerIdsRef. */}
                   <canvas
                     ref={drawingCanvasRef}
                     className={`pdf-viewer-drawing-layer ${toolMode !== 'pan' ? 'pdf-viewer-drawing-layer--active' : ''} ${toolMode === 'eraser' ? 'pdf-viewer-drawing-layer--eraser' : ''}`}
@@ -864,6 +932,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
                     onPointerMove={handleDrawingPointerMove}
                     onPointerUp={handleDrawingPointerUp}
                     onPointerLeave={handleDrawingPointerUp}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => { if (e.touches.length === 1) e.stopPropagation(); }}
+                    onTouchMove={(e) => { if (e.touches.length === 1) e.stopPropagation(); }}
                   />
 
                   {inProgressHighlightRect && (
