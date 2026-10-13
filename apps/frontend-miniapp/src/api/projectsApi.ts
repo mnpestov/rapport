@@ -292,6 +292,9 @@ export interface CompleteProjectPayload {
   manualDescription?: string;
   title?: string;
   finishedPhotos: string[];
+  // Backdated-завершение — дата, выбранная ДО открытия визарда (форма
+  // редактирования проекта). Не передано — бэкенд проставит "сегодня".
+  completedAt?: string;
 }
 
 export const completeProject = async (id: string, payload: CompleteProjectPayload): Promise<ProjectDetail> => {

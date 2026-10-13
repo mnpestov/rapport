@@ -102,7 +102,10 @@ interface AddProjectModalProps {
   // существующего проекта — тут это просто открывает недоступный путь.
   project?: ProjectDetail;
   onUpdated?: (project: ProjectDetail) => void;
-  onRequestComplete?: () => void;
+  // Дата завершения, выбранная пользователем в этой форме ДО открытия
+  // визарда (поле "Завершено"), — визард сам даты не спрашивает и раньше
+  // молча проставлял "сегодня", теряя выбор пользователя.
+  onRequestComplete?: (completedAt: string) => void;
   // Открытие из визарда списания пряжи ("Создать новый проект", когда
   // привязываемого проекта ещё не было) — моток уже выбран пользователем
   // раньше, просить его искать/привязывать ту же пряжу заново в разделе
@@ -639,7 +642,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     // разрешает PATCH со status: COMPLETED, когда он не меняется (см.
     // updateProject), визард здесь просто не нужен.
     if (isEditMode && isCompleted && project?.status !== 'COMPLETED') {
-      onRequestComplete?.();
+      onRequestComplete?.(completedAt);
       return;
     }
     setIsSubmitting(true);
@@ -657,7 +660,10 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           // сработал бы onRequestComplete — визард завершения). Дата
           // завершения правится здесь же, в форме — раньше поле не
           // входило в payload и правка молча терялась при сохранении.
-          completedAt: isCompleted ? (completedAt || undefined) : undefined,
+          // Если статус при этом меняют ОБРАТНО на не-завершённый — явно
+          // очищаем дату (иначе она молча остаётся в базе и ломает блок
+          // "Сроки"/длительность, см. баг с "застрявшей" датой завершения).
+          completedAt: isCompleted ? (completedAt || undefined) : (project.status === 'COMPLETED' ? null : undefined),
           patternIds: selectedPattern ? [selectedPattern.id] : [],
           manualAuthor: !selectedPattern ? manualAuthor.trim() || null : null,
           manualDescription: !selectedPattern ? manualDescription.trim() || null : null,
@@ -1026,7 +1032,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           </div>
           {isCompleted && (
             <div className="add-project-field">
-              <label className="add-project-label">Расход</label>
+              <label className="add-project-label">Расход *</label>
               <input
                 className="add-project-input"
                 value={y.amountG}

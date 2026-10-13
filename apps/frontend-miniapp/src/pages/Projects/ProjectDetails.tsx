@@ -63,6 +63,10 @@ export const ProjectDetails: React.FC = () => {
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCompleteWizardOpen, setIsCompleteWizardOpen] = useState(false);
+  // Дата завершения, выбранная в форме редактирования перед тем, как она
+  // передала управление визарду (см. onRequestComplete ниже) — без этого
+  // визард всегда проставлял "сегодня", игнорируя выбор пользователя.
+  const [pendingCompletedAt, setPendingCompletedAt] = useState('');
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
 
   const [yarnQuery, setYarnQuery] = useState('');
@@ -235,11 +239,21 @@ export const ProjectDetails: React.FC = () => {
     setIsStatusMenuOpen(false);
     if (status === project.status) return;
     if (status === 'COMPLETED') {
+      // Быстрое переключение статуса прямо на карточке, без формы — своей
+      // даты тут не выбирали, визард проставит "сегодня" как и раньше.
+      setPendingCompletedAt('');
       setIsCompleteWizardOpen(true);
       return;
     }
     try {
-      const updated = await updateProject(project.id, { status });
+      // Уход со статуса "Завершено" на любой другой — дату завершения
+      // сбрасываем: иначе она молча остаётся в карточке (поле недоступно
+      // для правки, пока статус не COMPLETED — см. datesBlock ниже) и
+      // "Сроки"/длительность продолжают считаться как у завершённого проекта.
+      const updated = await updateProject(
+        project.id,
+        project.status === 'COMPLETED' ? { status, completedAt: null } : { status }
+      );
       setProject(updated);
     } catch (err) {
       console.error('[ProjectDetails] handlePickStatus failed:', err);
@@ -991,8 +1005,9 @@ export const ProjectDetails: React.FC = () => {
             // noteText оставался бы устаревшим до перезагрузки страницы.
             setNoteText(updated.note ?? '');
           }}
-          onRequestComplete={() => {
+          onRequestComplete={(completedAt) => {
             setIsEditOpen(false);
+            setPendingCompletedAt(completedAt);
             setIsCompleteWizardOpen(true);
           }}
         />
@@ -1000,6 +1015,7 @@ export const ProjectDetails: React.FC = () => {
         <CompleteProjectWizard
           isOpen={isCompleteWizardOpen}
           project={project}
+          completedAt={pendingCompletedAt}
           onClose={() => setIsCompleteWizardOpen(false)}
           onCompleted={(updated) => {
             setIsCompleteWizardOpen(false);

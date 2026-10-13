@@ -730,6 +730,17 @@ export const completeProject = async (req: Request, res: Response): Promise<void
     ? parseInstrumentsInput(body.instruments)
     : undefined;
 
+  // Backdated-завершение — дата, выбранная в форме редактирования ДО
+  // открытия визарда (не прислана — сегодня, как и раньше).
+  let completedAtInput: Date | undefined;
+  if (typeof body.completedAt === "string" && body.completedAt) {
+    completedAtInput = new Date(body.completedAt);
+    if (Number.isNaN(completedAtInput.getTime())) {
+      res.status(400).json({ error: "Invalid completedAt" });
+      return;
+    }
+  }
+
   try {
     // Владение мотков, упомянутых в yarnUsages, проверяем заранее — не
     // даём списать чужой моток через projectId, к которому он даже не
@@ -890,7 +901,7 @@ export const completeProject = async (req: Request, res: Response): Promise<void
 
       await tx.project.update({
         where: { id: project.id },
-        data: { ...projectUpdateData, status: ProjectStatus.COMPLETED, completedAt: project.completedAt ?? new Date() },
+        data: { ...projectUpdateData, status: ProjectStatus.COMPLETED, completedAt: completedAtInput ?? project.completedAt ?? new Date() },
       });
     });
 

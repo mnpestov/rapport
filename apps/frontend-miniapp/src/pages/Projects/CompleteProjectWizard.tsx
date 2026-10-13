@@ -36,6 +36,10 @@ interface CompleteProjectWizardProps {
   project: ProjectDetail;
   onClose: () => void;
   onCompleted: (project: ProjectDetail) => void;
+  // Дата завершения, выбранная в форме редактирования ДО того, как она
+  // передала управление визарду — иначе бэкенд всегда проставлял "сегодня",
+  // игнорируя выбор пользователя. Пусто — визард ведёт себя как раньше.
+  completedAt?: string;
 }
 
 // Логика "мягкого напоминания дозаполнить проект" при завершении
@@ -57,7 +61,7 @@ interface CompleteProjectWizardProps {
 //
 // Никакого дробления шага 1 на подшаги (материалы отдельно, инструмент
 // отдельно) — оба блока живут на одном экране одновременно.
-export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ isOpen, project, onClose, onCompleted }) => {
+export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ isOpen, project, onClose, onCompleted, completedAt }) => {
   const { isMounted, isVisible, sheetRef } = useSheetTransition(isOpen);
   const isDesktop = useIsDesktop();
 
@@ -364,6 +368,7 @@ export const CompleteProjectWizard: React.FC<CompleteProjectWizardProps> = ({ is
         manualAuthor: !selectedPattern && !hasPattern ? manualAuthor.trim() || undefined : undefined,
         manualDescription: !selectedPattern && !hasPattern ? manualDescription.trim() || undefined : undefined,
         finishedPhotos,
+        completedAt: completedAt || undefined,
       });
       // Не закрываем визард сразу — показываем экран успеха (Figma
       // node-id=1567:23008), onCompleted вызывается только по кнопке
