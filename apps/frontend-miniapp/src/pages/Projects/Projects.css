@@ -530,6 +530,10 @@
     font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
     max-height: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
+
+  .projects-status-filter-count {
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor)), 12px);
+  }
 }
 
 @media (min-width: 1024px) {
