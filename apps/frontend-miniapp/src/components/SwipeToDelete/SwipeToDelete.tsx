@@ -80,6 +80,14 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     startXRef.current = e.touches[0].clientX;
     startYRef.current = e.touches[0].clientY;
     draggingRef.current = true;
+    // Синхронно с isDragging=true — offset ниже читает dragX, пока
+    // isDragging истинно (между этим touchstart и первым touchmove/
+    // touchend), а touchmove может вообще не случиться (обычный тап).
+    // Без этой строки на тот промежуток использовалось бы СТАРОЕ dragX,
+    // оставшееся от прошлого свайпа (например, открытой позиции) — на
+    // долю кадра карточка визуально "подпрыгивала" в старое положение,
+    // даже если это оказался просто тап без единого touchmove.
+    setDragX(baseOffset);
     setIsDragging(true);
     movedRef.current = false;
     isVerticalScrollRef.current = null;
@@ -125,10 +133,20 @@ export const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
       return;
     }
     isVerticalScrollRef.current = null;
-    if (dragX <= -openThreshold) {
-      onSwipeOpen();
-    } else {
-      onSwipeClose();
+    // Только если в этом касании реально было перетаскивание — иначе
+    // обычный тап (движения нет вовсе, touchmove не вызывался и dragX не
+    // обновлялась) читал бы СТАРОЕ значение dragX, оставшееся от прошлого
+    // свайпа, и заново дёргал onSwipeOpen()/onSwipeClose() поверх уже
+    // корректной логики handleClick ниже — на практике это выглядело так:
+    // открыли свайпом → тап закрыл → следующий тап вместо перехода снова
+    // "показывал и прятал" кнопки, потому что проверка ниже успевала
+    // опять выставить isOpen=true ДО того, как сработает click.
+    if (movedRef.current) {
+      if (dragX <= -openThreshold) {
+        onSwipeOpen();
+      } else {
+        onSwipeClose();
+      }
     }
   };
 
