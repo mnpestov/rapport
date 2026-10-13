@@ -182,13 +182,23 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
   // прямоугольниках".
   const activePointerIdsRef = useRef<Set<number>>(new Set());
 
-  // Стек последних сохранённых выделений/штрихов для кнопки "Отменить" —
-  // без него единственный способ убрать неверный штрих пера был переключить
-  // инструмент на ластик и обратно (жалоба пользователя). Храним только то,
-  // что создано В ЭТОМ сеансе просмотра — элементы, загруженные с сервера
-  // при открытии страницы, сюда не попадают (undo не должен внезапно
-  // стирать уже сохранённые раньше пометки).
-  const undoStackRef = useRef<Array<{ kind: 'highlight' | 'drawing'; id: string }>>([]);
+  // Стек последних действий (создание ИЛИ стирание) для кнопки "Отменить"
+  // — без него единственный способ убрать неверный штрих пера был
+  // переключить инструмент на ластик и обратно (жалоба пользователя), а
+  // отменить само стирание ластиком было нечем вообще (жалоба "разве undo
+  // не должен отменять действие ластика?"). create — undo удаляет запись;
+  // erase хранит данные стёртого ЦЕЛИКОМ (сервер их уже не помнит, id
+  // записи больше не существует) — undo пересоздаёт тем же содержимым.
+  // Храним только действия В ЭТОМ сеансе просмотра — элементы, загруженные
+  // с сервера при открытии страницы и ничем пока не тронутые, сюда не
+  // попадают (undo не должен внезапно стирать уже сохранённые раньше
+  // пометки).
+  type UndoEntry =
+    | { action: 'create'; kind: 'drawing'; id: string }
+    | { action: 'create'; kind: 'highlight'; id: string }
+    | { action: 'erase'; kind: 'drawing'; points: DrawingPoint[] }
+    | { action: 'erase'; kind: 'highlight'; rects: HighlightRect[]; color: string };
+  const undoStackRef = useRef<UndoEntry[]>([]);
   const [canUndo, setCanUndo] = useState(false);
 
   // Начало свайпа для перелистывания страниц — см. handleSwipeTouchStart/
@@ -531,9 +541,15 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
 
   const handleDeleteHighlight = async (id: string) => {
     setSelectedHighlightId(null);
+    const highlight = highlights.find((h) => h.id === id);
     try {
       await deleteDocumentHighlight(id);
       setHighlights((prev) => prev.filter((h) => h.id !== id));
+      removeCreateFromUndoStack('highlight', id);
+      // Удаление этой кнопкой — такое же стирание, как ластиком: тоже
+      // должно отменяться через "Отменить" (та же логика восстановления).
+      if (highlight) undoStackRef.current.push({ action: 'erase', kind: 'highlight', rects: highlight.rects, color: highlight.color });
+      setCanUndo(true);
     } catch (err) {
       console.error('[PdfViewerModal] delete highlight failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось удалить выделение');
@@ -658,7 +674,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       try {
         const created = await createDocumentDrawing(documentId, { pageNumber, points });
         setDrawings((prev) => [...prev, created]);
-        undoStackRef.current.push({ kind: 'drawing', id: created.id });
+        undoStackRef.current.push({ action: 'create', kind: 'drawing', id: created.id });
         setCanUndo(true);
       } catch (err) {
         console.error('[PdfViewerModal] save drawing failed:', err);
@@ -683,7 +699,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       try {
         const created = await createDocumentHighlight(documentId, { pageNumber, rects, color: selectedHighlightColor });
         setHighlights((prev) => [...prev, created]);
-        undoStackRef.current.push({ kind: 'highlight', id: created.id });
+        undoStackRef.current.push({ action: 'create', kind: 'highlight', id: created.id });
         setCanUndo(true);
       } catch (err) {
         console.error('[PdfViewerModal] save highlight failed:', err);
@@ -695,23 +711,68 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     }
   };
 
-  // "Отменить" — убирает последнее СОЗДАННОЕ в этом сеансе выделение/штрих
-  // (не трогает то, что уже было на странице до открытия визарда). Раньше
-  // единственный способ убрать неверный штрих пера был переключить
-  // инструмент на ластик и обратно — прямая жалоба пользователя.
+  // Убирает из стека "Отменить" запись про конкретное СОЗДАНИЕ (create) —
+  // вызывается из ластика/кнопки удаления: если элемент стёрт, запись о
+  // его создании (если она там ещё есть) должна исчезнуть, иначе
+  // "Отменить" позже попытается удалить уже не существующую на сервере
+  // запись и получит 404 (жалоба: "нарисовал, стёр ластиком, нажал
+  // Отменить — 404"). Само стирание добавляет СВОЮ запись (action: erase)
+  // отдельно — см. вызовы ниже.
+  const removeCreateFromUndoStack = (kind: 'highlight' | 'drawing', id: string) => {
+    const idx = undoStackRef.current.findIndex((e) => e.action === 'create' && e.kind === kind && e.id === id);
+    if (idx === -1) return;
+    undoStackRef.current.splice(idx, 1);
+    setCanUndo(undoStackRef.current.length > 0);
+  };
+
+  // "Отменить" — откатывает последнее действие В ЭТОМ сеансе просмотра:
+  // создание (удаляет запись) ИЛИ стирание ластиком/кнопкой (пересоздаёт
+  // запись тем же содержимым — сервер её уже не помнит, id не существует,
+  // поэтому нужны данные штриха/выделения целиком, см. UndoEntry выше).
+  // Раньше отмена стирания была вообще невозможна — прямая жалоба
+  // пользователя ("разве undo не должен отменять действие ластика?").
   const handleUndo = async () => {
     const last = undoStackRef.current.pop();
     if (!last) return;
     setCanUndo(undoStackRef.current.length > 0);
     try {
-      if (last.kind === 'drawing') {
-        await deleteDocumentDrawing(last.id);
-        setDrawings((prev) => prev.filter((d) => d.id !== last.id));
+      if (last.action === 'create') {
+        if (last.kind === 'drawing') {
+          await deleteDocumentDrawing(last.id);
+          setDrawings((prev) => prev.filter((d) => d.id !== last.id));
+        } else {
+          await deleteDocumentHighlight(last.id);
+          setHighlights((prev) => prev.filter((h) => h.id !== last.id));
+        }
+      } else if (last.kind === 'drawing') {
+        const restored = await createDocumentDrawing(documentId, { pageNumber, points: last.points });
+        setDrawings((prev) => [...prev, restored]);
+        // Восстановленный штрих получает НОВЫЙ id (сервер не помнит
+        // удалённую запись) — кладём на него свежую запись "создание",
+        // иначе история обрывается после одной отмены: без этого "Отменить"
+        // возвращал стёртый штрих, но второй раз его уже нечем было отменить
+        // (жалоба "отменилось стирание, второй раз не нажимается").
+        undoStackRef.current.push({ action: 'create', kind: 'drawing', id: restored.id });
+        setCanUndo(true);
       } else {
-        await deleteDocumentHighlight(last.id);
-        setHighlights((prev) => prev.filter((h) => h.id !== last.id));
+        const restored = await createDocumentHighlight(documentId, { pageNumber, rects: last.rects, color: last.color });
+        setHighlights((prev) => [...prev, restored]);
+        undoStackRef.current.push({ action: 'create', kind: 'highlight', id: restored.id });
+        setCanUndo(true);
       }
     } catch (err) {
+      // 404 — запись уже удалена где-то ещё (например, повторным стиранием
+      // в другой вкладке) — результат ("её больше нет") уже достигнут,
+      // возвращать в стек и пугать ошибкой нечего: иначе следующее
+      // "Отменить" снова упрётся в тот же 404 по кругу. Относится только к
+      // action:'create' — erase восстанавливает через POST, у него 404 в
+      // принципе не бывает.
+      const isNotFound = last.action === 'create' && err instanceof Error && err.message.includes('404');
+      if (isNotFound) {
+        if (last.kind === 'drawing') setDrawings((prev) => prev.filter((d) => d.id !== last.id));
+        else setHighlights((prev) => prev.filter((h) => h.id !== last.id));
+        return;
+      }
       console.error('[PdfViewerModal] undo failed:', err);
       setError(err instanceof Error ? err.message : 'Не удалось отменить действие');
       // Реально не удалилось — возвращаем в стек, чтобы можно было
@@ -757,6 +818,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       if (hit) {
         erasedInGestureRef.current.add(key);
         setDrawings((prev) => prev.filter((d) => d.id !== drawing.id));
+        removeCreateFromUndoStack('drawing', drawing.id);
+        undoStackRef.current.push({ action: 'erase', kind: 'drawing', points: drawing.points });
+        setCanUndo(true);
         deleteDocumentDrawing(drawing.id).catch(() => {
           // Молча — штрих уже убран из UI, повторная синхронизация
           // произойдёт при следующей загрузке страницы (fetchDocumentDrawings).
@@ -779,6 +843,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
       if (hit) {
         erasedInGestureRef.current.add(key);
         setHighlights((prev) => prev.filter((h) => h.id !== highlight.id));
+        removeCreateFromUndoStack('highlight', highlight.id);
+        undoStackRef.current.push({ action: 'erase', kind: 'highlight', rects: highlight.rects, color: highlight.color });
+        setCanUndo(true);
         deleteDocumentHighlight(highlight.id).catch(() => {
           // Молча — то же соображение, что у штрихов пера выше.
         });
