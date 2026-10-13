@@ -237,9 +237,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({ isOpen, document
     if (!page) return;
     const myToken = ++renderTokenRef.current;
 
-    const containerWidth = containerRef.current?.clientWidth ?? 350;
+    // "Contain", не "fit width" — 100% должно показывать всю страницу
+    // целиком (и по ширине, и по высоте), а не только по ширине с
+    // обрезкой/скроллом снизу (жалоба пользователя). Вычитаем padding
+    // контейнера (.pdf-viewer-body) — clientWidth/Height его включают, а
+    // реальная доступная area для страницы меньше на эти отступы.
+    const container = containerRef.current;
+    let availableWidth = container?.clientWidth ?? 350;
+    let availableHeight = container?.clientHeight ?? 500;
+    if (container) {
+      const style = window.getComputedStyle(container);
+      availableWidth -= parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      availableHeight -= parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    }
     const baseViewport = page.getViewport({ scale: 1 });
-    const fitScale = containerWidth / baseViewport.width;
+    const fitScale = Math.min(availableWidth / baseViewport.width, availableHeight / baseViewport.height);
     const scale = fitScale * RENDER_ZOOM_HEADROOM;
     const viewport = page.getViewport({ scale });
     viewportRef.current = viewport;
