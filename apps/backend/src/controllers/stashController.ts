@@ -318,7 +318,11 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
             // §4.6): списание, пришедшее из "Проектов" (projectId != null),
             // само по себе finishedPhotos не хранит — фото живут один раз на
             // Project, не дублируются по числу привязанных мотков.
-            include: { project: { select: { finishedPhotos: true } } },
+            // project.status — для фильтра ниже: "Связано" показывает
+            // только завершённые проекты (и списания без проекта вовсе),
+            // пока проект в процессе/в планах/на паузе — он уже виден в
+            // своём блоке ("В процессе"/"В планах") ниже по карточке мотка.
+            include: { project: { select: { finishedPhotos: true, status: true } } },
           },
         },
       }),
@@ -378,14 +382,19 @@ export const getSkein = async (req: Request, res: Response): Promise<void> => {
       }),
     ]);
 
-    // Merge: для проектных списаний реальный источник фото — Project, не
-    // сама строка StashUsage (см. комментарий у include.project выше и
-    // PROJECTS_PLAN.md §1.5/§4.6/§5.3). Фронт продолжает читать одно поле
-    // usage.finishedPhotos, ничего не меняя в компоненте.
-    const usages = skein?.usages.map(({ project, ...usage }) => ({
-      ...usage,
-      finishedPhotos: usage.projectId ? project?.finishedPhotos ?? [] : usage.finishedPhotos,
-    }));
+    // "Связано" — только завершённые проекты (и списания без проекта
+    // вовсе, projectId===null, им статус не писан). Пока проект не
+    // завершён, он уже показан в своём блоке ("В процессе"/"В планах",
+    // linkedProjects ниже) — без этого фильтра один и тот же проект
+    // виден сразу в двух местах, и "Связано" вводит в заблуждение:
+    // список выглядит как завершённая история расхода, а на деле
+    // включает ещё активные проекты.
+    const usages = skein?.usages
+      .filter(({ project }) => !project || project.status === "COMPLETED")
+      .map(({ project, ...usage }) => ({
+        ...usage,
+        finishedPhotos: usage.projectId ? project?.finishedPhotos ?? [] : usage.finishedPhotos,
+      }));
 
     // Обложка — та же логика, что у списка проектов (projectsController.ts,
     // projectCover): готовое изделие → фото в процессе → референс, только
