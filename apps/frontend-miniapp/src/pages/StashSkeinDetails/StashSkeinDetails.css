@@ -972,6 +972,614 @@
 @media (min-width: 768px) {
   .stash-details-container {
     max-width: 1440px;
+    padding: 5px 50px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  /* Скоуп через .stash-details-container — тот же приём, что у
+     .stash-container .plus-add-button в Projects.css: .back-button общий
+     класс (index.css), используется ещё на Favorites/PatternDetails/
+     ProjectDetails, которые своего десктопа пока не имеют — глобальный
+     display:none задел бы и их. */
+  .stash-details-container .back-button {
+    display: none;
+  }
+
+  .stash-details-desktop-actions {
+    display: flex;
+    align-items: center;
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+  }
+
+  .stash-details-desktop-edit,
+  .stash-details-desktop-delete {
+    display: flex;
+    align-items: center;
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    height: min(calc(40 * (100vw - 100px) / var(--fluid-divisor-768)), 40px);
+    padding: 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    border: 1px solid #e5e5e5;
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: Mulish, sans-serif;
+    font-weight: 700;
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+    color: #1c2a1e;
+    cursor: pointer;
+  }
+
+  .stash-details-desktop-edit svg {
+    width: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+    height: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+    display: block;
+  }
+
+  .stash-details-desktop-delete svg {
+    width: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+    height: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+    display: block;
+  }
+
+  .stash-details-desktop-grid {
+    display: grid;
+    grid-template-columns: 2fr 3fr 3fr;
+    /* grid-template-columns: min(calc(544 * (100vw - 100px) / var(--fluid-divisor-768)), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / var(--fluid-divisor-768)), 308px); */
+    align-items: start;
+    gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor-768)), 40px);
+    margin-top: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
+  }
+
+  .stash-details-desktop-gallery,
+  .stash-details-desktop-info,
+  .stash-details-desktop-swatches {
+    min-width: 0;
+    gap: min(calc(30 * (100vw - 100px) / var(--fluid-divisor-768)), 30px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Остаток/кнопка списания/заметки — под фото, в одной колонке с галереей
+     (пользователь явно так попросил; не исходная моя раскладка). */
+  .stash-details-desktop-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+  }
+
+  .stash-details-desktop-info .stash-details-name {
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor-768)), 34px);
+    margin-bottom: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+  }
+
+  /* Внутри сетки эти блоки больше не формируют вертикальный ритм мобильного
+     потока — свой margin не нужен, им управляет gap колонки. */
+  .stash-details-desktop-gallery .stash-details-notes,
+  .stash-details-desktop-gallery .stash-details-remainder,
+  .stash-details-desktop-gallery .stash-details-actions,
+  .stash-details-desktop-gallery .add-project-section,
+  .stash-details-desktop-info .stash-details-info,
+  .stash-details-desktop-info .stash-details-usages,
+  .stash-details-desktop-info .stash-details-notes {
+    margin: 0;
+  }
+
+  .stash-details-desktop-swatches .stash-details-swatches {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    /* gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px); */
+  }
+
+  /* ── Галерея (StashImageGalleryDesktop) ── */
+  .stash-gallery-desktop {
+    display: flex;
+    align-items: flex-start;
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+  }
+
+  /* max-height + overflow-y — тот же приём, что у .stash-notes-text ниже:
+     при большом количестве фото колонка миниатюр скроллится сама внутри
+     себя, а не растягивает по вертикали всю карточку (жалоба — "галерея
+     миниатюр растягивает блок"). 536px ≈ 4 ряда миниатюр (119px + 20px
+     gap) при 100% масштабе. */
+  .stash-gallery-desktop-thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+    width: min(calc(80 * (100vw - 100px) / var(--fluid-divisor-768)), 80px);
+    max-height: min(calc(399 * (100vw - 100px) / var(--fluid-divisor-768)), 399px);
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .stash-gallery-desktop-thumb {
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor-768)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor-768)), 119px);
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    padding: 0;
+    background: #f3f3f3;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .stash-gallery-desktop-thumb--active {
+    border-color: #1d1c1c;
+  }
+
+  .stash-gallery-desktop-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .stash-gallery-desktop-main {
+    flex: 1;
+    min-width: 0;
+    aspect-ratio: 3 / 4;
+    border-radius: 2px;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  .stash-gallery-desktop-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .stash-gallery-desktop-main--placeholder img {
+    object-fit: contain;
+    padding: min(calc(60 * (100vw - 100px) / var(--fluid-divisor-768)), 60px);
+    box-sizing: border-box;
+  }
+
+  /* ── "Что можно связать" — карточка крупнее (Figma: 175×216), общая для
+     мобиле/десктопа разметка, здесь только размер (см. закомментированные
+     175/216 в базовых правилах — ровно под них). ── */
+  .stash-match-card-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .stash-match-card {
+    width: min(calc(175 * (100vw - 100px) / var(--fluid-divisor-768)), 175px);
+  }
+
+  .stash-match-image,
+  .stash-match-image-frame {
+    width: min(calc(175 * (100vw - 100px) / var(--fluid-divisor-768)), 175px);
+    height: min(calc(216 * (100vw - 100px) / var(--fluid-divisor-768)), 216px);
+  }
+
+  .stash-match-favorite {
+    position: absolute;
+    top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    right: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(calc(32 * (100vw - 100px) / var(--fluid-divisor-768)), 32px);
+    height: min(calc(32 * (100vw - 100px) / var(--fluid-divisor-768)), 32px);
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* Образцы/"Связано" на десктопе — без свайпа (нет тача), Редактировать/
+     Удалить уходят под "..." (HeaderActionsMenu, тот же, что в шапке
+     карточки). Строка остаётся stretch (по умолчанию) — фото/текст
+     растягиваются на одну высоту, иначе .stash-swatch-body/-usage-body
+     не смогут центрировать текст по высоте карточки (justify-content:
+     center). Не стретчится только сам кебаб (align-self: flex-start ниже) —
+     иначе триггер "..." растягивался бы на всю высоту ряда. */
+  .stash-usage-card-menu {
+    flex-shrink: 0;
+    align-self: flex-start;
+    /* .stash-usage-body не растягивается по ширине (flex:1 не задан, общий
+       класс и для мобильного свайп-варианта) — без margin-left:auto кебаб
+       сидел бы сразу после текста, а не у правого края карточки. */
+    margin-left: auto;
+  }
+
+  /* Та же причина, что у .stash-usage-card-menu выше. HeaderActionsMenu
+     здесь без обёртки, скоуп через родителя, чтобы не задеть ту же кнопку
+     в шапке карточки. */
+  .stash-swatch-block--desktop .header-actions-menu {
+    align-self: flex-start;
+    margin-left: auto;
+  }
+
+  /* ───────────────────────────────────────────────────────────────────────
+     Адаптивные переопределения для общих классов (рендерятся и на мобильном,
+     и на десктопе). Формула: min(calc(N * (100vw - 100px) / var(--fluid-divisor-768)), Npx).
+     Фиксация сверху на 1440px. Мобильные-only классы и уже переопределённые
+     выше в этом media-запросе — не дублируются.
+     ─────────────────────────────────────────────────────────────────────── */
+
+  .stash-details-header {
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px) 0;
+  }
+
+  .stash-details-error {
+    margin-top: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+
+  .stash-details-image-wrapper {
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+
+  .stash-details-info {
+    margin-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+  }
+
+  .stash-details-name {
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+  }
+
+  .stash-details-row {
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor-768)), 17px);
+  }
+
+  .stash-details-row b {
+    margin-right: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .pd-label {
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+  }
+
+  .pd-value {
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+
+  .pd-label-row {
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+  }
+
+  .stash-details-pattern-card {
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    max-height: min(calc(72 * (100vw - 100px) / var(--fluid-divisor-768)), 72px);
+  }
+
+  .stash-details-pattern-card-image {
+    width: min(calc(80 * (100vw - 100px) / var(--fluid-divisor-768)), 80px);
+  }
+
+  .stash-details-date-col {
+    gap: min(calc(5 * (100vw - 100px) / var(--fluid-divisor-768)), 5px);
+  }
+
+  .stash-details-tag-row {
+    gap: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-details-remainder {
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    margin-top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+  }
+
+  .stash-progress-bar {
+    height: min(calc(6 * (100vw - 100px) / var(--fluid-divisor-768)), 6px);
+  }
+
+  .stash-details-section-title {
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor-768)), 17px);
+    margin: 0 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+  }
+
+  .project-collapsible-header {
+    margin: 0 0 min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+  }
+
+  .project-collapsible-body {
+    gap: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-details-swatches,
+  .stash-details-notes,
+  .stash-details-usages,
+  .stash-details-matches {
+    margin: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px) 0;
+  }
+
+  .stash-notes-text {
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+  }
+
+  .stash-note-link {
+    text-underline-offset: min(calc(2 * (100vw - 100px) / var(--fluid-divisor-768)), 2px);
+  }
+
+  .stash-usage-card {
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+  }
+
+  .stash-details-usages .swipe-to-delete {
+    margin-bottom: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-usage-body {
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .stash-usage-title {
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+  }
+
+  .stash-usage-row {
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-usage-row b {
+    margin-right: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .stash-usage-pattern-link {
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-swatch-block {
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+  }
+
+  .stash-details-swatches .swipe-to-delete {
+    margin-bottom: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-add-button {
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    padding: min(calc(5 * (100vw - 100px) / var(--fluid-divisor-768)), 5px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+  }
+
+  .stash-details-yarn-fix {
+    margin-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+  }
+
+  .stash-details-yarn-fix-button {
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+  }
+
+  .stash-details-yarn-fix-form {
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+    padding: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-details-yarn-fix-hint {
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-details-yarn-fix-field {
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .stash-details-yarn-fix-label {
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-details-yarn-fix-input {
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+    padding: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px) min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+  }
+
+  .stash-details-yarn-fix-error {
+    font-size: min(calc(13 * (100vw - 100px) / var(--fluid-divisor-768)), 13px);
+  }
+
+  .stash-details-yarn-fix-actions {
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+  }
+
+  .stash-details-yarn-fix-actions .stash-action-btn {
+    height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor-768)), 44px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+  }
+
+  /* Второе определение .stash-notes-text (font-size:14px, padding:8px 20px,
+     min/max-height:80px) — отличается от первого. Переопределяем только
+     размерные свойства, text-decoration/font-family не трогаем. */
+  .stash-notes-text {
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+    padding: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    min-height: min(calc(80 * (100vw - 100px) / var(--fluid-divisor-768)), 80px);
+    max-height: min(calc(80 * (100vw - 100px) / var(--fluid-divisor-768)), 80px);
+  }
+
+  .stash-notes-textarea {
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+    padding: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    min-height: min(calc(80 * (100vw - 100px) / var(--fluid-divisor-768)), 80px);
+  }
+
+  .stash-matches-list {
+    gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+  }
+
+  .stash-match-card {
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .stash-match-lock-icon {
+    top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    right: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+  }
+
+  .stash-match-title {
+    font-size: min(calc(11 * (100vw - 100px) / var(--fluid-divisor-768)), 11px);
+  }
+
+  .stash-match-category,
+  .stash-match-instrument {
+    font-size: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+  }
+
+  .stash-match-strands {
+    font-size: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+    margin: min(calc(2 * (100vw - 100px) / var(--fluid-divisor-768)), 2px) 0 0;
+  }
+
+  .stash-details-actions {
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    margin: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px) 0;
+  }
+
+  .stash-action-btn {
+    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+  }
+
+  .stash-swatch-image {
+    width: min(calc(90 * (100vw - 100px) / var(--fluid-divisor-768)), 90px);
+    height: min(calc(136 * (100vw - 100px) / var(--fluid-divisor-768)), 136px);
+  }
+
+  .stash-usage-image {
+    width: min(calc(90 * (100vw - 100px) / var(--fluid-divisor-768)), 90px);
+    height: min(calc(136 * (100vw - 100px) / var(--fluid-divisor-768)), 136px);
+  }
+
+  /* ───────────────────────── Карточка проекта (Figma node-id=1617:19969) ──
+     Свой собственный грид .project-details-desktop-grid (не
+     .stash-details-desktop-grid выше — тот общий с карточкой пряжи и не
+     режется на строки). Явные grid-template-areas на 3 строки гарантируют,
+     что "Описание/Автор/Инструмент" и "Сроки" — буквально соседи по одной
+     строке грида (одинаковая высота считается гридом автоматически), поэтому
+     разделитель — просто border-bottom на обеих ячейках строки, без
+     calc()-подгонки ширины под соседние колонки. .pd-label/.pd-value уже
+     14px/16px (см. выше по файлу) — переопределять шрифты не нужно, только
+     раскладка. */
+  .project-details-desktop-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr 2fr;
+    /* grid-template-columns: min(calc(544 * (100vw - 100px) / var(--fluid-divisor-768)), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / var(--fluid-divisor-768)), 308px); */
+    grid-template-areas: "gallery gallery title actions" "gallery gallery dates dates" "gallery gallery meta meta" "gallery gallery content content" "swatches swatches content content";
+    grid-template-rows: auto auto auto auto 1fr;
+    align-items: start;
+    column-gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    row-gap: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+    margin-top: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    margin-bottom: min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
+  }
+
+  .project-details-desktop-grid>.stash-details-desktop-gallery {
+    grid-area: gallery;
+    /* grid-row: 1 / 4; */
+  }
+
+  .project-details-desktop-grid>.project-details-title-row {
+    grid-area: title;
+    min-width: 0;
+  }
+
+  .project-details-desktop-grid>.stash-details-desktop-actions {
+    grid-area: actions;
+    min-width: 0;
+    justify-self: end;
+  }
+
+  .project-details-desktop-grid>.project-details-meta-row {
+    grid-area: meta;
+    min-width: 0;
+    align-self: stretch;
+    padding-bottom: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+  }
+
+  .project-details-desktop-grid>.project-details-dates {
+    grid-area: dates;
+    min-width: 0;
+    align-self: stretch;
+    padding-bottom: min(calc(9 * (100vw - 100px) / var(--fluid-divisor-768)), 9px);
+  }
+
+  /* Разделитель — отдельный элемент, а не border-bottom на каждой из
+     ячеек по отдельности: так линия идёт одной полосой через column-gap
+     между "meta" и "dates", а не прерывается на зазоре. grid-row/-column
+     по номерам линий (2/3 и 2/4) — те же границы, что у области "meta
+     dates" в grid-template-areas; align-self:end ставит линию ровно на
+     нижнюю границу строки (туда же, куда достают стретч-нутые по высоте
+     строки meta/dates). */
+  .project-details-desktop-grid>.project-details-row2-divider {
+    grid-row: 2 / 3;
+    grid-column: 3 / 5;
+    align-self: end;
+    height: 1px;
+    background: #e5e5e5;
+  }
+
+  .project-details-desktop-grid>.project-details-desktop-content {
+    grid-area: content;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(30 * (100vw - 100px) / var(--fluid-divisor-768)), 30px);
+  }
+
+  .project-details-desktop-content .stash-details-usages,
+  .project-details-desktop-content .stash-details-notes {
+    margin: 0;
+  }
+
+  .project-details-desktop-grid>.stash-details-desktop-swatches {
+    grid-area: swatches;
+  }
+
+  .project-details-title-row .stash-details-name {
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor-768)), 34px);
+    /* margin-bottom: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px); */
+  }
+
+  .project-details-title-row {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .project-details-meta-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+
+  .project-details-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+  }
+
+  .project-details-dates {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(4 * (100vw - 100px) / var(--fluid-divisor-768)), 4px);
+    align-items: flex-end;
+    width: 100%;
+  }
+
+  .project-details-dates-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    width: 100%;
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+
+  .project-details-duration {
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(12 * (100vw - 100px) / var(--fluid-divisor-768)), 12px);
+    color: #6b6b6b;
+    margin: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .stash-details-container {
+    max-width: 1440px;
     padding: 24px 50px calc(24px + env(safe-area-inset-bottom));
   }
 
@@ -1072,14 +1680,22 @@
   /* ── Галерея (StashImageGalleryDesktop) ── */
   .stash-gallery-desktop {
     display: flex;
+    align-items: flex-start;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
+  /* max-height + overflow-y — тот же приём, что у .stash-notes-text ниже:
+     при большом количестве фото колонка миниатюр скроллится сама внутри
+     себя, а не растягивает по вертикали всю карточку (жалоба — "галерея
+     миниатюр растягивает блок"). 536px ≈ 4 ряда миниатюр (119px + 20px
+     gap) при 100% масштабе. */
   .stash-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    max-height: min(calc(536 * (100vw - 100px) / var(--fluid-divisor)), 536px);
+    overflow-y: auto;
     flex-shrink: 0;
   }
 
@@ -1434,19 +2050,17 @@
     width: min(calc(90 * (100vw - 100px) / var(--fluid-divisor)), 90px);
     height: min(calc(136 * (100vw - 100px) / var(--fluid-divisor)), 136px);
   }
-}
 
-/* ───────────────────────── Карточка проекта (Figma node-id=1617:19969) ────
-   Свой собственный грид .project-details-desktop-grid (не
-   .stash-details-desktop-grid выше — тот общий с карточкой пряжи и не
-   режется на строки). Явные grid-template-areas на 3 строки гарантируют,
-   что "Описание/Автор/Инструмент" и "Сроки" — буквально соседи по одной
-   строке грида (одинаковая высота считается гридом автоматически), поэтому
-   разделитель — просто border-bottom на обеих ячейках строки, без
-   calc()-подгонки ширины под соседние колонки. .pd-label/.pd-value уже
-   14px/16px (см. выше по файлу) — переопределять шрифты не нужно, только
-   раскладка. */
-@media (min-width: 768px) {
+  /* ───────────────────────── Карточка проекта (Figma node-id=1617:19969) ──
+     Свой собственный грид .project-details-desktop-grid (не
+     .stash-details-desktop-grid выше — тот общий с карточкой пряжи и не
+     режется на строки). Явные grid-template-areas на 3 строки гарантируют,
+     что "Описание/Автор/Инструмент" и "Сроки" — буквально соседи по одной
+     строке грида (одинаковая высота считается гридом автоматически), поэтому
+     разделитель — просто border-bottom на обеих ячейках строки, без
+     calc()-подгонки ширины под соседние колонки. .pd-label/.pd-value уже
+     14px/16px (см. выше по файлу) — переопределять шрифты не нужно, только
+     раскладка. */
   .project-details-desktop-grid {
     display: grid;
     grid-template-columns: 3fr 3fr 2fr;

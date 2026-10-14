@@ -392,7 +392,7 @@
   .stash-breadcrumb {
     display: block;
     font-family: Mulish, sans-serif;
-    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
     color: #6b6b6b;
     margin: 0;
   }
@@ -677,5 +677,15 @@
     /* color: #1D1C1C; */
     cursor: pointer;
     letter-spacing: -0.85px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .stash-breadcrumb {
+    display: block;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    color: #6b6b6b;
+    margin: 0;
   }
 }

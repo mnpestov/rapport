@@ -5,22 +5,6 @@
   display: none;
 }
 
-@media (min-width: 768px) {
-  .top-nav {
-    display: flex;
-    /* sticky, не fixed — остаётся в потоке документа, страницам не нужно
-       резервировать отступ сверху отдельным классом (как .has-tab-bar у
-       TabBar.css снизу). */
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    height: min(calc(64 * (100vw - 100px) / var(--fluid-divisor)), 64px);
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e5;
-    box-sizing: border-box;
-  }
-}
-
 /* Повторяет box-model .stash-container (Stash.css): max-width:1440px +
    margin:0 auto + тот же боковой padding:50px — логотип и ссылки
    выравниваются по тем же краям, что и контент страницы под шапкой, вместо
@@ -32,7 +16,7 @@
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  /* padding: 0 min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px); */
+  /* padding: 0 min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px); */
   padding: 0 50px;
   height: 100%;
   box-sizing: border-box;
@@ -78,4 +62,54 @@
 .top-nav-link--active {
   font-weight: 700;
   border-bottom-color: #bec1f4;
+}
+
+@media (min-width: 768px) {
+  .top-nav {
+    display: flex;
+    /* sticky, не fixed — остаётся в потоке документа, страницам не нужно
+       резервировать отступ сверху отдельным классом (как .has-tab-bar у
+       TabBar.css снизу). */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
+    background: #ffffff;
+    border-bottom: 1px solid #e5e5e5;
+    box-sizing: border-box;
+  }
+
+  .top-nav-inner {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 50px;
+  }
+
+  .top-nav-logo {
+    height: min(calc(28 * (100vw - 100px) / var(--fluid-divisor-768)), 28px);
+  }
+
+  .top-nav-links {
+    gap: min(calc(36 * (100vw - 100px) / var(--fluid-divisor-768)), 36px);
+  }
+
+  .top-nav-link {
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .top-nav {
+    display: flex;
+    /* sticky, не fixed — остаётся в потоке документа, страницам не нужно
+       резервировать отступ сверху отдельным классом (как .has-tab-bar у
+       TabBar.css снизу). */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: min(calc(64 * (100vw - 100px) / var(--fluid-divisor)), 64px);
+    background: #ffffff;
+    border-bottom: 1px solid #e5e5e5;
+    box-sizing: border-box;
+  }
 }
