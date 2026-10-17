@@ -326,6 +326,19 @@
    — общие классы из Stash.css, уже применяются здесь без дополнительных
    правил (Projects.css их не переопределяет). */
 @media (min-width: 768px) {
+  /* .stash-container (Stash.css, общий) задаёт min-height:100vh — этой
+     странице нужно больше: AddProjectModal рендерится внутри этого же
+     .stash-container (см. комментарий ниже), а его выпадающие списки
+     поиска (описание/пряжа, .add-project-search-dropdown) — position:
+     absolute и могут визуально выходить ниже текущей высоты страницы.
+     Если .stash-container не выше, чем страница с открытым списком, его
+     нижний край (вместе с тенью) обрезается. .projects-stash-container —
+     отдельный модификатор (не правка .stash-container в Stash.css), чтобы
+     не задеть Хранилище/карточку мотка, где этот список не используется. */
+  .projects-stash-container {
+    min-height: calc(100vh + 50vh);
+  }
+
   .projects-year-card.projects-year-card--mobile-only {
     display: none;
   }

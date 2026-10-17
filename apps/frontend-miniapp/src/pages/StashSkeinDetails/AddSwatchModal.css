@@ -24,22 +24,22 @@
   .add-swatch-modal .add-yarn-panel {
     position: relative;
     width: 100%;
-    max-width: min(calc(560 * (100vw - 100px) / var(--fluid-divisor)), 560px);
+    max-width: min(calc(560 * (100vw - 100px) / var(--fluid-divisor-768)), 560px);
     height: auto;
     max-height: 90vh;
     border-radius: 2px;
     box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
     overflow-y: auto;
-    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
+    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px) min(calc(30 * (100vw - 100px) / var(--fluid-divisor-768)), 30px);
   }
 
   .add-swatch-modal .add-yarn-header {
     text-align: left;
-    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) 0;
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px) min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px) 0;
   }
 
   .add-swatch-modal .add-yarn-title {
-    font-size: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    font-size: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
   }
 
   /* .add-yarn-body на десктопе глобально (в AddYarnModal.css, без скоупа)
@@ -53,21 +53,21 @@
   .add-swatch-modal .add-yarn-body {
     display: flex;
     align-items: normal;
-    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px) min(calc(30 * (100vw - 100px) / var(--fluid-divisor)), 30px);
-    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    padding: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px) min(calc(30 * (100vw - 100px) / var(--fluid-divisor-768)), 30px);
+    gap: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
   }
 
   .add-swatch-modal .add-yarn-footer {
     flex-direction: row;
     margin-bottom: 0;
-    padding: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px) min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    padding: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px) min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
   }
 
   .add-swatch-modal .add-yarn-close-btn,
   .add-swatch-modal .add-yarn-save-btn {
     width: auto;
     flex: 1;
-    height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
-    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
+    height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor-768)), 44px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
   }
 }

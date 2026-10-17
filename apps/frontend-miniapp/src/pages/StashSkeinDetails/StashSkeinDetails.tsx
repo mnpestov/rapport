@@ -803,9 +803,17 @@ export const StashSkeinDetails: React.FC = () => {
                 </CollapsibleSection>
               </div>
 
-              <div className="stash-details-desktop-info">
+              {/* Название вынесено из .stash-details-desktop-info в свою
+                  grid-area (title) — на планшете (768px) ему нужна отдельная
+                  строка, отдельная от остального "Пряжа"-стека; на десктопе
+                  (≥1024px) эффект нулевой: название остаётся первым элементом
+                  той же колонки, просто через grid-area вместо порядка внутри
+                  flex-колонки. См. .stash-details-desktop-grid в CSS. */}
+              <div className="stash-details-title-row">
                 <h1 className="stash-details-name">{skein.yarnNameSnapshot}</h1>
+              </div>
 
+              <div className="stash-details-desktop-info">
                 <CollapsibleSection title="Пряжа" isOpen={isSectionOpen('yarn')} onToggle={() => toggleSection('yarn')} className="stash-details-info">
                   <p className="stash-details-row"><b>Артикул:</b> {skein.yarnNameSnapshot}</p>
                   {yarnInfoRows}

@@ -701,6 +701,11 @@
   align-items: stretch;
   max-height: 116px;
   overflow: hidden;
+  /* Без этого в .add-project-search-dropdown .add-project-cards-vertical
+     (ограниченная высота + overflow-y:auto) флекс вместо скролла внутри
+     контейнера сжимал сами карточки — тот же баг, что уже был у
+     .add-project-pattern-card (см. комментарий там). */
+  flex-shrink: 0;
 }
 
 .add-project-yarn-search-card {
@@ -1009,6 +1014,19 @@
     overflow-y: auto;
   }
 
+  /* Запас снизу под раскрытый .add-project-search-dropdown — настоящий
+     элемент ГРИДА .add-project-body (см. комментарий в TSX), не спейсер
+     снаружи body и не padding-bottom на .add-project-panel: оба эти
+     варианта не решали проблему — похоже, overflow-переполнение от
+     .add-project-search-dropdown (position:absolute внутри grid-контейнера)
+     клиппинговалось ещё на уровне самого .add-project-body, до скролл-
+     контейнера выше по дереву. grid-column:1/-1 растягивает запас на всю
+     ширину, реально увеличивая auto-высоту самого body. */
+  .add-project-scroll-spacer {
+    grid-column: 1 / -1;
+    height: 32px;
+  }
+
   .add-project-header {
     text-align: left;
     max-width: 1440px;
@@ -1088,43 +1106,150 @@
     max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor-768)), 127px);
   }
 
-  /* .add-project-body — грид только для ширины 3 колонок, не для строк:
-     "photos"/"title"/"actions" и т.д. раньше жили в ОБЩИХ grid-row, из-за
-     чего высота строки = max(контент каждой колонки) — например, кнопки
-     Закрыть/Сохранить делили строку с заголовком (34px + бордер), и между
-     кнопками и "Сроки" оставался пробел = высота строки минус высота
-     кнопок, а не стандартный гэп. Теперь каждая колонка — САМОСТОЯТЕЛЬНАЯ
-     flex-колонка (.add-project-col-gallery/-about/-meta), ничего общего со
-     строками соседних колонок: высота каждого блока — ровно по его
-     контенту, гэп между блоками внутри колонки — свой, не зависящий от
-     других колонок. */
+  /* Планшет (768-1024px) — у́же, чем десктоп (≥1024, свой блок ниже),
+     поэтому колонка "галерея" сужена (2fr вместо 3fr), а отступы/гэпы
+     плотнее — тот же приём, что у ProjectDetails.tsx/
+     .project-details-desktop-grid на этой же ширине (см.
+     StashSkeinDetails.css). Сама раскладка на areas (title+actions в одной
+     строке, остальные секции — каждая на свою строку на всю ширину) ниже
+     одинакова и для планшета, и для десктопа — см. комментарий у десктопного
+     .add-project-body. */
   .add-project-body {
+    /* На мобиле .add-project-body — единственный скролл-контейнер модалки
+       (overflow-y:auto из базового правила), .add-project-panel не
+       скроллится сам. На десктопе/планшете скроллится САМ .add-project-panel
+       (см. его overflow-y:auto ниже) — он включает в скролл ещё и
+       TopNav/Footer. Если оставить overflow-y:auto ещё и на .add-project-body,
+       получается вложенный скролл-контейнер с собственной (более короткой)
+       высотой обрезки: когда форма короткая (например, в новом проекте
+       большинство секций ещё пустые), эта высота меньше, чем высота
+       выпадающего списка результатов поиска (.add-project-pattern-dropdown,
+       position:absolute) — список обрезался ровно на границе этого
+       внутреннего скролла, а ниже неё сразу начинался Footer с его
+       margin-top:auto, из-за чего казалось, что низ списка "прячется под
+       футером". overflow:visible снимает этот второй контейнер обрезки —
+       остаётся только один скролл, у .add-project-panel. */
+    overflow-y: visible;
     display: grid;
-    grid-template-columns: 3fr 3fr 2fr;
-    column-gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor-768)), 40px);
+    grid-template-columns: 2fr 3fr 2fr;
+    grid-template-areas:
+      "gallery title   actions"
+      "gallery about   about"
+      "gallery dates   dates"
+      "gallery instruments instruments"
+      "gallery yarn    yarn"
+      "gallery swatch  swatch"
+      "gallery notes   notes";
+    grid-template-rows: auto auto auto auto auto auto 1fr;
+    align-items: start;
+    column-gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    row-gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
     width: 100%;
     max-width: 1440px;
     margin: 0 auto;
-    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
+    padding: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
     box-sizing: border-box;
   }
 
-  .add-project-col-gallery,
-  .add-project-col-about,
-  .add-project-col-meta {
+  .add-project-col-gallery {
+    grid-area: gallery;
     display: flex;
     flex-direction: column;
-    gap: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    min-width: 0;
+  }
+
+  .add-project-title-row {
+    grid-area: title;
+  }
+
+  .add-project-column-actions {
+    grid-area: actions;
+    align-self: start;
+  }
+
+  .add-project-section--about {
+    grid-area: about;
+  }
+
+  /* Выпадающий список результатов поиска (описания в "О проекте",
+     пряжи в "Пряжа") раньше жил в обычном потоке внутри
+     .add-project-section-inner — появляясь, он раздувал высоту своей
+     строки в гриде и сдвигал вниз соседние секции под ней.
+     .add-project-section-inner становится "якорем" (position:relative,
+     высота — только по оставшемуся в потоке контенту, т.е. по ручному
+     вводу/карточкам привязанной пряжи или 0), а сам список
+     (.add-project-search-dropdown) выносится из потока и раскрывается
+     поверх формы, как у select, не меняя раскладку остальных секций.
+     Не scoped к конкретной секции — общий якорь для любого места, где
+     используется этот паттерн (about/yarn). Правило объявлено один раз
+     здесь (в блоке 768px) и каскадом действует и на ≥1024px — раскладка
+     на areas там та же, см. комментарий у десктопного .add-project-body. */
+  .add-project-section-inner {
+    position: relative;
+  }
+
+  .add-project-search-dropdown {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0px 8px 20px 0px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+  }
+
+  /* Список карточек внутри дропдауна (описание уже ограничивал себя сам —
+     .add-project-cards-vertical--scroll, max-height:40vh — список пряжи
+     переиспользует базовый .add-project-cards-vertical БЕЗ этого
+     модификатора, см. комментарий у самого класса: раньше это было ок,
+     список просто рос в обычном потоке страницы. Теперь дропдаун —
+     position:absolute и ничем не ограничен по высоте потоком страницы,
+     поэтому при большом числе карточек список проходил сквозь Footer и
+     уходил далеко вниз за пределы видимой области. Ограничение здесь, а
+     не точечно на каждом варианте списка — одна и та же капа для любого
+     списка карточек внутри дропдауна, кем бы он ни был. */
+  .add-project-search-dropdown .add-project-cards-vertical {
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  .add-project-section--dates {
+    grid-area: dates;
+  }
+
+  .add-project-section--instruments {
+    grid-area: instruments;
+  }
+
+  .add-project-section--yarn {
+    grid-area: yarn;
+  }
+
+  .add-project-section--swatch {
+    grid-area: swatch;
+  }
+
+  .add-project-section--notes {
+    grid-area: notes;
+  }
+
+  .add-project-title-row,
+  .add-project-section--about,
+  .add-project-section--dates,
+  .add-project-section--instruments,
+  .add-project-section--yarn,
+  .add-project-section--swatch,
+  .add-project-section--notes {
     min-width: 0;
   }
 
   /* .add-project-section несёт мобильный margin-bottom:20px (ритм плоского
-     мобильного потока) — внутри колонки это складывалось бы с её gap,
-     гэпы были заметно больше стандартных. В десктопной колонке расстояние
-     целиком задаёт gap самой колонки. */
-  .add-project-col-gallery>.add-project-section,
-  .add-project-col-about>.add-project-section,
-  .add-project-col-meta>.add-project-section {
+     мобильного потока) — на гриде расстояние между секциями целиком задаёт
+     row-gap самого .add-project-body. */
+  .add-project-body .add-project-section {
     margin-bottom: 0;
   }
 
@@ -1177,18 +1302,44 @@
   }
 
   /* Галерея "Фото изделия" — первое фото крупно справа, остальные
-     миниатюрами слева (тот же принцип, что .add-yarn-gallery-desktop-*). */
+     миниатюрами слева (тот же принцип, что .add-yarn-gallery-desktop-*).
+     align-items:flex-start — без этого (стандартный stretch строки) колонка
+     миниатюр при нескольких фото растягивала бы по высоте всю галерею,
+     включая крупное фото; тот же приём, что .stash-gallery-desktop в
+     StashSkeinDetails.css. */
   .add-project-gallery-desktop {
     display: flex;
+    align-items: flex-start;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
   }
 
+  /* position:relative — якорь для кнопок пролистывания (position:absolute,
+     наплывают на миниатюры сверху/снизу, см. .add-project-gallery-scroll-
+     btn), не отдельные блоки в потоке. */
+  .add-project-gallery-desktop-thumbs-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* max-height + overflow-y — тот же приём, что у .stash-gallery-desktop-
+     thumbs: при нескольких фото колонка миниатюр скроллится сама внутри
+     себя (свайп на тач-экранах — нативно, без доп. JS), а не растягивает
+     блок по вертикали. 399px ≈ 3 ряда миниатюр (119px + 20px gap). */
   .add-project-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
     width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor-768)), 101px);
+    max-height: min(calc(399 * (100vw - 100px) / var(--fluid-divisor-768)), 399px);
+    overflow-y: auto;
     flex-shrink: 0;
+  }
+
+  /* Кнопки пролистывания — видны только на десктопе ≥1024px (см. то же
+     правило там): свайп на тач-экранах их не требует, а на планшете
+     (768-1024px) обычно тоже есть тач. */
+  .add-project-gallery-scroll-btn {
+    display: none;
   }
 
   .add-project-gallery-desktop-thumb {
@@ -1229,7 +1380,7 @@
   .add-project-gallery-desktop-main {
     flex: 1;
     min-width: 0;
-    aspect-ratio: 428 / 447;
+    aspect-ratio: 3 / 4;
     border-radius: 2px;
     background: #f3f3f3;
     overflow: hidden;
@@ -1427,20 +1578,28 @@
     max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor)), 127px);
   }
 
-  /* .add-project-body — грид только для ширины 3 колонок, не для строк:
-     "photos"/"title"/"actions" и т.д. раньше жили в ОБЩИХ grid-row, из-за
-     чего высота строки = max(контент каждой колонки) — например, кнопки
-     Закрыть/Сохранить делили строку с заголовком (34px + бордер), и между
-     кнопками и "Сроки" оставался пробел = высота строки минус высота
-     кнопок, а не стандартный гэп. Теперь каждая колонка — САМОСТОЯТЕЛЬНАЯ
-     flex-колонка (.add-project-col-gallery/-about/-meta), ничего общего со
-     строками соседних колонок: высота каждого блока — ровно по его
-     контенту, гэп между блоками внутри колонки — свой, не зависящий от
-     других колонок. */
+  /* .add-project-body — grid-template-areas (не 3 независимые flex-
+     колонки, как было раньше): "gallery" — своя колонка на всю высоту
+     формы; title+actions делят ОДНУ строку (обе стороны предсказуемой
+     высоты — заголовок всегда одна строка ввода, кнопки всегда одной
+     высоты, так что общая высота строки не "скачет"); все остальные секции
+     (about/сроки/инструмент/пряжа/образец/заметки) — каждая на СВОЮ
+     отдельную строку на всю ширину right-блока: секции с непредсказуемой
+     высотой (например, about — список результатов поиска паттерна) не
+     делят строку ни с чем другим, поэтому не ломают отступы у соседей (та
+     самая проблема, из-за которой раньше были 3 независимые
+     flex-колонки — теперь решена через раскладку areas, а не через отказ
+     от грида). Та же раскладка целиком (имена areas, две строки комментария
+     выше) используется и в планшетном блоке (768px) — там другие пропорции
+     колонок/отступы, но структура идентична. */
   .add-project-body {
     display: grid;
-    grid-template-columns: 3fr 3fr 2fr;
+    grid-template-columns: 2fr 3fr 3fr;
+    grid-template-areas: "gallery title actions" "gallery about dates" "gallery about dates" "gallery about instruments" "gallery swatch yarn" "gallery swatch yarn" "gallery notes yarn";
+    grid-template-rows: auto auto auto auto auto auto 1fr;
+    align-items: start;
     column-gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    row-gap: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
     width: 100%;
     max-width: 1440px;
     margin: 0 auto;
@@ -1448,22 +1607,61 @@
     box-sizing: border-box;
   }
 
-  .add-project-col-gallery,
-  .add-project-col-about,
-  .add-project-col-meta {
+  .add-project-col-gallery {
+    grid-area: gallery;
     display: flex;
     flex-direction: column;
     gap: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
     min-width: 0;
   }
 
+  .add-project-title-row {
+    grid-area: title;
+  }
+
+  .add-project-column-actions {
+    grid-area: actions;
+    align-self: start;
+  }
+
+  .add-project-section--about {
+    grid-area: about;
+  }
+
+  .add-project-section--dates {
+    grid-area: dates;
+  }
+
+  .add-project-section--instruments {
+    grid-area: instruments;
+  }
+
+  .add-project-section--yarn {
+    grid-area: yarn;
+  }
+
+  .add-project-section--swatch {
+    grid-area: swatch;
+  }
+
+  .add-project-section--notes {
+    grid-area: notes;
+  }
+
+  .add-project-title-row,
+  .add-project-section--about,
+  .add-project-section--dates,
+  .add-project-section--instruments,
+  .add-project-section--yarn,
+  .add-project-section--swatch,
+  .add-project-section--notes {
+    min-width: 0;
+  }
+
   /* .add-project-section несёт мобильный margin-bottom:20px (ритм плоского
-     мобильного потока) — внутри колонки это складывалось бы с её gap,
-     гэпы были заметно больше стандартных. В десктопной колонке расстояние
-     целиком задаёт gap самой колонки. */
-  .add-project-col-gallery>.add-project-section,
-  .add-project-col-about>.add-project-section,
-  .add-project-col-meta>.add-project-section {
+     мобильного потока) — на гриде расстояние между секциями целиком задаёт
+     row-gap самого .add-project-body. */
+  .add-project-body .add-project-section {
     margin-bottom: 0;
   }
 
@@ -1516,18 +1714,69 @@
   }
 
   /* Галерея "Фото изделия" — первое фото крупно справа, остальные
-     миниатюрами слева (тот же принцип, что .add-yarn-gallery-desktop-*). */
+     миниатюрами слева (тот же принцип, что .add-yarn-gallery-desktop-*).
+     align-items:flex-start — см. комментарий у этого же правила в блоке
+     768px выше. */
   .add-project-gallery-desktop {
     display: flex;
+    align-items: flex-start;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
   }
 
+  /* position:relative — якорь для кнопок пролистывания, см. комментарий у
+     этого же правила в блоке 768px выше. */
+  .add-project-gallery-desktop-thumbs-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* max-height + overflow-y — см. комментарий у этого же правила в блоке
+     768px выше. */
   .add-project-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    max-height: min(calc(399 * (100vw - 100px) / var(--fluid-divisor)), 399px);
+    overflow-y: auto;
     flex-shrink: 0;
+  }
+
+  /* Единственное место, где кнопки пролистывания реально показываются —
+     десктоп ≥1024px (на мобиле/планшете скрыты, см. блок 768px выше).
+     Полупрозрачные кружки с шевронами, наплывающие на миниатюры сверху/
+     снизу (position:absolute внутри .add-project-gallery-desktop-thumbs-
+     wrap), а не отдельные блоки над/под колонкой — рендерятся в JSX
+     только когда действительно есть куда скроллить. */
+  .add-project-gallery-scroll-btn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(29, 28, 28, 0.55);
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .add-project-gallery-scroll-btn:hover {
+    background: rgba(29, 28, 28, 0.75);
+  }
+
+  .add-project-gallery-scroll-btn--up {
+    top: 4px;
+  }
+
+  .add-project-gallery-scroll-btn--down {
+    bottom: 4px;
   }
 
   .add-project-gallery-desktop-thumb {
@@ -1568,10 +1817,12 @@
   .add-project-gallery-desktop-main {
     flex: 1;
     min-width: 0;
-    aspect-ratio: 428 / 447;
+    aspect-ratio: 3 / 4;
     border-radius: 2px;
     background: #f3f3f3;
     overflow: hidden;
+    width: min(calc(240 * (100vw - 100px) / var(--fluid-divisor)), 240px);
+    height: min(calc(319 * (100vw - 100px) / var(--fluid-divisor)), 319px);
   }
 
   .add-project-pdf-upload-btn {
@@ -1609,4 +1860,12 @@
     gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
     font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
   }
+
+  .add-project-photo-thumb,
+  .add-project-photo-add {
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+  }
 }
+
+@media (min-width: 1280px) {}

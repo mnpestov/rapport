@@ -73,10 +73,11 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
+    min-height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
     background: #ffffff;
     border-bottom: 1px solid #e5e5e5;
     box-sizing: border-box;
+    align-items: center;
   }
 
   .top-nav-inner {

@@ -500,12 +500,17 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
                 дублируются. */}
           </div>
 
+          {/* Кнопки — своя grid-area (actions), не первый элемент секции
+              "Образец" (тот же фикс, что в AddYarnModal.tsx): внутри секции
+              они оказывались в середине формы на планшете, т.к. "Образец"
+              там не первая строка колонки, а третья (см. AddYarnModal.css). */}
+          {isDesktop && (
+            <div className="add-yarn-column-actions">
+              {actionButtons}
+            </div>
+          )}
+
           <div className="add-yarn-section add-yarn-section--swatches">
-            {isDesktop && (
-              <div className="add-yarn-column-actions">
-                {actionButtons}
-              </div>
-            )}
             <p className="add-yarn-section-title">Образец</p>
 
             {swatches.map((swatch, index) => (
@@ -668,7 +673,7 @@ export const EditSkeinModal: React.FC<EditSkeinModalProps> = ({ isOpen, skein, o
           {error && <p className="add-yarn-error">{error}</p>}
         </div>
 
-        {isDesktop && <Footer />}
+        {/* {isDesktop && <Footer />} */}
 
         {!isDesktop && (
           <div className="add-yarn-footer">

@@ -458,7 +458,7 @@
     max-width: 1440px;
     margin: 0 auto;
     width: 100%;
-    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px) 0;
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px) 0;
     box-sizing: border-box;
   }
 
@@ -471,18 +471,18 @@
      (ProjectDetails.tsx: заголовок+статус в середине, даты в начале правой
      колонки). В хедере остаётся только хлебная крошка. */
   .add-yarn-title {
-    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
-    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor-768)), 34px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
   }
 
-  /* Кнопки — начало 3-й колонки (.add-yarn-section--swatches), не в
-     хедере: раньше top:24px/flex-ребёнок хедера считался от верха ВСЕЙ
-     панели или рядом с заголовком там же — пользователь попросил перенести
-     их в сам грид, под тем же принципом, что и у карточки проекта. */
+  /* Кнопки — своя grid-area (actions, не первый элемент секции "Образец",
+     см. комментарий в TSX) — наверху формы на любой ширине, а не там, где
+     "Образец" оказывается по счёту в колонке. */
   .add-yarn-column-actions {
+    grid-area: actions;
     display: flex;
-    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
-    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor-768)), 8px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
     justify-content: end;
   }
 
@@ -490,26 +490,37 @@
   .add-yarn-column-actions .add-yarn-save-btn {
     width: auto;
     flex: 1;
-    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
-    padding: 0 min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
-    /* height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px); */
-    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
-    max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor)), 127px);
+    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
+    padding: 0 min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
+    max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor-768)), 127px);
   }
 
+  /* Планшет (768-1024px) — своя раскладка на areas, не дубль десктопной
+     (та — ниже, в блоке ≥1024px): 3 РАВНЫЕ колонки здесь слишком узкие —
+     галерее нужна ширина под миниатюры (101px) + крупное фото рядом, а у
+     образца внутри дублированные по 2 инпута в ряд ("Петли х Ряды" и
+     т.п.) — всё это не помещается в треть панели на планшетной ширине.
+     Галерея — своя узкая колонка на всю высоту (как у .stash-details-
+     desktop-grid/.project-details-desktop-grid), "Пряжа" и "Образец"
+     стопкой в оставшейся широкой колонке — тот же принцип, что у карточки
+     мотка пряжи (StashSkeinDetails.css). Кнопки (actions) — своя строка
+     НАД "Пряжа", а не первым элементом "Образец" (3-я строка той же
+     колонки) — иначе они оказывались в середине формы. */
   .add-yarn-body {
     display: grid;
-    /* Три равные колонки (пользователь явно попросил именно так — 1fr 1fr
-       1fr, не минмакс-пропорции под Figma-холст, как раньше), тот же
-       принцип, что .stash-details-desktop-grid у карточки проекта. */
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-areas: "photos yarn swatches";
+    grid-template-columns: 2fr 3fr;
+    grid-template-areas:
+      "photos actions"
+      "photos yarn"
+      "photos swatches";
+    grid-template-rows: auto auto 1fr;
     align-items: start;
-    gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    gap: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
     width: 100%;
     max-width: 1440px;
     margin: 0 auto;
-    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
+    padding: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor-768)), 50px);
     box-sizing: border-box;
   }
 
@@ -534,58 +545,83 @@
      swatch-title:14px, "Удалить":13px, чипы инструмента:15px) и десктопного
      переопределения для них не было вообще. */
   .add-yarn-label {
-    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
   }
 
   .add-yarn-input,
   .add-yarn-textarea {
-    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor-768)), 17px);
   }
 
   .add-yarn-section-title {
-    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
   }
 
   .add-yarn-swatch-draft-title {
-    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
   }
 
   .add-yarn-swatch-remove {
-    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
   }
 
   .add-yarn-instrument-chip {
-    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor-768)), 17px);
   }
 
   /* Заметка образца в макете выглядит как обычное однострочное поле
      (44px), не растущая textarea — компактнее мобильного min-height:80px,
      сама текстовая область (ресайз/многострочность) остаётся прежней. */
   .add-yarn-swatch-draft .add-yarn-textarea {
-    min-height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
+    min-height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor-768)), 44px);
   }
 
   /* Галерея — первое фото крупно справа, остальные миниатюрами слева (тот
      же принцип, что StashImageGalleryDesktop на карточке пряжи), без
      клика-выбора (это форма загрузки, не просмотра — "крупное" всегда
-     images[0]). */
+     images[0]). align-items:flex-start — без этого (стандартный stretch
+     строки) колонка миниатюр при нескольких фото растягивала бы по высоте
+     всю галерею, включая крупное фото; тот же приём, что
+     .stash-gallery-desktop в StashSkeinDetails.css. */
   .add-yarn-gallery-desktop {
     display: flex;
-    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    align-items: flex-start;
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
   }
 
+  /* position:relative — якорь для кнопок пролистывания (position:absolute,
+     наплывают на миниатюры сверху/снизу, см. .add-yarn-gallery-scroll-btn
+     в media-блоке ≥1024px в конце файла), не отдельные блоки в потоке. */
+  .add-yarn-gallery-desktop-thumbs-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* max-height + overflow-y — тот же приём, что у .stash-gallery-desktop-
+     thumbs: при нескольких фото колонка миниатюр скроллится сама внутри
+     себя (свайп на тач-экранах — нативно, без доп. JS), а не растягивает
+     блок по вертикали. 399px ≈ 3 ряда миниатюр (119px + 20px gap). */
   .add-yarn-gallery-desktop-thumbs {
     display: flex;
     flex-direction: column;
-    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
-    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor-768)), 101px);
+    max-height: min(calc(399 * (100vw - 100px) / var(--fluid-divisor-768)), 399px);
+    overflow-y: auto;
     flex-shrink: 0;
+  }
+
+  /* Кнопки пролистывания — видны только на десктопе ≥1024px (см. отдельный
+     media-блок в конце файла): свайп на тач-экранах их не требует, а на
+     планшете (768-1024px) обычно тоже есть тач. */
+  .add-yarn-gallery-scroll-btn {
+    display: none;
   }
 
   .add-yarn-gallery-desktop-thumb {
     position: relative;
-    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
-    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor-768)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor-768)), 119px);
     flex-shrink: 0;
     border-radius: 2px;
     overflow: hidden;
@@ -600,8 +636,8 @@
   }
 
   .add-yarn-gallery-desktop-add {
-    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
-    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor-768)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor-768)), 119px);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -610,7 +646,7 @@
     border-radius: 2px;
     background: none;
     color: #9b9a9a;
-    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
     cursor: pointer;
   }
 
@@ -637,7 +673,7 @@
     background: none;
     color: #9b9a9a;
     font-family: Mulish, sans-serif;
-    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
     cursor: pointer;
   }
 
@@ -646,6 +682,176 @@
      десктопная версия тех же кнопок живёт в .add-yarn-header-actions
      (объявлено выше, рядом с .add-yarn-header), поэтому здесь для
      .add-yarn-footer переопределений больше нет. */
+
+  .add-yarn-category-chip {
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    padding: min(calc(5 * (100vw - 100px) / var(--fluid-divisor-768)), 5px) min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor-768)), 14px);
+  }
+
+  .add-yarn-category-chip svg {
+    width: min(calc(32 * (100vw - 100px) / var(--fluid-divisor-768)), 32px);
+    height: min(calc(32 * (100vw - 100px) / var(--fluid-divisor-768)), 32px);
+    display: block;
+  }
+}
+
+/* Десктоп (≥1024px) — раскладка, которая была в единственном блоке 768px
+   до появления планшетного яруса выше: 3 равные колонки "photos yarn
+   swatches" (пользователь явно попросил именно так), var(--fluid-divisor)
+   (не -768 планшетного блока). Объявлена отдельным блоком здесь, а не
+   объединена с .add-yarn-gallery-scroll-btn ниже — разный смысл (общая
+   раскладка формы vs одни конкретные кнопки), один и тот же медиа-запрос
+   допускает несколько блоков без конфликта. */
+@media (min-width: 1024px) {
+  .add-yarn-header {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px) 0;
+    box-sizing: border-box;
+  }
+
+  .add-yarn-title {
+    font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+  }
+
+  .add-yarn-column-actions {
+    grid-area: actions;
+    display: flex;
+    gap: min(calc(8 * (100vw - 100px) / var(--fluid-divisor)), 8px);
+    margin-bottom: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+    justify-content: end;
+  }
+
+  .add-yarn-column-actions .add-yarn-close-btn,
+  .add-yarn-column-actions .add-yarn-save-btn {
+    width: auto;
+    flex: 1;
+    height: min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
+    padding: 0 min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
+    max-width: min(calc(127 * (100vw - 100px) / var(--fluid-divisor)), 127px);
+  }
+
+  /* "yarn" повторена в обеих строках areas — одна область, растянутая на
+     обе строки (как и "photos"), поэтому колонка "Пряжа" не разбивается
+     actions/swatches пополам. Кнопки (actions) теперь свой элемент грида
+     (см. TSX), не первый ребёнок "Образец" — видимо-то же место, что и
+     раньше (верх 3-й колонки), просто явной областью вместо document
+     order. */
+  .add-yarn-body {
+    display: grid;
+    /* Три равные колонки (пользователь явно попросил именно так — 1fr 1fr
+       1fr, не минмакс-пропорции под Figma-холст, как раньше), тот же
+       принцип, что .stash-details-desktop-grid у карточки проекта. */
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      "photos yarn actions"
+      "photos yarn swatches";
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px) min(calc(50 * (100vw - 100px) / var(--fluid-divisor)), 50px);
+    box-sizing: border-box;
+  }
+
+  .add-yarn-label {
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+  }
+
+  .add-yarn-input,
+  .add-yarn-textarea {
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
+  }
+
+  .add-yarn-section-title {
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+  }
+
+  .add-yarn-swatch-draft-title {
+    font-size: min(calc(16 * (100vw - 100px) / var(--fluid-divisor)), 16px);
+  }
+
+  .add-yarn-swatch-remove {
+    font-size: min(calc(14 * (100vw - 100px) / var(--fluid-divisor)), 14px);
+  }
+
+  .add-yarn-instrument-chip {
+    font-size: min(calc(17 * (100vw - 100px) / var(--fluid-divisor)), 17px);
+  }
+
+  .add-yarn-swatch-draft .add-yarn-textarea {
+    min-height: min(calc(44 * (100vw - 100px) / var(--fluid-divisor)), 44px);
+  }
+
+  .add-yarn-gallery-desktop {
+    display: flex;
+    align-items: flex-start;
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+  }
+
+  .add-yarn-gallery-desktop-thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    max-height: min(calc(399 * (100vw - 100px) / var(--fluid-divisor)), 399px);
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .add-yarn-gallery-desktop-thumb {
+    position: relative;
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+    flex-shrink: 0;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #f3f3f3;
+  }
+
+  .add-yarn-gallery-desktop-add {
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e5e5;
+    border-radius: 2px;
+    background: none;
+    color: #9b9a9a;
+    font-size: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    cursor: pointer;
+  }
+
+  .add-yarn-gallery-desktop-main {
+    flex: 1;
+    min-width: 0;
+    aspect-ratio: 428 / 447;
+    border-radius: 2px;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  .add-yarn-gallery-desktop-main-add {
+    width: 100%;
+    height: 100%;
+    border: 1px dashed #e5e5e5;
+    background: none;
+    color: #9b9a9a;
+    font-family: Mulish, sans-serif;
+    font-size: min(calc(15 * (100vw - 100px) / var(--fluid-divisor)), 15px);
+    cursor: pointer;
+  }
 
   .add-yarn-category-chip {
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
@@ -657,5 +863,44 @@
     width: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
     height: min(calc(32 * (100vw - 100px) / var(--fluid-divisor)), 32px);
     display: block;
+  }
+}
+
+/* Кнопки пролистывания миниатюр "Фото" — показываются только на десктопе
+   ≥1024px (на мобиле/планшете скрыты, см. .add-yarn-gallery-scroll-btn в
+   блоке 768px выше): свайп на тач-экранах их не требует. Полупрозрачные
+   кружки с шевронами, наплывающие на миниатюры сверху/снизу
+   (position:absolute внутри .add-yarn-gallery-desktop-thumbs-wrap) —
+   рендерятся в JSX только когда действительно есть куда скроллить. */
+@media (min-width: 1024px) {
+  .add-yarn-gallery-scroll-btn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(29, 28, 28, 0.55);
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .add-yarn-gallery-scroll-btn:hover {
+    background: rgba(29, 28, 28, 0.75);
+  }
+
+  .add-yarn-gallery-scroll-btn--up {
+    top: 4px;
+  }
+
+  .add-yarn-gallery-scroll-btn--down {
+    bottom: 4px;
   }
 }

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Plus, ChevronDown, SquareCheck, Square, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, SquareCheck, Square, Trash2 } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { parseDecimalInput } from '../../utils/parseDecimal';
@@ -153,6 +153,10 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
   const [patternQuery, setPatternQuery] = useState('');
   const [patternResults, setPatternResults] = useState<Pattern[]>([]);
   const [isSearchingPattern, setIsSearchingPattern] = useState(false);
+  // Клик вне списка должен его скрывать — тот же приём, что у поиска
+  // пряжи (isYarnFieldFocused) ниже: список показывается только пока
+  // инпут в фокусе, onBlur скрывает его.
+  const [isPatternFieldFocused, setIsPatternFieldFocused] = useState(false);
   // Поиск ограничен лимитом 10 за раз (limit в fetchPatterns) — total
   // говорит, сколько всего найдено, подгрузка по скроллу добирает остаток
   // через offset, тот же приём, что у Ravelry-подсказок в AddYarnModal.tsx.
@@ -220,6 +224,12 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
 
   const referencePhotoInputRef = useRef<HTMLInputElement>(null);
   const finishedPhotoInputRef = useRef<HTMLInputElement>(null);
+  // Колонка миниатюр "Фото изделия" на десктопе (≥1024px) — кнопки
+  // пролистывания скроллят её программно, см. photosSection. Кнопки
+  // показываются только когда есть куда скроллить (canScrollThumbsUp/Down).
+  const finishedPhotosThumbsRef = useRef<HTMLDivElement>(null);
+  const [canScrollFinishedPhotosUp, setCanScrollFinishedPhotosUp] = useState(false);
+  const [canScrollFinishedPhotosDown, setCanScrollFinishedPhotosDown] = useState(false);
   const patternDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const yarnDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   // Защита от гонки: debounce только ограничивает частоту ЗАПУСКА таймера,
@@ -428,6 +438,26 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     }, 300);
     return () => { if (yarnDebounceRef.current) clearTimeout(yarnDebounceRef.current); };
   }, [yarnQuery, isYarnFieldFocused]);
+
+  // Кнопки пролистывания миниатюр "Фото изделия" (см. photosSection ниже) —
+  // показываются только когда реально есть куда скроллить (иначе при 1-2
+  // фото, которые целиком помещаются, кнопки были бы бесполезны и вели в
+  // никуда). updateFinishedPhotosScrollState — обычная функция, не хук, её
+  // можно объявить и использовать где угодно; а вот сам useEffect обязан
+  // стоять ДО "if (!isMounted) return null" ниже — хуки после условного
+  // return нарушают Rules of Hooks (на первом рендере isMounted=false
+  // пропускает этот хук, на следующем он уже есть — "Rendered more hooks
+  // than during the previous render").
+  const updateFinishedPhotosScrollState = () => {
+    const el = finishedPhotosThumbsRef.current;
+    if (!el) return;
+    setCanScrollFinishedPhotosUp(el.scrollTop > 0);
+    setCanScrollFinishedPhotosDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  };
+
+  useEffect(() => {
+    updateFinishedPhotosScrollState();
+  }, [finishedPhotos, isDesktop]);
 
   if (!isMounted) return null;
 
@@ -886,6 +916,8 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           placeholder="Введите название или автора"
           readOnly={!!selectedPattern}
           onChange={(e) => setPatternQuery(e.target.value)}
+          onFocus={() => setIsPatternFieldFocused(true)}
+          onBlur={() => setIsPatternFieldFocused(false)}
         />
       </div>
 
@@ -917,34 +949,53 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         </div>
       ) : (
         <div className="add-project-section-inner">
-          {!isSearchingPattern && patternQuery.trim().length >= 2 && patternResults.length === 0 && (
-            <p className="add-project-empty-text">Ничего не найдено</p>
-          )}
-          {patternResults.length > 0 && (
-            <>
-              <p className="add-project-inner-label">Выбрать из каталога</p>
-              <div
-                className="add-project-cards-vertical add-project-cards-vertical--scroll"
-                ref={patternResultsRef}
-                onScroll={handlePatternResultsScroll}
-              >
-                {patternResults.map((p) => (
-                  <button key={p.id} type="button" className="add-project-pattern-card" onClick={() => handlePickPattern(p)}>
-                    <div className="add-project-pattern-card-image">
-                      <img src={p.thumbnailUrl} alt="" />
-                    </div>
-                    <div className="add-project-pattern-card-body">
-                      <p className="add-project-pattern-card-title">{p.title}</p>
-                      <p className="add-project-pattern-card-meta"><b>Автор:</b> {p.author}</p>
-                      {p.instruments.length > 0 && (
-                        <p className="add-project-pattern-card-meta"><b>Инструмент:</b> {p.instruments.join(', ')}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
-                {isLoadingMorePatterns && <p className="add-project-empty-text">Загрузка...</p>}
-              </div>
-            </>
+          {isPatternFieldFocused && (patternResults.length > 0 || (!isSearchingPattern && patternQuery.trim().length >= 2)) && (
+            /* add-project-search-dropdown — отдельная обёртка вокруг
+               "не найдено"/списка результатов (не вокруг ручного ввода):
+               на десктопе/планшете (см. CSS) она выносится из потока
+               (position:absolute) и раскрывается поверх формы, как у
+               select, вместо того чтобы раздувать высоту секции "О
+               проекте" и сдвигать вниз "Сроки"/"Инструмент"/... под ней. */
+            <div className="add-project-search-dropdown">
+              {patternResults.length === 0 && (
+                <p className="add-project-empty-text">Ничего не найдено</p>
+              )}
+              {patternResults.length > 0 && (
+                <>
+                  <p className="add-project-inner-label">Выбрать из каталога</p>
+                  <div
+                    className="add-project-cards-vertical add-project-cards-vertical--scroll"
+                    ref={patternResultsRef}
+                    onScroll={handlePatternResultsScroll}
+                  >
+                    {patternResults.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="add-project-pattern-card"
+                        // onMouseDown, не onClick — см. комментарий у
+                        // такой же карточки пряжи ниже: onBlur инпута
+                        // срабатывает раньше onClick, список успел бы
+                        // скрыться до того, как клик дойдёт до кнопки.
+                        onMouseDown={(e) => { e.preventDefault(); handlePickPattern(p); }}
+                      >
+                        <div className="add-project-pattern-card-image">
+                          <img src={p.thumbnailUrl} alt="" />
+                        </div>
+                        <div className="add-project-pattern-card-body">
+                          <p className="add-project-pattern-card-title">{p.title}</p>
+                          <p className="add-project-pattern-card-meta"><b>Автор:</b> {p.author}</p>
+                          {p.instruments.length > 0 && (
+                            <p className="add-project-pattern-card-meta"><b>Инструмент:</b> {p.instruments.join(', ')}</p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    {isLoadingMorePatterns && <p className="add-project-empty-text">Загрузка...</p>}
+                  </div>
+                </>
+              )}
+            </div>
           )}
           {isManualEntryOpen && (
             <div className="add-project-manual-entry">
@@ -1064,39 +1115,50 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         <Plus size={32} strokeWidth={1} className="plus-add-button-icon" />
         Добавить новую пряжу
       </button>
-      {yarnResults.length > 0 && (
-        <div className="add-project-cards-vertical">
-          {yarnResults.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className="add-project-yarn-search-card"
-              // onMouseDown, не onClick — onBlur инпута (выше)
-              // срабатывает раньше onClick этой кнопки при клике по
-              // ней (blur — часть mousedown/focus-смены), список
-              // успел бы скрыться до того, как клик дойдёт до
-              // кнопки. mousedown происходит раньше blur.
-              onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
-            >
-              <div className="add-project-yarn-card-image">
-                {s.images[0] ? <img src={s.images[0]} alt="" /> : <img src={yarnPlaceholder} alt="" className="add-project-yarn-card-image-placeholder" />}
+      <div className="add-project-section-inner">
+        {isYarnFieldFocused && (yarnResults.length > 0 || !isSearchingYarn) && (
+          /* Та же обёртка, что у поиска описания в "О проекте" (см.
+             add-project-search-dropdown в CSS) — раскрывается поверх
+             формы на десктопе/планшете и скрывается по blur инпута
+             (клик вне списка = клик не по карточке результата = потеря
+             фокуса инпутом). */
+          <div className="add-project-search-dropdown">
+            {yarnResults.length === 0 && (
+              <p className="add-project-empty-text">
+                {yarnQuery.trim() ? 'В ваших запасах ничего не найдено' : 'В хранилище пока пусто'}
+              </p>
+            )}
+            {yarnResults.length > 0 && (
+              <div className="add-project-cards-vertical">
+                {yarnResults.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="add-project-yarn-search-card"
+                    // onMouseDown, не onClick — onBlur инпута (выше)
+                    // срабатывает раньше onClick этой кнопки при клике по
+                    // ней (blur — часть mousedown/focus-смены), список
+                    // успел бы скрыться до того, как клик дойдёт до
+                    // кнопки. mousedown происходит раньше blur.
+                    onMouseDown={(e) => { e.preventDefault(); handlePickYarn(s); }}
+                  >
+                    <div className="add-project-yarn-card-image">
+                      {s.images[0] ? <img src={s.images[0]} alt="" /> : <img src={yarnPlaceholder} alt="" className="add-project-yarn-card-image-placeholder" />}
+                    </div>
+                    <div className="add-project-yarn-card-body">
+                      <p className="add-project-yarn-card-title">{s.yarnNameSnapshot}</p>
+                      {s.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {s.brandSnapshot}</p>}
+                      {s.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {s.compositionSnapshot}</p>}
+                      {s.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {s.mPer100gSnapshot}м/100г</p>}
+                      <p className="add-project-yarn-card-remainder"><b>Остаток:</b> <b>{s.currentWeightG} г</b> из {s.totalWeightG} г</p>
+                    </div>
+                  </button>
+                ))}
               </div>
-              <div className="add-project-yarn-card-body">
-                <p className="add-project-yarn-card-title">{s.yarnNameSnapshot}</p>
-                {s.brandSnapshot && <p className="add-project-yarn-card-meta"><b>Бренд:</b> {s.brandSnapshot}</p>}
-                {s.compositionSnapshot && <p className="add-project-yarn-card-meta"><b>Состав:</b> {s.compositionSnapshot}</p>}
-                {s.mPer100gSnapshot != null && <p className="add-project-yarn-card-meta"><b>Метраж:</b> {s.mPer100gSnapshot}м/100г</p>}
-                <p className="add-project-yarn-card-remainder"><b>Остаток:</b> <b>{s.currentWeightG} г</b> из {s.totalWeightG} г</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-      {!isSearchingYarn && yarnResults.length === 0 && (isYarnFieldFocused || yarnQuery.trim()) && (
-        <p className="add-project-empty-text">
-          {yarnQuery.trim() ? 'В ваших запасах ничего не найдено' : 'В хранилище пока пусто'}
-        </p>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </div>
   ) : null;
 
@@ -1302,6 +1364,15 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
     </div>
   );
 
+  // Кнопки пролистывания миниатюр (только ≥1024px, см. CSS) — скроллят
+  // колонку программно на высоту одной миниатюры + gap, тем же способом,
+  // что и обычный скролл/свайп внутри неё (overflow-y:auto на самой
+  // колонке — отдельного JS для свайпа не нужно, нативный скролл уже
+  // поддерживает тач).
+  const scrollFinishedPhotosThumbs = (direction: 1 | -1) => {
+    finishedPhotosThumbsRef.current?.scrollBy({ top: direction * 139, behavior: 'smooth' });
+  };
+
   const photosSection = (
     <div className="add-project-section add-project-section--photos">
       {!isDesktop && <p className="add-project-section-title">Фото изделия</p>}
@@ -1309,19 +1380,48 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           фото крупно, остальные миниатюрами слева) — те же
           finishedPhotos/handleFinishedPhotoSelected/removeFinishedPhoto,
           что и в мобильной плоской сетке ниже, просто другая
-          раскладка тех же данных. */}
+          раскладка тех же данных. Колонка миниатюр ограничена по высоте и
+          скроллится сама (CSS) — не растягивает блок при добавлении
+          нескольких фото; на тач-экранах скроллится свайпом нативно, на
+          десктопе (≥1024px) добавлены кнопки пролистывания. */}
       {isDesktop ? (
         <div className="add-project-gallery-desktop">
-          <div className="add-project-gallery-desktop-thumbs">
-            {finishedPhotos.map((url) => (
-              <div key={url} className="add-project-gallery-desktop-thumb">
-                <img src={url} alt="" />
-                <button type="button" className="add-project-photo-remove" onClick={() => removeFinishedPhoto(url)}>×</button>
-              </div>
-            ))}
-            {finishedPhotos.length < MAX_IMAGES && (
-              <button type="button" className="add-project-gallery-desktop-add" onClick={() => finishedPhotoInputRef.current?.click()} disabled={isUploading}>
-                +
+          <div className="add-project-gallery-desktop-thumbs-wrap">
+            {canScrollFinishedPhotosUp && (
+              <button
+                type="button"
+                className="add-project-gallery-scroll-btn add-project-gallery-scroll-btn--up"
+                onClick={() => scrollFinishedPhotosThumbs(-1)}
+                aria-label="Прокрутить миниатюры вверх"
+              >
+                <ChevronUp size={16} />
+              </button>
+            )}
+            <div
+              className="add-project-gallery-desktop-thumbs"
+              ref={finishedPhotosThumbsRef}
+              onScroll={updateFinishedPhotosScrollState}
+            >
+              {finishedPhotos.map((url) => (
+                <div key={url} className="add-project-gallery-desktop-thumb">
+                  <img src={url} alt="" />
+                  <button type="button" className="add-project-photo-remove" onClick={() => removeFinishedPhoto(url)}>×</button>
+                </div>
+              ))}
+              {finishedPhotos.length < MAX_IMAGES && (
+                <button type="button" className="add-project-gallery-desktop-add" onClick={() => finishedPhotoInputRef.current?.click()} disabled={isUploading}>
+                  +
+                </button>
+              )}
+            </div>
+            {canScrollFinishedPhotosDown && (
+              <button
+                type="button"
+                className="add-project-gallery-scroll-btn add-project-gallery-scroll-btn--down"
+                onClick={() => scrollFinishedPhotosThumbs(1)}
+                aria-label="Прокрутить миниатюры вниз"
+              >
+                <ChevronDown size={16} />
               </button>
             )}
           </div>
@@ -1370,41 +1470,42 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
         <div className="add-project-body">
           {isDesktop ? (
             <>
-              {/* 3 независимые flex-колонки (не grid-area на общем гриде с
-                  рядами) — высота каждой секции не завязана на соседние
-                  колонки: кнопки Закрыть/Сохранить ровно такой высоты, какой
-                  сами являются, "Сроки" идёт сразу под ними со стандартным
-                  gap, и так же дальше вниз по колонке. */}
+              {/* grid-template-areas на общем гриде (.add-project-body,
+                  см. CSS) — gallery остаётся одной colonка, занимающей все
+                  строки целиком; заголовок+кнопки Закрыть/Сохранить делят
+                  ОДНУ строку (обе стороны предсказуемой высоты — заголовок
+                  всегда одна строка ввода, кнопки всегда одной высоты), а
+                  каждая из остальных секций (about/сроки/инструмент/пряжа/
+                  образец/заметки) занимает свою строку на всю ширину —
+                  секции с непредсказуемой высотой (например, список
+                  результатов поиска паттерна в about) не делят строку ни с
+                  чем другим, поэтому не ломают отступы у соседей. */}
               <div className="add-project-col-gallery">
                 {photosSection}
                 {documentsSection}
                 {referencesSection}
               </div>
-              <div className="add-project-col-about">
-                <div className="add-project-title-row">
-                  <div className="add-project-title-row-top">
-                    <input
-                      className="add-project-title add-project-title--desktop"
-                      value={title}
-                      placeholder={isEditMode ? 'Редактировать проект' : 'Новый проект'}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
-                    {statusDropdown}
-                  </div>
-                  {completionHint}
+              <div className="add-project-title-row">
+                <div className="add-project-title-row-top">
+                  <input
+                    className="add-project-title add-project-title--desktop"
+                    value={title}
+                    placeholder={isEditMode ? 'Редактировать проект' : 'Новый проект'}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                  {statusDropdown}
                 </div>
-                {aboutSection}
-                {notesSection}
+                {completionHint}
               </div>
-              <div className="add-project-col-meta">
-                <div className="add-project-column-actions">
-                  {actionButtons}
-                </div>
-                {datesSection}
-                {instrumentsSection}
-                {yarnSection}
-                {swatchSection}
+              <div className="add-project-column-actions">
+                {actionButtons}
               </div>
+              {aboutSection}
+              {datesSection}
+              {instrumentsSection}
+              {yarnSection}
+              {swatchSection}
+              {notesSection}
             </>
           ) : (
             <>
@@ -1426,9 +1527,20 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClos
           )}
 
           {error && <p className="add-project-error">{error}</p>}
+
+          {/* Запас снизу внутри самого грида (grid-column:1/-1 в CSS), не
+              padding-bottom/спейсер СНАРУЖИ .add-project-body — если
+              overflow-переполнение от .add-project-search-dropdown
+              (position:absolute) не долетает до скролл-контейнера выше по
+              дереву (известная шероховатость с абсолютно спозиционированными
+              потомками внутри grid-контейнеров), спейсер-сосед body ничего
+              не решает: клиппинг происходит ещё на уровне самого body. Этот
+              блок — настоящий элемент ГРИДА, увеличивает auto-высоту самого
+              .add-project-body напрямую. */}
+          {isDesktop && <div className="add-project-scroll-spacer" aria-hidden="true" />}
         </div>
 
-        {isDesktop && <Footer />}
+        {/* {isDesktop && <Footer />} */}
 
         {!isDesktop && (
           <div className="add-project-footer">

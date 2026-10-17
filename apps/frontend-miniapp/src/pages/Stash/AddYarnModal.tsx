@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import { useSheetTransition } from '../../hooks/useSheetTransition';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { parseDecimalInput } from '../../utils/parseDecimal';
@@ -132,6 +132,12 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Колонка миниатюр "Фото" на десктопе (≥1024px) — кнопки пролистывания
+  // скроллят её программно, см. галерею ниже. Кнопки показываются только
+  // когда есть куда скроллить (canScrollPhotosThumbsUp/Down).
+  const photosThumbsRef = useRef<HTMLDivElement>(null);
+  const [canScrollPhotosThumbsUp, setCanScrollPhotosThumbsUp] = useState(false);
+  const [canScrollPhotosThumbsDown, setCanScrollPhotosThumbsDown] = useState(false);
   const swatchFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const nameInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -255,6 +261,24 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
     };
   }, [showSuggestions]);
 
+  // Кнопки пролистывания миниатюр "Фото" (см. галерею ниже) — показываются
+  // только когда реально есть куда скроллить. updatePhotosThumbsScrollState
+  // — обычная функция, не хук, её можно объявить и использовать где угодно;
+  // а вот сам useEffect обязан стоять ДО "if (!isMounted) return null" ниже
+  // — хуки после условного return нарушают Rules of Hooks (на первом
+  // рендере isMounted=false пропускает этот хук, на следующем он уже есть
+  // — "Rendered more hooks than during the previous render").
+  const updatePhotosThumbsScrollState = () => {
+    const el = photosThumbsRef.current;
+    if (!el) return;
+    setCanScrollPhotosThumbsUp(el.scrollTop > 0);
+    setCanScrollPhotosThumbsDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  };
+
+  useEffect(() => {
+    updatePhotosThumbsScrollState();
+  }, [images, isDesktop]);
+
   if (!isMounted) return null;
 
   const applySuggestion = (item: YarnSuggestion) => {
@@ -301,6 +325,15 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
   };
 
   const handleAddPhotoClick = () => fileInputRef.current?.click();
+
+  // Кнопки пролистывания миниатюр (только ≥1024px, см. CSS) — скроллят
+  // колонку программно на высоту одной миниатюры + gap, тем же способом,
+  // что и обычный скролл/свайп внутри неё (overflow-y:auto на самой
+  // колонке — отдельного JS для свайпа не нужно, нативный скролл уже
+  // поддерживает тач).
+  const scrollPhotosThumbs = (direction: 1 | -1) => {
+    photosThumbsRef.current?.scrollBy({ top: direction * 139, behavior: 'smooth' });
+  };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -557,16 +590,42 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
                 плоской сетке ниже, просто другая раскладка тех же данных. */}
             {isDesktop ? (
               <div className="add-yarn-gallery-desktop">
-                <div className="add-yarn-gallery-desktop-thumbs">
-                  {images.map((url) => (
-                    <div key={url} className="add-yarn-gallery-desktop-thumb">
-                      <img src={url} alt="" />
-                      <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
-                    </div>
-                  ))}
-                  {images.length < MAX_IMAGES && (
-                    <button type="button" className="add-yarn-gallery-desktop-add" onClick={handleAddPhotoClick} disabled={isUploading}>
-                      +
+                <div className="add-yarn-gallery-desktop-thumbs-wrap">
+                  {canScrollPhotosThumbsUp && (
+                    <button
+                      type="button"
+                      className="add-yarn-gallery-scroll-btn add-yarn-gallery-scroll-btn--up"
+                      onClick={() => scrollPhotosThumbs(-1)}
+                      aria-label="Прокрутить миниатюры вверх"
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                  )}
+                  <div
+                    className="add-yarn-gallery-desktop-thumbs"
+                    ref={photosThumbsRef}
+                    onScroll={updatePhotosThumbsScrollState}
+                  >
+                    {images.map((url) => (
+                      <div key={url} className="add-yarn-gallery-desktop-thumb">
+                        <img src={url} alt="" />
+                        <button type="button" className="add-yarn-photo-remove" onClick={() => removeImage(url)}>×</button>
+                      </div>
+                    ))}
+                    {images.length < MAX_IMAGES && (
+                      <button type="button" className="add-yarn-gallery-desktop-add" onClick={handleAddPhotoClick} disabled={isUploading}>
+                        +
+                      </button>
+                    )}
+                  </div>
+                  {canScrollPhotosThumbsDown && (
+                    <button
+                      type="button"
+                      className="add-yarn-gallery-scroll-btn add-yarn-gallery-scroll-btn--down"
+                      onClick={() => scrollPhotosThumbs(1)}
+                      aria-label="Прокрутить миниатюры вниз"
+                    >
+                      <ChevronDown size={16} />
                     </button>
                   )}
                 </div>
@@ -719,12 +778,17 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
             {isDesktop && notesSection}
           </div>
 
+          {/* Кнопки — своя grid-area (actions), не первый элемент секции
+              "Образец": внутри секции они оказывались в середине формы на
+              планшете (там "Образец" — не первая строка колонки, а третья,
+              см. CSS), хотя визуально должны быть наверху всегда. */}
+          {isDesktop && (
+            <div className="add-yarn-column-actions">
+              {actionButtons}
+            </div>
+          )}
+
           <div className="add-yarn-section add-yarn-section--swatches">
-            {isDesktop && (
-              <div className="add-yarn-column-actions">
-                {actionButtons}
-              </div>
-            )}
             <p className="add-yarn-section-title">Образец</p>
 
             {isSwatchSectionOpen && swatches.map((swatch, index) => (
@@ -876,7 +940,7 @@ export const AddYarnModal: React.FC<AddYarnModalProps> = ({ isOpen, onClose, onC
           {error && <p className="add-yarn-error">{error}</p>}
         </div>
 
-        {isDesktop && <Footer />}
+        {/* {isDesktop && <Footer />} */}
 
         {!isDesktop && (
           <div className="add-yarn-footer">

@@ -190,7 +190,7 @@ export const Projects: React.FC = () => {
 
   return (
     <>
-      <div className="stash-container">
+      <div className="stash-container projects-stash-container">
         <div className="stash-header">
           <h1 className="stash-title">Проекты</h1>
         </div>

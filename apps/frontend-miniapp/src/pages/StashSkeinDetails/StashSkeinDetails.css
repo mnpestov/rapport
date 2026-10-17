@@ -1019,13 +1019,42 @@
     display: block;
   }
 
+  /* Планшет (768-1024px) — своя раскладка на areas (не механический дубль
+     десктопного грида ниже, тот же принцип, что у .project-details-desktop-
+     grid): галерея занимает 2 из 3 колонок на всю высоту; "Образец" делит
+     нижнюю строку с "Пряжа"-стеком (Артикул/Бренд/.../Связано/В процессе/
+     В планах — остаются одним flex-стеком внутри .stash-details-desktop-
+     info, см. ниже), а не растягивается на всю ширину — так же, как у
+     ProjectDetails swatches делит нижнюю строку с content. Название — в
+     своей строке (title), не внутри .stash-details-desktop-info: на
+     десктопе (≥1024px, свой блок ниже) эффект нулевой, название остаётся
+     первым элементом той же колонки, просто через grid-area вместо
+     порядка внутри flex-колонки. */
   .stash-details-desktop-grid {
     display: grid;
-    grid-template-columns: 2fr 3fr 3fr;
-    /* grid-template-columns: min(calc(544 * (100vw - 100px) / var(--fluid-divisor-768)), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / var(--fluid-divisor-768)), 308px); */
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-areas: "gallery title title" "gallery info info" "swatches info info";
+    grid-template-rows: auto auto 1fr;
     align-items: start;
-    gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor-768)), 40px);
-    margin-top: min(calc(24 * (100vw - 100px) / var(--fluid-divisor-768)), 24px);
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor-768)), 20px);
+    margin-top: min(calc(16 * (100vw - 100px) / var(--fluid-divisor-768)), 16px);
+  }
+
+  .stash-details-desktop-grid>.stash-details-desktop-gallery {
+    grid-area: gallery;
+  }
+
+  .stash-details-desktop-grid>.stash-details-title-row {
+    grid-area: title;
+    min-width: 0;
+  }
+
+  .stash-details-desktop-grid>.stash-details-desktop-info {
+    grid-area: info;
+  }
+
+  .stash-details-desktop-grid>.stash-details-desktop-swatches {
+    grid-area: swatches;
   }
 
   .stash-details-desktop-gallery,
@@ -1045,9 +1074,17 @@
     gap: min(calc(15 * (100vw - 100px) / var(--fluid-divisor-768)), 15px);
   }
 
-  .stash-details-desktop-info .stash-details-name {
+  /* Название вынесено из .stash-details-desktop-info в свою grid-area
+     (title) — margin-bottom больше не нужен, отступ до "Пряжа"-стека ниже
+     задаёт row-gap самого .stash-details-desktop-grid. */
+  .stash-details-title-row {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stash-details-title-row .stash-details-name {
     font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor-768)), 34px);
-    margin-bottom: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
+    margin: 0;
   }
 
   /* Внутри сетки эти блоки больше не формируют вертикальный ритм мобильного
@@ -1086,7 +1123,7 @@
     flex-direction: column;
     gap: min(calc(10 * (100vw - 100px) / var(--fluid-divisor-768)), 10px);
     width: min(calc(80 * (100vw - 100px) / var(--fluid-divisor-768)), 80px);
-    max-height: min(calc(399 * (100vw - 100px) / var(--fluid-divisor-768)), 399px);
+    max-height: min(calc(466 * (100vw - 100px) / var(--fluid-divisor-768)), 466px);
     overflow-y: auto;
     flex-shrink: 0;
   }
@@ -1627,13 +1664,43 @@
     display: block;
   }
 
+  /* grid-template-areas добавлены здесь механически, без визуального
+     изменения десктопа: раньше у грида было ровно 3 прямых потомка
+     (gallery/info/swatches), помещавшихся по одному в implicit-колонку;
+     после выноса названия в свою .stash-details-title-row (см. TSX и
+     блок 768px выше) потомков стало 4 — без areas название заняло бы
+     отдельную 4-ю колонку вместо того, чтобы остаться над "Пряжа"-стеком
+     в той же колонке, где оно и было. "title"/"info" в одной колонке (2
+     строки) воспроизводят прежний порядок (имя — первый элемент
+     flex-колонки .stash-details-desktop-info), просто через grid-area
+     вместо document order. */
   .stash-details-desktop-grid {
     display: grid;
-    grid-template-columns: 2fr 3fr 3fr;
-    /* grid-template-columns: min(calc(544 * (100vw - 100px) / var(--fluid-divisor)), 544px) minmax(0, 1fr) min(calc(308 * (100vw - 100px) / var(--fluid-divisor)), 308px); */
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      "gallery title  title"
+      "gallery info   swatches";
+    grid-template-rows: auto 1fr;
     align-items: start;
     gap: min(calc(40 * (100vw - 100px) / var(--fluid-divisor)), 40px);
     margin-top: min(calc(24 * (100vw - 100px) / var(--fluid-divisor)), 24px);
+  }
+
+  .stash-details-desktop-grid>.stash-details-desktop-gallery {
+    grid-area: gallery;
+  }
+
+  .stash-details-desktop-grid>.stash-details-title-row {
+    grid-area: title;
+    min-width: 0;
+  }
+
+  .stash-details-desktop-grid>.stash-details-desktop-info {
+    grid-area: info;
+  }
+
+  .stash-details-desktop-grid>.stash-details-desktop-swatches {
+    grid-area: swatches;
   }
 
   .stash-details-desktop-gallery,
@@ -1653,9 +1720,17 @@
     gap: min(calc(28 * (100vw - 100px) / var(--fluid-divisor)), 28px);
   }
 
-  .stash-details-desktop-info .stash-details-name {
+  /* Название вынесено из .stash-details-desktop-info в свою grid-area
+     (title) — margin-bottom больше не нужен, отступ до "Пряжа"-стека ниже
+     задаёт row-gap самого .stash-details-desktop-grid. */
+  .stash-details-title-row {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stash-details-title-row .stash-details-name {
     font-size: min(calc(34 * (100vw - 100px) / var(--fluid-divisor)), 34px);
-    margin-bottom: min(calc(10 * (100vw - 100px) / var(--fluid-divisor)), 10px);
+    margin: 0;
   }
 
   /* Внутри сетки эти блоки больше не формируют вертикальный ритм мобильного
@@ -1694,7 +1769,7 @@
     flex-direction: column;
     gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
     width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
-    max-height: min(calc(536 * (100vw - 100px) / var(--fluid-divisor)), 536px);
+    max-height: min(calc(400 * (100vw - 100px) / var(--fluid-divisor)), 400px);
     overflow-y: auto;
     flex-shrink: 0;
   }
@@ -2191,4 +2266,64 @@
     color: #6b6b6b;
     margin: 0;
   }
+}
+
+@media (min-width: 1280px) {
+
+
+
+  /* max-height + overflow-y — тот же приём, что у .stash-notes-text ниже:
+     при большом количестве фото колонка миниатюр скроллится сама внутри
+     себя, а не растягивает по вертикали всю карточку (жалоба — "галерея
+     миниатюр растягивает блок"). 536px ≈ 4 ряда миниатюр (119px + 20px
+     gap) при 100% масштабе. */
+  .stash-gallery-desktop-thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: min(calc(20 * (100vw - 100px) / var(--fluid-divisor)), 20px);
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 74px);
+    max-height: min(calc(536 * (100vw - 100px) / var(--fluid-divisor)), 536px);
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .stash-gallery-desktop-thumb {
+    width: min(calc(101 * (100vw - 100px) / var(--fluid-divisor)), 101px);
+    height: min(calc(119 * (100vw - 100px) / var(--fluid-divisor)), 119px);
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    padding: 0;
+    background: #f3f3f3;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .stash-gallery-desktop-thumb--active {
+    border-color: #1d1c1c;
+  }
+
+  .stash-gallery-desktop-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .stash-gallery-desktop-main {
+    flex: 1;
+    min-width: 0;
+    aspect-ratio: 3 / 4;
+    border-radius: 2px;
+    background: #f3f3f3;
+    overflow: hidden;
+  }
+
+  .stash-gallery-desktop-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
 }
